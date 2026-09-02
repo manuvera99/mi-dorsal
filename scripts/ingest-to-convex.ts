@@ -91,7 +91,7 @@ async function main() {
 
   for (const r of races) {
     try {
-      await client.mutation(api.races.create, {
+      await client.mutation(api.races.systemCreate, {
         name: r.name,
         locality: r.location,
         province: inferProvince(r.location, "") as any,

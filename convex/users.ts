@@ -200,3 +200,30 @@ export const adminGetStats = query({
     };
   },
 });
+
+/**
+ * Stats públicas (sin auth) — para mostrar contadores sin exponer PII.
+ * Útil para marketing, dashboard inicial, y para que cualquiera verifique
+ * cuántos admins hay sin necesidad de estar logueado.
+ */
+export const getPublicStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const [profiles, races, votes, ratings, myRaces] = await Promise.all([
+      ctx.db.query("profiles").collect(),
+      ctx.db.query("races").collect(),
+      ctx.db.query("raceVotes").collect(),
+      ctx.db.query("raceRatings").collect(),
+      ctx.db.query("myRaces").collect(),
+    ]);
+    return {
+      totalUsers: profiles.length,
+      adminCount: profiles.filter((p) => p.role === "admin").length,
+      totalRaces: races.length,
+      publishedRaces: races.filter((r) => r.isPublished).length,
+      totalVotes: votes.length,
+      totalRatings: ratings.length,
+      totalMyRaces: myRaces.length,
+    };
+  },
+});

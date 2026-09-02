@@ -139,6 +139,41 @@ export const create = mutation({
 });
 
 /**
+ * Crea una carrera desde el script de ingest (sin auth requerida).
+ * Solo lo usa `scripts/ingest-to-convex.ts`. NO usar desde la app.
+ */
+export const systemCreate = mutation({
+  args: {
+    name: v.string(),
+    locality: v.optional(v.string()),
+    province: provinceValidator,
+    distanceKm: v.number(),
+    elevationGainM: v.optional(v.number()),
+    raceType: raceTypeValidator,
+    homologated: v.optional(v.boolean()),
+    organizer: v.optional(v.string()),
+    organizerUrl: v.optional(v.string()),
+    resultsUrl: v.optional(v.string()),
+    registrationUrl: v.optional(v.string()),
+    officialUrl: v.optional(v.string()),
+    startDate: v.optional(v.string()),
+    startTime: v.optional(v.string()),
+    description: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+    isPublished: v.optional(v.boolean()),
+    isFeatured: v.optional(v.boolean()),
+    scraperAdapter: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const slug = slugify(args.name);
+    return await ctx.db.insert("races", {
+      ...args,
+      slug,
+    });
+  },
+});
+
+/**
  * Admin: lista TODAS las carreras (publicadas o no).
  */
 export const adminList = query({

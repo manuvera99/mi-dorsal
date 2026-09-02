@@ -1,0 +1,39 @@
+name: Refresh scraped data
+
+on:
+  schedule:
+    # Cada lunes a las 06:00 UTC
+    - cron: '0 6 * * 1'
+  workflow_dispatch:  # Botón manual desde GitHub Actions
+
+jobs:
+  scrape:
+    name: Scrape + commit
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install
+        run: npm ci
+
+      - name: Run scrapers
+        run: |
+          npm run ingest:rfea || echo "RFEA failed, continuing"
+          npm run ingest:fedme || echo "FEDME failed, continuing"
+          npm run ingest:itra || echo "ITRA failed, continuing"
+          npm run ingest:merge-mock || echo "Merge failed, continuing"
+
+      - name: Commit updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add scripts/output/ lib/mock/data.ts
+          git diff --staged --quiet || git commit -m "chore: refresh scraped data [skip ci]"
+          git push

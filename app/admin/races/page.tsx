@@ -26,6 +26,7 @@ function RealRacesList() {
   const [search, setSearch] = useState("");
   const [province, setProvince] = useState("");
   const [published, setPublished] = useState<"all" | "yes" | "no">("all");
+  const useMock = isMockMode();
   const races = useMock ? null : useQuery(api.races.adminList, {
     search: search || undefined,
     province: (province || undefined) as any,

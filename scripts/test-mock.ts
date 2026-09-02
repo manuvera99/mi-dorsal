@@ -26,7 +26,7 @@ MOCK_RACES.filter(r => r.isFeatured).forEach(r => {
 });
 console.log('');
 console.log('=== Top races by votes (curated) ===');
-MOCK_RACES.filter(r => r.votes && r.votes.length > 0).slice(0, 5).forEach(r => {
-  const up = r.votes.filter((v:any) => v === 'up').length;
+MOCK_RACES.filter(r => (r as any).votes && (r as any).votes.length > 0).slice(0, 5).forEach((r: any) => {
+  const up = r.votes.filter((v: any) => v === 'up').length;
   console.log(`  - ${r.name}: ${up} up votes`);
 });

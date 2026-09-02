@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { useUser } from "@clerk/nextjs";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { isMockMode } from "@/lib/mock/provider";
-import { LayoutDashboard, Trophy, Users, BarChart3, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, Trophy, Users, BarChart3, ArrowLeft, Shield, AlertCircle, Loader2 } from "lucide-react";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -18,16 +18,33 @@ const navItems = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const useMock = isMockMode();
-  // useUser solo si NO mock (Clerk no envuelve en mock)
   const userResult = useMock ? null : useUser();
   const isLoaded = userResult?.isLoaded ?? true;
   const isSignedIn = userResult?.isSignedIn ?? false;
   const router = useRouter();
   const pathname = usePathname();
 
-  // Comprobamos role real si no estamos en mock
   const myProfile = useMock ? null : useQuery(api.users.getMyProfile);
+  const publicStats = useQuery(api.users.getPublicStats);
   const isAdminReal = myProfile?.role === "admin";
+  const noAdminsYet = publicStats?.adminCount === 0;
+  const bootstrap = useMutation(api.users.bootstrapFirstAdmin);
+  const [bootstrapping, setBootstrapping] = useState(false);
+  const [bootstrapError, setBootstrapError] = useState<string | null>(null);
+
+  const handleBootstrap = async () => {
+    setBootstrapping(true);
+    setBootstrapError(null);
+    try {
+      await bootstrap({});
+      // Force re-fetch of profile
+      window.location.reload();
+    } catch (e: any) {
+      setBootstrapError(e.message);
+    } finally {
+      setBootstrapping(false);
+    }
+  };
 
   // Si no es admin y no está en mock, redirigir
   useEffect(() => {
@@ -36,27 +53,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       router.push("/sign-in");
       return;
     }
-    if (myProfile !== undefined && !isAdminReal) {
+    // Si no es admin pero hay admins (no puede ser 0), redirigir
+    if (myProfile !== undefined && !isAdminReal && publicStats !== undefined && !noAdminsYet) {
       router.push("/");
     }
-  }, [useMock, isLoaded, isSignedIn, myProfile, isAdminReal, router]);
+  }, [useMock, isLoaded, isSignedIn, myProfile, isAdminReal, publicStats, noAdminsYet, router]);
 
-  const canRender = useMock || isAdminReal;
+  // Mock mode: siempre puede ver
+  // Real mode: si es admin, ve. Si no es admin pero no hay admins aún, ve la pantalla de bootstrap.
+  const canRender = useMock || isAdminReal || (publicStats !== undefined && noAdminsYet && isSignedIn);
 
   if (!canRender) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-500 mb-3">Cargando o no autorizado…</p>
-          {myProfile !== undefined && !isAdminReal && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 max-w-md">
-              <p className="text-sm text-yellow-800">
-                Tu cuenta no tiene rol de admin. Si eres el primer usuario, ejecuta la mutación
-                <code className="block mt-1 p-2 bg-yellow-100 rounded text-xs">api.users.bootstrapFirstAdmin()</code>
-                desde la consola del navegador para promoverte.
-              </p>
-            </div>
-          )}
+          <Loader2 className="h-6 w-6 animate-spin mx-auto text-gray-400" />
+          <p className="text-gray-500 mt-3">Cargando…</p>
         </div>
       </div>
     );
@@ -64,7 +76,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen flex">
-      {/* Sidebar */}
       <aside className="w-64 bg-gray-900 text-white flex-shrink-0">
         <div className="p-6 border-b border-gray-800">
           <Link href="/" className="text-xs text-gray-400 hover:text-white flex items-center gap-1 mb-3">
@@ -96,8 +107,34 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <p className="text-xs text-gray-500">v0.1 · {new Date().getFullYear()}</p>
         </div>
       </aside>
-      {/* Main */}
-      <main className="flex-1 bg-gray-50 overflow-auto">{children}</main>
+      <main className="flex-1 bg-gray-50 overflow-auto">
+        {/* Banner de bootstrap si no hay admins */}
+        {!useMock && noAdminsYet && !isAdminReal && (
+          <div className="bg-yellow-50 border-b border-yellow-200 px-6 py-4">
+            <div className="flex items-start gap-3 max-w-4xl mx-auto">
+              <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-yellow-900">No hay admins en el sistema</h3>
+                <p className="text-sm text-yellow-700 mt-1">
+                  Eres el primer usuario. Si quieres ser admin, pulsa el botón. Solo se puede hacer una vez.
+                </p>
+                {bootstrapError && (
+                  <p className="text-sm text-red-600 mt-2">{bootstrapError}</p>
+                )}
+                <button
+                  onClick={handleBootstrap}
+                  disabled={bootstrapping}
+                  className="mt-3 inline-flex items-center gap-2 bg-runner-primary text-white px-4 py-2 rounded-md text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+                >
+                  {bootstrapping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
+ {bootstrapping ? "Promoviendo…" : "Hacerme admin"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {children}
+      </main>
     </div>
   );
 }

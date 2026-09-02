@@ -1,0 +1,51 @@
+[
+  {
+    "date": "2026-09-18",
+    "dateEnd": "2026-09-20",
+    "name": "Gomera Paradise Trail (Mundial ISF)",
+    "location": "Santa Cruz de Tenerife",
+    "province": "santa cruz de tenerife",
+    "type": "trail",
+    "modality": "Línea",
+    "level": "Mundial ISF",
+    "slug": "gomera-paradise-trail-mundial-isf-2026-09-18",
+    "sourceUrl": "https://fedme.es/la-fedme-presenta-el-calendario-provisional-oficial-de-carreras-por-montana-2026/",
+    "officialUrl": "https://fedme.es/la-fedme-presenta-el-calendario-provisional-oficial-de-carreras-por-montana-2026/"
+  },
+  {
+    "date": "2026-09-27",
+    "name": "CxM Macael Mármol",
+    "location": "Almería",
+    "province": "almeria",
+    "type": "trail",
+    "modality": "Línea",
+    "level": "Copa España 3 + III SNS",
+    "slug": "cxm-macael-marmol-2026-09-27",
+    "sourceUrl": "https://fedme.es/la-fedme-presenta-el-calendario-provisional-oficial-de-carreras-por-montana-2026/",
+    "officialUrl": "https://fedme.es/la-fedme-presenta-el-calendario-provisional-oficial-de-carreras-por-montana-2026/"
+  },
+  {
+    "date": "2026-10-18",
+    "name": "Barbudo SkyRace",
+    "location": "Murcia",
+    "province": "murcia",
+    "type": "trail",
+    "modality": "Línea",
+    "level": "Copa España Final",
+    "slug": "barbudo-skyrace-2026-10-18",
+    "sourceUrl": "https://fedme.es/la-fedme-presenta-el-calendario-provisional-oficial-de-carreras-por-montana-2026/",
+    "officialUrl": "https://fedme.es/la-fedme-presenta-el-calendario-provisional-oficial-de-carreras-por-montana-2026/"
+  },
+  {
+    "date": "2026-10-25",
+    "name": "XII KV Las Hurdes",
+    "location": "Cáceres",
+    "province": "caceres",
+    "type": "trail",
+    "modality": "Vertical",
+    "level": "Copa España 4 (Final) + Cto. España Clubes",
+    "slug": "xii-kv-las-hurdes-2026-10-25",
+    "sourceUrl": "https://fedme.es/la-fedme-presenta-el-calendario-provisional-oficial-de-carreras-por-montana-2026/",
+    "officialUrl": "https://fedme.es/la-fedme-presenta-el-calendario-provisional-oficial-de-carreras-por-montana-2026/"
+  }
+]

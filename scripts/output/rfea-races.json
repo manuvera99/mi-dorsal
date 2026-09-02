@@ -1,0 +1,79 @@
+[
+  {
+    "name": "Maratón Valencia Trinidad Alfonso Zurich",
+    "slug": "maraton-valencia-trinidad-alfonso-zurich-2026-10-06",
+    "date": "2026-10-06",
+    "location": "8",
+    "type": "road",
+    "level": "WARRL - Platinum  Valencia",
+    "modality": "Ruta",
+    "source": "RFEA",
+    "sourceUrl": "https://atletismorfea.es/sites/default/files/2026-01/008-2026%20Proyecto%20calendario%202026%20.pdf"
+  },
+  {
+    "name": "Campeonato de España de Marcha de Invierno de Promoción",
+    "slug": "campeonato-de-espana-de-marcha-de-invierno-de-promocion-2026-10-13",
+    "date": "2026-10-13",
+    "location": "Castro Urdiales (Cantabria)",
+    "type": "road",
+    "level": "RFEA",
+    "modality": "Marcha",
+    "source": "RFEA",
+    "sourceUrl": "https://atletismorfea.es/sites/default/files/2026-01/008-2026%20Proyecto%20calendario%202026%20.pdf"
+  },
+  {
+    "name": "Campeonato de España 10 km marcha Master",
+    "slug": "campeonato-de-espana-10-km-marcha-master-2026-10-13",
+    "date": "2026-10-13",
+    "location": "Castro Urdiales (Cantabria)",
+    "type": "road",
+    "level": "RFEA",
+    "modality": "Ruta",
+    "source": "RFEA",
+    "sourceUrl": "https://atletismorfea.es/sites/default/files/2026-01/008-2026%20Proyecto%20calendario%202026%20.pdf"
+  },
+  {
+    "name": "47º Edicion media maraton Sevilla los Palacios",
+    "slug": "47-edicion-media-maraton-sevilla-los-palacios-2026-10-13",
+    "date": "2026-10-13",
+    "location": "Los Palacios y Villafranca (Sevilla)",
+    "type": "road",
+    "level": "Nacional",
+    "modality": "Ruta",
+    "source": "RFEA",
+    "sourceUrl": "https://atletismorfea.es/sites/default/files/2026-01/008-2026%20Proyecto%20calendario%202026%20.pdf"
+  },
+  {
+    "name": "XL San Silvestre Internacional Crevillentina 2026",
+    "slug": "xl-san-silvestre-internacional-crevillentina-2026-2026-10-31",
+    "date": "2026-10-31",
+    "location": "Crevillente (Alicante)",
+    "type": "road",
+    "level": "Internacional 1",
+    "modality": "Ruta",
+    "source": "RFEA",
+    "sourceUrl": "https://atletismorfea.es/sites/default/files/2026-01/008-2026%20Proyecto%20calendario%202026%20.pdf"
+  },
+  {
+    "name": "LXII Nationale-Nederlanden San Silvestre Vallecana",
+    "slug": "lxii-nationale-nederlanden-san-silvestre-vallecana-2026-10-31",
+    "date": "2026-10-31",
+    "location": "Madrid",
+    "type": "road",
+    "level": "WARRL - Label",
+    "modality": "Ruta",
+    "source": "RFEA",
+    "sourceUrl": "https://atletismorfea.es/sites/default/files/2026-01/008-2026%20Proyecto%20calendario%202026%20.pdf"
+  },
+  {
+    "name": "LVI Circuito de Nochevieja \"Memorial Ramón Gil\"",
+    "slug": "lvi-circuito-de-nochevieja-memorial-ramon-gil-2026-10-31",
+    "date": "2026-10-31",
+    "location": "Galdakao (Bizcaya)",
+    "type": "road",
+    "level": "Nacional",
+    "modality": "Ruta",
+    "source": "RFEA",
+    "sourceUrl": "https://atletismorfea.es/sites/default/files/2026-01/008-2026%20Proyecto%20calendario%202026%20.pdf"
+  }
+]

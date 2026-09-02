@@ -1,0 +1,93 @@
+[
+  {
+    "name": "Canfranc-Canfranc",
+    "date": "2026-09-11",
+    "location": "Canfranc Estación, Huesca",
+    "province": "huesca",
+    "distance": 100,
+    "elevation": 8848,
+    "endurancePoints": 6,
+    "type": "trail",
+    "officialUrl": "https://canfranccanfranc.com/",
+    "slug": "canfranc-canfranc-2026-09-11",
+    "sourceUrl": "https://itra.run/Races/RaceCalendar?country=Spain"
+  },
+  {
+    "name": "Madrid-Segovia",
+    "date": "2026-09-19",
+    "location": "Madrid → Segovia",
+    "province": "madrid",
+    "distance": 101,
+    "elevation": 2030,
+    "endurancePoints": 5,
+    "type": "trail",
+    "officialUrl": "https://madrid-segovia.com/",
+    "slug": "madrid-segovia-2026-09-19",
+    "sourceUrl": "https://itra.run/Races/RaceCalendar?country=Spain"
+  },
+  {
+    "name": "Gran Trail Peñalara",
+    "date": "2026-10-09",
+    "location": "Navacerrada, Madrid",
+    "province": "madrid",
+    "distance": 110,
+    "elevation": 5100,
+    "endurancePoints": 6,
+    "type": "trail",
+    "officialUrl": "https://grantrailpenalara.com/",
+    "slug": "gran-trail-penalara-2026-10-09",
+    "sourceUrl": "https://itra.run/Races/RaceCalendar?country=Spain"
+  },
+  {
+    "name": "Brama Stage Run",
+    "date": "2026-10-16",
+    "location": "Ribes de Freser, Girona",
+    "province": "girona",
+    "distance": 78,
+    "elevation": 4300,
+    "endurancePoints": 6,
+    "type": "trail",
+    "officialUrl": "https://bramarun.com/",
+    "slug": "brama-stage-run-2026-10-16",
+    "sourceUrl": "https://itra.run/Races/RaceCalendar?country=Spain"
+  },
+  {
+    "name": "Ultra Trail Guara Somontano",
+    "date": "2026-10-17",
+    "location": "Alquézar, Huesca",
+    "province": "huesca",
+    "distance": 102,
+    "elevation": 5400,
+    "endurancePoints": 6,
+    "type": "trail",
+    "officialUrl": "https://utguarasomontano.com/",
+    "slug": "ultra-trail-guara-somontano-2026-10-17",
+    "sourceUrl": "https://itra.run/Races/RaceCalendar?country=Spain"
+  },
+  {
+    "name": "Cross 3 Refugios",
+    "date": "2026-11-01",
+    "location": "Manzanares el Real, Madrid",
+    "province": "madrid",
+    "distance": 24,
+    "elevation": 1750,
+    "endurancePoints": 3,
+    "type": "trail",
+    "officialUrl": "https://cross3refugios.com/",
+    "slug": "cross-3-refugios-2026-11-01",
+    "sourceUrl": "https://itra.run/Races/RaceCalendar?country=Spain"
+  },
+  {
+    "name": "Costa Blanca Trails",
+    "date": "2026-11-14",
+    "location": "Finestrat, Alicante",
+    "province": "alicante",
+    "distance": 66,
+    "elevation": 3990,
+    "endurancePoints": 5,
+    "type": "trail",
+    "officialUrl": "https://costablancatrails.com/",
+    "slug": "costa-blanca-trails-2026-11-14",
+    "sourceUrl": "https://itra.run/Races/RaceCalendar?country=Spain"
+  }
+]

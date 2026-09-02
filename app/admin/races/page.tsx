@@ -81,7 +81,7 @@ function RealRacesList() {
           <option value="no">Borrador</option>
         </select>
         <div className="text-sm text-gray-500 ml-auto">
-          {races === undefined ? "…" : `${races.length} carreras`}
+          {races === undefined || races === null ? "…" : `${races.length} carreras`}
         </div>
       </div>
 

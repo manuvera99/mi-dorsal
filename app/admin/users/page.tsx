@@ -51,12 +51,12 @@ function RealUsersList() {
           <option value="admin">Admins</option>
         </select>
         <div className="text-sm text-gray-500 ml-auto">
-          {profiles === undefined ? "…" : `${profiles.length} usuarios`}
+          {profiles === undefined || profiles === null ? "…" : `${profiles.length} usuarios`}
         </div>
       </div>
 
       <div className="bg-white rounded-lg border overflow-hidden">
-        {profiles === undefined ? (
+        {profiles === undefined || profiles === null ? (
           <div className="p-12 text-center text-gray-400">
             <Loader2 className="h-6 w-6 animate-spin mx-auto" />
           </div>

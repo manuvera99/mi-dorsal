@@ -22,6 +22,7 @@ interface ITRARace {
   name: string;
   slug: string;
   date: string;
+  dateEnd?: string;
   location: string;
   province?: string;
   distance: number; // km
@@ -40,7 +41,7 @@ interface ITRARace {
  * Aquí dejamos el set curado manualmente para que la app tenga datos
  * de trail running de calidad desde el primer momento.
  */
-const ITRA_SPAIN_HIGHLIGHTS: Omit<ITRARace, "slug" | "sourceUrl">[] = [
+const ITRA_SPAIN_HIGHLIGHTS: Omit<ITRARace, "slug" | "sourceUrl" | "source">[] = [
   {
     name: "Zegama-Aizkorri Mendi Maratoia",
     date: "2026-06-07",
@@ -202,6 +203,7 @@ async function main() {
     ...r,
     slug: `${slugify(r.name)}-${r.date}`,
     sourceUrl: ITRA_CALENDAR_URL,
+    source: "ITRA" as const,
   }));
 
   // Filtrar carreras futuras

@@ -19,7 +19,7 @@ interface UnifiedRace {
   dateEnd?: string;
   location: string;
   province?: string;
-  type: "road" | "trail";
+  type: "road" | "trail" | "mixed" | "obstacle";
   modality?: string;
   level?: string;
   distance?: number;
@@ -27,7 +27,8 @@ interface UnifiedRace {
   endurancePoints?: number;
   nationalLeague?: string;
   homologated?: boolean;
-  source: "RFEA" | "FEDME" | "ITRA";
+  surface?: "asfalto" | "tierra" | "montaña" | "cross" | "pista";
+  source: "RFEA" | "FEDME" | "ITRA" | "Sportmaniacs" | "Runedia";
   sourceUrl: string;
   officialUrl?: string;
 }
@@ -41,19 +42,48 @@ function loadJSON<T>(file: string): T[] {
   return JSON.parse(data) as T[];
 }
 
+function inferProvince(location: string): string | undefined {
+  if (!location) return undefined;
+  const loc = location.toLowerCase();
+  // Mapeo de ciudades/provincias conocidas
+  const map: Record<string, string> = {
+    "valencia": "valencia", "castellón": "castellon", "castelló": "castellon", "alicante": "alicante", "albacete": "albacete",
+    "murcia": "murcia", "almería": "almeria", "elche": "alicante", "santa pola": "alicante", "tarragona": "tarragona",
+    "cantabria": "cantabria", "asturias": "asturias", "málaga": "malaga", "cáceres": "caceres", "ávila": "avila",
+    "huesca": "huesca", "jaén": "jaen", "zaragoza": "zaragoza", "teruel": "teruel", "barcelona": "barcelona",
+    "girona": "girona", "lleida": "lleida", "madrid": "madrid", "gipuzkoa": "gipuzkoa", "vizcaya": "vizcaya",
+    "navarra": "navarra", "granada": "granada", "córdoba": "cordoba", "sevilla": "sevilla", "huelva": "huelva",
+    "cádiz": "cadiz", "cuenca": "cuenca", "toledo": "toledo", "guadalajara": "guadalajara", "ciudad real": "ciudad real",
+    "soria": "soria", "segovia": "segovia", "león": "leon", "zamora": "zamora",
+    "salamanca": "salamanca", "valladolid": "valladolid", "palencia": "palencia", "burgos": "burgos",
+    "a coruña": "a coruna", "coruña": "a coruna", "lugo": "lugo", "ourense": "ourense", "pontevedra": "pontevedra",
+    "badajoz": "badajoz", "mallorca": "mallorca", "menorca": "menorca", "ibiza": "ibiza",
+    "las palmas": "las palmas", "tenerife": "santa cruz de tenerife", "santa cruz de tenerife": "santa cruz de tenerife",
+    "la rioja": "la rioja", "alava": "alava",
+  };
+  for (const [key, value] of Object.entries(map)) {
+    if (loc.includes(key)) return value;
+  }
+  return undefined;
+}
+
 function main() {
   console.log("===========================================");
   console.log("  mi-dorsal — Ingesta de carreras oficiales");
   console.log("===========================================\n");
 
-  // Cargar los 3 datasets
+  // Cargar los 4 datasets
   const rfea = loadJSON<any>(path.join(OUTPUT_DIR, "rfea-races.json"));
   const fedme = loadJSON<any>(path.join(OUTPUT_DIR, "fedme-races.json"));
   const itra = loadJSON<any>(path.join(OUTPUT_DIR, "itra-races.json"));
+  const sportmaniacs = loadJSON<any>(path.join(OUTPUT_DIR, "sportmaniacs-races.json"));
+  const runedia = loadJSON<any>(path.join(OUTPUT_DIR, "runedia-races.json"));
 
-  console.log(`[ingest-all] RFEA:  ${rfea.length} carreras`);
-  console.log(`[ingest-all] FEDME: ${fedme.length} carreras`);
-  console.log(`[ingest-all] ITRA:  ${itra.length} carreras`);
+  console.log(`[ingest-all] RFEA:          ${rfea.length} carreras`);
+  console.log(`[ingest-all] FEDME:         ${fedme.length} carreras`);
+  console.log(`[ingest-all] ITRA:          ${itra.length} carreras`);
+  console.log(`[ingest-all] Sportmaniacs:  ${sportmaniacs.length} carreras`);
+  console.log(`[ingest-all] Runedia:       ${runedia.length} carreras`);
 
   // Unificar
   const unified: UnifiedRace[] = [];
@@ -66,6 +96,7 @@ function main() {
       date: r.date,
       dateEnd: r.dateEnd,
       location: r.location,
+      province: inferProvince(r.location),
       type: "road",
       modality: r.modality,
       level: r.level,
@@ -107,6 +138,39 @@ function main() {
       endurancePoints: r.endurancePoints,
       nationalLeague: r.nationalLeague,
       source: "ITRA",
+      sourceUrl: r.sourceUrl,
+      officialUrl: r.officialUrl,
+    });
+  }
+
+  // Sportmaniacs → mixed
+  for (const r of sportmaniacs) {
+    unified.push({
+      name: r.name,
+      slug: r.slug,
+      date: r.date,
+      location: r.location,
+      province: r.province ?? inferProvince(r.location),
+      type: r.type ?? "road",
+      distance: r.distance,
+      source: "Sportmaniacs",
+      sourceUrl: r.sourceUrl,
+      officialUrl: r.officialUrl,
+    });
+  }
+
+  // Runedia → road/trail según surface
+  for (const r of runedia) {
+    const type: "road" | "trail" = r.surface === "montaña" ? "trail" : "road";
+    unified.push({
+      name: r.name,
+      slug: r.slug,
+      date: r.date,
+      location: r.location,
+      province: r.province ?? inferProvince(r.location),
+      type,
+      distance: r.distance,
+      source: "Runedia",
       sourceUrl: r.sourceUrl,
       officialUrl: r.officialUrl,
     });

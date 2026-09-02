@@ -38,7 +38,7 @@ interface FEDMERace {
  * en noviembre de 2025. La versión con scraping automático se puede añadir
  * cuando FEDME exponga una API o feed estructurado.
  */
-const FEDME_2026_RACES: Omit<FEDMERace, "slug" | "sourceUrl">[] = [
+const FEDME_2026_RACES: Omit<FEDMERace, "slug" | "sourceUrl" | "source">[] = [
   // Línea
   { date: "2026-03-14", dateEnd: "2026-03-15", name: "Cursa 4 Termes", location: "Tarragona", province: "tarragona", type: "trail", modality: "Línea", level: "Copa España 1" },
   { date: "2026-03-22", name: "Trail Riotuerto", location: "Cantabria", province: "cantabria", type: "trail", modality: "Línea", level: "Copa España 2" },
@@ -92,6 +92,7 @@ async function main() {
     slug: `${slugify(r.name)}-${r.date}`,
     sourceUrl: FEDME_CALENDAR_ARTICLE,
     officialUrl: FEDME_CALENDAR_ARTICLE,
+    source: "FEDME" as const,
   }));
 
   // Filtrar carreras futuras

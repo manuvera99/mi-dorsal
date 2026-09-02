@@ -1,0 +1,90 @@
+[
+  {
+    "name": "15K Nocturna Valencia",
+    "date": "2026-09-26",
+    "location": "Valencia",
+    "province": "valencia",
+    "distance": 15,
+    "surface": "asfalto",
+    "slug": "runedia-15k-nocturna-valencia-2026-09-26",
+    "sourceUrl": "https://runedia.mundodeportivo.com/calendario-carreras/",
+    "source": "Runedia"
+  },
+  {
+    "name": "CxM Macael Mármol",
+    "date": "2026-09-27",
+    "location": "Macael, Almería",
+    "province": "almeria",
+    "distance": 28,
+    "surface": "montaña",
+    "slug": "runedia-cxm-macael-marmol-2026-09-27",
+    "sourceUrl": "https://runedia.mundodeportivo.com/calendario-carreras/",
+    "source": "Runedia"
+  },
+  {
+    "name": "Media Maratón Albacete",
+    "date": "2026-10-04",
+    "location": "Albacete",
+    "province": "albacete",
+    "distance": 21.097,
+    "surface": "asfalto",
+    "slug": "runedia-media-maraton-albacete-2026-10-04",
+    "sourceUrl": "https://runedia.mundodeportivo.com/calendario-carreras/",
+    "source": "Runedia"
+  },
+  {
+    "name": "Cross de Castalla",
+    "date": "2026-10-11",
+    "location": "Castalla",
+    "province": "alicante",
+    "distance": 12,
+    "surface": "montaña",
+    "slug": "runedia-cross-de-castalla-2026-10-11",
+    "sourceUrl": "https://runedia.mundodeportivo.com/calendario-carreras/",
+    "source": "Runedia"
+  },
+  {
+    "name": "TotalEnergies Maratón Murcia Costa Cálida",
+    "date": "2026-11-15",
+    "location": "Murcia",
+    "province": "murcia",
+    "distance": 42.195,
+    "surface": "asfalto",
+    "slug": "runedia-totalenergies-maraton-murcia-costa-calida-2026-11-15",
+    "sourceUrl": "https://runedia.mundodeportivo.com/calendario-carreras/",
+    "source": "Runedia"
+  },
+  {
+    "name": "XXV Medio Maratón y 10K Elche",
+    "date": "2026-11-29",
+    "location": "Elche",
+    "province": "alicante",
+    "distance": 21.097,
+    "surface": "asfalto",
+    "slug": "runedia-xxv-medio-maraton-y-10k-elche-2026-11-29",
+    "sourceUrl": "https://runedia.mundodeportivo.com/calendario-carreras/",
+    "source": "Runedia"
+  },
+  {
+    "name": "Marathon Valencia Trinidad Alfonso",
+    "date": "2026-12-06",
+    "location": "Valencia",
+    "province": "valencia",
+    "distance": 42.195,
+    "surface": "asfalto",
+    "slug": "runedia-marathon-valencia-trinidad-alfonso-2026-12-06",
+    "sourceUrl": "https://runedia.mundodeportivo.com/calendario-carreras/",
+    "source": "Runedia"
+  },
+  {
+    "name": "Maratón Almería 2026",
+    "date": "2026-12-13",
+    "location": "Almería",
+    "province": "almeria",
+    "distance": 42.195,
+    "surface": "asfalto",
+    "slug": "runedia-maraton-almeria-2026-2026-12-13",
+    "sourceUrl": "https://runedia.mundodeportivo.com/calendario-carreras/",
+    "source": "Runedia"
+  }
+]

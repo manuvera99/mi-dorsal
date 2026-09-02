@@ -4,12 +4,15 @@
 
 import {
   MOCK_RACES,
+  MOCK_RACES_FROM_SCRAPERS,
   MOCK_PROFILE,
   MOCK_PRS,
   MOCK_MY_RACES,
   MOCK_RATINGS,
   MockRace,
 } from "./data";
+
+const ALL_MOCK_RACES: MockRace[] = [...MOCK_RACES, ...MOCK_RACES_FROM_SCRAPERS];
 
 export function isMockMode(): boolean {
   if (typeof window === "undefined") {
@@ -25,7 +28,7 @@ export function isMockMode(): boolean {
 export const mockApi = {
   races: {
     list: async (args: any = {}) => {
-      let filtered = MOCK_RACES.filter((r) => r.isPublished);
+      let filtered = ALL_MOCK_RACES.filter((r) => r.isPublished);
       if (args.province) filtered = filtered.filter((r) => r.province === args.province);
       if (args.raceType) filtered = filtered.filter((r) => r.raceType === args.raceType);
       if (args.month) {
@@ -46,10 +49,10 @@ export const mockApi = {
       return args.limit ? filtered.slice(0, args.limit) : filtered;
     },
     getBySlug: async ({ slug }: { slug: string }) => {
-      return MOCK_RACES.find((r) => r.slug === slug) ?? null;
+      return ALL_MOCK_RACES.find((r) => r.slug === slug) ?? null;
     },
     getFeatured: async ({ limit = 6 }: { limit?: number } = {}) => {
-      return MOCK_RACES.filter((r) => r.isFeatured).slice(0, limit);
+      return ALL_MOCK_RACES.filter((r) => r.isFeatured).slice(0, limit);
     },
   },
   ratings: {

@@ -42,6 +42,29 @@
     "officialUrl": "https://madrid-segovia.com/"
   },
   {
+    "name": "Cursa de la Mercè",
+    "slug": "sportmaniacs-cursa-de-la-merce-2026-09-20",
+    "date": "2026-09-20",
+    "location": "Barcelona",
+    "province": "barcelona",
+    "type": "road",
+    "distance": 10,
+    "source": "Sportmaniacs",
+    "sourceUrl": "https://sportmaniacs.com/es/races",
+    "officialUrl": "https://sportmaniacs.com/es/race/cursa-merce"
+  },
+  {
+    "name": "15K Nocturna Valencia",
+    "slug": "runedia-15k-nocturna-valencia-2026-09-26",
+    "date": "2026-09-26",
+    "location": "Valencia",
+    "province": "valencia",
+    "type": "road",
+    "distance": 15,
+    "source": "Runedia",
+    "sourceUrl": "https://runedia.mundodeportivo.com/calendario-carreras/"
+  },
+  {
     "name": "CxM Macael Mármol",
     "slug": "cxm-macael-marmol-2026-09-27",
     "date": "2026-09-27",
@@ -53,6 +76,28 @@
     "source": "FEDME",
     "sourceUrl": "https://fedme.es/la-fedme-presenta-el-calendario-provisional-oficial-de-carreras-por-montana-2026/",
     "officialUrl": "https://fedme.es/la-fedme-presenta-el-calendario-provisional-oficial-de-carreras-por-montana-2026/"
+  },
+  {
+    "name": "CxM Macael Mármol",
+    "slug": "runedia-cxm-macael-marmol-2026-09-27",
+    "date": "2026-09-27",
+    "location": "Macael, Almería",
+    "province": "almeria",
+    "type": "trail",
+    "distance": 28,
+    "source": "Runedia",
+    "sourceUrl": "https://runedia.mundodeportivo.com/calendario-carreras/"
+  },
+  {
+    "name": "Media Maratón Albacete",
+    "slug": "runedia-media-maraton-albacete-2026-10-04",
+    "date": "2026-10-04",
+    "location": "Albacete",
+    "province": "albacete",
+    "type": "road",
+    "distance": 21.097,
+    "source": "Runedia",
+    "sourceUrl": "https://runedia.mundodeportivo.com/calendario-carreras/"
   },
   {
     "name": "Maratón Valencia Trinidad Alfonso Zurich",
@@ -81,10 +126,22 @@
     "officialUrl": "https://grantrailpenalara.com/"
   },
   {
+    "name": "Cross de Castalla",
+    "slug": "runedia-cross-de-castalla-2026-10-11",
+    "date": "2026-10-11",
+    "location": "Castalla",
+    "province": "alicante",
+    "type": "trail",
+    "distance": 12,
+    "source": "Runedia",
+    "sourceUrl": "https://runedia.mundodeportivo.com/calendario-carreras/"
+  },
+  {
     "name": "Campeonato de España de Marcha de Invierno de Promoción",
     "slug": "campeonato-de-espana-de-marcha-de-invierno-de-promocion-2026-10-13",
     "date": "2026-10-13",
     "location": "Castro Urdiales (Cantabria)",
+    "province": "cantabria",
     "type": "road",
     "modality": "Marcha",
     "level": "RFEA",
@@ -97,6 +154,7 @@
     "slug": "campeonato-de-espana-10-km-marcha-master-2026-10-13",
     "date": "2026-10-13",
     "location": "Castro Urdiales (Cantabria)",
+    "province": "cantabria",
     "type": "road",
     "modality": "Ruta",
     "level": "RFEA",
@@ -109,6 +167,7 @@
     "slug": "47-edicion-media-maraton-sevilla-los-palacios-2026-10-13",
     "date": "2026-10-13",
     "location": "Los Palacios y Villafranca (Sevilla)",
+    "province": "sevilla",
     "type": "road",
     "modality": "Ruta",
     "level": "Nacional",
@@ -175,6 +234,7 @@
     "slug": "xl-san-silvestre-internacional-crevillentina-2026-2026-10-31",
     "date": "2026-10-31",
     "location": "Crevillente (Alicante)",
+    "province": "alicante",
     "type": "road",
     "modality": "Ruta",
     "level": "Internacional 1",
@@ -187,6 +247,7 @@
     "slug": "lxii-nationale-nederlanden-san-silvestre-vallecana-2026-10-31",
     "date": "2026-10-31",
     "location": "Madrid",
+    "province": "madrid",
     "type": "road",
     "modality": "Ruta",
     "level": "WARRL - Label",
@@ -233,5 +294,73 @@
     "source": "ITRA",
     "sourceUrl": "https://itra.run/Races/RaceCalendar?country=Spain",
     "officialUrl": "https://costablancatrails.com/"
+  },
+  {
+    "name": "TotalEnergies Maratón Murcia Costa Cálida",
+    "slug": "runedia-totalenergies-maraton-murcia-costa-calida-2026-11-15",
+    "date": "2026-11-15",
+    "location": "Murcia",
+    "province": "murcia",
+    "type": "road",
+    "distance": 42.195,
+    "source": "Runedia",
+    "sourceUrl": "https://runedia.mundodeportivo.com/calendario-carreras/"
+  },
+  {
+    "name": "XXV Medio Maratón y 10K Elche",
+    "slug": "runedia-xxv-medio-maraton-y-10k-elche-2026-11-29",
+    "date": "2026-11-29",
+    "location": "Elche",
+    "province": "alicante",
+    "type": "road",
+    "distance": 21.097,
+    "source": "Runedia",
+    "sourceUrl": "https://runedia.mundodeportivo.com/calendario-carreras/"
+  },
+  {
+    "name": "Marathon Valencia Modo Muerta",
+    "slug": "sportmaniacs-marathon-valencia-modo-muerta-2026-12-06",
+    "date": "2026-12-06",
+    "location": "Valencia",
+    "province": "valencia",
+    "type": "trail",
+    "distance": 26,
+    "source": "Sportmaniacs",
+    "sourceUrl": "https://sportmaniacs.com/es/races",
+    "officialUrl": "https://sportmaniacs.com/es/race/marathon-valle-modo-muerta"
+  },
+  {
+    "name": "Marathon Valencia Trinidad Alfonso",
+    "slug": "runedia-marathon-valencia-trinidad-alfonso-2026-12-06",
+    "date": "2026-12-06",
+    "location": "Valencia",
+    "province": "valencia",
+    "type": "road",
+    "distance": 42.195,
+    "source": "Runedia",
+    "sourceUrl": "https://runedia.mundodeportivo.com/calendario-carreras/"
+  },
+  {
+    "name": "Maratón Almería 2026",
+    "slug": "runedia-maraton-almeria-2026-2026-12-13",
+    "date": "2026-12-13",
+    "location": "Almería",
+    "province": "almeria",
+    "type": "road",
+    "distance": 42.195,
+    "source": "Runedia",
+    "sourceUrl": "https://runedia.mundodeportivo.com/calendario-carreras/"
+  },
+  {
+    "name": "Cursa Popular Sant Silvestre Sabadell",
+    "slug": "sportmaniacs-cursa-popular-sant-silvestre-sabadell-2026-12-31",
+    "date": "2026-12-31",
+    "location": "Sabadell",
+    "province": "barcelona",
+    "type": "road",
+    "distance": 10,
+    "source": "Sportmaniacs",
+    "sourceUrl": "https://sportmaniacs.com/es/races",
+    "officialUrl": "https://sportmaniacs.com/es/race/sant-silvestre-sabadell"
   }
 ]

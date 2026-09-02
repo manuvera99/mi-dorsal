@@ -1,0 +1,38 @@
+[
+  {
+    "name": "Cursa de la Mercè",
+    "date": "2026-09-20",
+    "location": "Barcelona",
+    "province": "barcelona",
+    "type": "road",
+    "distance": 10,
+    "officialUrl": "https://sportmaniacs.com/es/race/cursa-merce",
+    "slug": "sportmaniacs-cursa-de-la-merce-2026-09-20",
+    "sourceUrl": "https://sportmaniacs.com/es/races",
+    "source": "Sportmaniacs"
+  },
+  {
+    "name": "Marathon Valencia Modo Muerta",
+    "date": "2026-12-06",
+    "location": "Valencia",
+    "province": "valencia",
+    "type": "trail",
+    "distance": 26,
+    "officialUrl": "https://sportmaniacs.com/es/race/marathon-valle-modo-muerta",
+    "slug": "sportmaniacs-marathon-valencia-modo-muerta-2026-12-06",
+    "sourceUrl": "https://sportmaniacs.com/es/races",
+    "source": "Sportmaniacs"
+  },
+  {
+    "name": "Cursa Popular Sant Silvestre Sabadell",
+    "date": "2026-12-31",
+    "location": "Sabadell",
+    "province": "barcelona",
+    "type": "road",
+    "distance": 10,
+    "officialUrl": "https://sportmaniacs.com/es/race/sant-silvestre-sabadell",
+    "slug": "sportmaniacs-cursa-popular-sant-silvestre-sabadell-2026-12-31",
+    "sourceUrl": "https://sportmaniacs.com/es/races",
+    "source": "Sportmaniacs"
+  }
+]

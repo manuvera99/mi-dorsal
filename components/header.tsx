@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SignedIn, SignedOut, UserButton, SignInButton, SignUpButton } from "@clerk/nextjs";
 import { Trophy, Calendar, User, BarChart3, Home } from "lucide-react";
 
 export function Header({ mockMode = false }: { mockMode?: boolean }) {
@@ -33,10 +34,35 @@ export function Header({ mockMode = false }: { mockMode?: boolean }) {
         </nav>
 
         <div className="flex items-center gap-2">
-          {mockMode && (
+          {mockMode ? (
             <span className="badge badge-gray text-xs" title="Modo mock — datos de ejemplo, no se persisten">
               MOCK
             </span>
+          ) : (
+            <>
+              <SignedOut>
+                <SignInButton mode="modal">
+                  <button className="text-sm font-medium text-gray-700 hover:text-runner-primary transition-colors px-3 py-1.5">
+                    Entrar
+                  </button>
+                </SignInButton>
+                <SignUpButton mode="modal">
+                  <button className="text-sm font-semibold bg-runner-primary text-white px-3 py-1.5 rounded-md hover:opacity-90 transition-opacity">
+                    Crear cuenta
+                  </button>
+                </SignUpButton>
+              </SignedOut>
+              <SignedIn>
+                <UserButton
+                  afterSignOutUrl="/"
+                  appearance={{
+                    elements: {
+                      avatarBox: "h-8 w-8",
+                    },
+                  }}
+                />
+              </SignedIn>
+            </>
           )}
         </div>
       </div>

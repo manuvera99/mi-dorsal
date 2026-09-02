@@ -310,8 +310,10 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])
     .index("by_race", ["raceId"])
+    .index("by_user_race", ["userId", "raceId"])
     .index("by_user_dorsal", ["userId", "dorsalNumber"])
-    .index("by_race_dorsal", ["raceId", "dorsalNumber"]),
+    .index("by_race_dorsal", ["raceId", "dorsalNumber"])
+    .index("by_status", ["status"]),
 
   // ---------------------------------------------------------------------------
   // 6. RACE_RESULTS_CACHE — resultados scrapeados, indexados por dorsal

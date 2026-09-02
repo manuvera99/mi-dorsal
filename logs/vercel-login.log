@@ -1,0 +1,27 @@
+﻿node.exe : Vercel CLI 58.9.3 (Node.js 24.16.0)
+En C:\Users\Usuario\AppData\Roaming\npm\vercel.ps1: 24 Carácter: 5
++     & "node$exe"  "$basedir/node_modules/vercel/dist/vc.js" $args
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Vercel CLI 58.9.3 (Node.js 24.16.0):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+WARNING! The following flags are deprecated: --github
+Read more in our changelog (https://vercel.com/changelog/new-vercel-cli-login-flow).
+> 
+  Visit https://vercel.com/oauth/device?user_code=DMFR-XWQW
+
+Waiting for authentication...
+[2K[1A[2K[G
+  Congratulations! You are now signed in.
+
+  To deploy something, run `vercel`.
+
+  💡 To deploy every commit automatically,
+  connect a Git Repository (vercel.link/git (https://vercel.link/git)).
+─────────────────────────────────────────────────────────────────────────
+
+Update available! v58.9.3 ≫ v59.11.2
+Changelog: https://github.com/vercel/vercel/releases/tag/vercel%4059.11.2
+Run `npm i -g vercel@latest` to update.
+
+─────────────────────────────────────────────────────────────────────────

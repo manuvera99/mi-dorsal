@@ -1,0 +1,7 @@
+﻿node.exe : ✔ Successfully set CLERK_JWT_ISSUER_DOMAIN (on dev deployment dynamic-alpaca-705)
+En línea: 1 Carácter: 1
++ & "C:\Program Files\nodejs/node.exe" "C:\Users\Usuario\AppData\Roamin ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (✔ Successfully ...mic-alpaca-705):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

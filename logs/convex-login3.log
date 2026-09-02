@@ -1,0 +1,14 @@
+﻿node.exe : Visit https://auth.convex.dev/device?user_code=JPLV-VXBZ to finish logging in.
+En línea: 1 Carácter: 1
++ & "C:\Program Files\nodejs/node.exe" "C:\Users\Usuario\AppData\Roamin ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Visit https://a...ish logging in.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+You should see the following code which expires in 299 seconds: JPLV-VXBZ
+- Open https://auth.convex.dev/device?user_code=JPLV-VXBZ in your browser to log in.
+
+[32m√[39m Saved credentials to C:\Users\Usuario\.convex\config.json
+Would you like to link your existing deployment to your account? ("anonymous-mi-dorsal")
+✖ Cannot prompt for input in non-interactive terminals. (Would you like to link your existing deployment to your 
+account? ("anonymous-mi-dorsal"))

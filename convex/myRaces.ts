@@ -248,7 +248,7 @@ export const getPlannedRacesForCron = internalQuery({
     // Carreras planned con startDate en ventana [-1d, +7d]
     const all = await ctx.db
       .query("myRaces")
-      .withIndex("by_user_status", (q) => q.eq("status", "planned"))
+      .withIndex("by_status", (q) => q.eq("status", "planned"))
       .collect();
 
     const now = Date.now();

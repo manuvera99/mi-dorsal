@@ -1,0 +1,8 @@
+﻿node.exe : Welcome to developing with Convex, let's get you logged in.
+En línea: 1 Carácter: 1
++ & "C:\Program Files\nodejs/node.exe" "C:\Users\Usuario\AppData\Roamin ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Welcome to deve... you logged in.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+✖ Cannot prompt for input in non-interactive terminals. (Device name:)

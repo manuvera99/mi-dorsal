@@ -3,13 +3,13 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useQuery, useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { api, Id } from "@/convex/_generated/api";
 import { ThumbsUp, ThumbsDown, LogIn } from "lucide-react";
 import Link from "next/link";
 import { isMockMode } from "@/lib/mock/provider";
 
 interface ThumbsVoteProps {
-  raceId: string;
+  raceId: string | Id<"races">;
   size?: "sm" | "md" | "lg";
   layout?: "inline" | "stacked" | "compact";
   showLoginPrompt?: boolean;
@@ -179,9 +179,9 @@ function RealThumbsVote({ raceId, size = "md", layout = "inline", showLoginPromp
     if (!isSignedIn) return;
     if (currentVote === newVote) {
       // Toggle off
-      await unvoteMutation({ raceId: raceId as any });
+      await unvoteMutation({ raceId });
     } else {
-      await voteMutation({ raceId: raceId as any, vote: newVote });
+      await voteMutation({ raceId, vote: newVote });
     }
   };
 

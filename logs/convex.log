@@ -1,0 +1,33 @@
+﻿node.exe : Setting up a new project...
+En línea: 1 Carácter: 1
++ & "C:\Program Files\nodejs/node.exe" "C:\Users\Usuario\AppData\Roamin ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Setting up a new project...:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Downloading Convex backend binary
+Warning: Unknown property in `convex.json`: `origin`
+  These properties will be preserved but are not recognized by this version of Convex.
+✔ Configured a local deployment for http://127.0.0.1:3210 and saved its:
+    name as CONVEX_DEPLOYMENT
+    client URL as NEXT_PUBLIC_CONVEX_URL
+    HTTP actions URL as NEXT_PUBLIC_CONVEX_SITE_URL
+ to .env.local
+
+Write your Convex functions in convex\
+Give us feedback at https://convex.dev/community or support@convex.dev
+View the Convex dashboard at null
+
+▌ Developing against deployment:
+▌ [Local] Port 3210 • No Convex account (run npx convex login to link to a project)
+▌ └─ http://127.0.0.1:3210
+- Preparing Convex functions...
+
+Convex AI files are not installed. Run npx convex ai-files install to get started or npx convex ai-files disable to 
+hide this message.
+[31m×[39m Error: Unable to start push to http://127.0.0.1:3210
+✖ Error fetching POST  http://127.0.0.1:3210/api/deploy2/start_push 400 Bad Request: InvalidModules: Hit an error 
+while pushing:
+Loading the pushed modules encountered the following
+    error:
+Failed to analyze pdf/diploma.js: Uncaught TypeError: import.meta unsupported

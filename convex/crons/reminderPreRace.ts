@@ -21,7 +21,7 @@ export const getRacesNeedingReminder = internalQuery({
 
     const all = await ctx.db
       .query("myRaces")
-      .withIndex("by_user_status", (q) => q.eq("status", "planned"))
+      .withIndex("by_status", (q) => q.eq("status", "planned"))
       .collect();
 
     const needs7d: any[] = [];

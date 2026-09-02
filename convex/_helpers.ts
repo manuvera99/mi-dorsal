@@ -11,7 +11,7 @@ import { Doc, Id } from "./_generated/dataModel";
 // ---------------------------------------------------------------------------
 
 export async function requireUser(
-  ctx: QueryCtx | MutationCtx | ActionCtx,
+  ctx: QueryCtx | MutationCtx,
 ): Promise<Doc<"profiles">> {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) {
@@ -28,7 +28,7 @@ export async function requireUser(
 }
 
 export async function getOptionalUser(
-  ctx: QueryCtx | MutationCtx | ActionCtx,
+  ctx: QueryCtx | MutationCtx,
 ): Promise<Doc<"profiles"> | null> {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) return null;

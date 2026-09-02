@@ -1,0 +1,8 @@
+﻿node.exe : ✖ `npx convex deploy` to a preview deployment could not determine the preview name. Provide one using 
+`--preview-name`
+En línea: 1 Carácter: 1
++ & "C:\Program Files\nodejs/node.exe" "C:\Users\Usuario\AppData\Roamin ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (✖ `npx convex d...--preview-name`:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { api, Id } from "@/convex/_generated/api";
 import { isMockMode } from "@/lib/mock/provider";
 import { Save } from "lucide-react";
 
 interface RatingSlidersProps {
-  raceId: string;
+  raceId: string | Id<"races">;
 }
 
 const DIMENSIONS = [

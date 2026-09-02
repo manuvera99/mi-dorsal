@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useQuery, useMutation } from "convex/react";
-import { api, Id } from "@/convex/_generated/api";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { ThumbsUp, ThumbsDown, LogIn } from "lucide-react";
 import Link from "next/link";
 import { isMockMode } from "@/lib/mock/provider";

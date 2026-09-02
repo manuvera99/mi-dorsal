@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useMutation } from "convex/react";
-import { api, Id } from "@/convex/_generated/api";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { isMockMode } from "@/lib/mock/provider";
 import { Save } from "lucide-react";
 

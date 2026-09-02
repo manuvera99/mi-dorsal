@@ -4,6 +4,7 @@
 
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { Doc } from "./_generated/dataModel";
 import { provinceValidator, raceTypeValidator, slugify } from "./_helpers";
 
 /**
@@ -149,7 +150,7 @@ export const getBySlugForUser = query({
       .unique();
     if (!race) return null;
 
-    let myRace = null;
+    let myRace: Doc<"myRaces"> | null = null;
     if (identity) {
       const profile = await ctx.db
         .query("profiles")

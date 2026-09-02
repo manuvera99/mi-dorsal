@@ -1,7 +1,0 @@
-﻿node.exe : ✔ Successfully set CLERK_JWT_ISSUER_DOMAIN (on preview deployment dazzling-camel-991)
-En línea: 1 Carácter: 1
-+ & "C:\Program Files\nodejs/node.exe" "C:\Users\Usuario\AppData\Roamin ...
-+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : NotSpecified: (✔ Successfully ...ling-camel-991):String) [], RemoteException
-    + FullyQualifiedErrorId : NativeCommandError
- 

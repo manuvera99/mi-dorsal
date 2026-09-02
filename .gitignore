@@ -43,3 +43,7 @@ next-env.d.ts
 .convex/
 
 .vercel
+
+# logs (created by my own deployment scripts)
+logs/
+*.log

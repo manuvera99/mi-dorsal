@@ -544,7 +544,7 @@ function RaceDetailContent({ race, summary }: { race: any; summary: any }) {
                         </div>
                       </div>
                     </div>
-                    <ThumbsVote raceId={race._id} size="lg" showLoginPrompt={false} />
+                    <ThumbsVote raceId={race._id as any} size="lg" showLoginPrompt={false} />
                   </div>
                   <p className="text-xs text-gray-500 mb-4">
                     <strong>¿La recomiendas?</strong> Pulsa 👍 para decir que sí, 👎 si no.
@@ -579,7 +579,7 @@ function RaceDetailContent({ race, summary }: { race: any; summary: any }) {
             )}
 
             {/* ============ FORMULARIO DE VALORACIÓN ============ */}
-            <RatingSliders raceId={race._id} />
+            <RatingSliders raceId={race._id as any} />
           </div>
 
           {/* ============== SIDEBAR STICKY ============== */}
@@ -657,7 +657,7 @@ function RaceDetailContent({ race, summary }: { race: any; summary: any }) {
                     ¿La recomiendas?
                   </div>
                   <div className="flex justify-center">
-                    <ThumbsVote raceId={race._id} size="md" />
+                    <ThumbsVote raceId={race._id as any} size="md" />
                   </div>
                 </div>
               </div>

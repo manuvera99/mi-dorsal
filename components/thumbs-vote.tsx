@@ -10,7 +10,7 @@ import Link from "next/link";
 import { isMockMode } from "@/lib/mock/provider";
 
 interface ThumbsVoteProps {
-  raceId: string | Id<"races">;
+  raceId: Id<"races">;
   size?: "sm" | "md" | "lg";
   layout?: "inline" | "stacked" | "compact";
   showLoginPrompt?: boolean;

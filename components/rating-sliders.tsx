@@ -8,7 +8,7 @@ import { isMockMode } from "@/lib/mock/provider";
 import { Save } from "lucide-react";
 
 interface RatingSlidersProps {
-  raceId: string | Id<"races">;
+  raceId: Id<"races">;
 }
 
 const DIMENSIONS = [

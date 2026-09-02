@@ -7,11 +7,15 @@ const isProtectedRoute = createRouteMatcher([
   "/perfil(.*)",
 ]);
 
+// Rutas admin: requieren rol admin
+const isAdminRoute = createRouteMatcher([
+  "/admin(.*)",
+]);
+
 export default clerkMiddleware(async (auth, req) => {
-  if (isProtectedRoute(req)) {
+  if (isProtectedRoute(req) || isAdminRoute(req)) {
     const { userId } = await auth();
     if (!userId) {
-      // Construir URL de sign-in con redirect post-login
       const signInUrl = new URL("/sign-in", req.url);
       signInUrl.searchParams.set("redirect_url", req.nextUrl.pathname);
       return NextResponse.redirect(signInUrl);

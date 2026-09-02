@@ -1,10 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { SignedIn, SignedOut, UserButton, SignInButton, SignUpButton } from "@clerk/nextjs";
-import { Trophy, Calendar, User, BarChart3, Home } from "lucide-react";
+import { SignedIn, SignedOut, UserButton, SignInButton, SignUpButton, useUser } from "@clerk/nextjs";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { isMockMode } from "@/lib/mock/provider";
+import { Trophy, Calendar, User, BarChart3, Home, Shield } from "lucide-react";
 
 export function Header({ mockMode = false }: { mockMode?: boolean }) {
+  const useMock = isMockMode();
+  const { isSignedIn } = useUser();
+  // En mock mode asumimos admin para que se vea el link
+  const myProfile = useQuery(api.users.getMyProfile);
+  const isAdminReal = myProfile?.role === "admin";
+  const showAdminLink = useMock ? isSignedIn : isAdminReal;
+
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/90 backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
@@ -31,6 +41,11 @@ export function Header({ mockMode = false }: { mockMode?: boolean }) {
           <Link href="/perfil" className="flex items-center gap-1.5 text-gray-700 hover:text-runner-primary transition-colors">
             <User className="h-4 w-4" /> Perfil
           </Link>
+          {showAdminLink && (
+            <Link href="/admin" className="flex items-center gap-1.5 text-runner-primary font-semibold hover:opacity-80 transition-colors">
+              <Shield className="h-4 w-4" /> Admin
+            </Link>
+          )}
         </nav>
 
         <div className="flex items-center gap-2">

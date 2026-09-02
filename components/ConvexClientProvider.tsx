@@ -5,9 +5,8 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { ClerkProvider, useAuth } from "@clerk/nextjs";
 import { ReactNode } from "react";
 
-const convex = new ConvexReactClient(
-  process.env.NEXT_PUBLIC_CONVEX_URL ?? "https://placeholder.convex.cloud",
-);
+const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
 
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
   const useMock = process.env.NEXT_PUBLIC_USE_MOCK === "true";
@@ -22,6 +21,13 @@ export function ConvexClientProvider({ children }: { children: ReactNode }) {
   if (!clerkPublishableKey) {
     console.warn(
       "[ConvexClientProvider] NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is missing. Falling back to mock mode for local dev.",
+    );
+    return <>{children}</>;
+  }
+
+  if (!convex) {
+    console.warn(
+      "[ConvexClientProvider] NEXT_PUBLIC_CONVEX_URL is missing. Falling back to mock mode.",
     );
     return <>{children}</>;
   }

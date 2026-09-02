@@ -38,6 +38,23 @@ export async function getOptionalUser(
     .unique();
 }
 
+export async function requireAdmin(
+  ctx: QueryCtx | MutationCtx,
+): Promise<Doc<"profiles">> {
+  const profile = await requireUser(ctx);
+  if (profile.role !== "admin") {
+    throw new Error("Forbidden: requiere rol admin");
+  }
+  return profile;
+}
+
+export async function isAdmin(
+  ctx: QueryCtx | MutationCtx,
+): Promise<boolean> {
+  const profile = await getOptionalUser(ctx);
+  return profile?.role === "admin";
+}
+
 export function assertOwner<T extends { userId: Id<"profiles"> }>(
   resource: T | null,
   userId: Id<"profiles">,

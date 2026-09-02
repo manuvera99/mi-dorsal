@@ -5,7 +5,7 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { Doc } from "./_generated/dataModel";
-import { provinceValidator, raceTypeValidator, slugify } from "./_helpers";
+import { provinceValidator, raceTypeValidator, slugify, requireAdmin } from "./_helpers";
 
 /**
  * Lista carreras con filtros opcionales. Lectura pública.
@@ -129,11 +129,114 @@ export const create = mutation({
     scraperAdapter: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const slug = slugify(args.name);
     return await ctx.db.insert("races", {
       ...args,
       slug,
     });
+  },
+});
+
+/**
+ * Admin: lista TODAS las carreras (publicadas o no).
+ */
+export const adminList = query({
+  args: {
+    search: v.optional(v.string()),
+    province: v.optional(provinceValidator),
+    raceType: v.optional(raceTypeValidator),
+    isPublished: v.optional(v.boolean()),
+    isFeatured: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const all = await ctx.db.query("races").collect();
+    let filtered = all;
+    if (args.province) filtered = filtered.filter((r) => r.province === args.province);
+    if (args.raceType) filtered = filtered.filter((r) => r.raceType === args.raceType);
+    if (args.isPublished !== undefined) filtered = filtered.filter((r) => r.isPublished === args.isPublished);
+    if (args.isFeatured !== undefined) filtered = filtered.filter((r) => r.isFeatured === args.isFeatured);
+    if (args.search) {
+      const s = args.search.toLowerCase();
+      filtered = filtered.filter(
+        (r) =>
+          r.name.toLowerCase().includes(s) ||
+          r.locality?.toLowerCase().includes(s) ||
+          r.slug.toLowerCase().includes(s),
+      );
+    }
+    return filtered.sort((a, b) => (a.startDate ?? "9999").localeCompare(b.startDate ?? "9999"));
+  },
+});
+
+/**
+ * Admin: actualiza una carrera.
+ */
+export const adminUpdate = mutation({
+  args: {
+    id: v.id("races"),
+    patch: v.object({
+      name: v.optional(v.string()),
+      locality: v.optional(v.string()),
+      province: v.optional(provinceValidator),
+      distanceKm: v.optional(v.number()),
+      elevationGainM: v.optional(v.number()),
+      raceType: v.optional(raceTypeValidator),
+      homologated: v.optional(v.boolean()),
+      organizer: v.optional(v.string()),
+      organizerUrl: v.optional(v.string()),
+      resultsUrl: v.optional(v.string()),
+      registrationUrl: v.optional(v.string()),
+      officialUrl: v.optional(v.string()),
+      startDate: v.optional(v.string()),
+      startTime: v.optional(v.string()),
+      description: v.optional(v.string()),
+      imageUrl: v.optional(v.string()),
+      isPublished: v.optional(v.boolean()),
+      isFeatured: v.optional(v.boolean()),
+      scraperAdapter: v.optional(v.string()),
+    }),
+  },
+  handler: async (ctx, { id, patch }) => {
+    await requireAdmin(ctx);
+    const existing = await ctx.db.get(id);
+    if (!existing) throw new Error("Race not found");
+    // Si cambia el nombre, regeneramos el slug
+    const update: any = { ...patch };
+    if (patch.name && patch.name !== existing.name) {
+      update.slug = slugify(patch.name);
+    }
+    await ctx.db.patch(id, update);
+    return id;
+  },
+});
+
+/**
+ * Admin: elimina una carrera.
+ */
+export const adminDelete = mutation({
+  args: { id: v.id("races") },
+  handler: async (ctx, { id }) => {
+    await requireAdmin(ctx);
+    await ctx.db.delete(id);
+    return id;
+  },
+});
+
+/**
+ * Admin: toggle published/featured.
+ */
+export const adminToggle = mutation({
+  args: {
+    id: v.id("races"),
+    field: v.union(v.literal("isPublished"), v.literal("isFeatured")),
+    value: v.boolean(),
+  },
+  handler: async (ctx, { id, field, value }) => {
+    await requireAdmin(ctx);
+    await ctx.db.patch(id, { [field]: value });
+    return id;
   },
 });
 

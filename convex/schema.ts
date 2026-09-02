@@ -13,6 +13,10 @@ export default defineSchema({
   // ---------------------------------------------------------------------------
   profiles: defineTable({
     clerkUserId: v.string(),
+    role: v.optional(v.union(
+      v.literal("user"),
+      v.literal("admin"),
+    )),
     displayName: v.optional(v.string()),
     avatarUrl: v.optional(v.string()),
     bio: v.optional(v.string()),

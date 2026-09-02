@@ -14,9 +14,9 @@ export default function EditRacePage() {
   const params = useParams();
   const id = params.id as string;
   const useMock = isMockMode();
-  const race = useQuery(api.races.get, { id: id as any });
-  const update = useMutation(api.races.adminUpdate);
-  const remove = useMutation(api.races.adminDelete);
+  const race = useMock ? null : useQuery(api.races.get, { id: id as any });
+  const update = useMock ? null : useMutation(api.races.adminUpdate);
+  const remove = useMock ? null : useMutation(api.races.adminDelete);
 
   const [form, setForm] = useState<any>(null);
   const [saving, setSaving] = useState(false);
@@ -68,6 +68,7 @@ export default function EditRacePage() {
     setSaving(true);
     setError(null);
     try {
+      if (!update) throw new Error("update no disponible en mock");
       await update({
         id: id as any,
         patch: {
@@ -97,6 +98,7 @@ export default function EditRacePage() {
   };
   const handleDelete = async () => {
     if (confirm(`¿Eliminar "${form.name}"?`)) {
+      if (!remove) return;
       await remove({ id: id as any });
       router.push("/admin/races");
     }

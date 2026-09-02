@@ -13,8 +13,8 @@ export default function UserDetailPage() {
   const router = useRouter();
   const id = params.id as string;
   const useMock = isMockMode();
-  const data = useQuery(api.users.adminGetProfile, { profileId: id as Id<"profiles"> });
-  const setRole = useMutation(api.users.setUserRole);
+  const data = useMock ? null : useQuery(api.users.adminGetProfile, { profileId: id as Id<"profiles"> });
+  const setRole = useMock ? null : useMutation(api.users.setUserRole);
 
   if (useMock) {
     return (
@@ -38,6 +38,7 @@ export default function UserDetailPage() {
   const toggleRole = async () => {
     const newRole = profile.role === "admin" ? "user" : "admin";
     if (confirm(`¿Cambiar rol de ${profile.displayName ?? profile.clerkUserId} a "${newRole}"?`)) {
+      if (!setRole) return;
       await setRole({ profileId: profile._id, role: newRole });
     }
   };

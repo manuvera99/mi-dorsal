@@ -18,16 +18,15 @@ const navItems = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const useMock = isMockMode();
-  const { isLoaded, isSignedIn } = useUser();
+  // useUser solo si NO mock (Clerk no envuelve en mock)
+  const userResult = useMock ? null : useUser();
+  const isLoaded = userResult?.isLoaded ?? true;
+  const isSignedIn = userResult?.isSignedIn ?? false;
   const router = useRouter();
   const pathname = usePathname();
 
-  // En mock mode asumimos admin para poder ver
-  // En real mode, el middleware + Convex role check se encargan
-  const isAdminMock = useMock;
-
   // Comprobamos role real si no estamos en mock
-  const myProfile = useQuery(api.users.getMyProfile);
+  const myProfile = useMock ? null : useQuery(api.users.getMyProfile);
   const isAdminReal = myProfile?.role === "admin";
 
   // Si no es admin y no está en mock, redirigir

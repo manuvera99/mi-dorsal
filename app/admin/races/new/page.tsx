@@ -12,7 +12,7 @@ import { ArrowLeft, Save, Loader2 } from "lucide-react";
 export default function NewRacePage() {
   const router = useRouter();
   const useMock = isMockMode();
-  const create = useMutation(api.races.create);
+  const create = useMock ? null : useMutation(api.races.create);
 
   const [form, setForm] = useState({
     name: "",
@@ -55,6 +55,7 @@ export default function NewRacePage() {
     setSaving(true);
     setError(null);
     try {
+      if (!create) throw new Error("create no disponible en mock");
       const id = await create({
         name: form.name,
         locality: form.locality || undefined,

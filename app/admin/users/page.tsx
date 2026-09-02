@@ -21,7 +21,7 @@ function MockUsersList() {
 function RealUsersList() {
   const [search, setSearch] = useState("");
   const [role, setRole] = useState<"all" | "user" | "admin">("all");
-  const profiles = useQuery(api.users.adminListProfiles, {
+  const profiles = useMock ? null : useQuery(api.users.adminListProfiles, {
     search: search || undefined,
     role: role === "all" ? undefined : (role as any),
   });

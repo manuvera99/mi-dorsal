@@ -7,11 +7,22 @@ import { api } from "@/convex/_generated/api";
 import { isMockMode } from "@/lib/mock/provider";
 import { Trophy, Calendar, User, BarChart3, Home, Shield } from "lucide-react";
 
+/**
+ * Hook condicional: solo ejecuta la función si NO estamos en mock.
+ * Útil para Clerk hooks (useUser) y Convex hooks que fallan en mock.
+ */
+function useMockSafe<T>(fn: () => T, useMock: boolean): T | null {
+  if (useMock) return null;
+  return fn();
+}
+
 export function Header({ mockMode = false }: { mockMode?: boolean }) {
   const useMock = isMockMode();
-  const { isSignedIn } = useUser();
-  // En mock mode asumimos admin para que se vea el link
-  const myProfile = useQuery(api.users.getMyProfile);
+  // useUser y useQuery solo se llaman si NO estamos en mock
+  // (en mock, ClerkProvider no envuelve la app y useUser fallaría)
+  const userResult = useMockSafe(() => useUser(), useMock);
+  const isSignedIn = userResult?.isSignedIn ?? false;
+  const myProfile = useMockSafe(() => useQuery(api.users.getMyProfile), useMock);
   const isAdminReal = myProfile?.role === "admin";
   const showAdminLink = useMock ? isSignedIn : isAdminReal;
 

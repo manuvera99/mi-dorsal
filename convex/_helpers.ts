@@ -56,12 +56,78 @@ export function assertOwner<T extends { userId: Id<"profiles"> }>(
 // ---------------------------------------------------------------------------
 
 export const provinceValidator = v.union(
+  // C. Valenciana
   v.literal("alicante"),
   v.literal("valencia"),
   v.literal("castellon"),
+  // Murcia
   v.literal("murcia"),
+  // Castilla-La Mancha
   v.literal("albacete"),
+  v.literal("ciudad real"),
+  v.literal("cuenca"),
+  v.literal("guadalajara"),
+  v.literal("toledo"),
+  // Andalucía
   v.literal("almeria"),
+  v.literal("granada"),
+  v.literal("jaen"),
+  v.literal("malaga"),
+  v.literal("cordoba"),
+  v.literal("sevilla"),
+  v.literal("huelva"),
+  v.literal("cadiz"),
+  // Aragón
+  v.literal("huesca"),
+  v.literal("zaragoza"),
+  v.literal("teruel"),
+  // Cataluña
+  v.literal("barcelona"),
+  v.literal("girona"),
+  v.literal("tarragona"),
+  v.literal("lleida"),
+  // Baleares
+  v.literal("mallorca"),
+  v.literal("menorca"),
+  v.literal("ibiza"),
+  // Canarias
+  v.literal("las palmas"),
+  v.literal("santa cruz de tenerife"),
+  // Madrid
+  v.literal("madrid"),
+  // País Vasco
+  v.literal("vizcaya"),
+  v.literal("gipuzkoa"),
+  v.literal("alava"),
+  // Navarra
+  v.literal("navarra"),
+  // Asturias
+  v.literal("asturias"),
+  // Cantabria
+  v.literal("cantabria"),
+  // Galicia
+  v.literal("a coruna"),
+  v.literal("lugo"),
+  v.literal("ourense"),
+  v.literal("pontevedra"),
+  // La Rioja
+  v.literal("la rioja"),
+  // Extremadura
+  v.literal("caceres"),
+  v.literal("badajoz"),
+  // Castilla y León
+  v.literal("leon"),
+  v.literal("zamora"),
+  v.literal("salamanca"),
+  v.literal("valladolid"),
+  v.literal("palencia"),
+  v.literal("burgos"),
+  v.literal("soria"),
+  v.literal("avila"),
+  v.literal("segovia"),
+  // Ceuta y Melilla
+  v.literal("ceuta"),
+  v.literal("melilla"),
 );
 
 export const raceTypeValidator = v.union(

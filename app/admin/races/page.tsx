@@ -86,7 +86,7 @@ function RealRacesList() {
       </div>
 
       <div className="bg-white rounded-lg border overflow-hidden">
-        ) : races === undefined || races === null ? (
+        {races === undefined || races === null ? (
           <div className="p-12 text-center text-gray-400">
             <Loader2 className="h-6 w-6 animate-spin mx-auto" />
           </div>

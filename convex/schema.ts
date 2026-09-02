@@ -39,6 +39,7 @@ export default defineSchema({
   // 2. RACES — catálogo de carreras
   // ---------------------------------------------------------------------------
   races: defineTable({
+    // Básicos
     name: v.string(),
     slug: v.string(),
     locality: v.optional(v.string()),
@@ -59,18 +60,101 @@ export default defineSchema({
       v.literal("obstacle"),
     ),
     homologated: v.optional(v.boolean()),
-    organizer: v.optional(v.string()),
-    organizerUrl: v.optional(v.string()),
-    resultsUrl: v.optional(v.string()),
-    registrationUrl: v.optional(v.string()),
-    officialUrl: v.optional(v.string()),
+
+    // Fechas y lugar
     startDate: v.optional(v.string()),
     startTime: v.optional(v.string()),
+    address: v.optional(v.string()),              // dirección exacta de salida
+    venue: v.optional(v.string()),                 // lugar de salida/meta (ej. "Plaza del Ayuntamiento")
+
+    // URLs clave (lo que Manu quiere BIEN VISIBLE)
+    officialUrl: v.optional(v.string()),          // web oficial de la prueba
+    registrationUrl: v.optional(v.string()),      // link directo a inscripción
+    resultsUrl: v.optional(v.string()),            // link a resultados del cronometrador
+    rulesUrl: v.optional(v.string()),              // reglamento
+
+    // Organización
+    organizer: v.optional(v.string()),
+    organizerUrl: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+
+    // Redes sociales del organizador
+    socialInstagram: v.optional(v.string()),
+    socialFacebook: v.optional(v.string()),
+    socialTwitter: v.optional(v.string()),
+    socialYoutube: v.optional(v.string()),
+    socialStrava: v.optional(v.string()),
+
+    // Precio
+    priceEur: v.optional(v.number()),               // precio actual
+    priceIncludes: v.optional(v.string()),          // qué incluye (camiseta, avituallamiento, etc.)
+
+    // Inscripción
+    registrationOpenDate: v.optional(v.string()),   // cuándo abren inscripciones
+    registrationCloseDate: v.optional(v.string()),  // cuándo cierran
+    maxParticipants: v.optional(v.number()),         // cupo máximo
+    soldOut: v.optional(v.boolean()),
+    chipType: v.optional(v.union(
+      v.literal("manual"),
+      v.literal("chip"),
+      v.literal("disposable_chip"),
+    )),
+
+    // Categorías
+    categories: v.optional(v.array(v.object({
+      name: v.string(),           // "Senior M", "M35", "Sub-23 F", etc.
+      gender: v.optional(v.union(v.literal("M"), v.literal("F"), v.literal("mixto"))),
+      ageMin: v.optional(v.number()),
+      ageMax: v.optional(v.number()),
+    }))),
+
+    // Servicios incluidos
+    services: v.optional(v.object({
+      aidStations: v.optional(v.number()),          // número de avituallamientos
+      showers: v.optional(v.boolean()),
+      changingRooms: v.optional(v.boolean()),
+      bagDrop: v.optional(v.boolean()),
+      parking: v.optional(v.boolean()),
+      medical: v.optional(v.boolean()),
+      physiotherapy: v.optional(v.boolean()),
+      timingChip: v.optional(v.boolean()),
+      photoService: v.optional(v.boolean()),
+      videoService: v.optional(v.boolean()),
+      swagBag: v.optional(v.boolean()),             // bolsa del corredor
+      tShirt: v.optional(v.boolean()),
+      medal: v.optional(v.boolean()),
+      refreshments: v.optional(v.boolean()),
+    })),
+
+    // Recorrido
+    courseType: v.optional(v.union(
+      v.literal("loop"),         // circuito cerrado (vueltas)
+      v.literal("point_to_point"), // punto a punto
+      v.literal("out_and_back"), // ida y vuelta
+    )),
+    gpxUrl: v.optional(v.string()),                 // descarga del track GPX
+    mapImageUrl: v.optional(v.string()),            // imagen del mapa/recorrido
+    profileImageUrl: v.optional(v.string()),        // imagen del perfil de elevación
+    timeLimitMinutes: v.optional(v.number()),        // tiempo máximo para completar
+    cutoffs: v.optional(v.array(v.object({
+      km: v.number(),
+      timeLimit: v.string(),                         // hora límite
+    }))),
+
+    // Premios
+    prizes: v.optional(v.string()),                 // descripción de los premios (texto libre)
+    trophies: v.optional(v.boolean()),
+
+    // Meta
     description: v.optional(v.string()),
-    imageUrl: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),               // cartel oficial
     isPublished: v.optional(v.boolean()),
     isFeatured: v.optional(v.boolean()),
     scraperAdapter: v.optional(v.string()),
+
+    // Hashtags / SEO
+    hashtags: v.optional(v.array(v.string())),
   })
     .index("by_province", ["province"])
     .index("by_date", ["startDate"])

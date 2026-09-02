@@ -64,6 +64,13 @@ export const api: any = {
       yearReview: anyApi.crons.yearReview.yearReview,
     },
   },
+  votes: {
+    vote: anyApi.votes.vote,
+    unvote: anyApi.votes.unvote,
+    summary: anyApi.votes.summary,
+    myVote: anyApi.votes.myVote,
+    summaryBatch: anyApi.votes.summaryBatch,
+  },
 };
 
 export const internal: any = api;

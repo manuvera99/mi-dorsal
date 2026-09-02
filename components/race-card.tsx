@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MapPin, Calendar, Mountain } from "lucide-react";
+import { MapPin, Calendar, Mountain, ThumbsUp } from "lucide-react";
 import { formatDate, formatProvince, formatRaceType } from "@/lib/utils";
 
 interface RaceCardProps {
@@ -7,19 +7,37 @@ interface RaceCardProps {
   showAverage?: boolean;
   avgGlobal?: number | null;
   totalRatings?: number;
+  voteUps?: number;
+  voteDowns?: number;
 }
 
-export function RaceCard({ race, showAverage = false, avgGlobal, totalRatings }: RaceCardProps) {
+export function RaceCard({
+  race,
+  showAverage = false,
+  avgGlobal,
+  totalRatings,
+  voteUps = 0,
+  voteDowns = 0,
+}: RaceCardProps) {
+  const hasVotes = voteUps + voteDowns > 0;
   return (
     <Link
       href={`/carreras/${race.slug}`}
-      className="card group flex flex-col gap-3 hover:border-runner-primary/50"
+      className="card group flex flex-col gap-3 hover:border-runner-primary/50 relative"
     >
-      <div className="flex items-start justify-between gap-2">
+      {/* Indicador de votos en la esquina */}
+      {hasVotes && (
+        <div className="absolute top-3 right-3 flex items-center gap-0.5 text-xs font-medium text-gray-500 bg-white/80 backdrop-blur-sm rounded-full px-2 py-0.5 border border-gray-100">
+          <ThumbsUp className="h-3 w-3 text-green-600" />
+          <span>{voteUps - voteDowns}</span>
+        </div>
+      )}
+
+      <div className="flex items-start justify-between gap-2 pr-12">
         <h3 className="font-semibold leading-tight group-hover:text-runner-primary transition-colors">
           {race.name}
         </h3>
-        {showAverage && avgGlobal !== null && avgGlobal !== undefined && (
+        {showAverage && avgGlobal !== null && avgGlobal !== undefined && !hasVotes && (
           <span className="badge badge-red whitespace-nowrap">
             {avgGlobal.toFixed(1)} ★
           </span>

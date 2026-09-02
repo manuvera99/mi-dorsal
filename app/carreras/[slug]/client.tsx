@@ -6,6 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { mockApi, isMockMode } from "@/lib/mock/provider";
 import { formatDate, formatProvince, formatRaceType, formatTime } from "@/lib/utils";
 import { RatingSliders } from "@/components/rating-sliders";
+import { ThumbsVote } from "@/components/thumbs-vote";
 import {
   MapPin, Calendar, Mountain, ExternalLink, FileText, Plus, Check, User,
   Globe, Mail, Phone, Clock, Users, Tag, Trophy, DollarSign, Share2,
@@ -543,7 +544,12 @@ function RaceDetailContent({ race, summary }: { race: any; summary: any }) {
                         </div>
                       </div>
                     </div>
+                    <ThumbsVote raceId={race._id} size="lg" showLoginPrompt={false} />
                   </div>
+                  <p className="text-xs text-gray-500 mb-4">
+                    <strong>¿La recomiendas?</strong> Pulsa 👍 para decir que sí, 👎 si no.
+                    Solo los usuarios registrados pueden votar.
+                  </p>
                   <div className="space-y-2">
                     {[
                       { key: "avgOrganization", label: "Organización" },
@@ -645,6 +651,15 @@ function RaceDetailContent({ race, summary }: { race: any; summary: any }) {
                     <Trophy className="h-4 w-4 mr-1.5" /> Resultados
                   </a>
                 )}
+                {/* Thumbs en sidebar siempre visible */}
+                <div className="pt-3 mt-1 border-t border-gray-100">
+                  <div className="text-xs text-gray-500 mb-2 text-center">
+                    ¿La recomiendas?
+                  </div>
+                  <div className="flex justify-center">
+                    <ThumbsVote raceId={race._id} size="md" />
+                  </div>
+                </div>
               </div>
             </div>
           </div>

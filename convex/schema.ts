@@ -380,4 +380,20 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_type", ["type"])
     .index("by_user_type", ["userId", "type"]),
+
+  // ---------------------------------------------------------------------------
+  // 9. RACE_VOTES — voto 👍/👎 de cada usuario en cada carrera
+  // ---------------------------------------------------------------------------
+  // Un usuario solo puede tener UN voto por carrera (puede cambiarlo).
+  // Si quiere quitar el voto, usa `unvote`. La app móvil: tap otra vez el
+  // mismo thumb = unvote.
+  // ---------------------------------------------------------------------------
+  raceVotes: defineTable({
+    userId: v.id("profiles"),
+    raceId: v.id("races"),
+    vote: v.union(v.literal("up"), v.literal("down")),
+  })
+    .index("by_race", ["raceId"])
+    .index("by_user", ["userId"])
+    .index("by_user_race", ["userId", "raceId"]),
 });

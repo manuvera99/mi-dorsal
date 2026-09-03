@@ -158,11 +158,11 @@ function DraggableDot(props: DraggableDotProps) {
 
   return (
     <g style={{ cursor }}>
-      {/* Halo invisible más grande para mejor hit area */}
+      {/* Halo invisible más grande para mejor hit area en móvil (dedos) */}
       <circle
         cx={cx}
         cy={cy}
-        r={14}
+        r={20}
         fill="transparent"
         onMouseDown={(e) => {
           e.preventDefault();
@@ -174,7 +174,7 @@ function DraggableDot(props: DraggableDotProps) {
           e.stopPropagation();
           props.onDragStart(index);
         }}
-        style={{ cursor: "grab" }}
+        style={{ cursor: "grab", touchAction: "none" }}
       />
       {/* Dot visual */}
       <circle
@@ -364,6 +364,9 @@ export function PaceCalculator({
     };
 
     const onTouchMove = (e: TouchEvent) => {
+      // Importante: preventDefault para que el navegador NO haga scroll vertical
+      // mientras arrastramos un punto en el chart (móvil).
+      e.preventDefault();
       if (e.touches[0]) onMouseMove(e.touches[0] as any);
     };
 
@@ -371,6 +374,7 @@ export function PaceCalculator({
     document.addEventListener("mouseup", onMouseUp);
     document.addEventListener("touchmove", onTouchMove, { passive: false });
     document.addEventListener("touchend", onMouseUp);
+    document.addEventListener("touchcancel", onMouseUp);
 
     return () => {
       document.removeEventListener("mousemove", onMouseMove);
@@ -555,7 +559,21 @@ export function PaceCalculator({
         </div>
 
         {/* ============ GRÁFICO ALTIMETRÍA + RITMO ============ */}
-        <div className="bg-gray-50 rounded-md p-3" ref={chartRef}>
+        <div
+          className="bg-gray-50 rounded-md p-3"
+          ref={chartRef}
+          style={{
+            // CRÍTICO para móvil: bloquea scroll/zoom del navegador
+            // mientras el usuario interactúa con el chart.
+            // "pan-y" en el chart permite scroll vertical fuera del chart,
+            // pero "none" en el chartRef bloquea TODO (recomendado para
+            // gráficos con drag vertical).
+            touchAction: "none",
+            userSelect: "none",
+            WebkitTapHighlightColor: "transparent",
+            WebkitUserSelect: "none",
+          }}
+        >
           <div className="text-xs text-gray-500 mb-2 flex items-center gap-4 flex-wrap">
             <span className="flex items-center gap-1">
               <span className="inline-block w-3 h-3 bg-gradient-to-t from-green-200 to-green-500 rounded-sm" />

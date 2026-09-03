@@ -5,7 +5,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { isMockMode } from "@/lib/mock/provider";
 import Link from "next/link";
-import { Plus, Search, Edit2, Trash2, Loader2, MapPin, Calendar } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, Loader2, MapPin, Calendar, Sparkles } from "lucide-react";
 import { PROVINCE_LIST, formatRaceType } from "@/lib/utils";
 
 function MockRacesList() {
@@ -228,12 +228,21 @@ function Header() {
         <h1 className="text-3xl font-bold">Carreras</h1>
         <p className="text-gray-600 text-sm">Gestiona el catálogo</p>
       </div>
-      <Link
-        href="/admin/races/new"
-        className="inline-flex items-center gap-2 bg-runner-primary text-white px-4 py-2 rounded-md text-sm font-semibold hover:opacity-90"
-      >
-        <Plus className="h-4 w-4" /> Añadir carrera
-      </Link>
+      <div className="flex items-center gap-2">
+        <Link
+          href="/admin/races/from-url"
+          className="inline-flex items-center gap-2 bg-gradient-to-r from-runner-primary to-pink-600 text-white px-4 py-2 rounded-md text-sm font-semibold hover:opacity-90"
+          title="Extraer info de una URL con IA"
+        >
+          <Sparkles className="h-4 w-4" /> Crear desde URL
+        </Link>
+        <Link
+          href="/admin/races/new"
+          className="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm font-semibold hover:bg-gray-50"
+        >
+          <Plus className="h-4 w-4" /> Manual
+        </Link>
+      </div>
     </div>
   );
 }

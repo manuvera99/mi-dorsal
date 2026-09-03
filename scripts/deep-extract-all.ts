@@ -116,7 +116,12 @@ async function main() {
 
     try {
       const t0 = Date.now();
-      const data = await deepExtractRace(r.officialUrl);
+      // Limpiar URL por si trae BOM
+      const cleanUrl = (r.officialUrl ?? "").replace(/[\uFEFF\u200B-\u200D\u2060]/g, "").trim();
+      if (!/^https?:\/\//.test(cleanUrl)) {
+        throw new Error(`URL inválida: ${r.officialUrl}`);
+      }
+      const data = await deepExtractRace(cleanUrl);
       const dt = ((Date.now() - t0) / 1000).toFixed(1);
       if (!data) {
         console.log(`  ⚠️  IA devolvió null (${dt}s)`);

@@ -79,6 +79,12 @@ export async function extractRaceFromUrl(url: string): Promise<ExtractedRace | n
     );
   }
 
+  // Limpiar URL: quitar BOM y otros caracteres invisibles
+  url = url.replace(/[\uFEFF\u200B-\u200D\u2060]/g, "").trim();
+  if (!/^https?:\/\//.test(url)) {
+    throw new Error("URL inválida. Debe empezar por http:// o https://");
+  }
+
   const baseUrl = (process.env.OPENAI_BASE_URL ?? DEFAULT_BASE_URL).replace(/\/$/, "");
   const model = process.env.OPENAI_MODEL ?? DEFAULT_MODEL;
   const isMiniMax = /minimax/i.test(baseUrl);

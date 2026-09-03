@@ -7,6 +7,8 @@ export type AnalyzeResult =
   | { error: string };
 
 export async function analyzeFromUrl(url: string): Promise<AnalyzeResult> {
+  // Limpiar URL: quitar BOM y caracteres invisibles
+  url = (url ?? "").replace(/[\uFEFF\u200B-\u200D\u2060]/g, "").trim();
   if (!url || !/^https?:\/\//.test(url)) {
     return { error: "URL inválida. Debe empezar con http:// o https://" };
   }

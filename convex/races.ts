@@ -67,10 +67,16 @@ export const list = query({
 export const getBySlug = query({
   args: { slug: v.string() },
   handler: async (ctx, { slug }) => {
-    return await ctx.db
+    const matches = await ctx.db
       .query("races")
       .withIndex("by_slug", (q) => q.eq("slug", slug))
-      .unique();
+      .collect();
+    if (matches.length === 0) return null;
+    // Si hay duplicados (debería estar limpio tras la migración), coge el más reciente
+    if (matches.length > 1) {
+      return matches.sort((a, b) => (b._creationTime ?? 0) - (a._creationTime ?? 0))[0];
+    }
+    return matches[0];
   },
 });
 
@@ -165,10 +171,22 @@ export const systemCreate = mutation({
     scraperAdapter: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const slug = slugify(args.name);
+    const baseSlug = slugify(args.name);
+    let finalSlug = baseSlug;
+    let suffix = 2;
+    while (true) {
+      const conflict = await ctx.db
+        .query("races")
+        .withIndex("by_slug", (q) => q.eq("slug", finalSlug))
+        .first();
+      if (!conflict) break;
+      finalSlug = `${baseSlug}-${suffix}`;
+      suffix++;
+      if (suffix > 100) throw new Error(`Demasiadas colisiones para slug "${baseSlug}"`);
+    }
     return await ctx.db.insert("races", {
       ...args,
-      slug,
+      slug: finalSlug,
     });
   },
 });
@@ -332,10 +350,24 @@ export const adminUpdate = mutation({
     await requireAdmin(ctx);
     const existing = await ctx.db.get(id);
     if (!existing) throw new Error("Race not found");
-    // Si cambia el nombre, regeneramos el slug
+    // Si cambia el nombre, regeneramos el slug evitando colisiones
     const update: any = { ...patch };
     if (patch.name && patch.name !== existing.name) {
-      update.slug = slugify(patch.name);
+      const baseSlug = slugify(patch.name);
+      let finalSlug = baseSlug;
+      let suffix = 2;
+      // Comprobar colisión: si ya hay otra carrera con ese slug, añadir sufijo
+      while (true) {
+        const conflict = await ctx.db
+          .query("races")
+          .withIndex("by_slug", (q) => q.eq("slug", finalSlug))
+          .first();
+        if (!conflict || conflict._id === id) break;
+        finalSlug = `${baseSlug}-${suffix}`;
+        suffix++;
+        if (suffix > 100) throw new Error(`Demasiadas colisiones para slug "${baseSlug}"`);
+      }
+      update.slug = finalSlug;
     }
     await ctx.db.patch(id, update);
     return id;
@@ -380,6 +412,63 @@ export const systemListAll = query({
         extractedAt: r.extractedAt,
         extractionConfidence: r.extractionConfidence,
       }));
+  },
+});
+
+/**
+ * findDuplicateSlugs: agrupa por slug y devuelve los que tienen >1 carrera.
+ * Usado por scripts de migración.
+ */
+export const findDuplicateSlugs = query({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db.query("races").collect();
+    const bySlug = new Map<string, Array<{ _id: string; name: string; createdAt: number }>>();
+    for (const r of all) {
+      const list = bySlug.get(r.slug) ?? [];
+      list.push({
+        _id: r._id,
+        name: r.name,
+        createdAt: r._creationTime ?? 0,
+      });
+      bySlug.set(r.slug, list);
+    }
+    const dupes: Array<{ slug: string; races: Array<{ _id: string; name: string; createdAt: number }> }> = [];
+    for (const [slug, list] of bySlug.entries()) {
+      if (list.length > 1) {
+        dupes.push({ slug, races: list.sort((a, b) => b.createdAt - a.createdAt) });
+      }
+    }
+    return dupes.sort((a, b) => b.races.length - a.races.length);
+  },
+});
+
+/**
+ * systemRenameSlug: cambia el slug de una carrera (auth-free, para migración).
+ * Si el nuevo slug ya existe, añade sufijo numérico.
+ */
+export const systemRenameSlug = mutation({
+  args: {
+    id: v.id("races"),
+    newSlug: v.string(),
+  },
+  handler: async (ctx, { id, newSlug }) => {
+    const existing = await ctx.db.get(id);
+    if (!existing) throw new Error("Race not found");
+    // Asegurar unicidad: si newSlug ya existe en otra carrera, añade sufijo -2, -3, ...
+    let finalSlug = newSlug;
+    let suffix = 2;
+    while (true) {
+      const conflict = await ctx.db
+        .query("races")
+        .withIndex("by_slug", (q) => q.eq("slug", finalSlug))
+        .first();
+      if (!conflict || conflict._id === id) break;
+      finalSlug = `${newSlug}-${suffix}`;
+      suffix++;
+    }
+    await ctx.db.patch(id, { slug: finalSlug });
+    return finalSlug;
   },
 });
 

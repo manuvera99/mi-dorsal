@@ -97,11 +97,12 @@ jobs:
 
       - name: Resumen
         if: always()
+        env:
+          NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
         run: |
           echo "============================================"
           echo "  Ingest diario terminado: $(date -u)"
           echo "============================================"
           echo ""
           echo "BBDD final:"
-          NEXT_PUBLIC_CONVEX_URL="${{ secrets.NEXT_PUBLIC_CONVEX_URL }}" \
-            npx tsx --env-file=.env.local scripts/count-races.ts 2>&1 || true
+          npx tsx scripts/count-races.ts 2>&1 || true

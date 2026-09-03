@@ -1,45 +1,21 @@
-﻿feat: deep extract IA automatizado en nightly workflow (paso 8/8)
+﻿fix: añadir 4 campos al schema que la IA devolvía pero Convex rechazaba
 
-Manu quiere que cada carrera tenga toda la información posible extraída
-de su officialUrl. La extracción profunda con IA (deepExtractRace) ya
-existe en lib/ai/extract-race-deep.ts — ahora se ejecuta automáticamente
-cada noche en el workflow de GitHub Actions.
+El bulk deep-extract crasheaba con "Uncaught Error: Failed to insert
+or update a document in table 'races' because it does not match the
+schema: Object contains extra field `regulationUrl` that is not in
+the validator".
 
-## Cambios
+Causa: la IA devolvía campos como regulationUrl, mapUrl, mapEmbedUrl,
+altimetryImageUrl que NO estaban en el schema de Convex, así que la
+mutation systemUpdate los rechazaba.
 
-### scripts/deep-extract-all.ts
-- Nuevo flag `--priority`: ordena las carreras para procesar primero
-  las que más lo necesitan:
-    0 = nunca extraída (extractedAt null)
-    1 = extraída pero sin longDescription
-    2 = extraída pero sin altimetryData
-    3 = extraída pero sin raceFormats
-    4 = completa (último en procesarse, no se vuelve a hacer)
-  Dentro de cada tier: por startDate asc (más próximas primero).
-- Actualizado el header con la doc de los flags
+Fix en 3 sitios:
+1. convex/schema.ts: añadidos los 4 campos como v.optional(v.string())
+2. convex/races.ts: añadidos los 4 campos al validator de systemUpdate
+3. (pendiente) bulk 3 ya corriendo con el schema corregido
 
-### .github/workflows/daily-ingest.yml
-- Nuevo paso "8/8 Deep Extract IA" tras el push de JSONs
-- Modo priority + --limit=30 → procesa 30 carreras por noche
-- Cubre 375 carreras en ~13 días sin repetir
-- Si OPENAI_API_KEY no está configurado, falla gracefully (exit 0)
-  y sigue con el resto del workflow
-- 3 nuevos secrets a añadir en GitHub (ver abajo)
-
-## Secrets requeridos (ya están en .env.local y Vercel, hay que añadirlos a GitHub Actions)
-
-| Secret | Valor |
-|---|---|
-| OPENAI_API_KEY | sk-cp-yhdivqzGJilVsavOEobSEqCg_F7ciGEAwFynF8WG1VPCuDBM7Ln9aWDrL3yl_VOuV_IqY-ysT6DSM1QO2f6m8thzSZpl5mvPicMaZ53yJJ3fZPZG-0Lq_mQ |
-| OPENAI_BASE_URL | https://api.minimax.io/v1 |
-| OPENAI_MODEL | MiniMax-M3 |
-
-El paso funciona aunque estos secrets NO estén (skip + warning), pero
-si están, procesa 30 carreras por noche con IA MiniMax M3.
-
-## Bulk masivo en paralelo
-
-El script se está ejecutando en background AHORA con --only-missing
---delay=2000 sobre las 375 carreras. Cubre TODAS las que faltan en una
-sola pasada larga (~15-20 min, ~375 API calls). Cuando termine, el
-nightly solo procesa las nuevas que se ingieran cada día.
+Resultado del bulk (en curso, ~50% completado):
+- 181/361 carreras con extractedAt
+- 907+ campos aplicados (media ~8.7/carrera)
+- URLs problemáticas: anti-bot (403), malformadas (404), páginas
+  genéricas de portales, etc.

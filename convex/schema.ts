@@ -206,6 +206,10 @@ export default defineSchema({
     gpxUrl: v.optional(v.string()),                 // descarga del track GPX
     mapImageUrl: v.optional(v.string()),            // imagen del mapa/recorrido
     profileImageUrl: v.optional(v.string()),        // imagen del perfil de elevación
+    mapUrl: v.optional(v.string()),                 // URL a la página con el mapa (Google Maps, etc.)
+    mapEmbedUrl: v.optional(v.string()),            // URL embeddable del mapa (iframe src)
+    altimetryImageUrl: v.optional(v.string()),      // imagen del perfil de elevación
+    regulationUrl: v.optional(v.string()),          // URL al PDF/documento del reglamento
     timeLimitMinutes: v.optional(v.number()),        // tiempo máximo para completar
     cutoffs: v.optional(v.array(v.object({
       km: v.number(),

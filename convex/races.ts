@@ -171,6 +171,34 @@ export const systemCreate = mutation({
     scraperAdapter: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Anti-duplicado cross-source: si ya existe una carrera con el mismo
+    // nombre + fecha (de cualquier fuente), actualizamos la existente en
+    // lugar de crear una nueva. Esto evita que un re-ingest cree duplicados.
+    if (args.startDate) {
+      const norm = (s: string) =>
+        s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+      const nameKey = norm(args.name);
+      const candidates = await ctx.db
+        .query("races")
+        .withIndex("by_date", (q) => q.eq("startDate", args.startDate!))
+        .collect();
+      const match = candidates.find((c) => norm(c.name) === nameKey);
+      if (match) {
+        // Encontrado: actualizar la existente con los nuevos datos
+        // (los campos no nulos sobrescriben los actuales)
+        const patch: any = {};
+        for (const [k, v] of Object.entries(args)) {
+          if (k === "name") continue; // no cambiamos el nombre (mantenemos el original)
+          if (v === null || v === undefined || v === "") continue;
+          if (Array.isArray(v) && v.length === 0) continue;
+          patch[k] = v;
+        }
+        await ctx.db.patch(match._id, patch);
+        return match._id;
+      }
+    }
+
+    // No existe: crear nueva
     const baseSlug = slugify(args.name);
     let finalSlug = baseSlug;
     let suffix = 2;
@@ -344,6 +372,10 @@ export const adminUpdate = mutation({
       extractedFromUrl: v.optional(v.string()),
       extractedAt: v.optional(v.number()),
       extractionConfidence: v.optional(v.union(v.literal("high"), v.literal("medium"), v.literal("low"))),
+      // Cross-source merge
+      mergedFromIds: v.optional(v.array(v.string())),
+      mergedAt: v.optional(v.number()),
+      additionalDataSourceIds: v.optional(v.array(v.id("dataSources"))),
     }),
   },
   handler: async (ctx, { id, patch }) => {
@@ -416,6 +448,28 @@ export const systemListAll = query({
 });
 
 /**
+ * systemListAllDetailed: lista TODAS las carreras con TODOS sus campos.
+ * Usado por scripts de merge/dedupe. No usar desde la app.
+ */
+export const systemListAllDetailed = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("races").collect();
+  },
+});
+
+/**
+ * systemDelete: borra una carrera (auth-free). Solo para scripts.
+ */
+export const systemDelete = mutation({
+  args: { id: v.id("races") },
+  handler: async (ctx, { id }) => {
+    await ctx.db.delete(id);
+    return id;
+  },
+});
+
+/**
  * findDuplicateSlugs: agrupa por slug y devuelve los que tienen >1 carrera.
  * Usado por scripts de migración.
  */
@@ -437,6 +491,58 @@ export const findDuplicateSlugs = query({
     for (const [slug, list] of bySlug.entries()) {
       if (list.length > 1) {
         dupes.push({ slug, races: list.sort((a, b) => b.createdAt - a.createdAt) });
+      }
+    }
+    return dupes.sort((a, b) => b.races.length - a.races.length);
+  },
+});
+
+/**
+ * findSameSourceDuplicates: agrupa por (fuente + nombre normalizado + fecha)
+ * y devuelve los que tienen >1 carrera. Usado para detectar duplicados
+ * de re-ingest dentro de la misma fuente.
+ */
+export const findSameSourceDuplicates = query({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db.query("races").collect();
+    const byKey = new Map<string, Array<{ _id: string; name: string; source: string; createdAt: number; fieldsCount: number }>>();
+
+    const norm = (s: string) =>
+      s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+
+    for (const r of all) {
+      const src = (r as any).scraperAdapter ?? "manual";
+      if (!r.startDate) continue;
+      const key = `${src}|${norm(r.name)}|${r.startDate}`;
+      const list = byKey.get(key) ?? [];
+      list.push({
+        _id: r._id,
+        name: r.name,
+        source: src,
+        createdAt: r._creationTime ?? 0,
+        fieldsCount: Object.keys(r).filter((k) => {
+          if (k.startsWith("_") || k === "slug" || k === "scraperAdapter") return false;
+          const v = (r as any)[k];
+          return v !== null && v !== undefined && v !== "" && !(Array.isArray(v) && v.length === 0);
+        }).length,
+      });
+      byKey.set(key, list);
+    }
+
+    const dupes: Array<{
+      source: string;
+      nameKey: string;
+      races: Array<{ _id: string; name: string; source: string; createdAt: number; fieldsCount: number }>;
+    }> = [];
+    for (const [key, list] of byKey.entries()) {
+      if (list.length > 1) {
+        const [source, nameKey] = key.split("|");
+        dupes.push({
+          source,
+          nameKey,
+          races: list.sort((a, b) => b.fieldsCount - a.fieldsCount),
+        });
       }
     }
     return dupes.sort((a, b) => b.races.length - a.races.length);

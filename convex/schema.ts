@@ -286,6 +286,14 @@ export default defineSchema({
       v.literal("medium"),
       v.literal("low"),
     )),
+
+    // -------- CROSS-SOURCE MERGE (Fase anti-duplicados) --------
+    // Lista de IDs de carreras que se consolidaron en esta (merge cross-source).
+    mergedFromIds: v.optional(v.array(v.string())),
+    mergedAt: v.optional(v.number()),
+    // Lista de fuentes adicionales que también tienen esta carrera
+    // (dataSourceId guarda solo la principal; aquí están las demás para no perderlas).
+    additionalDataSourceIds: v.optional(v.array(v.id("dataSources"))),
   })
     .index("by_province", ["province"])
     .index("by_date", ["startDate"])

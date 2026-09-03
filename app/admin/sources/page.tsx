@@ -5,7 +5,7 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { isMockMode } from "@/lib/mock/provider";
 import Link from "next/link";
-import { Database, Loader2, RefreshCw, AlertCircle, CheckCircle2, Pause, Play, Clock, Zap, Hash } from "lucide-react";
+import { Database, Loader2, RefreshCw, AlertCircle, CheckCircle2, Pause, Play, Clock, Zap, Hash, Plus, Wand2 } from "lucide-react";
 
 function MockSources() {
   return (
@@ -323,6 +323,13 @@ function Header() {
         <h1 className="text-3xl font-bold">Fuentes de datos</h1>
         <p className="text-gray-600 text-sm">Scrapers y APIs que alimentan el catálogo</p>
       </div>
+      <Link
+        href="/admin/sources/from-url"
+        className="inline-flex items-center gap-2 bg-runner-primary text-white px-4 py-2 rounded-md text-sm font-semibold hover:opacity-90"
+      >
+        <Wand2 className="h-4 w-4" />
+        Añadir fuente con IA
+      </Link>
     </div>
   );
 }

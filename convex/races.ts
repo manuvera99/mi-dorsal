@@ -212,6 +212,7 @@ export const adminUpdate = mutation({
   args: {
     id: v.id("races"),
     patch: v.object({
+      // Básicos
       name: v.optional(v.string()),
       locality: v.optional(v.string()),
       province: v.optional(provinceValidator),
@@ -219,18 +220,112 @@ export const adminUpdate = mutation({
       elevationGainM: v.optional(v.number()),
       raceType: v.optional(raceTypeValidator),
       homologated: v.optional(v.boolean()),
+      // Fechas y lugar
+      startDate: v.optional(v.string()),
+      startTime: v.optional(v.string()),
+      address: v.optional(v.string()),
+      venue: v.optional(v.string()),
+      // URLs
       organizer: v.optional(v.string()),
       organizerUrl: v.optional(v.string()),
       resultsUrl: v.optional(v.string()),
+      rulesUrl: v.optional(v.string()),
       registrationUrl: v.optional(v.string()),
       officialUrl: v.optional(v.string()),
-      startDate: v.optional(v.string()),
-      startTime: v.optional(v.string()),
+      // Contacto
+      contactEmail: v.optional(v.string()),
+      contactPhone: v.optional(v.string()),
+      // Redes
+      socialInstagram: v.optional(v.string()),
+      socialFacebook: v.optional(v.string()),
+      socialTwitter: v.optional(v.string()),
+      socialYoutube: v.optional(v.string()),
+      // Precio / inscripción
+      priceEur: v.optional(v.number()),
+      priceIncludes: v.optional(v.string()),
+      registrationOpenDate: v.optional(v.string()),
+      registrationCloseDate: v.optional(v.string()),
+      maxParticipants: v.optional(v.number()),
+      soldOut: v.optional(v.boolean()),
+      chipType: v.optional(v.union(v.literal("manual"), v.literal("chip"), v.literal("disposable_chip"))),
+      // Categorías
+      categories: v.optional(v.array(v.object({
+        name: v.string(),
+        gender: v.optional(v.union(v.literal("M"), v.literal("F"), v.literal("mixto"))),
+        ageMin: v.optional(v.number()),
+        ageMax: v.optional(v.number()),
+      }))),
+      // Servicios
+      services: v.optional(v.object({
+        aidStations: v.optional(v.number()),
+        showers: v.optional(v.boolean()),
+        changingRooms: v.optional(v.boolean()),
+        bagDrop: v.optional(v.boolean()),
+        parking: v.optional(v.boolean()),
+        medical: v.optional(v.boolean()),
+        physiotherapy: v.optional(v.boolean()),
+        timingChip: v.optional(v.boolean()),
+        photoService: v.optional(v.boolean()),
+        videoService: v.optional(v.boolean()),
+        swagBag: v.optional(v.boolean()),
+        tShirt: v.optional(v.boolean()),
+        medal: v.optional(v.boolean()),
+        refreshments: v.optional(v.boolean()),
+      })),
+      // Recorrido
+      courseType: v.optional(v.union(v.literal("loop"), v.literal("point_to_point"), v.literal("out_and_back"))),
+      gpxUrl: v.optional(v.string()),
+      mapImageUrl: v.optional(v.string()),
+      profileImageUrl: v.optional(v.string()),
+      timeLimitMinutes: v.optional(v.number()),
+      cutoffs: v.optional(v.array(v.object({ km: v.number(), timeLimit: v.string() }))),
+      // Premios
+      prizes: v.optional(v.string()),
+      trophies: v.optional(v.boolean()),
+      // Meta
       description: v.optional(v.string()),
+      longDescription: v.optional(v.string()),
       imageUrl: v.optional(v.string()),
       isPublished: v.optional(v.boolean()),
       isFeatured: v.optional(v.boolean()),
       scraperAdapter: v.optional(v.string()),
+      // -------- DEEP EXTRACTION (Fase 1) --------
+      raceFormats: v.optional(v.array(v.object({
+        name: v.string(),
+        distanceKm: v.number(),
+        elevationGainM: v.optional(v.number()),
+        startTime: v.optional(v.string()),
+        priceEur: v.optional(v.number()),
+        maxParticipants: v.optional(v.number()),
+      }))),
+      aidStations: v.optional(v.array(v.object({
+        km: v.number(),
+        name: v.optional(v.string()),
+        hasWater: v.optional(v.boolean()),
+        hasIsotonic: v.optional(v.boolean()),
+        hasFood: v.optional(v.boolean()),
+        hasMedical: v.optional(v.boolean()),
+      }))),
+      priceTiers: v.optional(v.array(v.object({
+        fromDate: v.string(),
+        toDate: v.optional(v.string()),
+        priceEur: v.number(),
+        label: v.optional(v.string()),
+      }))),
+      dorsalPickupLocation: v.optional(v.string()),
+      dorsalPickupHours: v.optional(v.string()),
+      altimetryData: v.optional(v.array(v.object({
+        km: v.number(),
+        altitudeM: v.number(),
+      }))),
+      galleryUrls: v.optional(v.array(v.string())),
+      mapUrl: v.optional(v.string()),
+      mapEmbedUrl: v.optional(v.string()),
+      altimetryImageUrl: v.optional(v.string()),
+      regulationUrl: v.optional(v.string()),
+      extractedFromUrl: v.optional(v.string()),
+      extractedAt: v.optional(v.number()),
+      extractionConfidence: v.optional(v.union(v.literal("high"), v.literal("medium"), v.literal("low"))),
     }),
   },
   handler: async (ctx, { id, patch }) => {
@@ -244,6 +339,47 @@ export const adminUpdate = mutation({
     }
     await ctx.db.patch(id, update);
     return id;
+  },
+});
+
+/**
+ * systemUpdate: igual que adminUpdate pero sin requireAdmin.
+ * Usado por scripts CLI (deep-extract-all) y API routes.
+ * No regenera slug (es bulk, no queremos sorpresas).
+ */
+export const systemUpdate = mutation({
+  args: {
+    id: v.id("races"),
+    patch: v.any(), // cualquier subset del schema
+  },
+  handler: async (ctx, { id, patch }) => {
+    const existing = await ctx.db.get(id);
+    if (!existing) throw new Error("Race not found");
+    await ctx.db.patch(id, patch);
+    return id;
+  },
+});
+
+/**
+ * systemListAll: lista TODAS las carreras con sus campos básicos.
+ * Usado por scripts CLI (deep-extract-all). No devuelve datos sensibles.
+ */
+export const systemListAll = query({
+  args: {
+    onlyWithOfficialUrl: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { onlyWithOfficialUrl }) => {
+    const all = await ctx.db.query("races").collect();
+    return all
+      .filter((r) => !onlyWithOfficialUrl || r.officialUrl)
+      .map((r) => ({
+        _id: r._id,
+        name: r.name,
+        slug: r.slug,
+        officialUrl: r.officialUrl,
+        extractedAt: r.extractedAt,
+        extractionConfidence: r.extractionConfidence,
+      }));
   },
 });
 

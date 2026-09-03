@@ -229,6 +229,63 @@ export default defineSchema({
     dataSourceId: v.optional(v.id("dataSources")),
     // Cuándo se ingestó esta carrera por última vez
     ingestedAt: v.optional(v.number()),
+
+    // -------- DEEP EXTRACTION (Fase 1) --------
+    // Campos extraídos por IA desde la web oficial. Opcionales: muchas
+    // carreras scraped inicialmente no tendrán todo esto hasta re-extraerlas.
+
+    // Descripción larga (markdown o texto plano, hasta ~2000 chars)
+    longDescription: v.optional(v.string()),
+
+    // Modalidades alternativas de la misma carrera (5K + 10K + 21K, etc.)
+    raceFormats: v.optional(v.array(v.object({
+      name: v.string(),                                // "5K", "10K", "Maratón", "Trail 25K"
+      distanceKm: v.number(),
+      elevationGainM: v.optional(v.number()),
+      startTime: v.optional(v.string()),               // HH:MM
+      priceEur: v.optional(v.number()),
+      maxParticipants: v.optional(v.number()),
+    }))),
+
+    // Avituallamientos detallados (con km, qué hay en cada uno)
+    aidStations: v.optional(v.array(v.object({
+      km: v.number(),                                  // km desde la salida
+      name: v.optional(v.string()),                    // "Av. km 5 - Plaza Mayor"
+      hasWater: v.optional(v.boolean()),
+      hasIsotonic: v.optional(v.boolean()),
+      hasFood: v.optional(v.boolean()),                // sólido (fruta, barritas)
+      hasMedical: v.optional(v.boolean()),
+    }))),
+
+    // Tramos de precio (subida de precio por fecha)
+    priceTiers: v.optional(v.array(v.object({
+      fromDate: v.string(),                            // YYYY-MM-DD (inclusivo)
+      toDate: v.optional(v.string()),                  // YYYY-MM-DD (exclusivo); null = sin límite
+      priceEur: v.number(),
+      label: v.optional(v.string()),                   // "1ª tanda", "2ª tanda", "Última tanda"
+    }))),
+
+    // Recogida de dorsal
+    dorsalPickupLocation: v.optional(v.string()),
+    dorsalPickupHours: v.optional(v.string()),         // "Vie 14-20h, Sáb 10-13h"
+
+    // Altimetría per-km (para la calculadora de ritmos de Fase 3)
+    altimetryData: v.optional(v.array(v.object({
+      km: v.number(),                                  // km desde la salida
+      altitudeM: v.number(),
+    }))),
+
+    // Galería de fotos
+    galleryUrls: v.optional(v.array(v.string())),
+
+    // Metadata de la última extracción profunda con IA
+    extractedFromUrl: v.optional(v.string()),
+    extractedAt: v.optional(v.number()),
+    extractionConfidence: v.optional(v.union(
+      v.literal("high"),
+      v.literal("medium"),
+      v.literal("low"),
+    )),
   })
     .index("by_province", ["province"])
     .index("by_date", ["startDate"])

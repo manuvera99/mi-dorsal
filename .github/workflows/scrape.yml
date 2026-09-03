@@ -1,4 +1,4 @@
-name: Refresh scraped data
+name: Refresh scraped data + push to Convex
 
 on:
   schedule:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   scrape:
-    name: Scrape + commit
+    name: Scrape + ingest to Convex
     runs-on: ubuntu-latest
 
     steps:
@@ -23,17 +23,48 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Run scrapers
+      - name: Run scrapers (RFEA, FEDME, ITRA, Sportmaniacs, Runedia)
         run: |
-          npm run ingest:rfea || echo "RFEA failed, continuing"
-          npm run ingest:fedme || echo "FEDME failed, continuing"
-          npm run ingest:itra || echo "ITRA failed, continuing"
-          npm run ingest:merge-mock || echo "Merge failed, continuing"
+          echo "=== Scrape RFEA ==="
+          npm run ingest:rfea 2>&1 | tail -20 || echo "RFEA failed, continuing"
+          echo ""
+          echo "=== Scrape FEDME ==="
+          npm run ingest:fedme 2>&1 | tail -20 || echo "FEDME failed, continuing"
+          echo ""
+          echo "=== Scrape ITRA ==="
+          npm run ingest:itra 2>&1 | tail -20 || echo "ITRA failed, continuing"
+          echo ""
+          echo "=== Scrape Sportmaniacs ==="
+          npm run ingest:sportmaniacs 2>&1 | tail -20 || echo "Sportmaniacs failed, continuing"
+          echo ""
+          echo "=== Scrape Runedia ==="
+          npm run ingest:runedia 2>&1 | tail -20 || echo "Runedia failed, continuing"
+          echo ""
+          echo "=== Merge all ==="
+          npm run ingest:all 2>&1 | tail -20 || echo "Merge failed, continuing"
 
-      - name: Commit updated data
+      - name: Push to Convex
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+          NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+        run: |
+          if [ -z "$CONVEX_DEPLOY_KEY" ]; then
+            echo "❌ CONVEX_DEPLOY_KEY no configurado como secret en GitHub"
+            exit 1
+          fi
+          if [ -z "$NEXT_PUBLIC_CONVEX_URL" ]; then
+            echo "❌ NEXT_PUBLIC_CONVEX_URL no configurado como secret en GitHub"
+            exit 1
+          fi
+          echo "=== Push to Convex ==="
+          NEXT_PUBLIC_CONVEX_URL="$NEXT_PUBLIC_CONVEX_URL" \
+          CONVEX_DEPLOYMENT="dev:manuvera08:mi-dorsal" \
+          npm run ingest:to-convex 2>&1 | tail -30
+
+      - name: Commit updated data (backup en el repo)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add scripts/output/ lib/mock/data.ts
-          git diff --staged --quiet || git commit -m "chore: refresh scraped data [skip ci]"
-          git push
+          git diff --staged --quiet || git commit -m "chore: refresh scraped data [skip ci]" || echo "Nothing to commit"
+          git push || echo "Nothing to push"

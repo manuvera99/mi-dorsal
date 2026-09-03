@@ -87,8 +87,8 @@ export async function extractRaceFromUrl(url: string): Promise<ExtractedRace | n
     throw new Error("URL inválida. Debe empezar por http:// o https://");
   }
 
-  const baseUrl = (process.env.OPENAI_BASE_URL ?? DEFAULT_BASE_URL).replace(/\/$/, "");
-  const model = process.env.OPENAI_MODEL ?? DEFAULT_MODEL;
+  const baseUrl = cleanUrl(process.env.OPENAI_BASE_URL ?? DEFAULT_BASE_URL).replace(/\/$/, "");
+  const model = cleanUrl(process.env.OPENAI_MODEL ?? DEFAULT_MODEL);
   const isMiniMax = /minimax/i.test(baseUrl);
 
   // 1. Fetch la URL
@@ -152,7 +152,7 @@ Extrae la información de la carrera.`;
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${cleanUrl(apiKey)}`,
       },
       body: JSON.stringify(payload),
       signal: controller.signal,
@@ -176,7 +176,7 @@ Extrae la información de la carrera.`;
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${cleanUrl(apiKey)}`,
         },
         body: JSON.stringify(payload),
       });

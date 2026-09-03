@@ -225,11 +225,16 @@ export default defineSchema({
 
     // Hashtags / SEO
     hashtags: v.optional(v.array(v.string())),
+    // FK opcional a la fuente de datos (RFEA, FEDME, etc.)
+    dataSourceId: v.optional(v.id("dataSources")),
+    // Cuándo se ingestó esta carrera por última vez
+    ingestedAt: v.optional(v.number()),
   })
     .index("by_province", ["province"])
     .index("by_date", ["startDate"])
     .index("by_slug", ["slug"])
     .index("by_published_date", ["isPublished", "startDate"])
+    .index("by_data_source", ["dataSourceId"])
     .index("by_race_type", ["raceType"])
     .searchIndex("search_races", {
       searchField: "name",
@@ -402,4 +407,59 @@ export default defineSchema({
     .index("by_race", ["raceId"])
     .index("by_user", ["userId"])
     .index("by_user_race", ["userId", "raceId"]),
+
+  // ---------------------------------------------------------------------------
+  // 10. DATA_SOURCES — fuentes de donde sacamos las carreras (RFEA, FEDME…)
+  // ---------------------------------------------------------------------------
+  // Cada carrera puede tener una FK opcional (dataSourceId en races).
+  // El admin puede re-sincronizar una fuente desde el panel.
+  // ---------------------------------------------------------------------------
+  dataSources: defineTable({
+    name: v.string(),                            // "RFEA", "FEDME", "ITRA", ...
+    slug: v.string(),                            // "rfea", "fedme", "itra", ...
+    type: v.union(
+      v.literal("scraper"),     // script Node.js en scripts/ingest-*.ts
+      v.literal("api"),         // API HTTP externa
+      v.literal("manual"),      // carreras añadidas a mano por admin
+    ),
+    description: v.optional(v.string()),
+    baseUrl: v.optional(v.string()),            // URL base de la fuente
+    status: v.union(
+      v.literal("active"),
+      v.literal("paused"),
+      v.literal("error"),
+    ),
+    // Última sincronización
+    lastSyncAt: v.optional(v.number()),
+    lastSyncDurationMs: v.optional(v.number()),
+    lastSyncRaceCount: v.optional(v.number()),
+    lastSyncError: v.optional(v.string()),
+    // Acumulado
+    totalRaces: v.optional(v.number()),         // carreras actuales en BBDD con esta fuente
+    totalSyncs: v.optional(v.number()),         // número de veces que se ha sincronizado
+    // Config
+    config: v.optional(v.any()),                // scraper-specific (p.ej. URLs concretas)
+  })
+    .index("by_slug", ["slug"])
+    .index("by_status", ["status"]),
+
+  // ---------------------------------------------------------------------------
+  // 11. SYNC_HISTORY — log de sincronizaciones
+  // ---------------------------------------------------------------------------
+  syncHistory: defineTable({
+    dataSourceId: v.id("dataSources"),
+    startedAt: v.number(),
+    finishedAt: v.optional(v.number()),
+    durationMs: v.optional(v.number()),
+    status: v.union(
+      v.literal("running"),
+      v.literal("success"),
+      v.literal("error"),
+    ),
+    raceCount: v.optional(v.number()),
+    error: v.optional(v.string()),
+    triggeredBy: v.optional(v.string()),         // "admin:user_id" o "cron"
+  })
+    .index("by_data_source", ["dataSourceId"])
+    .index("by_status", ["status"]),
 });

@@ -74,7 +74,7 @@ jobs:
           npm run ingest:runedia 2>&1 | tail -20 || echo "⚠️  Runedia failed, continuing"
         continue-on-error: true
 
-      - name: 7/7 Push JSONs a Convex (RFEA/FEDME/ITRA/Runedia)
+      - name: 7/8 Push JSONs a Convex (RFEA/FEDME/ITRA/Runedia)
         env:
           CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
           NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
@@ -90,6 +90,31 @@ jobs:
           echo "=== Unificar y subir JSONs a Convex ==="
           CONVEX_DEPLOYMENT="dev:manuvera08:mi-dorsal" \
             npm run ingest:to-convex 2>&1 | tail -30 || echo "⚠️  to-convex failed"
+
+      # ------------------------------------------------------------------
+      # 8/8 Deep Extract IA — enriquece carreras con officialUrl.
+      # Modo priority: procesa primero las que NO tienen extractedAt,
+      # luego las que les faltan longDescription/altimetryData/raceFormats.
+      # --limit=30 procesa 30 carreras por noche (cubre 375 en ~13 días).
+      # Si los secrets de IA no están, falla gracefully y sigue.
+      # ------------------------------------------------------------------
+
+      - name: 8/8 Deep Extract IA (MiniMax M3, 30 carreras prioritarias)
+        env:
+          NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "⚠️  OPENAI_API_KEY no configurado — saltando deep extract"
+            echo "    Añade OPENAI_API_KEY, OPENAI_BASE_URL y OPENAI_MODEL como secrets en GitHub"
+            exit 0
+          fi
+          echo "=== Deep Extract (priority mode, 30 carreras) ==="
+          npx tsx scripts/deep-extract-all.ts --priority --limit=30 --delay=2000 2>&1 | tail -60 \
+            || echo "⚠️  Deep extract failed, continuing"
+        continue-on-error: true
 
       # ------------------------------------------------------------------
       # Resumen

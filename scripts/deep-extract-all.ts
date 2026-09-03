@@ -8,11 +8,15 @@
 //   npx tsx --env-file=.env.local scripts/deep-extract-all.ts
 //   npx tsx --env-file=.env.local scripts/deep-extract-all.ts --limit=5
 //   npx tsx --env-file=.env.local scripts/deep-extract-all.ts --only-missing
+//   npx tsx --env-file=.env.local scripts/deep-extract-all.ts --priority
 //   npx tsx --env-file=.env.local scripts/deep-extract-all.ts --delay=3000
 //
 // Flags:
-//   --limit=N       Procesa solo las primeras N carreras
+//   --limit=N       Procesa solo las primeras N carreras (tras filtrar/ordenar)
 //   --only-missing  Solo procesa carreras sin extractedAt
+//   --priority      Prioriza las que NO tienen extractedAt, luego las que
+//                   les faltan campos importantes (longDescription, altimetryData,
+//                   raceFormats). Útil para rotar en nightly sin repetir.
 //   --delay=MS      Pausa entre extracciones (default 2000ms)
 // =============================================================================
 
@@ -23,6 +27,7 @@ import { deepExtractRace, type ExtractedRaceDeep } from "../lib/ai/extract-race-
 const args = process.argv.slice(2);
 const limit = Number(args.find((a) => a.startsWith("--limit="))?.split("=")[1]) || 0;
 const onlyMissing = args.includes("--only-missing");
+const priority = args.includes("--priority");
 const delayMs = Number(args.find((a) => a.startsWith("--delay="))?.split("=")[1]) || 2000;
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
@@ -85,7 +90,7 @@ async function main() {
   console.log("=".repeat(70));
   console.log("Deep extract all races (MiniMax M3)");
   console.log("=".repeat(70));
-  console.log("Flags:", { limit, onlyMissing, delayMs });
+  console.log("Flags:", { limit, onlyMissing, priority, delayMs });
 
   const all = await client.query(api.races.systemListAll, { onlyWithOfficialUrl: true });
   console.log(`Encontradas ${all.length} carreras con officialUrl`);
@@ -94,6 +99,37 @@ async function main() {
   if (onlyMissing) {
     toProcess = all.filter((r: any) => !r.extractedAt);
     console.log(`Solo sin extraer: ${toProcess.length}`);
+  }
+
+  // Modo --priority: ordena para procesar primero las que más lo necesitan
+  if (priority) {
+    // Score: menor = más prioritario
+    // 0: nunca extraída
+    // 1: extraída pero sin longDescription
+    // 2: extraída pero sin altimetryData
+    // 3: extraída pero sin raceFormats
+    // 4: extraída con todos los campos principales
+    const scoreOf = (r: any): number => {
+      if (!r.extractedAt) return 0;
+      if (!r.longDescription) return 1;
+      if (!r.altimetryData || r.altimetryData.length === 0) return 2;
+      if (!r.raceFormats || r.raceFormats.length === 0) return 3;
+      return 4;
+    };
+    // Ordenar: primero las más prioritarias, dentro de cada tier por startDate asc (más próximas primero)
+    toProcess = [...toProcess].sort((a: any, b: any) => {
+      const sa = scoreOf(a);
+      const sb = scoreOf(b);
+      if (sa !== sb) return sa - sb;
+      // Mismo tier: más próximas en el calendario primero
+      return (a.startDate ?? "").localeCompare(b.startDate ?? "");
+    });
+    console.log(`Modo priority activado — top 5 más prioritarias:`);
+    toProcess.slice(0, 5).forEach((r: any) => {
+      const s = scoreOf(r);
+      const reason = ["nunca extraída", "sin longDescription", "sin altimetryData", "sin raceFormats", "completa"][s];
+      console.log(`  [${s}] ${r.startDate} ${r.name} (${reason})`);
+    });
   }
   if (limit > 0) {
     toProcess = toProcess.slice(0, limit);

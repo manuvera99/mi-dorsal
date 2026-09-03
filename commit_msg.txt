@@ -1,22 +1,45 @@
-﻿fix: bloquear scroll del BODY mientras hay un drag pace activo
+﻿feat: deep extract IA automatizado en nightly workflow (paso 8/8)
 
-El touch-action: none en el chartRef container no era suficiente en móvil:
-cuando el dedo se salía un poco del chart (cosa fácil arrastrando), el
-navegador interpretaba el gesto como scroll de la página y desplazaba
-aunque el indicador "arrastra" estuviera visible.
+Manu quiere que cada carrera tenga toda la información posible extraída
+de su officialUrl. La extracción profunda con IA (deepExtractRace) ya
+existe en lib/ai/extract-race-deep.ts — ahora se ejecuta automáticamente
+cada noche en el workflow de GitHub Actions.
 
-Solución: useEffect que aplica `touch-action: none` + `overflow: hidden`
-a `document.body` Y `document.documentElement` mientras `draggingKm !== null`,
-y restaura los valores anteriores al terminar. Es el patrón estándar que
-usan los modales y drawers en móvil.
+## Cambios
 
-También:
-- `overscroll-behavior: contain` en el chartRef (extra seguridad contra
-  scroll chaining en los bordes).
-- El touchmove handler ya tenía e.preventDefault() + passive: false,
-  ahora reforzado con la solución global de body.
+### scripts/deep-extract-all.ts
+- Nuevo flag `--priority`: ordena las carreras para procesar primero
+  las que más lo necesitan:
+    0 = nunca extraída (extractedAt null)
+    1 = extraída pero sin longDescription
+    2 = extraída pero sin altimetryData
+    3 = extraída pero sin raceFormats
+    4 = completa (último en procesarse, no se vuelve a hacer)
+  Dentro de cada tier: por startDate asc (más próximas primero).
+- Actualizado el header con la doc de los flags
 
-Si el drag termina (mouseup, touchend o touchcancel) los estilos se
-restauran automáticamente. El cleanup del useEffect guarda los valores
-previos, así que no interfiere con otros componentes que toquen estos
-estilos.
+### .github/workflows/daily-ingest.yml
+- Nuevo paso "8/8 Deep Extract IA" tras el push de JSONs
+- Modo priority + --limit=30 → procesa 30 carreras por noche
+- Cubre 375 carreras en ~13 días sin repetir
+- Si OPENAI_API_KEY no está configurado, falla gracefully (exit 0)
+  y sigue con el resto del workflow
+- 3 nuevos secrets a añadir en GitHub (ver abajo)
+
+## Secrets requeridos (ya están en .env.local y Vercel, hay que añadirlos a GitHub Actions)
+
+| Secret | Valor |
+|---|---|
+| OPENAI_API_KEY | sk-cp-yhdivqzGJilVsavOEobSEqCg_F7ciGEAwFynF8WG1VPCuDBM7Ln9aWDrL3yl_VOuV_IqY-ysT6DSM1QO2f6m8thzSZpl5mvPicMaZ53yJJ3fZPZG-0Lq_mQ |
+| OPENAI_BASE_URL | https://api.minimax.io/v1 |
+| OPENAI_MODEL | MiniMax-M3 |
+
+El paso funciona aunque estos secrets NO estén (skip + warning), pero
+si están, procesa 30 carreras por noche con IA MiniMax M3.
+
+## Bulk masivo en paralelo
+
+El script se está ejecutando en background AHORA con --only-missing
+--delay=2000 sobre las 375 carreras. Cubre TODAS las que faltan en una
+sola pasada larga (~15-20 min, ~375 API calls). Cuando termine, el
+nightly solo procesa las nuevas que se ingieran cada día.

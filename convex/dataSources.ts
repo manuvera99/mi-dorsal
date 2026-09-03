@@ -9,13 +9,14 @@ import { mutation, query, action } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { requireAdmin, getOptionalUser } from "./_helpers";
 
-// Scrape command names (deben coincidir con scripts/ingest-*.ts)
+// Scrape command names (deben coincidir con scripts/ingest-*.ts y scripts/scrape-*.ts)
 export const SCRAPER_SCRIPTS: Record<string, string> = {
   rfea: "ingest:rfea",
   fedme: "ingest:fedme",
   itra: "ingest:itra",
   sportmaniacs: "ingest:sportmaniacs",
   runedia: "ingest:runedia",
+  correbirras: "ingest:correbirras",
   all: "ingest:all",
 };
 
@@ -109,6 +110,34 @@ export const create = mutation({
 });
 
 /**
+ * systemCreate: crea una fuente sin auth requerida (para uso de scripts CLI).
+ * Si ya existe una con el mismo slug, la devuelve sin error.
+ */
+export const systemCreate = mutation({
+  args: {
+    name: v.string(),
+    slug: v.string(),
+    type: v.union(v.literal("scraper"), v.literal("api"), v.literal("manual")),
+    description: v.optional(v.string()),
+    baseUrl: v.optional(v.string()),
+    config: v.optional(v.any()),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("dataSources")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .unique();
+    if (existing) return existing._id;
+    return await ctx.db.insert("dataSources", {
+      ...args,
+      status: "active",
+      totalRaces: 0,
+      totalSyncs: 0,
+    });
+  },
+});
+
+/**
  * Actualiza una fuente (admin).
  */
 export const update = mutation({
@@ -158,6 +187,7 @@ export const seedDefaults = mutation({
       { name: "ITRA", slug: "itra", type: "scraper" as const, description: "International Trail Running Association — carreras con puntos ITRA", baseUrl: "https://itra.run" },
       { name: "Sportmaniacs", slug: "sportmaniacs", type: "scraper" as const, description: "Plataforma popular de carreras en España (typeahead, sin API pública)", baseUrl: "https://sportmaniacs.com" },
       { name: "Runedia", slug: "runedia", type: "scraper" as const, description: "Calendario popular de carreras populares en España (anti-bot)", baseUrl: "https://runedia.es" },
+      { name: "Correbirras", slug: "correbirras", type: "scraper" as const, description: "Agenda de carreras en Murcia, Alicante, Almería y Albacete (datos vía Supabase REST)", baseUrl: "https://www.correbirras.com" },
       { name: "Manual", slug: "manual", type: "manual" as const, description: "Carreras añadidas a mano por el admin desde el panel" },
     ];
     const results: Array<{ slug: string; id: Id<"dataSources">; created: boolean }> = [];
@@ -321,6 +351,7 @@ export const systemSeedDefaults = mutation({
       { name: "ITRA", slug: "itra", type: "scraper" as const, description: "International Trail Running Association — carreras con puntos ITRA", baseUrl: "https://itra.run" },
       { name: "Sportmaniacs", slug: "sportmaniacs", type: "scraper" as const, description: "Plataforma popular de carreras en España (typeahead, sin API pública)", baseUrl: "https://sportmaniacs.com" },
       { name: "Runedia", slug: "runedia", type: "scraper" as const, description: "Calendario popular de carreras populares en España (anti-bot)", baseUrl: "https://runedia.es" },
+      { name: "Correbirras", slug: "correbirras", type: "scraper" as const, description: "Agenda de carreras en Murcia, Alicante, Almería y Albacete (datos vía Supabase REST)", baseUrl: "https://www.correbirras.com" },
       { name: "Manual", slug: "manual", type: "manual" as const, description: "Carreras añadidas a mano por el admin desde el panel" },
     ];
     const results: Array<{ slug: string; id: Id<"dataSources">; created: boolean }> = [];

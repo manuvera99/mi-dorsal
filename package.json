@@ -16,6 +16,7 @@
     "ingest:itra": "tsx scripts/ingest-itra.ts",
     "ingest:sportmaniacs": "tsx scripts/ingest-sportmaniacs.ts",
     "ingest:runedia": "tsx scripts/ingest-runedia.ts",
+    "ingest:correbirras": "tsx scripts/scrape-correbirras.ts --upload",
     "ingest:all": "tsx scripts/ingest-rfea.ts && tsx scripts/ingest-fedme.ts && tsx scripts/ingest-itra.ts && tsx scripts/ingest-sportmaniacs.ts && tsx scripts/ingest-runedia.ts && tsx scripts/ingest-all.ts",
     "ingest:merge-mock": "tsx scripts/merge-mock.ts",
     "ingest:to-convex": "tsx scripts/ingest-to-convex.ts"

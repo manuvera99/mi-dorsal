@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Correbirras - Agenda de carreras</title>
+  <link rel="stylesheet" href="css/estilos.css?v=15">
+  <script src="/js/analytics.js"></script>
+</head>
+
+<body class="pagina-agenda">
+
+<div id="header"></div>
+
+<section class="hero">
+  <h2>AGENDA DE CARRERAS</h2>
+</section>
+
+
+<section class="hero hero-claro">
+  <h3>Pruebas a celebrar en Murcia, Alicante, Almería y Albacete durante todo el año.</h3>
+  <p>Mándanos un e-mail y anunciaremos la tuya gratuitamente:
+    <a href="mailto:correbirras@gmail.com" target="_blank">📩 correbirras@gmail.com</a>
+  </p>
+</section>
+
+<div class="agenda-controls">
+
+  <div class="filtros">
+    <input type="text" id="buscador" placeholder="🔍 Buscar carrera..." />
+
+<div class="filtros-linea">
+  <select id="filtroTipo">
+    <option value="todas">Todos los tipos</option>
+    <option value="montana">Montaña</option>
+    <option value="asfalto">Asfalto</option>
+    <option value="mixta">Mixta</option>
+    <option value="obstaculos">Obstáculos</option>
+  </select>
+
+  <select id="filtroDistancia">
+    <option value="todas">Todas las distancias</option>
+    <option value="5K">5K</option>
+    <option value="10K">10K</option>
+    <option value="21K">21K</option>
+    <option value="42K">42K</option>
+    <option value="ultra">Ultra (+42k)</option>
+  </select>
+
+  <select id="filtroPrecio">
+    <option value="todos">Cualquier precio</option>
+    <option value="0-10">0€ – 10€</option>
+    <option value="10-20">10€ – 20€</option>
+    <option value="20-40">20€ – 40€</option>
+    <option value="40+">40€+</option>
+  </select>
+
+  <select id="filtroProvincia">
+    <option value="todas">Todas las provincias</option>
+    <option value="murcia">Murcia</option>
+    <option value="alicante">Alicante</option>
+    <option value="almeria">Almería</option>
+    <option value="albacete">Albacete</option>
+  </select>
+</div>
+  </div>
+
+		<div class="meses-nav">
+  <a href="#enero">Enero</a>
+  <a href="#febrero">Febrero</a>
+  <a href="#marzo">Marzo</a>
+  <a href="#abril">Abril</a>
+  <a href="#mayo">Mayo</a>
+  <a href="#junio">Junio</a>
+  <a href="#julio">Julio</a>
+  <a href="#agosto">Agosto</a>
+  <a href="#septiembre">Septiembre</a>
+  <a href="#octubre">Octubre</a>
+  <a href="#noviembre">Noviembre</a>
+  <a href="#diciembre">Diciembre</a>
+</div>	
+	
+<div id="contador-carreras" class="contador-carreras"></div>
+	
+</div>
+
+<main class="container fullwidth">
+  <section class="content agenda">
+
+<div id="contenedor-agenda"></div>
+
+  </section>
+</main>
+
+<div id="footer"></div>
+
+<script>
+fetch("includes/header.html")
+.then(response => response.text())
+.then(data => {
+    document.getElementById("header").innerHTML = data;
+    const hamburger = document.querySelector(".hamburger");
+    const menu = document.querySelector(".menu");
+    if (hamburger && menu) {
+        hamburger.addEventListener("click", () => {
+            menu.classList.toggle("show");
+        });
+    }
+
+});
+
+fetch("includes/footer.html")
+.then(response => response.text())
+.then(data => {
+    document.getElementById("footer").innerHTML = data;
+});
+</script>
+
+<!-- SUPABASE -->
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+<script>
+const supabaseUrl = 'https://kodquqoskqbulqmjdnza.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtvZHF1cW9za3FidWxxbWpkbnphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMTg1NDcsImV4cCI6MjA5MDg5NDU0N30.Ffxz0w4m4g5xzsyOpIbtLsmIrD8B4zbBz_4X-xogUFg';
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+	let cacheCarreras = [];
+</script>
+
+	
+	
+	
+<!-- FUNCIONES -->
+
+<script>
+
+// 🧠 Detectar si ya ha pasado
+function esPasada(carrera) {
+  const hoy = new Date();
+  const fecha = new Date(carrera.fecha);
+
+  if (isNaN(fecha.getTime())) return false;
+
+  // 🔧 quitar horas
+  hoy.setHours(0,0,0,0);
+  fecha.setHours(0,0,0,0);
+
+  return fecha < hoy;
+}
+
+// 📅 Fecha (SIEMPRE consistente)
+function formatearFecha(carrera) {
+  if (!carrera.fecha) return '';
+
+  const f = new Date(carrera.fecha);
+  if (isNaN(f.getTime())) return '';
+
+  if (esPasada(carrera)) return 'POR CONFIRMAR';
+
+  return `${String(f.getDate()).padStart(2,'0')}-${String(f.getMonth()+1).padStart(2,'0')}-${String(f.getFullYear()).slice(-2)}`;
+}
+// ⏰ Hora
+function formatearHora(carrera) {
+  if (esPasada(carrera)) return '';
+  return carrera.hora_time ? carrera.hora_time.slice(0,5) : '';
+}
+
+// 💰 Precio
+function formatearPrecio(carrera) {
+  if (esPasada(carrera)) return null;
+
+  if (carrera.precio_min == null && carrera.precio_max == null) {
+    return null;
+  }
+
+  if (carrera.precio_min === 0 && carrera.precio_max === 0) {
+    return `<span class="badge-gratis">Gratis</span>`;
+  }
+
+  if (carrera.precio_min === carrera.precio_max) {
+    return `${carrera.precio_min}€`;
+  }
+
+  return `${carrera.precio_min}€ - ${carrera.precio_max}€`;
+}
+
+// 🧼 Click filas
+function activarClickFilas() {
+  document.querySelectorAll(".agenda-table tbody tr").forEach(row => {
+    const link = row.querySelector("a");
+    if (link) {
+      row.onclick = e => {
+        if (!e.target.closest("a")) link.click();
+      };
+      row.style.cursor = "pointer";
+    }
+  });
+}
+
+// 🧽 Normalizar texto
+function normalizarTexto(texto) {
+  return (texto || '')
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ñ/g, 'n')
+    .replace(/\s+/g, '');
+}
+
+
+// 🧽 Mostrar datos desconocidos	
+function mostrarDato(valor, clase = "dato-pendiente", texto = "–", tooltip = "") {
+  if (valor && valor !== "" && valor !== "?") return valor;
+
+  const title = tooltip ? `title="${tooltip}"` : "";
+  return `<span class="${clase}" ${title}>${texto}</span>`;
+}	
+	
+	
+// 📅 Semana del mes (NIVEL PRO)
+function obtenerSemanaDelMes(fechaStr) {
+  const fecha = new Date(fechaStr);
+  if (isNaN(fecha)) return 0;
+
+  const dia = fecha.getDate();
+  return Math.ceil(dia / 7);
+}	
+
+	
+// 🧽 Cargar carreras	
+async function cargarCarreras() {
+
+let data = cacheCarreras;
+
+if (cacheCarreras.length === 0) {
+
+const respuesta = await supabaseClient
+  .from('carreras')
+  .select('*')
+  .eq('eliminada', false);
+
+  if (respuesta.error) {
+    console.error("ERROR SUPABASE:", respuesta.error);
+    return;
+  }
+
+  cacheCarreras = respuesta.data;
+  data = cacheCarreras;
+}
+	
+
+	
+	
+// 🔎 Leer filtros actuales
+const textoBusqueda = normalizarTexto(
+  document.getElementById("buscador")?.value || ""
+);
+
+const filtroTipo =
+  document.getElementById("filtroTipo")?.value || "todas";
+
+const filtroDistancia =
+  document.getElementById("filtroDistancia")?.value || "todas";
+
+const filtroPrecio =
+  document.getElementById("filtroPrecio")?.value || "todos";
+
+const filtroProvincia =
+  document.getElementById("filtroProvincia")?.value || "todas";
+
+// 🎯 Aplicar filtros
+const carrerasFiltradas = data.filter(c => {
+
+  const nombre = normalizarTexto(c.nombre);
+  const localidad = normalizarTexto(c.localidad);
+  const provincia = normalizarTexto(c.provincia);
+  const tipo = normalizarTexto(c.tipo);
+  const distancia = (c.distancia || "").toUpperCase();
+
+  // buscador
+  if (
+    textoBusqueda &&
+    !nombre.includes(textoBusqueda) &&
+    !localidad.includes(textoBusqueda)
+  ) return false;
+
+  // tipo
+  if (filtroTipo !== "todas" && tipo !== filtroTipo)
+    return false;
+
+  // provincia
+  if (
+    filtroProvincia !== "todas" &&
+    provincia !== filtroProvincia
+  ) return false;
+
+  // distancia
+  if (filtroDistancia !== "todas") {
+    if (!distancia.includes(filtroDistancia))
+      return false;
+  }
+
+  // precio
+  const precio = c.precio_min ?? 999;
+
+  if (filtroPrecio === "0-10" && precio > 10) return false;
+  if (filtroPrecio === "10-20" && (precio < 10 || precio > 20)) return false;
+  if (filtroPrecio === "20-40" && (precio < 20 || precio > 40)) return false;
+  if (filtroPrecio === "40+" && precio < 40) return false;
+
+  return true;
+});	
+
+  // 🏁 CONTADOR DE CARRERAS
+const contador = document.getElementById("contador-carreras");
+
+if (contador) {
+
+  const total = data.length;
+  const visibles = carrerasFiltradas.length;
+
+if (visibles === total) {
+  contador.innerHTML =
+    `<span class="badge-contador badge-total">
+      🏁 ${total} carreras disponibles
+    </span>`;
+} else {
+  contador.innerHTML =
+    `<span class="badge-contador badge-filtrado">
+      🏁 Mostrando ${visibles} de ${total} carreras
+    </span>`;
+}
+
+}	
+	
+	
+  const contenedor = document.getElementById('contenedor-agenda');
+  contenedor.innerHTML = '';
+
+  const grupos = {};
+  const hoy = new Date();
+
+  // 🔥 AGRUPACIÓN + ORDEN INTELIGENTE REAL
+carrerasFiltradas.forEach(c => {
+
+    if (!c.fecha) return;
+
+const fechaOriginal = new Date(c.fecha);
+if (isNaN(fechaOriginal.getTime())) return;
+
+// 🔧 Normalizamos HOY (sin hora)
+const hoySinHora = new Date();
+hoySinHora.setHours(0,0,0,0);
+
+// 🔧 Normalizamos FECHA CARRERA (sin hora)
+const fechaComparacion = new Date(fechaOriginal);
+fechaComparacion.setHours(0,0,0,0);
+
+// 👉 FECHA VIRTUAL (clave del sistema)
+const fechaBase = new Date(fechaOriginal);
+
+// si la fecha ya pasó este año, la movemos al próximo año
+fechaBase.setFullYear(hoySinHora.getFullYear());
+
+if (fechaBase < hoySinHora) {
+  fechaBase.setFullYear(hoySinHora.getFullYear() + 1);
+}
+	  
+c._fechaOrden = new Date(fechaBase);
+	  
+	  
+    const año = fechaBase.getFullYear();
+    const mes = fechaBase.getMonth();
+
+    const clave = `${año}-${mes}`;
+
+    if (!grupos[clave]) grupos[clave] = [];
+    grupos[clave].push(c);
+  });
+
+  const clavesOrdenadas = Object.keys(grupos).sort((a, b) => {
+    const [aA, aM] = a.split('-').map(Number);
+    const [bA, bM] = b.split('-').map(Number);
+    return new Date(aA, aM) - new Date(bA, bM);
+  });
+
+	
+Object.keys(grupos).forEach(clave => {
+  grupos[clave].sort((a, b) => {
+
+    // 1️⃣ Fecha
+const fa = a._fechaOrden || new Date(a.fecha);
+const fb = b._fechaOrden || new Date(b.fecha);
+
+    if (fa - fb !== 0) return fa - fb;
+
+    // 2️⃣ Provincia preferente
+    const ordenProvincia = {
+      murcia: 1,
+      alicante: 2,
+      albacete: 3,
+      almeria: 4
+    };
+
+    const provA = normalizarTexto(a.provincia);
+    const provB = normalizarTexto(b.provincia);
+
+    const valA = ordenProvincia[provA] || 99;
+    const valB = ordenProvincia[provB] || 99;
+
+    if (valA !== valB) return valA - valB;
+
+    // 3️⃣ Hora dentro de provincia
+    const horaA = (a.hora_time || a.hora || "99:99");
+    const horaB = (b.hora_time || b.hora || "99:99");
+
+    if (horaA !== horaB) {
+      return horaA.localeCompare(horaB);
+    }
+
+    // 4️⃣ Nombre
+    return (a.nombre || "").localeCompare(b.nombre || "");
+
+  });
+});
+	
+	
+	
+  clavesOrdenadas.forEach(clave => {
+
+    const [año, mes] = clave.split('-');
+
+    const nombreMes = new Date(año, mes)
+      .toLocaleString('es-ES', { month: 'long' });
+
+ const totalCarrerasMes = grupos[clave].length;
+
+const titulo =
+  nombreMes.charAt(0).toUpperCase() +
+  nombreMes.slice(1) +
+  ' ' +
+  año +
+  ` <span class="contador-mes">· ${totalCarrerasMes} carreras ·</span>`;
+
+const h2 = document.createElement('h2');
+h2.className = 'mes-titulo';
+h2.innerHTML = titulo;
+
+const mesesId = [
+  "enero","febrero","marzo","abril","mayo","junio",
+  "julio","agosto","septiembre","octubre","noviembre","diciembre"
+];
+
+h2.id = mesesId[parseInt(mes)];
+
+    const tabla = document.createElement('table');
+    tabla.className = 'agenda-table';
+
+    tabla.innerHTML = `
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th class="col-edicion"> </th>          
+          <th>Nombre de la carrera</th>
+          <th>Distancia</th>
+          <th>Hora</th>
+          <th>Tipo</th>
+          <th>Detalles</th>
+          <th></th>
+          <th>Localidad</th>
+          <th>Provincia</th>
+          <th>Precio</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+
+    const tbody = tabla.querySelector('tbody');
+
+let semanaActual = null;
+
+grupos[clave].forEach(c => {
+
+  const semana = obtenerSemanaDelMes(c.fecha);
+
+  if (semana !== semanaActual) {
+    semanaActual = semana;
+
+    const trSemana = document.createElement('tr');
+    trSemana.innerHTML = `
+      <td colspan="11" class="separador-semana">
+        Semana ${semana}
+      </td>
+    `;
+    tbody.appendChild(trSemana);
+  }
+
+const provincia = normalizarTexto(c.provincia);
+const tipo = normalizarTexto(c.tipo);
+
+const tr = document.createElement('tr');
+
+
+tr.classList.add(`provincia-${provincia}`);
+
+if (esPasada(c)) {
+  tr.classList.add('proximamente');
+}
+
+      tr.innerHTML = `
+        <td class="col-fecha">${formatearFecha(c)}</td>
+        <td class="col-edicion">  ${c.edicion || ''}</td>        
+	      <td class="col-carrera"> <a href="${c.url_web || '#'}" target="_blank">${c.nombre}</a> </td>
+	      <td class="col-distancia">${mostrarDato(c.distancia, "distancia-pendiente", "❓", "Distancia pendiente de confirmar")}</td>
+        <td class="col-hora">${mostrarDato(formatearHora(c), "hora-pendiente", "❓", "Hora pendiente de confirmar")}</td>
+        <td class="col-tipo"> <span class="tag ${tipo}">${c.tipo || ''}</span> </td>
+        <td class="col-senderista">
+
+  ${c.senderista ? `
+    <span class="badge-info badge-senderista tooltip">🥾 SENDERISMO</span>
+  ` : ''}
+
+  ${c.nocturna ? `
+    <span class="badge-info badge-nocturna tooltip">🌙 NOCTURNA</span>
+  ` : ''}
+
+  ${c.solidaria ? `
+    <span class="badge-info badge-solidaria tooltip">❤️ SOLIDARIA</span>
+  ` : ''}
+
+</td>
+
+<td class="col-extra">
+
+  ${c.url_ranking ? `
+    <a href="${c.url_ranking}" target="_blank" class="badge-info badge-ranking tooltip">
+      ⭐ RANKING
+      <span class="tooltip-text">Ver ranking</span>
+    </a>` : ''}
+
+  ${c.url_recorrido ? `
+    <a href="${c.url_recorrido}" target="_blank" class="badge-info badge-recorrido tooltip">
+      🗺️ RECORRIDO
+      <span class="tooltip-text">Ver recorrido</span>
+    </a>` : ''}
+
+</td>
+        <td class="col-localidad">${c.localidad || c.ciudad || ''}</td>
+        <td class="col-provincia provincia-${provincia}">${c.provincia || ''}</td>
+        <td class="col-precio">${mostrarDato(formatearPrecio(c), "precio-pendiente", "❓", "Precio pendiente de confirmar")}</td>
+      `;
+
+      tbody.appendChild(tr);
+    });
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-container';
+
+    wrapper.appendChild(tabla);
+    contenedor.appendChild(h2);
+    contenedor.appendChild(wrapper);
+  });
+
+  activarClickFilas();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+
+  cargarCarreras();
+
+  document.getElementById("buscador")
+    .addEventListener("input", cargarCarreras);
+
+  document.getElementById("filtroTipo")
+    .addEventListener("change", cargarCarreras);
+
+  document.getElementById("filtroDistancia")
+    .addEventListener("change", cargarCarreras);
+
+  document.getElementById("filtroPrecio")
+    .addEventListener("change", cargarCarreras);
+
+  document.getElementById("filtroProvincia")
+    .addEventListener("change", cargarCarreras);
+
+});
+
+</script>
+
+
+</body>
+
+</html>

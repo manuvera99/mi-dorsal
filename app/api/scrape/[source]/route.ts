@@ -20,6 +20,7 @@ const SCRIPTS: Record<string, string> = {
   itra: "ingest:itra",
   sportmaniacs: "ingest:sportmaniacs",
   runedia: "ingest:runedia",
+  correbirras: "ingest:correbirras",
   all: "ingest:all",
 };
 

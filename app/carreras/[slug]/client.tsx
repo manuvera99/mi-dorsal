@@ -7,6 +7,11 @@ import { mockApi, isMockMode } from "@/lib/mock/provider";
 import { formatDate, formatProvince, formatRaceType, formatTime } from "@/lib/utils";
 import { RatingSliders } from "@/components/rating-sliders";
 import { ThumbsVote } from "@/components/thumbs-vote";
+import { PaceCalculator } from "@/components/pace-calculator";
+import {
+  LongDescriptionSection, RaceFormatsSection, CourseVisualsSection,
+  AidStationsSection, PriceTiersSection, DorsalPickupSection, GallerySection,
+} from "@/components/race-detail-sections";
 import {
   MapPin, Calendar, Mountain, ExternalLink, FileText, Plus, Check, User,
   Globe, Mail, Phone, Clock, Users, Tag, Trophy, DollarSign, Share2,
@@ -210,7 +215,7 @@ function RaceDetailContent({ race, summary }: { race: any; summary: any }) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* ============== COLUMNA IZQUIERDA (2/3) ============== */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Descripción */}
+            {/* Descripción (corta) */}
             {race.description && (
               <section>
                 <h2 className="text-xl font-bold mb-2">Sobre la carrera</h2>
@@ -224,6 +229,12 @@ function RaceDetailContent({ race, summary }: { race: any; summary: any }) {
                 )}
               </section>
             )}
+
+            {/* ============ DESCRIPCIÓN LARGA (deep extraction) ============ */}
+            <LongDescriptionSection race={race} />
+
+            {/* ============ MODALIDADES (deep extraction) ============ */}
+            <RaceFormatsSection race={race} />
 
             {/* ============ DATOS CLAVE ============ */}
             <section>
@@ -284,6 +295,12 @@ function RaceDetailContent({ race, summary }: { race: any; summary: any }) {
                 </div>
               </section>
             )}
+
+            {/* ============ TRAMOS DE PRECIO (deep extraction) ============ */}
+            <PriceTiersSection race={race} />
+
+            {/* ============ DORSAL PICKUP (deep extraction) ============ */}
+            <DorsalPickupSection race={race} />
 
             {/* ============ LUGAR DE SALIDA ============ */}
             {(race.venue || race.address) && (
@@ -373,6 +390,19 @@ function RaceDetailContent({ race, summary }: { race: any; summary: any }) {
                 </div>
               </section>
             )}
+
+            {/* ============ MAPA + PERFIL (deep extraction) ============ */}
+            <CourseVisualsSection race={race} />
+
+            {/* ============ CALCULADORA DE RITMOS (Fase 3) ============ */}
+            <PaceCalculator
+              distanceKm={race.distanceKm}
+              elevationGainM={race.elevationGainM}
+              altimetryData={race.altimetryData}
+            />
+
+            {/* ============ AVITUALLAMIENTOS (deep extraction) ============ */}
+            <AidStationsSection race={race} />
 
             {/* ============ CATEGORÍAS ============ */}
             {race.categories && race.categories.length > 0 && (
@@ -577,6 +607,9 @@ function RaceDetailContent({ race, summary }: { race: any; summary: any }) {
                 </div>
               </section>
             )}
+
+            {/* ============ GALERÍA (deep extraction) ============ */}
+            <GallerySection race={race} />
 
             {/* ============ FORMULARIO DE VALORACIÓN ============ */}
             <RatingSliders raceId={race._id as any} />

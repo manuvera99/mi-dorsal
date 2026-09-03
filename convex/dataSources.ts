@@ -1,4 +1,4 @@
-// =============================================================================
+﻿// =============================================================================
 // mi-dorsal — Data Sources (RFEA, FEDME, ITRA, Sportmaniacs, Runedia, manual)
 // =============================================================================
 // Admin: listar, ver, actualizar status, re-sincronizar.
@@ -185,7 +185,7 @@ export const seedDefaults = mutation({
       { name: "RFEA", slug: "rfea", type: "scraper" as const, description: "Real Federación Española de Atletismo — calendario oficial", baseUrl: "https://www.rfea.es" },
       { name: "FEDME", slug: "fedme", type: "scraper" as const, description: "Federación Española de Deportes de Montaña y Escalada", baseUrl: "https://www.fedme.es" },
       { name: "ITRA", slug: "itra", type: "scraper" as const, description: "International Trail Running Association — carreras con puntos ITRA", baseUrl: "https://itra.run" },
-      { name: "Sportmaniacs", slug: "sportmaniacs", type: "scraper" as const, description: "Plataforma popular de carreras en España (typeahead, sin API pública)", baseUrl: "https://sportmaniacs.com" },
+      { name: "Sportmaniacs", slug: "sportmaniacs", type: "api" as const, description: "Plataforma de inscripciones deportivas — API REST pública con 25.000+ carreras (api-aws.sportmaniacs.com)", baseUrl: "https://sportmaniacs.com" },
       { name: "Runedia", slug: "runedia", type: "scraper" as const, description: "Calendario popular de carreras populares en España (anti-bot)", baseUrl: "https://runedia.es" },
       { name: "Correbirras", slug: "correbirras", type: "scraper" as const, description: "Agenda de carreras en Murcia, Alicante, Almería y Albacete (datos vía Supabase REST)", baseUrl: "https://www.correbirras.com" },
       { name: "Manual", slug: "manual", type: "manual" as const, description: "Carreras añadidas a mano por el admin desde el panel" },
@@ -349,7 +349,7 @@ export const systemSeedDefaults = mutation({
       { name: "RFEA", slug: "rfea", type: "scraper" as const, description: "Real Federación Española de Atletismo — calendario oficial", baseUrl: "https://www.rfea.es" },
       { name: "FEDME", slug: "fedme", type: "scraper" as const, description: "Federación Española de Deportes de Montaña y Escalada", baseUrl: "https://www.fedme.es" },
       { name: "ITRA", slug: "itra", type: "scraper" as const, description: "International Trail Running Association — carreras con puntos ITRA", baseUrl: "https://itra.run" },
-      { name: "Sportmaniacs", slug: "sportmaniacs", type: "scraper" as const, description: "Plataforma popular de carreras en España (typeahead, sin API pública)", baseUrl: "https://sportmaniacs.com" },
+      { name: "Sportmaniacs", slug: "sportmaniacs", type: "api" as const, description: "Plataforma de inscripciones deportivas — API REST pública con 25.000+ carreras (api-aws.sportmaniacs.com)", baseUrl: "https://sportmaniacs.com" },
       { name: "Runedia", slug: "runedia", type: "scraper" as const, description: "Calendario popular de carreras populares en España (anti-bot)", baseUrl: "https://runedia.es" },
       { name: "Correbirras", slug: "correbirras", type: "scraper" as const, description: "Agenda de carreras en Murcia, Alicante, Almería y Albacete (datos vía Supabase REST)", baseUrl: "https://www.correbirras.com" },
       { name: "Manual", slug: "manual", type: "manual" as const, description: "Carreras añadidas a mano por el admin desde el panel" },
@@ -443,5 +443,28 @@ export const systemFinishSync = mutation({
       });
     }
     return syncId;
+  },
+});
+
+/**
+ * systemUpdate: actualiza campos de una fuente sin auth (para uso de scripts CLI).
+ * Util para migraciones como cambiar el type de scraper -> api cuando una fuente
+ * descubre que tiene API REST disponible.
+ */
+export const systemUpdate = mutation({
+  args: {
+    id: v.id("dataSources"),
+    patch: v.object({
+      name: v.optional(v.string()),
+      type: v.optional(v.union(v.literal("scraper"), v.literal("api"), v.literal("manual"))),
+      description: v.optional(v.string()),
+      baseUrl: v.optional(v.string()),
+      status: v.optional(v.union(v.literal("active"), v.literal("paused"), v.literal("error"))),
+      config: v.optional(v.any()),
+    }),
+  },
+  handler: async (ctx, { id, patch }) => {
+    await ctx.db.patch(id, patch);
+    return id;
   },
 });

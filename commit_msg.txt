@@ -1,0 +1,33 @@
+feat: Sportmaniacs API scraper (25k carreras vs 5 curadas) + systemUpdate mutation
+
+Investigué las 6 fuentes de datos para ver si alguna tenía API escondida
+tipo Correbirras/Supabase. Resultados:
+
+- Sportmaniacs: 🟢 API pública en api-aws.sportmaniacs.com/api/races
+  - 25.000 carreras en total, pero solo 153 son running/trail en España futuras
+  - Pagina por fecha descendente, para al no encontrar futuras
+  - 1-2 requests por ejecución vs 50 innecesarios
+- RFEA: 🔴 Drupal cerrado, sin JSON/RSS/sitemap
+- FEDME: 🟡 Plugin The Events Calendar instalado pero API devuelve 0 eventos
+- Runedia: 🔴 HTML estático, params ignorados, 500 con fechaIni
+- ITRA: 🔴 503 anti-bot (ya conocido)
+- Correbirras: ✅ ya en producción (Supabase REST)
+
+Cambios:
+- scripts/ingest-sportmaniacs.ts: reescrito para usar API REST con paginación
+  inteligente, filtros ESP + running/trail, mapeo de 50+ provincias, subida
+  idempotente via systemUpsert
+- scripts/ingest-sportmaniacs-curated.ts: el viejo stub con 5 carreras
+  (movido para histórico)
+- scripts/update-sportmaniacs-source.ts: cambia type=scraper → type=api
+- scripts/probe-{apis,apis-deep,apis-round3}.ts: probes de las 4 fuentes
+  restantes
+- scripts/probe-sportmaniacs-{types,future}.ts: análisis de la API
+- convex/dataSources.ts:
+  - systemUpdate mutation (CLI-friendly)
+  - Sportmaniacs description y type actualizados a "api"
+
+Resultado: 222 → 374 carreras (+152 de Sportmaniacs, 1 provincia sin mapear)
+Total: 7 fuentes (1 con API, 6 con scraper HTML/PDF).
+
+Idempotencia verificada: 0 creadas, 152 actualizadas, 1 fallaron en re-run.

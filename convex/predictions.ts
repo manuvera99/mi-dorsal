@@ -4,15 +4,17 @@
 
 import { v } from "convex/values";
 import { query } from "./_generated/server";
-import { requireUser } from "./_helpers";
+import { requireUser, getOptionalUser } from "./_helpers";
 
 /**
  * Historial de predicciones del usuario.
+ * Devuelve [] si no hay usuario.
  */
 export const listMine = query({
   args: {},
   handler: async (ctx) => {
-    const user = await requireUser(ctx);
+    const user = await getOptionalUser(ctx);
+    if (!user) return [];
     const preds = await ctx.db
       .query("predictions")
       .withIndex("by_user", (q) => q.eq("userId", user._id))

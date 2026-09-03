@@ -4,15 +4,17 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { requireUser } from "./_helpers";
+import { requireUser, getOptionalUser } from "./_helpers";
 
 /**
  * Lista todos los PRs del usuario actual.
+ * Devuelve [] si no hay usuario (en vez de throw) para no romper la UI.
  */
 export const listMine = query({
   args: {},
   handler: async (ctx) => {
-    const user = await requireUser(ctx);
+    const user = await getOptionalUser(ctx);
+    if (!user) return [];
     return await ctx.db
       .query("personalRecords")
       .withIndex("by_user", (q) => q.eq("userId", user._id))

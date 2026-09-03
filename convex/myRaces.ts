@@ -4,7 +4,7 @@
 
 import { v } from "convex/values";
 import { mutation, query, internalQuery } from "./_generated/server";
-import { requireUser, raceStatusValidator } from "./_helpers";
+import { requireUser, getOptionalUser, raceStatusValidator } from "./_helpers";
 import { predictForMyRace } from "../lib/prediction/predict";
 import { Doc, Id } from "./_generated/dataModel";
 
@@ -16,7 +16,8 @@ export const listMine = query({
     status: v.optional(raceStatusValidator),
   },
   handler: async (ctx, { status }) => {
-    const user = await requireUser(ctx);
+    const user = await getOptionalUser(ctx);
+    if (!user) return [];
     let q = ctx.db
       .query("myRaces")
       .withIndex("by_user", (q) => q.eq("userId", user._id));

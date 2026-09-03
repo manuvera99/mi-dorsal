@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery } from "convex/react";
 import { useUser } from "@clerk/nextjs";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { isMockMode } from "@/lib/mock/provider";
-import { LayoutDashboard, Trophy, Users, BarChart3, ArrowLeft, Shield, AlertCircle, Loader2 } from "lucide-react";
+import { LayoutDashboard, Trophy, Users, BarChart3, ArrowLeft, Loader2 } from "lucide-react";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -25,43 +25,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
 
   const myProfile = useMock ? null : useQuery(api.users.getMyProfile);
-  const publicStats = useQuery(api.users.getPublicStats);
   const isAdminReal = myProfile?.role === "admin";
-  const noAdminsYet = publicStats?.adminCount === 0;
-  const bootstrap = useMutation(api.users.bootstrapFirstAdmin);
-  const [bootstrapping, setBootstrapping] = useState(false);
-  const [bootstrapError, setBootstrapError] = useState<string | null>(null);
 
-  const handleBootstrap = async () => {
-    setBootstrapping(true);
-    setBootstrapError(null);
-    try {
-      await bootstrap({});
-      // Force re-fetch of profile
-      window.location.reload();
-    } catch (e: any) {
-      setBootstrapError(e.message);
-    } finally {
-      setBootstrapping(false);
-    }
-  };
-
-  // Si no es admin y no está en mock, redirigir
+  // Solo admins pueden ver el panel. Si no, redirigir.
   useEffect(() => {
     if (useMock) return;
     if (isLoaded && !isSignedIn) {
       router.push("/sign-in");
       return;
     }
-    // Si no es admin pero hay admins (no puede ser 0), redirigir
-    if (myProfile !== undefined && !isAdminReal && publicStats !== undefined && !noAdminsYet) {
+    if (myProfile !== undefined && !isAdminReal) {
       router.push("/");
     }
-  }, [useMock, isLoaded, isSignedIn, myProfile, isAdminReal, publicStats, noAdminsYet, router]);
+  }, [useMock, isLoaded, isSignedIn, myProfile, isAdminReal, router]);
 
-  // Mock mode: siempre puede ver
-  // Real mode: si es admin, ve. Si no es admin pero no hay admins aún, ve la pantalla de bootstrap.
-  const canRender = useMock || isAdminReal || (publicStats !== undefined && noAdminsYet && isSignedIn);
+  const canRender = useMock || isAdminReal;
 
   if (!canRender) {
     return (
@@ -107,34 +85,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <p className="text-xs text-gray-500">v0.1 · {new Date().getFullYear()}</p>
         </div>
       </aside>
-      <main className="flex-1 bg-gray-50 overflow-auto">
-        {/* Banner de bootstrap si no hay admins */}
-        {!useMock && noAdminsYet && !isAdminReal && (
-          <div className="bg-yellow-50 border-b border-yellow-200 px-6 py-4">
-            <div className="flex items-start gap-3 max-w-4xl mx-auto">
-              <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <h3 className="font-semibold text-yellow-900">No hay admins en el sistema</h3>
-                <p className="text-sm text-yellow-700 mt-1">
-                  Eres el primer usuario. Si quieres ser admin, pulsa el botón. Solo se puede hacer una vez.
-                </p>
-                {bootstrapError && (
-                  <p className="text-sm text-red-600 mt-2">{bootstrapError}</p>
-                )}
-                <button
-                  onClick={handleBootstrap}
-                  disabled={bootstrapping}
-                  className="mt-3 inline-flex items-center gap-2 bg-runner-primary text-white px-4 py-2 rounded-md text-sm font-semibold hover:opacity-90 disabled:opacity-50"
-                >
-                  {bootstrapping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
- {bootstrapping ? "Promoviendo…" : "Hacerme admin"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        {children}
-      </main>
+      <main className="flex-1 bg-gray-50 overflow-auto">{children}</main>
     </div>
   );
 }

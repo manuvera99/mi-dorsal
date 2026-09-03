@@ -71,43 +71,14 @@ export const getProfileByClerkId = query({
 });
 
 /**
- * Bootstrap del primer admin: si NO hay admins, el caller se hace admin.
- * Crea el profile si no existe (idempotente con upsert).
+ * ⚠️ DEPRECATED — El bootstrap del primer admin está desactivado.
+ * Solo los admins existentes pueden promover usuarios (vía setUserRole).
+ * Si necesitas reinicializar, crea un nuevo proyecto Convex.
  */
 export const bootstrapFirstAdmin = mutation({
   args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
-
-    // ¿Ya hay algún admin? (escaneo simple, OK para MVP con pocos usuarios)
-    const allProfiles = await ctx.db.query("profiles").collect();
-    const anyAdmin = allProfiles.find((p) => p.role === "admin");
-    if (anyAdmin) {
-      throw new Error("Ya existe un admin. Pide a un admin existente que te promueva.");
-    }
-
-    // Buscar o crear el profile
-    let profile = await ctx.db
-      .query("profiles")
-      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
-      .unique();
-
-    if (!profile) {
-      // Auto-crear con datos del identity de Clerk
-      const profileId = await ctx.db.insert("profiles", {
-        clerkUserId: identity.subject,
-        displayName: identity.name ?? identity.email ?? "Admin",
-        avatarUrl: identity.pictureUrl,
-        role: "admin", // directamente admin
-        emailResultsEnabled: true,
-        emailRemindersEnabled: true,
-        emailWeeklyDigestEnabled: true,
-      });
-      return profileId;
-    }
-    await ctx.db.patch(profile._id, { role: "admin" });
-    return profile._id;
+  handler: async () => {
+    throw new Error("Bootstrap desactivado. Pide a un admin que te promueva.");
   },
 });
 
@@ -175,11 +146,22 @@ export const adminGetProfile = query({
 
 /**
  * Stats globales del admin dashboard.
+ * Devuelve zeros si no hay user/admin (en vez de throw).
  */
 export const adminGetStats = query({
   args: {},
   handler: async (ctx) => {
-    await requireAdmin(ctx);
+    const profile = await getOptionalUser(ctx);
+    if (!profile || profile.role !== "admin") {
+      // Devuelve estructura vacía para no romper la UI del admin
+      return {
+        totalRaces: 0, publishedRaces: 0, featuredRaces: 0,
+        totalUsers: 0, adminUsers: 0,
+        totalVotes: 0, totalRatings: 0,
+        totalMyRaces: 0, totalPRs: 0, totalNotifications: 0,
+        racesByProvince: {},
+      };
+    }
     const [races, profiles, votes, ratings, myRaces, prs, notifications] = await Promise.all([
       ctx.db.query("races").collect(),
       ctx.db.query("profiles").collect(),

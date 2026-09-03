@@ -36,6 +36,8 @@ export interface ExtractedSource {
 // Reutilizamos la utilidad de strip think blocks de extract-race.ts.
 // Si en el futuro se mueve a un módulo común, importamos desde ahí.
 
+import { cleanUrl } from "./clean-url";
+
 const DEFAULT_BASE_URL = "https://api.openai.com/v1";
 const DEFAULT_MODEL = "gpt-4o-mini";
 
@@ -90,8 +92,8 @@ export async function analyzeDataSource(url: string): Promise<ExtractedSource | 
     );
   }
 
-  // Limpiar URL: quitar BOM y otros caracteres invisibles
-  url = url.replace(/[\uFEFF\u200B-\u200D\u2060]/g, "").trim();
+  // Limpiar URL: quitar BOM, zero-width, non-ASCII, etc.
+  url = cleanUrl(url);
   if (!/^https?:\/\//.test(url)) {
     throw new Error("URL inválida. Debe empezar por http:// o https://");
   }
@@ -216,6 +218,8 @@ Analiza la web como fuente de datos para scraping.`;
 }
 
 async function fetchUrl(url: string): Promise<string> {
+  // Defense in depth: limpiar URL de nuevo antes de fetch
+  url = cleanUrl(url);
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15_000);
   try {

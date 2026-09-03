@@ -124,6 +124,8 @@ export interface ExtractedRaceDeep {
   notes?: string;
 }
 
+import { cleanUrl } from "./clean-url";
+
 const DEFAULT_BASE_URL = "https://api.openai.com/v1";
 const DEFAULT_MODEL = "gpt-4o-mini";
 
@@ -162,9 +164,10 @@ export async function deepExtractRace(url: string): Promise<ExtractedRaceDeep | 
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY no configurado. Añádelo en .env.local y Vercel.");
   }
+  // (cleanUrl aplicada más abajo en fetchUrl — defense in depth)
 
-  // Limpiar URL: quitar BOM y otros caracteres invisibles
-  url = url.replace(/[\uFEFF\u200B-\u200D\u2060]/g, "").trim();
+  // Limpiar URL: quitar BOM, zero-width, non-ASCII, etc.
+  url = cleanUrl(url);
   if (!/^https?:\/\//.test(url)) {
     throw new Error("URL inválida. Debe empezar por http:// o https://");
   }
@@ -373,6 +376,8 @@ Extrae toda la información de la carrera en el JSON especificado.`;
 }
 
 async function fetchUrl(url: string): Promise<string> {
+  // Defense in depth: limpiar URL de nuevo antes de fetch
+  url = cleanUrl(url);
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 20_000);
   try {

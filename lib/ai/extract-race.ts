@@ -15,6 +15,8 @@
 //   OPENAI_API_KEY=sk-cp-...
 // =============================================================================
 
+import { cleanUrl } from "./clean-url";
+
 export interface ExtractedRace {
   name: string;
   startDate?: string;
@@ -79,8 +81,8 @@ export async function extractRaceFromUrl(url: string): Promise<ExtractedRace | n
     );
   }
 
-  // Limpiar URL: quitar BOM y otros caracteres invisibles
-  url = url.replace(/[\uFEFF\u200B-\u200D\u2060]/g, "").trim();
+  // Limpiar URL: quitar BOM, zero-width, non-ASCII, etc.
+  url = cleanUrl(url);
   if (!/^https?:\/\//.test(url)) {
     throw new Error("URL inválida. Debe empezar por http:// o https://");
   }
@@ -200,6 +202,8 @@ Extrae la información de la carrera.`;
 }
 
 async function fetchUrl(url: string): Promise<string> {
+  // Defense in depth: limpiar URL de nuevo antes de fetch
+  url = cleanUrl(url);
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15_000);
   try {

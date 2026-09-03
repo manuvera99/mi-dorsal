@@ -1,14 +1,15 @@
 "use server";
 
 import { deepExtractRace, type ExtractedRaceDeep } from "@/lib/ai/extract-race-deep";
+import { cleanUrl } from "@/lib/ai/clean-url";
 
 export type DeepExtractResult =
   | { data: ExtractedRaceDeep; url: string }
   | { error: string };
 
 export async function deepExtractAction(url: string): Promise<DeepExtractResult> {
-  // Limpiar URL: quitar BOM y caracteres invisibles
-  url = (url ?? "").replace(/[\uFEFF\u200B-\u200D\u2060]/g, "").trim();
+  // Limpiar URL: quitar BOM, zero-width, non-ASCII, etc.
+  url = cleanUrl(url ?? "");
   if (!url || !/^https?:\/\//.test(url)) {
     return { error: "URL inválida. Debe empezar con http:// o https://" };
   }

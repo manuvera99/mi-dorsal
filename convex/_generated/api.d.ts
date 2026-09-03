@@ -14,6 +14,7 @@ import type * as crons_checkResults from "../crons/checkResults.js";
 import type * as crons_reminderPreRace from "../crons/reminderPreRace.js";
 import type * as crons_weeklyDigest from "../crons/weeklyDigest.js";
 import type * as crons_yearReview from "../crons/yearReview.js";
+import type * as dataSources from "../dataSources.js";
 import type * as emails_sendEmail from "../emails/sendEmail.js";
 import type * as emails_templates_resultFound from "../emails/templates/resultFound.js";
 import type * as myRaces from "../myRaces.js";
@@ -38,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   "crons/reminderPreRace": typeof crons_reminderPreRace;
   "crons/weeklyDigest": typeof crons_weeklyDigest;
   "crons/yearReview": typeof crons_yearReview;
+  dataSources: typeof dataSources;
   "emails/sendEmail": typeof emails_sendEmail;
   "emails/templates/resultFound": typeof emails_templates_resultFound;
   myRaces: typeof myRaces;

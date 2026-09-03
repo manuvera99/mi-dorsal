@@ -160,7 +160,7 @@ export const seedDefaults = mutation({
       { name: "Runedia", slug: "runedia", type: "scraper" as const, description: "Calendario popular de carreras populares en España (anti-bot)", baseUrl: "https://runedia.es" },
       { name: "Manual", slug: "manual", type: "manual" as const, description: "Carreras añadidas a mano por el admin desde el panel" },
     ];
-    const results = [];
+    const results: Array<{ slug: string; id: Id<"dataSources">; created: boolean }> = [];
     for (const d of defaults) {
       const existing = await ctx.db
         .query("dataSources")

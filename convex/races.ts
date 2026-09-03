@@ -448,6 +448,206 @@ export const systemListAll = query({
 });
 
 /**
+ * systemUpsert: find-or-create idempotente.
+ *
+ * Busca una carrera existente por (en orden de prioridad):
+ *   1. officialUrl (si es específico, no homepage)
+ *   2. nombre normalizado + startDate + locality
+ *   3. nombre normalizado + startDate
+ *
+ * Si la encuentra, actualiza los campos vacíos con los nuevos, y registra
+ * la fuente en additionalDataSourceIds (sin pisar dataSourceId actual).
+ *
+ * Si no la encuentra, crea una nueva con slug auto-generado (sufijo -2 si choca).
+ *
+ * Devuelve { id, action: "created" | "updated" } para que el caller sepa qué pasó.
+ *
+ * Usado por scripts de ingest para garantizar idempotencia.
+ */
+export const systemUpsert = mutation({
+  args: {
+    // Identidad
+    name: v.string(),
+    startDate: v.optional(v.string()),
+    locality: v.optional(v.string()),
+    officialUrl: v.optional(v.string()),
+    // Datos básicos
+    province: v.optional(provinceValidator),
+    distanceKm: v.optional(v.number()),
+    elevationGainM: v.optional(v.number()),
+    raceType: v.optional(raceTypeValidator),
+    homologated: v.optional(v.boolean()),
+    organizer: v.optional(v.string()),
+    organizerUrl: v.optional(v.string()),
+    resultsUrl: v.optional(v.string()),
+    registrationUrl: v.optional(v.string()),
+    startTime: v.optional(v.string()),
+    description: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+    isPublished: v.optional(v.boolean()),
+    isFeatured: v.optional(v.boolean()),
+    courseType: v.optional(v.union(v.literal("loop"), v.literal("point_to_point"), v.literal("out_and_back"))),
+    gpxUrl: v.optional(v.string()),
+    mapImageUrl: v.optional(v.string()),
+    profileImageUrl: v.optional(v.string()),
+    timeLimitMinutes: v.optional(v.number()),
+    maxParticipants: v.optional(v.number()),
+    priceEur: v.optional(v.number()),
+    contactEmail: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    // Atribución
+    scraperAdapter: v.optional(v.string()),
+    dataSourceId: v.optional(v.id("dataSources")),
+  },
+  handler: async (ctx, args) => {
+    const norm = (s: string | undefined) =>
+      (s ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+    const isHomepageUrl = (url: string | undefined) => {
+      if (!url) return true;
+      try {
+        const u = new URL(url);
+        if (u.pathname === "" || u.pathname === "/") return true;
+        return /^https?:\/\/(www\.)?(fedme|rfea|sportmaniacs|runedia)\.es\/?$/i.test(url) ||
+               /^https?:\/\/itra\.run\/?$/i.test(url);
+      } catch {
+        return true;
+      }
+    };
+
+    // 1. Buscar por officialUrl específico
+    let existing: Doc<"races"> | null = null;
+    if (args.officialUrl && !isHomepageUrl(args.officialUrl)) {
+      const matches = await ctx.db
+        .query("races")
+        .withIndex("by_data_source" as any) // índice genérico, filtro manual
+        .collect();
+      const filtered = matches.filter((r) => r.officialUrl === args.officialUrl);
+      if (filtered.length === 1) existing = filtered[0];
+      else if (filtered.length > 1) {
+        // Hay varias con el mismo URL (no debería pasar, pero por si acaso): coge la más antigua
+        existing = filtered.sort((a, b) => (a._creationTime ?? 0) - (b._creationTime ?? 0))[0];
+      }
+    }
+
+    // 2. Buscar por nombre + fecha + localidad
+    if (!existing && args.startDate) {
+      const nameKey = norm(args.name);
+      const dateMatches = await ctx.db
+        .query("races")
+        .withIndex("by_date", (q) => q.eq("startDate", args.startDate!))
+        .collect();
+      const locKey = norm(args.locality);
+      if (locKey) {
+        existing = dateMatches.find((c) => norm(c.name) === nameKey && norm(c.locality) === locKey) ?? null;
+      }
+      // 3. Buscar por nombre + fecha (sin localidad)
+      if (!existing) {
+        existing = dateMatches.find((c) => norm(c.name) === nameKey) ?? null;
+      }
+    }
+
+    if (existing) {
+      // UPDATE: rellenar campos vacíos, añadir dataSourceId a additional
+      const patch: Record<string, unknown> = {};
+      const skipFields = new Set([
+        "name", // nunca pisar el nombre original
+        "slug", // nunca pisar el slug
+        "scraperAdapter", // no pisar (mantenemos el primero)
+        "dataSourceId", // manejado aparte (priority)
+      ]);
+      for (const [k, v] of Object.entries(args)) {
+        if (skipFields.has(k)) continue;
+        if (v === null || v === undefined || v === "") continue;
+        if (Array.isArray(v) && v.length === 0) continue;
+        // Solo rellenar si está vacío en el existente
+        const current = (existing as any)[k];
+        if (current === null || current === undefined || current === "") {
+          patch[k] = v;
+        }
+      }
+      // dataSourceId: si la nueva fuente es más prioritaria, sobrescribir
+      if (args.dataSourceId && args.dataSourceId !== existing.dataSourceId) {
+        const priority = ["RFEA", "FEDME", "ITRA", "Sportmaniacs", "Runedia", "Manual"];
+        const existingSrc = await ctx.db.get(existing.dataSourceId as any);
+        const newSrc = await ctx.db.get(args.dataSourceId);
+        const existingIdx = priority.indexOf((existingSrc as any)?.name ?? "");
+        const newIdx = priority.indexOf((newSrc as any)?.name ?? "");
+        if (newIdx !== -1 && (existingIdx === -1 || newIdx < existingIdx)) {
+          // La nueva es más prioritaria → guardar la vieja en additional
+          const additional: string[] = (existing as any).additionalDataSourceIds ?? [];
+          if (existing.dataSourceId && !additional.includes(existing.dataSourceId)) {
+            additional.push(existing.dataSourceId);
+          }
+          patch.dataSourceId = args.dataSourceId;
+          patch.additionalDataSourceIds = additional;
+        } else {
+          // La existente es más prioritaria → solo añadir la nueva a additional
+          const additional: string[] = (existing as any).additionalDataSourceIds ?? [];
+          if (!additional.includes(args.dataSourceId)) {
+            additional.push(args.dataSourceId);
+            patch.additionalDataSourceIds = additional;
+          }
+        }
+      }
+      if (Object.keys(patch).length > 0) {
+        await ctx.db.patch(existing._id, patch);
+      }
+      return { id: existing._id, action: "updated" as const };
+    }
+
+    // CREATE: slug auto-generado sin colisión
+    const baseSlug = slugify(args.name);
+    let finalSlug = baseSlug;
+    let suffix = 2;
+    while (true) {
+      const conflict = await ctx.db
+        .query("races")
+        .withIndex("by_slug", (q) => q.eq("slug", finalSlug))
+        .first();
+      if (!conflict) break;
+      finalSlug = `${baseSlug}-${suffix}`;
+      suffix++;
+      if (suffix > 100) throw new Error(`Demasiadas colisiones para slug "${baseSlug}"`);
+    }
+    const id = await ctx.db.insert("races", {
+      // Campos requeridos por el schema (con fallbacks seguros)
+      name: args.name,
+      province: args.province ?? ("valencia" as any),
+      distanceKm: args.distanceKm ?? 10,
+      raceType: args.raceType ?? ("road" as const),
+      slug: finalSlug,
+      // Resto de campos opcionales tal cual vienen
+      locality: args.locality,
+      startDate: args.startDate,
+      startTime: args.startTime,
+      officialUrl: args.officialUrl,
+      registrationUrl: args.registrationUrl,
+      resultsUrl: args.resultsUrl,
+      organizer: args.organizer,
+      organizerUrl: args.organizerUrl,
+      contactEmail: args.contactEmail,
+      contactPhone: args.contactPhone,
+      elevationGainM: args.elevationGainM,
+      homologated: args.homologated,
+      description: args.description,
+      imageUrl: args.imageUrl,
+      courseType: args.courseType,
+      gpxUrl: args.gpxUrl,
+      mapImageUrl: args.mapImageUrl,
+      profileImageUrl: args.profileImageUrl,
+      timeLimitMinutes: args.timeLimitMinutes,
+      maxParticipants: args.maxParticipants,
+      priceEur: args.priceEur,
+      isPublished: args.isPublished ?? true,
+      isFeatured: args.isFeatured ?? false,
+      scraperAdapter: args.scraperAdapter,
+      dataSourceId: args.dataSourceId,
+    });
+    return { id, action: "created" as const };
+  },
+});
+
+/**
  * systemListAllDetailed: lista TODAS las carreras con TODOS sus campos.
  * Usado por scripts de merge/dedupe. No usar desde la app.
  */

@@ -91,7 +91,9 @@ async function main() {
 
   for (const r of races) {
     try {
-      await client.mutation(api.races.systemCreate, {
+      // systemUpsert: idempotente. Si ya existe (mismo officialUrl o
+      // mismo nombre+fecha), actualiza los campos vacíos. Si no, crea.
+      const res: any = await client.mutation(api.races.systemUpsert, {
         name: r.name,
         locality: r.location,
         province: inferProvince(r.location, "") as any,
@@ -106,20 +108,19 @@ async function main() {
         description: r.modality
           ? `Carrera ${r.modality} de ${r.sourceUrl ? new URL(r.sourceUrl).hostname : "origen oficial"}. ${r.level ? "Nivel: " + r.level + "." : ""}`
           : `Carrera de ${new URL(r.sourceUrl).hostname}.`,
-        isPublished: true,
-        isFeatured: false,
         scraperAdapter: r.sourceUrl ? new URL(r.sourceUrl).hostname.split(".")[0] : undefined,
       });
       success++;
-      process.stdout.write(".");
+      process.stdout.write(res?.action === "updated" ? "u" : ".");
     } catch (err) {
       failed++;
       console.error(`\n[ingest-to-convex] ❌ Falló "${r.name}":`, err);
     }
   }
 
-  console.log(`\n\n[ingest-to-convex] ✅ ${success} carreras subidas`);
+  console.log(`\n\n[ingest-to-convex] ✅ ${success} carreras procesadas (created+updated)`);
   if (failed > 0) console.log(`[ingest-to-convex] ⚠️  ${failed} carreras fallaron`);
+  console.log(`[ingest-to-convex] Re-ejecuta este script y verás solo "u" (updates) si no hay carreras nuevas.`);
   console.log(`[ingest-to-convex] Verifica en https://dashboard.convex.dev`);
 }
 

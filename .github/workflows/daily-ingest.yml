@@ -1,0 +1,107 @@
+name: Daily race ingest (sincronización nocturna)
+
+on:
+  schedule:
+    # Cada día a las 02:00 UTC = 04:00 hora España verano / 03:00 invierno
+    # Manu lo quiere "por la noche" para pillar carreras recién publicadas
+    - cron: '0 2 * * *'
+  workflow_dispatch:  # Botón manual desde GitHub Actions (test)
+
+jobs:
+  ingest:
+    name: Ingest desde todas las fuentes
+    runs-on: ubuntu-latest
+    timeout-minutes: 30  # los scrapers pueden tardar (RFEA, FEDME, etc.)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install
+        run: npm ci
+
+      # ------------------------------------------------------------------
+      # Scripts nuevos (suben DIRECTO a Convex vía systemUpsert idempotente)
+      # ------------------------------------------------------------------
+
+      - name: 1/7 Ingest Sportmaniacs (API REST, 25k carreras)
+        env:
+          NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+        run: |
+          echo "=== Sportmaniacs API (1-2 requests, para al no encontrar futuras) ==="
+          npm run ingest:sportmaniacs -- --upload 2>&1 | tail -30 || echo "⚠️  Sportmaniacs failed, continuing"
+        continue-on-error: true
+
+      - name: 2/7 Ingest Correbirras (Supabase REST, ~200 carreras)
+        env:
+          NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+        run: |
+          echo "=== Correbirras (Supabase REST) ==="
+          npm run ingest:correbirras 2>&1 | tail -30 || echo "⚠️  Correbirras failed, continuing"
+        continue-on-error: true
+
+      # ------------------------------------------------------------------
+      # Scripts viejos (escriben a scripts/output/*.json)
+      # ingest:to-convex los une y sube via systemUpsert
+      # ------------------------------------------------------------------
+
+      - name: 3/7 Ingest RFEA (PDF + scraping)
+        run: |
+          echo "=== RFEA (Real Federación Española de Atletismo) ==="
+          npm run ingest:rfea 2>&1 | tail -20 || echo "⚠️  RFEA failed, continuing"
+        continue-on-error: true
+
+      - name: 4/7 Ingest FEDME (scraping HTML)
+        run: |
+          echo "=== FEDME (Federación Deportes de Montaña) ==="
+          npm run ingest:fedme 2>&1 | tail -20 || echo "⚠️  FEDME failed, continuing"
+        continue-on-error: true
+
+      - name: 5/7 Ingest ITRA (scraping, 503 parcial)
+        run: |
+          echo "=== ITRA (International Trail Running) ==="
+          npm run ingest:itra 2>&1 | tail -20 || echo "⚠️  ITRA failed, continuing"
+        continue-on-error: true
+
+      - name: 6/7 Ingest Runedia (scraping HTML)
+        run: |
+          echo "=== Runedia (Mundo Deportivo) ==="
+          npm run ingest:runedia 2>&1 | tail -20 || echo "⚠️  Runedia failed, continuing"
+        continue-on-error: true
+
+      - name: 7/7 Push JSONs a Convex (RFEA/FEDME/ITRA/Runedia)
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+          NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+        run: |
+          if [ -z "$CONVEX_DEPLOY_KEY" ]; then
+            echo "❌ CONVEX_DEPLOY_KEY no configurado como secret en GitHub"
+            exit 1
+          fi
+          if [ -z "$NEXT_PUBLIC_CONVEX_URL" ]; then
+            echo "❌ NEXT_PUBLIC_CONVEX_URL no configurado como secret en GitHub"
+            exit 1
+          fi
+          echo "=== Unificar y subir JSONs a Convex ==="
+          CONVEX_DEPLOYMENT="dev:manuvera08:mi-dorsal" \
+            npm run ingest:to-convex 2>&1 | tail -30 || echo "⚠️  to-convex failed"
+
+      # ------------------------------------------------------------------
+      # Resumen
+      # ------------------------------------------------------------------
+
+      - name: Resumen
+        if: always()
+        run: |
+          echo "============================================"
+          echo "  Ingest diario terminado: $(date -u)"
+          echo "============================================"
+          echo ""
+          echo "BBDD final:"
+          NEXT_PUBLIC_CONVEX_URL="${{ secrets.NEXT_PUBLIC_CONVEX_URL }}" \
+            npx tsx --env-file=.env.local scripts/count-races.ts 2>&1 || true

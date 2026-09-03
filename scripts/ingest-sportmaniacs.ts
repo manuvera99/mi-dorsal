@@ -322,7 +322,7 @@ async function main() {
   console.log(`\nSubiendo ${filtered.length} carreras (idempotente)...`);
   let created = 0, updated = 0, failed = 0;
   const errors: string[] = [];
-  const sourceId = smSrc._id;
+  const sourceId = smSrc!._id;
   for (let i = 0; i < filtered.length; i++) {
     const r = filtered[i];
     const prov = normalizeProvince(r.province);

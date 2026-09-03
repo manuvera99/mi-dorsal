@@ -1,39 +1,41 @@
 "use client";
 
 /**
- * Calculadora de ritmos con altimetría.
+ * Calculadora de ritmos con altimetría — versión interactiva.
  *
- * Inputs:
- *  - distanceKm: distancia total de la carrera
- *  - elevationGainM: desnivel + total (fallback si no hay altimetryData)
- *  - altimetryData: array opcional de {km, altitudeM} per-km
- *
- * Comportamiento:
- *  - Si altimetryData está, se muestra con esos datos exactos.
- *  - Si no, generamos un perfil sintético (subida gradual hasta mitad, bajada después).
- *  - Usuario pone un ritmo base (s/km). Cada km se ajusta automáticamente por pendiente
- *    usando una fórmula Minetti simplificada.
- *  - Usuario puede sobreescribir el ritmo de cualquier km individualmente.
- *  - El gráfico muestra altimetría de fondo + línea de ritmo por km.
+ * Features:
+ *  - Perfil de altimetría (real de la BBDD o sintético triangular)
+ *  - Gráfico combinado: altimetría (bar) + pace por km (línea)
+ *  - **DRAG VERTICAL** de los puntos rojos del pace, con **snap a 5s**
+ *  - Botón "Auto-ajuste" para que el pace siga la pendiente Minetti
+ *  - Botón "Perfil real/sintético" si hay altimetría extraída
+ *  - **DESCARGA** del plan como TCX (workout Garmin Connect) o CSV (splits)
  *
  * Fórmula de ajuste por pendiente (aproximación Minetti):
  *   - Subida: pace * (1 + 0.04 * slope_pct)   (≈ 4% más lento por 1% de pendiente)
  *   - Bajada: pace * (1 - 0.025 * |slope_pct|) (≈ 2.5% más rápido por 1% de bajada)
- *   - slope_pct = (altitude[i] - altitude[i-1]) / 10  (% de pendiente por km)
- *
- * Estas constantes son aproximadas. Un usuario experto puede sobrescribir cualquier km.
  */
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts";
-import { Activity, RotateCcw, Sliders, TrendingUp, Clock, Mountain, ArrowUp, ArrowDown } from "lucide-react";
+import {
+  Activity, RotateCcw, Sliders, Mountain, ArrowUp, ArrowDown,
+  Download, FileText, ChevronDown, GripVertical, Sparkles,
+} from "lucide-react";
+import {
+  downloadTcx, downloadCsv, computePlanStats, type PacePlan,
+} from "@/lib/pace-export";
 
 type AltimetryPoint = { km: number; altitudeM: number };
 type PacePoint = { km: number; altitudeM: number; paceSeconds: number; splitSeconds: number };
 
-const DEFAULT_BASE_PACE = 5 * 60 + 30; // 5:30/km por defecto
+const DEFAULT_BASE_PACE = 5 * 60 + 30; // 5:30/km
+const SNAP_SECONDS = 5; // snap a 5s
+const PACE_MIN = 3 * 60;     // 3:00/km (pace mínimo)
+const PACE_MAX = 12 * 60;    // 12:00/km (pace máximo para ultra lento)
+const CHART_HEIGHT = 280;    // px — debe coincidir con ResponsiveContainer
 
 function formatTime(totalSeconds: number): string {
   if (!isFinite(totalSeconds) || totalSeconds < 0) return "—";
@@ -45,23 +47,18 @@ function formatTime(totalSeconds: number): string {
 }
 
 function parsePaceInput(s: string): number | null {
-  // Acepta "5:30", "5.30" (minutos.decimales), "330" (segundos), "5:30:00"
   const trimmed = s.trim();
   if (!trimmed) return null;
-  // mm:ss
   if (/^\d{1,2}:\d{2}$/.test(trimmed)) {
     const [m, sec] = trimmed.split(":").map(Number);
     return m * 60 + sec;
   }
-  // hh:mm:ss
   if (/^\d{1,2}:\d{2}:\d{2}$/.test(trimmed)) {
     const [h, m, s2] = trimmed.split(":").map(Number);
     return h * 3600 + m * 60 + s2;
   }
-  // 5.30 (minutos decimales)
   if (/^\d+(\.\d+)?$/.test(trimmed)) {
     const n = Number(trimmed);
-    // Si es muy grande, son segundos directos
     if (n > 60) return n;
     return n * 60;
   }
@@ -74,22 +71,21 @@ function paceToString(seconds: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-/** Genera un perfil sintético triangular (subida hasta mitad, bajada después). */
+function snapPace(seconds: number): number {
+  return Math.round(seconds / SNAP_SECONDS) * SNAP_SECONDS;
+}
+
 function generateSyntheticProfile(distanceKm: number, elevationGainM: number): AltimetryPoint[] {
   const points: AltimetryPoint[] = [];
   const kmCount = Math.max(2, Math.ceil(distanceKm));
-  // El pico está en el medio, con un poco de asimetría
   const peakKm = kmCount / 2;
-  // Distribución: 40% en primera mitad (subida), 60% en segunda (más bajada que subida)
   for (let i = 0; i <= kmCount; i++) {
     const km = i;
     let altitude: number;
     if (km <= peakKm) {
-      // Subida: de 0 al pico
       const t = km / peakKm;
       altitude = elevationGainM * t;
     } else {
-      // Bajada: del pico a 0
       const t = (km - peakKm) / (kmCount - peakKm);
       altitude = elevationGainM * (1 - t);
     }
@@ -98,66 +94,159 @@ function generateSyntheticProfile(distanceKm: number, elevationGainM: number): A
   return points;
 }
 
-/** Calcula el ritmo ajustado por pendiente. */
-function adjustPaceBySlope(
-  basePace: number,
-  slopePct: number,
-): number {
-  // Pendiente en % (positivo = subida, negativo = bajada)
-  if (slopePct > 0) {
-    // Subida: 4% más lento por 1% de pendiente
-    return basePace * (1 + 0.04 * slopePct);
-  } else {
-    // Bajada: 2.5% más rápido por 1% de pendiente (cuesta abajo se gana menos de lo que se pierde cuesta arriba)
-    return basePace * (1 - 0.025 * Math.abs(slopePct));
-  }
+function adjustPaceBySlope(basePace: number, slopePct: number): number {
+  if (slopePct > 0) return basePace * (1 + 0.04 * slopePct);
+  return basePace * (1 - 0.025 * Math.abs(slopePct));
 }
 
+function accumulateUpTo(paces: number[], i: number): number {
+  let s = 0;
+  for (let k = 0; k <= i; k++) s += paces[k] ?? 0;
+  return s;
+}
+
+function computePaces(
+  basePace: number,
+  profile: AltimetryPoint[],
+  autoAdjust: boolean,
+  useProfile: boolean,
+  currentPaces: number[],
+): number[] {
+  const result: number[] = [];
+  for (let i = 0; i < profile.length - 1; i++) {
+    const prevAlt = i === 0 ? profile[0].altitudeM : profile[i].altitudeM;
+    const nextAlt = profile[i + 1].altitudeM;
+    const gain = nextAlt - prevAlt;
+    const slopePct = gain;
+    if (autoAdjust && useProfile) {
+      result.push(snapPace(adjustPaceBySlope(basePace, slopePct)));
+    } else {
+      const existing = currentPaces[i];
+      result.push(existing && existing > 0 ? existing : basePace);
+    }
+  }
+  return result;
+}
+
+// =============================================================================
+// Custom Dot arrastrable con cursor y snap a 5s
+// =============================================================================
+
+interface DraggableDotProps {
+  cx?: number;
+  cy?: number;
+  index: number;
+  isActive: boolean;
+  isAutoAdjusted: boolean;
+  chartRef: React.RefObject<HTMLDivElement | null>;
+  paceMin: number;
+  paceMax: number;
+  onDragStart: (i: number) => void;
+  onDragMove: (i: number, newPace: number) => void;
+  onDragEnd: () => void;
+}
+
+function DraggableDot(props: DraggableDotProps) {
+  const { cx, cy, index, isActive, isAutoAdjusted } = props;
+  if (cx === undefined || cy === undefined) return null;
+
+  const fill = isActive ? "#dc2626" : isAutoAdjusted ? "#f97316" : "#dc2626";
+  const r = isActive ? 8 : 5;
+  const stroke = isActive ? "#7f1d1d" : "#fff";
+  const strokeWidth = isActive ? 2 : 1.5;
+  const cursor = isActive ? "grabbing" : "grab";
+
+  return (
+    <g style={{ cursor }}>
+      {/* Halo invisible más grande para mejor hit area */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={14}
+        fill="transparent"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          props.onDragStart(index);
+        }}
+        onTouchStart={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          props.onDragStart(index);
+        }}
+        style={{ cursor: "grab" }}
+      />
+      {/* Dot visual */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={r}
+        fill={fill}
+        stroke={stroke}
+        strokeWidth={strokeWidth}
+        style={{ pointerEvents: "none", transition: "r 0.1s" }}
+      />
+      {isActive && (
+        <text
+          x={cx}
+          y={cy - 14}
+          textAnchor="middle"
+          fill="#dc2626"
+          fontSize={10}
+          fontWeight="bold"
+          style={{ pointerEvents: "none" }}
+        >
+          ⬍ arrastra
+        </text>
+      )}
+    </g>
+  );
+}
+
+// =============================================================================
+// Componente principal
+// =============================================================================
+
 export function PaceCalculator({
+  raceName,
   distanceKm,
   elevationGainM,
   altimetryData,
 }: {
+  raceName?: string;
   distanceKm: number;
   elevationGainM?: number;
   altimetryData?: AltimetryPoint[];
 }) {
-  // Si no hay altimetryData, generamos uno sintético
   const profile = useMemo<AltimetryPoint[]>(() => {
-    if (altimetryData && altimetryData.length > 1) {
-      return altimetryData;
-    }
-    if (elevationGainM && elevationGainM > 0) {
-      return generateSyntheticProfile(distanceKm, elevationGainM);
-    }
-    // Plano: todos los kms a 0m
+    if (altimetryData && altimetryData.length > 1) return altimetryData;
+    if (elevationGainM && elevationGainM > 0) return generateSyntheticProfile(distanceKm, elevationGainM);
     const points: AltimetryPoint[] = [];
-    for (let i = 0; i <= Math.ceil(distanceKm); i++) {
-      points.push({ km: i, altitudeM: 0 });
-    }
+    for (let i = 0; i <= Math.ceil(distanceKm); i++) points.push({ km: i, altitudeM: 0 });
     return points;
   }, [altimetryData, elevationGainM, distanceKm]);
 
-  // Estado: ritmo por km (en segundos)
+  const kmCount = profile.length - 1;
+  const hasRealAltimetry = !!(altimetryData && altimetryData.length > 1);
+
   const [paces, setPaces] = useState<number[]>([]);
   const [basePaceStr, setBasePaceStr] = useState(paceToString(DEFAULT_BASE_PACE));
   const [autoAdjust, setAutoAdjust] = useState(true);
-  const [useProfile, setUseProfile] = useState(!!(altimetryData && altimetryData.length > 1));
+  const [useProfile, setUseProfile] = useState(hasRealAltimetry);
+  const [draggingKm, setDraggingKm] = useState<number | null>(null);
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 
-  const kmCount = profile.length - 1; // # de segmentos de 1km
+  const chartRef = useRef<HTMLDivElement>(null);
 
-  // Cuando cambia la distancia o el profile, regenerar paces
   useEffect(() => {
     const newPaces = computePaces(DEFAULT_BASE_PACE, profile, autoAdjust, useProfile, paces);
     setPaces(newPaces);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kmCount, autoAdjust, useProfile]);
 
-  // Calcular datos del gráfico
   const chartData = useMemo<PacePoint[]>(() => {
     if (paces.length === 0) return [];
     return profile.slice(1).map((p, i) => {
-      // Segmento del km i al km i+1
       const prevAlt = i === 0 ? profile[0].altitudeM : profile[i].altitudeM;
       const altitude = (prevAlt + p.altitudeM) / 2;
       const pace = paces[i] ?? DEFAULT_BASE_PACE;
@@ -165,19 +254,23 @@ export function PaceCalculator({
         km: i + 1,
         altitudeM: Math.round(altitude),
         paceSeconds: Math.round(pace),
-        splitSeconds: Math.round(pace), // para un km
+        splitSeconds: Math.round(pace),
       };
     });
   }, [profile, paces]);
 
-  // Tiempo total y ritmo medio
-  const totalSeconds = useMemo(
-    () => paces.reduce((sum, p) => sum + p, 0),
-    [paces],
-  );
+  const totalSeconds = useMemo(() => paces.reduce((sum, p) => sum + p, 0), [paces]);
   const avgPace = paces.length > 0 ? totalSeconds / paces.length : 0;
+  const minAlt = Math.min(...chartData.map((d) => d.altitudeM), 0);
+  const maxAlt = Math.max(...chartData.map((d) => d.altitudeM), 0);
+  const yAxisDomain: [number, number] = [Math.min(0, minAlt - 10), maxAlt + 10];
 
-  // Handlers
+  // Pace range para el eje Y derecho (pace line)
+  const paceValues = chartData.map((d) => d.paceSeconds);
+  const paceMin = Math.max(PACE_MIN, Math.floor((Math.min(...paceValues) - 60) / 30) * 30);
+  const paceMax = Math.min(PACE_MAX, Math.ceil((Math.max(...paceValues) + 60) / 30) * 30);
+  const paceDomain: [number, number] = [paceMin, paceMax];
+
   const updatePace = (i: number, seconds: number) => {
     setPaces((prev) => {
       const next = [...prev];
@@ -204,9 +297,8 @@ export function PaceCalculator({
   const toggleAuto = () => {
     const newAuto = !autoAdjust;
     setAutoAdjust(newAuto);
-    const sec = parsePaceInput(basePaceStr) ?? DEFAULT_BASE_PACE;
     if (newAuto) {
-      // Al activar auto-adjust, recalcular todos
+      const sec = parsePaceInput(basePaceStr) ?? DEFAULT_BASE_PACE;
       const newPaces = computePaces(sec, profile, true, useProfile, []);
       setPaces(newPaces);
     }
@@ -217,7 +309,6 @@ export function PaceCalculator({
     setUseProfile(newUse);
     const sec = parsePaceInput(basePaceStr) ?? DEFAULT_BASE_PACE;
     if (newUse && altimetryData && altimetryData.length > 1) {
-      // Al activar profile, recalcular
       const newPaces = computePaces(sec, altimetryData, autoAdjust, true, []);
       setPaces(newPaces);
     } else if (!newUse && elevationGainM && elevationGainM > 0) {
@@ -228,6 +319,86 @@ export function PaceCalculator({
       const newPaces = computePaces(sec, profile, autoAdjust, newUse, []);
       setPaces(newPaces);
     }
+  };
+
+  // =====================================================================
+  // Lógica de drag — convierte Y del ratón a pace y aplica snap a 5s
+  // =====================================================================
+  const handleDragStart = useCallback((i: number) => {
+    setDraggingKm(i);
+  }, []);
+
+  const handleDragMove = useCallback((i: number, newPace: number) => {
+    setPaces((prev) => {
+      const next = [...prev];
+      next[i] = snapPace(Math.max(PACE_MIN, Math.min(PACE_MAX, newPace)));
+      return next;
+    });
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    setDraggingKm(null);
+  }, []);
+
+  // Listeners globales de mousemove/mouseup cuando hay un dot activo
+  useEffect(() => {
+    if (draggingKm === null) return;
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!chartRef.current) return;
+      const rect = chartRef.current.getBoundingClientRect();
+      // Estimación del plot area (descontamos el header del chart)
+      // Recharts tiene un padding interno; estimamos top/bottom del área de plot
+      const plotTop = rect.top + 20;     // margen superior del chart
+      const plotBottom = rect.top + CHART_HEIGHT - 30; // margen inferior
+      const yMouse = e.clientY;
+      if (yMouse < plotTop || yMouse > plotBottom) return;
+      // Mapear Y a pace (invertido: top = paceMax, bottom = paceMin)
+      const ratio = (yMouse - plotTop) / (plotBottom - plotTop);
+      const newPace = paceMax - ratio * (paceMax - paceMin);
+      handleDragMove(draggingKm, newPace);
+    };
+
+    const onMouseUp = () => {
+      handleDragEnd();
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches[0]) onMouseMove(e.touches[0] as any);
+    };
+
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
+    document.addEventListener("touchend", onMouseUp);
+
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+      document.removeEventListener("touchmove", onTouchMove);
+      document.removeEventListener("touchend", onMouseUp);
+    };
+  }, [draggingKm, paceMin, paceMax, handleDragMove, handleDragEnd]);
+
+  // =====================================================================
+  // Helpers de descarga
+  // =====================================================================
+  const buildPlan = (): PacePlan => ({
+    name: raceName ?? `Plan ${distanceKm.toFixed(1)}K`,
+    distanceKm,
+    paces: paces.map((p) => Math.round(p)),
+    altitudes: chartData.map((d) => d.altitudeM),
+    targetDate: undefined,
+  });
+
+  const handleDownloadTcx = () => {
+    downloadTcx(buildPlan());
+    setShowDownloadMenu(false);
+  };
+
+  const handleDownloadCsv = () => {
+    downloadCsv(buildPlan());
+    setShowDownloadMenu(false);
   };
 
   if (paces.length === 0) {
@@ -242,11 +413,16 @@ export function PaceCalculator({
     );
   }
 
-  // Detectar si hay altimetría real
-  const hasRealAltimetry = !!(altimetryData && altimetryData.length > 1);
-  const minAlt = Math.min(...chartData.map((d) => d.altitudeM));
-  const maxAlt = Math.max(...chartData.map((d) => d.altitudeM));
-  const yAxisDomain: [number, number] = [Math.min(0, minAlt - 10), maxAlt + 10];
+  const stats = computePlanStats(buildPlan());
+  const paceDiff = stats.slowestKm - stats.fastestKm;
+  const hasManualEdits = paces.some((p, i) => {
+    if (!autoAdjust) return true;
+    const prevAlt = i === 0 ? profile[0].altitudeM : profile[i].altitudeM;
+    const nextAlt = profile[i + 1].altitudeM;
+    const slopePct = nextAlt - prevAlt;
+    const expected = snapPace(adjustPaceBySlope(parsePaceInput(basePaceStr) ?? DEFAULT_BASE_PACE, slopePct));
+    return Math.abs(p - expected) > SNAP_SECONDS;
+  });
 
   return (
     <section>
@@ -255,7 +431,7 @@ export function PaceCalculator({
           <Activity className="h-5 w-5 text-runner-primary" />
           Calculadora de ritmos
         </h2>
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-2 text-sm flex-wrap">
           <button
             onClick={toggleProfile}
             className={`px-3 py-1.5 rounded-md text-xs font-semibold border transition-colors ${
@@ -280,12 +456,54 @@ export function PaceCalculator({
             <Sliders className="inline h-3.5 w-3.5 mr-1" />
             {autoAdjust ? "Auto-ajuste ON" : "Manual"}
           </button>
+
+          {/* Menú de descarga */}
+          <div className="relative">
+            <button
+              onClick={() => setShowDownloadMenu(!showDownloadMenu)}
+              className="px-3 py-1.5 rounded-md text-xs font-semibold border bg-runner-primary text-white border-runner-primary hover:opacity-90 flex items-center gap-1"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Descargar Garmin
+              <ChevronDown className="h-3 w-3" />
+            </button>
+            {showDownloadMenu && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setShowDownloadMenu(false)}
+                />
+                <div className="absolute right-0 mt-1 w-64 bg-white border border-gray-200 rounded-md shadow-lg z-20 overflow-hidden">
+                  <button
+                    onClick={handleDownloadTcx}
+                    className="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-start gap-2 border-b"
+                  >
+                    <FileText className="h-4 w-4 text-runner-primary mt-0.5 flex-shrink-0" />
+                    <div>
+                      <div className="font-semibold text-sm">TCX (workout Garmin)</div>
+                      <div className="text-xs text-gray-500">Importable en Garmin Connect → Entrenamientos</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={handleDownloadCsv}
+                    className="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-start gap-2"
+                  >
+                    <FileText className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <div className="font-semibold text-sm">CSV (splits)</div>
+                      <div className="text-xs text-gray-500">Universal — Excel, Google Sheets, manual</div>
+                    </div>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
       <div className="card space-y-5">
         {/* ============ CONTROLES PRINCIPALES ============ */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div>
             <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Ritmo base (s/km)</label>
             <input
@@ -313,22 +531,55 @@ export function PaceCalculator({
               {elevationGainM ? <span className="text-sm text-gray-500 ml-1">+{elevationGainM}m</span> : null}
             </div>
           </div>
+          <div>
+            <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Rango paces</label>
+            <div className="input font-mono text-base">
+              {paceToString(stats.fastestKm)}–{paceToString(stats.slowestKm)}
+              <span className="text-xs text-gray-500 ml-1">({paceDiff}s)</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ============ INSTRUCCIONES DE DRAG ============ */}
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-2.5 text-xs text-blue-900 flex items-center gap-2">
+          <GripVertical className="h-4 w-4 flex-shrink-0" />
+          <span>
+            <strong>Arrastra los puntos rojos arriba/abajo</strong> para ajustar el pace de cada km (snap a {SNAP_SECONDS}s).
+            {hasManualEdits && autoAdjust && (
+              <> · Tienes <strong>ajustes manuales</strong> — desactiva auto-ajuste para mantenerlos.</>
+            )}
+            {!autoAdjust && (
+              <> · Modo <strong>manual</strong> activo: tus cambios se preservan.</>
+            )}
+          </span>
         </div>
 
         {/* ============ GRÁFICO ALTIMETRÍA + RITMO ============ */}
-        <div className="bg-gray-50 rounded-md p-3">
-          <div className="text-xs text-gray-500 mb-2 flex items-center gap-4">
+        <div className="bg-gray-50 rounded-md p-3" ref={chartRef}>
+          <div className="text-xs text-gray-500 mb-2 flex items-center gap-4 flex-wrap">
             <span className="flex items-center gap-1">
               <span className="inline-block w-3 h-3 bg-gradient-to-t from-green-200 to-green-500 rounded-sm" />
               Altimetría (m)
             </span>
             <span className="flex items-center gap-1">
-              <span className="inline-block w-3 h-0.5 bg-runner-primary" />
-              Ritmo por km (s)
+              <span className="inline-block w-3 h-0.5 bg-red-600" />
+              Ritmo por km (s) — arrastrable
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-orange-500" />
+              Auto-ajuste pendiente
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-red-600" />
+              Manual / drag
             </span>
           </div>
-          <ResponsiveContainer width="100%" height={240}>
-            <ComposedChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+          <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+            <ComposedChart
+              data={chartData}
+              margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+              onMouseLeave={handleDragEnd}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis
                 dataKey="km"
@@ -345,11 +596,12 @@ export function PaceCalculator({
               <YAxis
                 yAxisId="right"
                 orientation="right"
-                domain={["auto", "auto"]}
+                domain={paceDomain}
                 tick={{ fontSize: 10 }}
                 width={45}
                 tickFormatter={(v) => paceToString(v)}
                 label={{ value: "s/km", angle: 90, position: "insideRight", fontSize: 10 }}
+                reversed
               />
               <Tooltip
                 formatter={(value: any, name: any) => {
@@ -366,9 +618,25 @@ export function PaceCalculator({
                 dataKey="paceSeconds"
                 stroke="#dc2626"
                 strokeWidth={2.5}
-                dot={{ r: 3, fill: "#dc2626" }}
-                activeDot={{ r: 5 }}
                 name="Ritmo"
+                dot={(dotProps: any) => {
+                  const i = (dotProps.payload?.km ?? 1) - 1;
+                  return (
+                    <DraggableDot
+                      {...dotProps}
+                      index={i}
+                      isActive={draggingKm === i}
+                      isAutoAdjusted={autoAdjust && useProfile}
+                      chartRef={chartRef}
+                      paceMin={paceMin}
+                      paceMax={paceMax}
+                      onDragStart={handleDragStart}
+                      onDragMove={handleDragMove}
+                      onDragEnd={handleDragEnd}
+                    />
+                  );
+                }}
+                activeDot={false}
               />
               {chartData.length > 0 && (
                 <ReferenceLine
@@ -376,7 +644,7 @@ export function PaceCalculator({
                   y={avgPace}
                   stroke="#6b7280"
                   strokeDasharray="4 4"
-                  label={{ value: "Media", fontSize: 9, position: "insideTopRight" }}
+                  label={{ value: `Media ${paceToString(avgPace)}`, fontSize: 9, position: "insideTopRight" }}
                 />
               )}
             </ComposedChart>
@@ -402,17 +670,21 @@ export function PaceCalculator({
                   <th className="text-right py-1.5 px-2">Altitud</th>
                   <th className="text-right py-1.5 px-2">Pendiente</th>
                   <th className="text-right py-1.5 px-2">Ritmo (s/km)</th>
+                  <th className="text-right py-1.5 px-2">vs Media</th>
                   <th className="text-right py-1.5 pl-2">Split parcial</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {chartData.map((d, i) => {
-                  // Calcular pendiente del segmento
                   const prevAlt = i === 0 ? profile[0].altitudeM : profile[i].altitudeM;
                   const slopePct = d.altitudeM - prevAlt;
+                  const vsAvg = d.paceSeconds - avgPace;
                   return (
-                    <tr key={d.km} className="hover:bg-gray-50">
-                      <td className="py-1.5 pr-2 font-mono font-bold">{d.km}</td>
+                    <tr key={d.km} className={`hover:bg-gray-50 ${draggingKm === i ? "bg-red-50" : ""}`}>
+                      <td className="py-1.5 pr-2 font-mono font-bold">
+                        {d.km}
+                        {draggingKm === i && <span className="ml-1 text-red-600">⬍</span>}
+                      </td>
                       <td className="py-1.5 px-2 text-right font-mono text-gray-700">
                         {d.altitudeM} m
                       </td>
@@ -435,10 +707,19 @@ export function PaceCalculator({
                           value={paceToString(d.paceSeconds)}
                           onChange={(e) => {
                             const sec = parsePaceInput(e.target.value);
-                            if (sec) updatePace(i, sec);
+                            if (sec) updatePace(i, snapPace(sec));
                           }}
                           className="w-20 text-right font-mono text-sm border border-gray-300 rounded px-1.5 py-0.5 focus:border-runner-primary focus:outline-none"
                         />
+                      </td>
+                      <td className="py-1.5 px-2 text-right font-mono text-xs">
+                        {Math.abs(vsAvg) < 1 ? (
+                          <span className="text-gray-400">media</span>
+                        ) : vsAvg > 0 ? (
+                          <span className="text-red-600">+{Math.round(vsAvg)}s</span>
+                        ) : (
+                          <span className="text-green-600">{Math.round(vsAvg)}s</span>
+                        )}
                       </td>
                       <td className="py-1.5 pl-2 text-right font-mono text-gray-700">
                         {formatTime(accumulateUpTo(paces, i))}
@@ -452,6 +733,7 @@ export function PaceCalculator({
                   <td className="py-2 pr-2">Total</td>
                   <td colSpan={2}></td>
                   <td className="py-2 px-2 text-right font-mono">{paceToString(avgPace)}/km</td>
+                  <td></td>
                   <td className="py-2 pl-2 text-right font-mono text-runner-primary text-base">
                     {formatTime(totalSeconds)}
                   </td>
@@ -462,46 +744,21 @@ export function PaceCalculator({
         </div>
 
         {/* ============ NOTAS ============ */}
-        <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-xs text-blue-800">
-          <strong>Cómo funciona:</strong> El ritmo se ajusta automáticamente por la pendiente
-          del km (≈ 4% más lento en subida por cada 1% de desnivel, ≈ 2.5% más rápido en bajada).
-          Puedes sobrescribir el ritmo de cualquier km. Si solo hay ganancia total, se genera un
-          perfil sintético triangular.
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-xs text-blue-800 space-y-1">
+          <p>
+            <strong>Cómo funciona:</strong> El ritmo se ajusta automáticamente por la pendiente
+            del km (≈ 4% más lento en subida por cada 1% de desnivel, ≈ 2.5% más rápido en bajada).
+          </p>
+          <p>
+            <strong>Drag & drop:</strong> mantén pulsado un punto rojo y muévelo arriba (más rápido) o abajo (más lento).
+            El pace se redondea a múltiplos de {SNAP_SECONDS} segundos. Compatible con ratón y táctil.
+          </p>
+          <p>
+            <strong>Garmin:</strong> descarga el TCX y súbelo a Garmin Connect (Entrenamientos → Importar).
+            Cada km se convierte en un step con pace target. Sincroniza con tu dispositivo y listo.
+          </p>
         </div>
       </div>
     </section>
   );
-}
-
-function accumulateUpTo(paces: number[], i: number): number {
-  let s = 0;
-  for (let k = 0; k <= i; k++) s += paces[k] ?? 0;
-  return s;
-}
-
-function computePaces(
-  basePace: number,
-  profile: AltimetryPoint[],
-  autoAdjust: boolean,
-  useProfile: boolean,
-  currentPaces: number[],
-): number[] {
-  const result: number[] = [];
-  for (let i = 0; i < profile.length - 1; i++) {
-    const prevAlt = i === 0 ? profile[0].altitudeM : profile[i].altitudeM;
-    const nextAlt = profile[i + 1].altitudeM;
-    const gain = nextAlt - prevAlt;
-    const slopePct = gain; // metros por km = % de pendiente
-    if (autoAdjust && useProfile) {
-      result.push(Math.round(adjustPaceBySlope(basePace, slopePct)));
-    } else {
-      // Mantener el valor actual si existe, si no usar base
-      if (currentPaces[i] && !autoAdjust) {
-        result.push(currentPaces[i]);
-      } else {
-        result.push(Math.round(basePace));
-      }
-    }
-  }
-  return result;
 }

@@ -396,6 +396,7 @@ function RaceDetailContent({ race, summary }: { race: any; summary: any }) {
 
             {/* ============ CALCULADORA DE RITMOS (Fase 3) ============ */}
             <PaceCalculator
+              raceName={race.name}
               distanceKm={race.distanceKm}
               elevationGainM={race.elevationGainM}
               altimetryData={race.altimetryData}

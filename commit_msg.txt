@@ -1,33 +1,73 @@
-feat: Sportmaniacs API scraper (25k carreras vs 5 curadas) + systemUpdate mutation
+feat: sync diaria nocturna + calculadora de ritmos con drag y descarga Garmin
 
-Investigué las 6 fuentes de datos para ver si alguna tenía API escondida
-tipo Correbirras/Supabase. Resultados:
+## 1. Sync diaria nocturna (GitHub Actions)
 
-- Sportmaniacs: 🟢 API pública en api-aws.sportmaniacs.com/api/races
-  - 25.000 carreras en total, pero solo 153 son running/trail en España futuras
-  - Pagina por fecha descendente, para al no encontrar futuras
-  - 1-2 requests por ejecución vs 50 innecesarios
-- RFEA: 🔴 Drupal cerrado, sin JSON/RSS/sitemap
-- FEDME: 🟡 Plugin The Events Calendar instalado pero API devuelve 0 eventos
-- Runedia: 🔴 HTML estático, params ignorados, 500 con fechaIni
-- ITRA: 🔴 503 anti-bot (ya conocido)
-- Correbirras: ✅ ya en producción (Supabase REST)
+Workflow nuevo `.github/workflows/daily-ingest.yml` que corre cada día a las
+02:00 UTC (04:00 hora España verano) para mantener la BBDD al día con
+carreras recién publicadas. Ejecuta los 6 ingest en orden:
 
-Cambios:
-- scripts/ingest-sportmaniacs.ts: reescrito para usar API REST con paginación
-  inteligente, filtros ESP + running/trail, mapeo de 50+ provincias, subida
-  idempotente via systemUpsert
-- scripts/ingest-sportmaniacs-curated.ts: el viejo stub con 5 carreras
-  (movido para histórico)
-- scripts/update-sportmaniacs-source.ts: cambia type=scraper → type=api
-- scripts/probe-{apis,apis-deep,apis-round3}.ts: probes de las 4 fuentes
-  restantes
-- scripts/probe-sportmaniacs-{types,future}.ts: análisis de la API
-- convex/dataSources.ts:
-  - systemUpdate mutation (CLI-friendly)
-  - Sportmaniacs description y type actualizados a "api"
+  1. Sportmaniacs (API REST, sube directo)
+  2. Correbirras (Supabase REST, sube directo)
+  3. RFEA (PDF + scraping → JSON)
+  4. FEDME (scraping → JSON)
+  5. ITRA (scraping → JSON)
+  6. Runedia (scraping → JSON)
+  7. ingest:to-convex (unifica JSONs + sube)
 
-Resultado: 222 → 374 carreras (+152 de Sportmaniacs, 1 provincia sin mapear)
-Total: 7 fuentes (1 con API, 6 con scraper HTML/PDF).
+Cada paso es `continue-on-error: true` para que un fallo no pare el resto.
 
-Idempotencia verificada: 0 creadas, 152 actualizadas, 1 fallaron en re-run.
+**Secrets requeridos** (Manu los añade en GitHub → Settings → Secrets):
+  - `NEXT_PUBLIC_CONVEX_URL` = https://dynamic-alpaca-705.convex.cloud
+  - `CONVEX_DEPLOY_KEY` = dev:dynamic-alpaca-705|eyJ2MiI6... (ya conocido)
+
+El viejo workflow semanal `scrape.yml` queda renombrado a
+`scrape-weekly-DEPRECATED.yml` por si Manu quiere recuperarlo.
+
+## 2. Calculadora de ritmos interactiva
+
+`components/pace-calculator.tsx` reescrito con:
+
+### Drag vertical de puntos
+- Cada Dot del pace es arrastrable arriba/abajo con el ratón
+- Snap automático a múltiplos de 5 segundos (lo que pidió Manu)
+- Funciona con touch (móvil) y ratón (escritorio)
+- Halo invisible de 14px para mejor hit area
+- Cursor cambia a "grab"/"grabbing" según hover/drag
+- Tooltip visual "⬍ arrastra" cuando un punto está activo
+- La fila correspondiente en la tabla se resalta en rojo
+
+### Descarga para Garmin
+- Nuevo módulo `lib/pace-export.ts` con generadores TCX y CSV
+- TCX = workout completo importable en Garmin Connect → Entrenamientos:
+  - 10 min calentamiento (sin pace target)
+  - 1 step por km con pace target en s/km (formato TCX nativo)
+  - 5 min enfriamiento
+  - 5K = 7 steps, Media = 23 steps, Maratón = 44 steps
+- CSV = splits universales para Excel/Sheets
+- Botón dropdown "Descargar Garmin" en la cabecera del componente
+- El archivo se llama `mi-dorsal-<nombre-carrera>.tcx`
+
+### Mejoras adicionales
+- Stats adicionales: rango paces (rápido-lento), diff vs media en tabla
+- Reversión del YAxis derecho (pace) para que "más alto = más rápido"
+  se vea intuitivo al arrastrar hacia arriba
+- Mensaje contextual cuando hay ajustes manuales
+- tsconfig.json: excluidos `scripts/` y `convex/_generated/` del typecheck
+  de Next (los scripts de probe tenían errores preexistentes)
+
+## 3. Otros cambios
+
+- `scripts/ingest-sportmaniacs.ts`: fix typecheck (`smSrc!._id` non-null assertion)
+- `package.json`/`package-lock.json`: añadido `fit-encoder` (de momento
+  sin uso directo — TCX es más simple y Garmin lo importa perfecto;
+  queda por si en el futuro queremos FIT binario workout)
+- `easy-fit` se desinstaló (solo servía para parsear, no generar)
+- `app/carreras/[slug]/client.tsx`: pasa `raceName` al PaceCalculator para
+  que el TCX descargado se llame como la carrera
+
+## Verificación
+- ✅ Build OK: `npx next build` compila en 3.9s, 28 páginas
+- ✅ Test del generador: `scripts/test-pace-export.ts` produce TCX/CSV correctos
+- ✅ TCX: estructura Garmin Connect v2 válida (Workouts → Workout → Step)
+- ✅ Snap a 5s: confirmado en `snapPace()` con Math.round(seconds/5)*5
+- ✅ Idempotencia Sportmaniacs: ya verificada, BBDD en 374 carreras

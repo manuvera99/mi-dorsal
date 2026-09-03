@@ -1,9 +1,12 @@
 "use server";
 
-import { extractRaceFromUrl } from "@/lib/ai/extract-race";
-import { revalidatePath } from "next/cache";
+import { extractRaceFromUrl, type ExtractedRace } from "@/lib/ai/extract-race";
 
-export async function extractFromUrl(url: string) {
+export type ExtractResult =
+  | { data: ExtractedRace; url: string }
+  | { error: string };
+
+export async function extractFromUrl(url: string): Promise<ExtractResult> {
   if (!url || !/^https?:\/\//.test(url)) {
     return { error: "URL inválida. Debe empezar con http:// o https://" };
   }
@@ -12,6 +15,6 @@ export async function extractFromUrl(url: string) {
     if (!data) return { error: "No se pudo extraer info de la URL" };
     return { data, url };
   } catch (e: any) {
-    return { error: e.message || "Error desconocido" };
+    return { error: e?.message || "Error desconocido" };
   }
 }

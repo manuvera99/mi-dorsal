@@ -55,7 +55,7 @@ export default function FromUrlPage() {
     setExtracted(null);
     startExtract(async () => {
       const res = await extractFromUrl(url);
-      if (res.error) {
+      if ("error" in res) {
         setError(res.error);
         return;
       }

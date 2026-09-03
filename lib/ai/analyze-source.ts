@@ -220,6 +220,19 @@ Analiza la web como fuente de datos para scraping.`;
 async function fetchUrl(url: string): Promise<string> {
   // Defense in depth: limpiar URL de nuevo antes de fetch
   url = cleanUrl(url);
+
+  // Si después de limpiar queda vacía o no es válida, fallar antes del fetch
+  if (!url || !/^https?:\/\//.test(url)) {
+    throw new Error(`URL inválida tras limpieza: ${JSON.stringify(url)}`);
+  }
+
+  // Validar con URL constructor para fallar rápido si está malformada
+  try {
+    new URL(url);
+  } catch (e: any) {
+    throw new Error(`URL malformada tras limpieza: ${JSON.stringify(url)} (${e?.message ?? e})`);
+  }
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15_000);
   try {

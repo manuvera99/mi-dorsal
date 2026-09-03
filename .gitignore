@@ -47,3 +47,6 @@ next-env.d.ts
 # logs (created by my own deployment scripts)
 logs/
 *.log
+
+.vercel
+.env*

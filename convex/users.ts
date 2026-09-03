@@ -72,8 +72,7 @@ export const getProfileByClerkId = query({
 
 /**
  * Bootstrap del primer admin: si NO hay admins, el caller se hace admin.
- * Pensado para que el primer usuario del sistema se pueda promover a sí mismo.
- * Después de que exista al menos un admin, hay que usar `setUserRole` con permisos.
+ * Crea el profile si no existe (idempotente con upsert).
  */
 export const bootstrapFirstAdmin = mutation({
   args: {},
@@ -88,12 +87,24 @@ export const bootstrapFirstAdmin = mutation({
       throw new Error("Ya existe un admin. Pide a un admin existente que te promueva.");
     }
 
-    const profile = await ctx.db
+    // Buscar o crear el profile
+    let profile = await ctx.db
       .query("profiles")
       .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
       .unique();
+
     if (!profile) {
-      throw new Error("Profile not found. Crea el profile primero con upsertMyProfile.");
+      // Auto-crear con datos del identity de Clerk
+      const profileId = await ctx.db.insert("profiles", {
+        clerkUserId: identity.subject,
+        displayName: identity.name ?? identity.email ?? "Admin",
+        avatarUrl: identity.pictureUrl,
+        role: "admin", // directamente admin
+        emailResultsEnabled: true,
+        emailRemindersEnabled: true,
+        emailWeeklyDigestEnabled: true,
+      });
+      return profileId;
     }
     await ctx.db.patch(profile._id, { role: "admin" });
     return profile._id;

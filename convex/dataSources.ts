@@ -285,3 +285,132 @@ export const migrateRacesToSources = mutation({
     return { scanned: races.length, updated };
   },
 });
+
+// ============================================================================
+// SYSTEM MUTATIONS — usadas por la API route /api/scrape/[source].
+// No requieren auth (la API route verifica con Clerk).
+// La API route es el gatekeeper: solo admins pueden llamarla.
+// ============================================================================
+
+/**
+ * Versión system de startSync (sin requireAdmin) para usar desde la API route.
+ */
+export const systemStartSync = mutation({
+  args: { dataSourceId: v.id("dataSources") },
+  handler: async (ctx, { dataSourceId }) => {
+    const syncId = await ctx.db.insert("syncHistory", {
+      dataSourceId,
+      startedAt: Date.now(),
+      status: "running",
+      triggeredBy: "system:api-route",
+    });
+    await ctx.db.patch(dataSourceId, { status: "active" });
+    return syncId;
+  },
+});
+
+/**
+ * Versión system de seedDefaults — crea las 5 fuentes estándar sin auth.
+ */
+export const systemSeedDefaults = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const defaults = [
+      { name: "RFEA", slug: "rfea", type: "scraper" as const, description: "Real Federación Española de Atletismo — calendario oficial", baseUrl: "https://www.rfea.es" },
+      { name: "FEDME", slug: "fedme", type: "scraper" as const, description: "Federación Española de Deportes de Montaña y Escalada", baseUrl: "https://www.fedme.es" },
+      { name: "ITRA", slug: "itra", type: "scraper" as const, description: "International Trail Running Association — carreras con puntos ITRA", baseUrl: "https://itra.run" },
+      { name: "Sportmaniacs", slug: "sportmaniacs", type: "scraper" as const, description: "Plataforma popular de carreras en España (typeahead, sin API pública)", baseUrl: "https://sportmaniacs.com" },
+      { name: "Runedia", slug: "runedia", type: "scraper" as const, description: "Calendario popular de carreras populares en España (anti-bot)", baseUrl: "https://runedia.es" },
+      { name: "Manual", slug: "manual", type: "manual" as const, description: "Carreras añadidas a mano por el admin desde el panel" },
+    ];
+    const results: Array<{ slug: string; id: Id<"dataSources">; created: boolean }> = [];
+    for (const d of defaults) {
+      const existing = await ctx.db
+        .query("dataSources")
+        .withIndex("by_slug", (q) => q.eq("slug", d.slug))
+        .unique();
+      if (existing) {
+        results.push({ slug: d.slug, id: existing._id, created: false });
+      } else {
+        const id = await ctx.db.insert("dataSources", { ...d, status: "active", totalRaces: 0, totalSyncs: 0 });
+        results.push({ slug: d.slug, id, created: true });
+      }
+    }
+    return results;
+  },
+});
+
+/**
+ * Versión system de migrateRacesToSources.
+ */
+export const systemMigrateRacesToSources = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const sources = await ctx.db.query("dataSources").collect();
+    const bySlug = new Map(sources.map((s) => [s.slug, s._id]));
+    const byName = new Map(sources.map((s) => [s.name.toLowerCase(), s._id]));
+
+    const races = await ctx.db
+      .query("races")
+      .filter((q) => q.eq(q.field("dataSourceId"), undefined))
+      .collect();
+
+    let updated = 0;
+    for (const race of races) {
+      const adapter = (race as any).scraperAdapter?.toLowerCase();
+      if (!adapter) continue;
+      let sourceId = bySlug.get(adapter);
+      if (!sourceId) sourceId = byName.get(adapter);
+      if (sourceId) {
+        await ctx.db.patch(race._id, { dataSourceId: sourceId });
+        updated++;
+      }
+    }
+    return { scanned: races.length, updated };
+  },
+});
+
+/**
+ * Versión system de finishSync.
+ */
+export const systemFinishSync = mutation({
+  args: {
+    syncId: v.id("syncHistory"),
+    dataSourceId: v.id("dataSources"),
+    status: v.union(v.literal("success"), v.literal("error")),
+    raceCount: v.optional(v.number()),
+    error: v.optional(v.string()),
+  },
+  handler: async (ctx, { syncId, dataSourceId, status, raceCount, error }) => {
+    const now = Date.now();
+    const sync = await ctx.db.get(syncId);
+    if (!sync) return;
+    const durationMs = now - sync.startedAt;
+
+    await ctx.db.patch(syncId, {
+      finishedAt: now,
+      durationMs,
+      status,
+      raceCount,
+      error,
+    });
+
+    const source = await ctx.db.get(dataSourceId);
+    if (source) {
+      const races = await ctx.db
+        .query("races")
+        .withIndex("by_data_source", (q) => q.eq("dataSourceId", dataSourceId))
+        .collect();
+      await ctx.db.patch(dataSourceId, {
+        lastSyncAt: now,
+        lastSyncDurationMs: durationMs,
+        lastSyncRaceCount: raceCount,
+        lastSyncError: error,
+        totalRaces: races.length,
+        totalSyncs: (source.totalSyncs ?? 0) + 1,
+        status: status === "success" ? "active" : "error",
+      });
+    }
+    return syncId;
+  },
+});

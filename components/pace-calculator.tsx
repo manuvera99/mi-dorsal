@@ -244,6 +244,31 @@ export function PaceCalculator({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kmCount, autoAdjust, useProfile]);
 
+  // ===========================================================
+  // Bloquear scroll de la PÁGINA ENTERA mientras hay un drag activo.
+  // El touch-action:none en el chartRef no es suficiente en móvil porque
+  // si el dedo se sale un poco del chart (fácil arrastrando), el navegador
+  // inicia scroll del body. Esta solución es la estándar para modales y
+  // drawer interactions en móvil.
+  // ===========================================================
+  useEffect(() => {
+    if (draggingKm === null) return;
+    const prevBodyTouch = document.body.style.touchAction;
+    const prevHtmlTouch = document.documentElement.style.touchAction;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.touchAction = "none";
+    document.documentElement.style.touchAction = "none";
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.touchAction = prevBodyTouch;
+      document.documentElement.style.touchAction = prevHtmlTouch;
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, [draggingKm]);
+
   const chartData = useMemo<PacePoint[]>(() => {
     if (paces.length === 0) return [];
     return profile.slice(1).map((p, i) => {
@@ -565,13 +590,12 @@ export function PaceCalculator({
           style={{
             // CRÍTICO para móvil: bloquea scroll/zoom del navegador
             // mientras el usuario interactúa con el chart.
-            // "pan-y" en el chart permite scroll vertical fuera del chart,
-            // pero "none" en el chartRef bloquea TODO (recomendado para
-            // gráficos con drag vertical).
             touchAction: "none",
             userSelect: "none",
             WebkitTapHighlightColor: "transparent",
             WebkitUserSelect: "none",
+            // Evita scroll chaining al body cuando el dedo llega al borde
+            overscrollBehavior: "contain",
           }}
         >
           <div className="text-xs text-gray-500 mb-2 flex items-center gap-4 flex-wrap">

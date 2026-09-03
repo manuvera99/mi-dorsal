@@ -1,24 +1,22 @@
-﻿fix: bloquear scroll vertical en móvil durante drag de puntos pace
+﻿fix: bloquear scroll del BODY mientras hay un drag pace activo
 
-Manu reportó que al arrastrar el punto rojo en el chart, en móvil se hacía
-scroll vertical de la página al mismo tiempo (el navegador interpretaba el
-gesto como scroll en lugar de drag).
+El touch-action: none en el chartRef container no era suficiente en móvil:
+cuando el dedo se salía un poco del chart (cosa fácil arrastrando), el
+navegador interpretaba el gesto como scroll de la página y desplazaba
+aunque el indicador "arrastra" estuviera visible.
 
-Tres cambios:
+Solución: useEffect que aplica `touch-action: none` + `overflow: hidden`
+a `document.body` Y `document.documentElement` mientras `draggingKm !== null`,
+y restaura los valores anteriores al terminar. Es el patrón estándar que
+usan los modales y drawers en móvil.
 
-1. **chartRef container con `touch-action: none`** — bloquea el navegador
-   para que NO inicie scroll/zoom cuando el usuario toca el chart.
-   Aplicado también `userSelect: none` y `WebkitTapHighlightColor: transparent`
-   para comportamiento limpio en iOS.
+También:
+- `overscroll-behavior: contain` en el chartRef (extra seguridad contra
+  scroll chaining en los bordes).
+- El touchmove handler ya tenía e.preventDefault() + passive: false,
+  ahora reforzado con la solución global de body.
 
-2. **`e.preventDefault()` en touchmove handler** — refuerza el bloqueo del
-   scroll mientras el dedo está arrastrando un punto.
-
-3. **Halo del dot de 14px → 20px** — mejor hit area para dedos en móvil
-   (los dedos son más imprecisos que el cursor del ratón).
-
-4. **Listener `touchcancel`** añadido — si el sistema interrumpe el touch
-   (ej. notificación push), terminamos el drag limpiamente.
-
-Verificación: el workflow diario sigue ejecutándose (ya verificado OK en
-run anterior), build local compila sin errores.
+Si el drag termina (mouseup, touchend o touchcancel) los estilos se
+restauran automáticamente. El cleanup del useEffect guarda los valores
+previos, así que no interfiere con otros componentes que toquen estos
+estilos.

@@ -136,6 +136,9 @@ export default defineSchema({
     startTime: v.optional(v.string()),
     address: v.optional(v.string()),              // dirección exacta de salida
     venue: v.optional(v.string()),                 // lugar de salida/meta (ej. "Plaza del Ayuntamiento")
+    // Geolocalización de la carrera (lat/lng de la salida)
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
 
     // URLs clave (lo que Manu quiere BIEN VISIBLE)
     officialUrl: v.optional(v.string()),          // web oficial de la prueba

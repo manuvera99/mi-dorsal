@@ -1,54 +1,47 @@
-﻿feat: deep extract IA con 1-click en admin y procesado automático nightly
+﻿feat: filtro de carreras por distancia desde tu ubicación
 
-Manu pidió dos cosas:
-1. Que el nightly procese las carreras NUEVAS que aparezcan con el ingest
-2. Que el admin tenga un botón 1-click para extraer datos de cada carrera
+Manu pidió poder filtrar las carreras del catálogo por distancia desde
+la ciudad del usuario, con un slider para ajustar el radio máximo.
 
-## 1. Nightly ya cubre carreras nuevas (verificado en run real)
+## Cambios
 
-El script deep-extract-all.ts ya tenía el flag --priority que ordena:
-  0 = nunca extraída (NUEVAS del ingest diario)
-  1 = sin longDescription
-  2 = sin altimetryData
-  3 = sin raceFormats
-  4 = completa
+### Schema
+- `convex/schema.ts`: añadidos `latitude: v.optional(v.number())` y
+  `longitude: v.optional(v.number())` a `races`
+- `convex/races.ts`: añadidos al validator de `systemUpdate` + `systemListAll`
+  también los devuelve (junto con locality/province para geocodificar)
 
-En el último run real del workflow, cogió:
-  - 1 carrera nueva de Sportmaniacs
-  - 40 carreras nuevas de Correbirras (de 196 scrapeadas)
-  - Todas con extractedAt actualizado en el mismo workflow
+### Geocodificación (Nominatim/OpenStreetMap, gratis, sin API key)
+- `scripts/geocode-races.ts`: nuevo script que busca `${locality}, ${province},
+  España` y guarda lat/lng. Respeta el rate limit de 1 req/seg.
+- `scripts/check-geo-stats.ts`: helper para ver cuántas tienen coords
+- Resultado: **426/431 carreras geocodificadas (99%)** en ~8 min
+- Las 5 que faltan son edge cases (nombres con tildes raros, pueblos pequeños
+  que Nominatim no indexa) — se pueden afinar manualmente si es necesario
 
-El paso 8/8 ya está en el workflow `daily-ingest.yml`.
+### Componentes nuevos
+- `lib/geo/distance.ts`: fórmula de Haversine + `formatDistance` (m / km)
+- `components/race-distance-filter.tsx`: el panel con
+  - Botón "📍 Usar mi ubicación" (pide permiso vía `navigator.geolocation`)
+  - Slider 0-300km en pasos de 10km (default 200km)
+  - Estado en sessionStorage (NO se guarda en BBDD — privacidad)
+  - Mensaje claro si el usuario rechaza el permiso
+  - Botón X para limpiar la ubicación
+- `components/race-card.tsx`: nueva prop `distanceFromUser` opcional
+  que muestra "X km de ti" con icono de navegación en cada card
 
-## 2. Botón 1-click en admin
+### Listado
+- `app/carreras/page.tsx`: integra el filtro de distancia encima de los
+  filtros existentes
+- Filtrado en cliente (no toca la query de Convex — trae todas y filtra
+  en JS, más simple y respeta los filtros existentes)
+- Carrera sin coordenadas: se muestra siempre (no podemos calcular)
+- Mensaje contextual: "X carreras dentro de Y km" + "Z ocultas por distancia"
+- Si no hay resultados por el radio, sugiere ampliar
 
-### app/admin/races/[id]/actions.ts
-Nueva action `deepExtractAndApplyAction(raceId, url?)` que:
-- Verifica admin (vía Clerk + Convex profile)
-- Si no se pasa URL, usa la officialUrl de la carrera
-- Extrae con IA (MiniMax M3)
-- Aplica directamente via adminUpdate (sin revisión previa)
-- Devuelve { ok, fieldsApplied, confidence, url }
-
-Mantiene la action original `deepExtractAction` (2-pasos) para los
-que quieran revisar antes de aplicar.
-
-### app/admin/races/[id]/page.tsx
-- Nuevo botón prominente "⚡ Re-extraer y aplicar (1-click)" en la
-  cabecera (al lado de "Eliminar")
-- Gradiente morado-rosa para destacar
-- Muestra resultado inline ("✅ N campos aplicados (confidence: X)")
-- Auto-recarga la página tras éxito
-
-### app/admin/races/page.tsx (listado)
-- Nuevo botón "⚡ Re-extraer" inline en cada fila
-- Confirm antes de ejecutar
-- Muestra resultado temporal inline
-- Permite extraer cualquier carrera sin entrar al detalle
-
-## Otros cambios
-
-- Bug fix en el listado: el botón "Editar" se veía después del nuevo
-  botón "Re-extraer", manteniendo el orden visual correcto
-- Bug fix en action: imports añadidos (auth, ConvexHttpClient, api)
-- Type `DeepExtractAndApplyResult` exportado para uso en cliente
+## Privacidad
+- La ubicación del usuario NO se envía a ningún servidor
+- Solo se guarda en sessionStorage (se borra al cerrar el tab)
+- Se puede desactivar con la X o cerrar la pestaña
+- Sin geolocalización, el slider sigue funcionando pero muestra todas
+  (sin filtrar)

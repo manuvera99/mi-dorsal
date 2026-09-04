@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { MapPin, Calendar, Mountain, ThumbsUp } from "lucide-react";
+import { MapPin, Calendar, Mountain, ThumbsUp, Navigation } from "lucide-react";
 import { formatDate, formatProvince, formatRaceType } from "@/lib/utils";
+import { formatDistance } from "@/lib/geo/distance";
 
 interface RaceCardProps {
   race: any;
@@ -9,6 +10,8 @@ interface RaceCardProps {
   totalRatings?: number;
   voteUps?: number;
   voteDowns?: number;
+  /** Distancia en km desde el usuario a la carrera (si se conoce) */
+  distanceFromUser?: number | null;
 }
 
 export function RaceCard({
@@ -18,6 +21,7 @@ export function RaceCard({
   totalRatings,
   voteUps = 0,
   voteDowns = 0,
+  distanceFromUser,
 }: RaceCardProps) {
   const hasVotes = voteUps + voteDowns > 0;
   return (
@@ -61,6 +65,12 @@ export function RaceCard({
           <Calendar className="h-3.5 w-3.5" />
           <span>{formatDate(race.startDate)} {race.startTime && `· ${race.startTime}h`}</span>
         </div>
+        {distanceFromUser != null && (
+          <div className="flex items-center gap-1.5 text-runner-primary font-semibold">
+            <Navigation className="h-3.5 w-3.5" />
+            <span>{formatDistance(distanceFromUser)} de ti</span>
+          </div>
+        )}
         {race.elevationGainM !== undefined && race.elevationGainM > 0 && (
           <div className="flex items-center gap-1.5">
             <Mountain className="h-3.5 w-3.5" />

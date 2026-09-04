@@ -29,11 +29,21 @@ export function Header({ mockMode = false }: { mockMode?: boolean }) {
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/90 backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-runner-primary text-white font-bold">
-            m
-          </div>
-          <span className="text-lg font-bold tracking-tight">mi-dorsal</span>
+        <Link href="/" className="flex items-center gap-2" aria-label="mi-dorsal — inicio">
+          {/* Isotipo SVG (logo profesional con la idea del dorsal + hilo) */}
+          <img
+            src="/icon.svg"
+            alt=""
+            width={36}
+            height={36}
+            className="h-9 w-9"
+            aria-hidden="true"
+          />
+          <span className="text-lg font-bold tracking-tight">
+            <span className="text-runner-dark">mi</span>
+            <span className="text-gray-400 font-light">-</span>
+            <span className="text-runner-primary">dorsal</span>
+          </span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-6 text-sm">

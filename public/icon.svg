@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="mi-dorsal">
+  <title>mi-dorsal</title>
+
+  <!-- Hilo curvo (línea que conecta los imperdibles) -->
+  <path d="M 14 8 Q 32 2 50 8" stroke="#0a0a0a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Imperdibles -->
+  <circle cx="14" cy="8" r="2.5" fill="#0a0a0a"/>
+  <circle cx="50" cy="8" r="2.5" fill="#0a0a0a"/>
+
+  <!-- Dorsal -->
+  <rect x="8" y="12" width="48" height="48" rx="6" fill="#dc2626"/>
+
+  <!-- Sombra inferior sutil -->
+  <rect x="8" y="56" width="48" height="4" rx="2" fill="#991b1b" opacity="0.4"/>
+
+  <!-- m estilizada -->
+  <g stroke="white" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 16 49 V 30"/>
+    <path d="M 16 30 Q 16 26 20 26 Q 24 26 24 30 V 49"/>
+    <path d="M 24 30 Q 24 26 28 26 Q 32 26 32 30 V 49"/>
+    <path d="M 32 30 V 49"/>
+    <path d="M 32 30 Q 32 26 36 26 Q 40 26 40 30 V 49"/>
+    <path d="M 40 30 V 49"/>
+  </g>
+</svg>

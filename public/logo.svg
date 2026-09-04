@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64" role="img" aria-label="mi-dorsal">
+  <title>mi-dorsal</title>
+  <desc>El hilo que te une a tu dorsal — planificador personal de carreras</desc>
+
+  <!-- ============ ISOTIPO ============ -->
+  <g transform="translate(0, 0)">
+    <!-- Hilo (curva suave) que conecta los imperdibles -->
+    <path d="M 14 8 Q 32 2 50 8" stroke="#0a0a0a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+
+    <!-- Imperdibles (círculos pequeños) -->
+    <circle cx="14" cy="8" r="2.5" fill="#0a0a0a"/>
+    <circle cx="50" cy="8" r="2.5" fill="#0a0a0a"/>
+
+    <!-- Dorsal (rectángulo rojo con esquinas redondecidas) -->
+    <rect x="8" y="12" width="48" height="48" rx="6" fill="#dc2626"/>
+
+    <!-- Sombra sutil inferior -->
+    <rect x="8" y="56" width="48" height="4" rx="2" fill="#991b1b" opacity="0.4"/>
+
+    <!-- Letra "m" estilizada en blanco dentro del dorsal -->
+    <g stroke="white" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <!-- Pata izquierda -->
+      <path d="M 16 49 V 30"/>
+      <!-- Curva 1 (arco hacia el centro) -->
+      <path d="M 16 30 Q 16 26 20 26 Q 24 26 24 30 V 49"/>
+      <!-- Curva 2 (arco hacia la derecha) -->
+      <path d="M 24 30 Q 24 26 28 26 Q 32 26 32 30 V 49"/>
+      <!-- Pata derecha -->
+      <path d="M 32 30 V 49"/>
+      <!-- Pata derecha extendida (tercer trazo de la m) -->
+      <path d="M 32 30 Q 32 26 36 26 Q 40 26 40 30 V 49"/>
+      <!-- Cierre de la m -->
+      <path d="M 40 30 V 49"/>
+    </g>
+  </g>
+
+  <!-- ============ WORDMARK ============ -->
+  <g transform="translate(72, 0)" fill="#0a0a0a">
+    <text x="0" y="38" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="26" font-weight="800" letter-spacing="-0.6">mi</text>
+    <text x="0" y="38" dx="32" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="26" font-weight="300" letter-spacing="-0.4" fill="#525252">-</text>
+    <text x="0" y="38" dx="42" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="26" font-weight="800" letter-spacing="-0.6" fill="#dc2626">dorsal</text>
+  </g>
+
+  <!-- ============ TAGLINE ============ -->
+  <text x="72" y="56" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="9" font-weight="500" letter-spacing="0.4" fill="#737373">EL HILO QUE TE UNE A TU DORSAL</text>
+</svg>

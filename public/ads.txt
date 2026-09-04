@@ -1,0 +1,8 @@
+# ads.txt — Authorized Digital Sellers
+# https://iabtechlab.com/ads-txt/
+#
+# Google AdSense (cuando esté habilitado)
+# Sustituye ca-pub-XXXXXXXXXXXXXXXX por tu ID real de AdSense (16 dígitos).
+# Lo obtienes en https://www.google.com/adsense después de aprobar tu cuenta.
+#
+# google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0

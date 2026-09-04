@@ -30,7 +30,7 @@ crons.cron(
 crons.interval(
   "recalc-stats",
   { minutes: 5 },
-  internal.crons.recalcStats.recalcStats,
+  internal["crons/recalcStats"].recalcStats,
 );
 
 export default crons;

@@ -862,3 +862,117 @@ export const getBySlugForUser = query({
     return { race, myRace };
   },
 });
+
+// =============================================================================
+// QUERIES SEO — auth-free, usadas por sitemap.ts y generateMetadata
+// Solo devuelven los campos necesarios para SEO/JSON-LD, no la carrera entera.
+// =============================================================================
+
+/**
+ * Listado mínimo para el sitemap.xml.
+ * Devuelve solo slug + ingestedAt + startDate + isFeatured.
+ * Auth-free (uso público desde Next.js sitemap.ts).
+ */
+export const listForSitemap = query({
+  args: {},
+  handler: async (ctx) => {
+    const races = await ctx.db
+      .query("races")
+      .withIndex("by_published_date")
+      .filter((q) => q.eq(q.field("isPublished"), true))
+      .collect();
+    return races.map((r) => ({
+      slug: r.slug,
+      startDate: r.startDate,
+      isFeatured: r.isFeatured ?? false,
+      ingestedAt: r.ingestedAt ?? r._creationTime,
+    }));
+  },
+});
+
+/**
+ * Datos SEO de una carrera por slug. Auth-free.
+ * Devuelve solo los campos necesarios para generateMetadata + JSON-LD.
+ * Más eficiente que getBySlug (no carga deep extraction, gallery, etc).
+ */
+export const getBySlugForSeo = query({
+  args: { slug: v.string() },
+  handler: async (ctx, { slug }) => {
+    const matches = await ctx.db
+      .query("races")
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
+      .collect();
+    if (matches.length === 0) return null;
+    // Defensive: si hay duplicados, devuelve la más reciente
+    const race =
+      matches.length > 1
+        ? matches.sort((a, b) => (b._creationTime ?? 0) - (a._creationTime ?? 0))[0]
+        : matches[0];
+
+    return {
+      _id: race._id,
+      name: race.name,
+      slug: race.slug,
+      description: race.description,
+      longDescription: race.longDescription,
+      locality: race.locality,
+      province: race.province,
+      distanceKm: race.distanceKm,
+      elevationGainM: race.elevationGainM,
+      raceType: race.raceType,
+      homologated: race.homologated,
+      startDate: race.startDate,
+      startTime: race.startTime,
+      address: race.address,
+      venue: race.venue,
+      latitude: race.latitude,
+      longitude: race.longitude,
+      officialUrl: race.officialUrl,
+      registrationUrl: race.registrationUrl,
+      imageUrl: race.imageUrl,
+      organizer: race.organizer,
+      priceEur: race.priceEur,
+      priceIncludes: race.priceIncludes,
+      registrationOpenDate: race.registrationOpenDate,
+      registrationCloseDate: race.registrationCloseDate,
+      maxParticipants: race.maxParticipants,
+      isPublished: race.isPublished,
+      isFeatured: race.isFeatured,
+      hashtags: race.hashtags,
+      raceFormats: race.raceFormats,
+      _creationTime: race._creationTime,
+    };
+  },
+});
+
+/**
+ * Carreras relacionadas (mismo tipo + provincia cercana).
+ * Útil para "Otras carreras que te pueden interesar" al final de la página.
+ * Auth-free.
+ */
+export const getRelated = query({
+  args: {
+    raceId: v.id("races"),
+    province: v.optional(provinceValidator),
+    raceType: v.optional(raceTypeValidator),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, { raceId, province, raceType, limit }) => {
+    const take = limit ?? 6;
+    const all = await ctx.db
+      .query("races")
+      .withIndex("by_published_date")
+      .filter((q) => q.eq(q.field("isPublished"), true))
+      .collect();
+    const filtered = all
+      .filter((r) => r._id !== raceId)
+      .filter((r) => {
+        // Mismo tipo o misma provincia (mismo tipo pesa más)
+        if (raceType && r.raceType === raceType) return true;
+        if (province && r.province === province) return true;
+        return false;
+      })
+      .slice(0, take);
+    return filtered;
+  },
+});

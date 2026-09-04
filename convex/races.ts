@@ -440,9 +440,22 @@ export const systemListAll = query({
         _id: r._id,
         name: r.name,
         slug: r.slug,
+        startDate: r.startDate,
         officialUrl: r.officialUrl,
         extractedAt: r.extractedAt,
+        extractedFromUrl: r.extractedFromUrl,
         extractionConfidence: r.extractionConfidence,
+        // Campos deep-extracted (para check-bulk-status y debugging)
+        longDescription: r.longDescription,
+        altimetryData: r.altimetryData,
+        raceFormats: r.raceFormats,
+        aidStations: r.aidStations,
+        priceTiers: r.priceTiers,
+        categories: r.categories,
+        galleryUrls: r.galleryUrls,
+        services: r.services,
+        organizer: r.organizer,
+        contactEmail: r.contactEmail,
       }));
   },
 });

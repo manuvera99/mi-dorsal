@@ -1,21 +1,30 @@
-﻿fix: añadir 4 campos al schema que la IA devolvía pero Convex rechazaba
+﻿fix: query systemListAll devolvía solo 6 campos (sin deep-extracted)
 
-El bulk deep-extract crasheaba con "Uncaught Error: Failed to insert
-or update a document in table 'races' because it does not match the
-schema: Object contains extra field `regulationUrl` that is not in
-the validator".
+El check-bulk-status mostraba 0 con longDescription/altimetryData/raceFormats
+pero en realidad se estaban guardando bien. La causa era que `systemListAll`
+solo devolvía _id, name, slug, officialUrl, extractedAt, extractionConfidence.
 
-Causa: la IA devolvía campos como regulationUrl, mapUrl, mapEmbedUrl,
-altimetryImageUrl que NO estaban en el schema de Convex, así que la
-mutation systemUpdate los rechazaba.
+Ahora devuelve también:
+- extractedFromUrl
+- longDescription
+- altimetryData
+- raceFormats
+- aidStations
+- priceTiers
+- categories
+- galleryUrls
+- services
+- organizer
+- contactEmail
 
-Fix en 3 sitios:
-1. convex/schema.ts: añadidos los 4 campos como v.optional(v.string())
-2. convex/races.ts: añadidos los 4 campos al validator de systemUpdate
-3. (pendiente) bulk 3 ya corriendo con el schema corregido
+También añadí process.on('unhandledRejection'/'uncaughtException') en el
+script para que un error aislado de la API no aborte el bulk completo.
 
-Resultado del bulk (en curso, ~50% completado):
-- 181/361 carreras con extractedAt
-- 907+ campos aplicados (media ~8.7/carrera)
-- URLs problemáticas: anti-bot (403), malformadas (404), páginas
-  genéricas de portales, etc.
+Estado real del bulk (verificado tras el fix):
+- 319/361 carreras con extractedAt (88%)
+- 285 con longDescription (~80% del total)
+- 234 con raceFormats (~65% del total)
+- 0 con altimetryData (la IA no devolvió altimetría per-km; requiere
+  un GPX/track subido, no se puede sacar solo de HTML)
+
+Quedan 42 por procesar. El script es ahora robusto a unhandledRejection.

@@ -194,6 +194,14 @@ async function main() {
   }
 }
 
+// Capturar errores async no manejados para que un fallo aislado no aborte el script
+process.on("unhandledRejection", (reason) => {
+  console.error("⚠️  Unhandled rejection (continúa):", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("⚠️  Uncaught exception (continúa):", err);
+});
+
 main().catch((e) => {
   console.error("❌ Error fatal:", e);
   process.exit(1);

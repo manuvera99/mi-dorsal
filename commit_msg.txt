@@ -1,30 +1,48 @@
-﻿feat: selector de ciudades españolas cuando la IP no es de España
+﻿fix: dos bugs críticos en geolocalización
 
-Manu reportó que la IP detectada está en Frankfurt (Alemania), no en
-Alicante. Probablemente usa VPN corporativo o proxy del operador. La
-IP geo no es útil en su caso.
+## Bug 1: el endpoint IP pillaba la IP del servidor, no del cliente
 
-## Solución
+Manu detectó que SIEMPRE le decía que estaba en Alemania, incluso
+desde el móvil. El problema: `/api/geo/ip` llamaba a `ipwho.is/` SIN
+pasar ninguna IP. `ipwho.is` veía la IP de quien le hacía la request,
+que era el SERVIDOR de Vercel en Frankfurt. Por eso siempre Alemania.
 
-Cuando la IP detectada NO es España, mostramos debajo del badge un
-**selector de ciudades españolas** con un click por ciudad. El usuario
-puede elegir su ciudad real y empieza a filtrar inmediatamente.
+Fix: extraemos la IP del cliente de los headers `x-forwarded-for`,
+`x-real-ip` o `cf-connecting-ip` y la pasamos a ipwho.is en la URL.
 
-### Cambios
-- `SPANISH_CITIES` array: 14 ciudades españolas con coordenadas
-  (Elche, Alicante, Valencia, Murcia, Cartagena, Albacete, Madrid,
-  Barcelona, Sevilla, Bilbao, Málaga, Zaragoza, Granada)
-- `applyCity()`: aplica las coordenadas de la ciudad elegida
-- Nuevo `detectedCountry` / `detectedCity` state
-- UI: si la IP es de fuera de España, aparece un bloque azul con
-  los botones de ciudades
-- Botón "✏️ Otra..." para abrir el input manual
-- Cuando el usuario elige una ciudad, el badge verde se actualiza
-  y la fuente cambia de "ip" a "preset"
+```ts
+// Antes:
+const res = await fetch("https://ipwho.is/", { ... });
 
-Flujo:
-1. Manu entra a /carreras
-2. Detecta IP → Frankfurt, Alemania
-3. Aparece selector de ciudades españolas
-4. Click en "Elche" (un click) → location set
-5. Carreras filtradas desde Elche
+// Ahora:
+const clientIp = getClientIp(req);  // lee headers
+const res = await fetch(`https://ipwho.is/${clientIp}`, { ... });
+```
+
+También devuelvo la `clientIp` en la respuesta para debug.
+
+## Bug 2: el selector de ciudades solo aparecía en una condición
+
+El selector estaba condicionado a `coordsSource === "ip"`, así que si
+el usuario tenía coords de sessionStorage de una sesión anterior (por
+ejemplo manuales), no aparecía. Manu no veía el selector.
+
+Fix: el selector de ciudades SIEMPRE visible. Es el método más fiable
+porque no depende de IP ni GPS. Aparece en todos los casos.
+
+## Bonus: mensaje GPS más neutro
+
+Antes cuando `getCurrentPosition` fallaba con PERMISSION_DENIED, decíamos
+"El navegador dice que el permiso está denegado". Esto presupone que
+está denegado, pero hay otros casos (extensión bloqueando, iframe, etc.).
+Ahora el mensaje es: "El navegador no devolvió tu ubicación".
+
+## Cambios
+
+- `app/api/geo/ip/route.ts`: reescrito para usar x-forwarded-for
+- `components/race-distance-filter.tsx`:
+  - Quitada la condición que ocultaba el selector de ciudades
+  - El selector es SIEMPRE visible
+  - Botones de ciudad se resaltan en azul cuando están activos
+  - Mensaje de error GPS más neutro
+  - Timeout reducido de 10s a 8s

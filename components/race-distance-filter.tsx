@@ -159,11 +159,11 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
       (err) => {
         setRequesting(false);
         setAttemptedButFailed(true);
-        // Diagnóstico detallado
+        // Mensaje neutro: no presuponemos que sea denegado, puede ser cualquier cosa
         let detail = "";
         switch (err.code) {
           case err.PERMISSION_DENIED:
-            detail = "El navegador dice que el permiso está denegado. Si lo tienes permitido en la web, prueba a recargar (Ctrl+Shift+R). Si sigue fallando, es probable que una extensión (uBlock, Privacy Badger) esté bloqueando la API.";
+            detail = "El navegador no devolvió tu ubicación. Si lo tienes permitido, prueba a recargar (Ctrl+Shift+R). Si sigue, una extensión puede estar bloqueándolo.";
             break;
           case err.POSITION_UNAVAILABLE:
             detail = "No se pudo determinar tu ubicación. Activa el GPS o la Wi-Fi.";
@@ -172,14 +172,14 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
             detail = "La petición ha tardado demasiado (>10s). Reintenta con mejor señal.";
             break;
           default:
-            detail = `Error desconocido (código ${err.code}): ${err.message || "sin detalles"}`;
+            detail = `No se pudo obtener la ubicación (código ${err.code}).`;
         }
         setErrorDetail(detail);
         try {
           sessionStorage.setItem(STORAGE_KEY_ERROR, detail);
         } catch {}
       },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 }, // maximumAge: 0 = NO cache, queremos posición fresca
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 0 },
     );
   }, []);
 
@@ -389,36 +389,41 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
               </div>
             )}
 
-            {/* Si la IP detectada NO es España, mostramos selector de ciudades */}
-            {isGranted && coordsSource === "ip" && detectedCountry && detectedCountry !== "Spain" && detectedCountry !== "España" && (
-              <div className="mt-2 text-xs text-gray-600 bg-blue-50 border border-blue-200 rounded p-2">
-                <div className="flex items-start gap-1 mb-1.5">
-                  <Globe className="h-3 w-3 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <span>
-                    Detectamos que tu IP está en <strong>{detectedCity ?? "?"}, {detectedCountry}</strong>. Si prefieres filtrar desde otra ciudad, elige una:
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {SPANISH_CITIES.map((c) => (
-                    <button
-                      key={c.name}
-                      type="button"
-                      onClick={() => applyCity(c.name, c.lat, c.lng)}
-                      className="px-2 py-0.5 bg-white border border-blue-200 rounded text-xs text-blue-700 hover:bg-blue-100"
-                    >
-                      {c.name}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setShowManualDialog(true)}
-                    className="px-2 py-0.5 bg-white border border-blue-200 rounded text-xs text-blue-700 hover:bg-blue-100"
-                  >
-                    ✏️ Otra...
-                  </button>
-                </div>
+            {/* SELECTOR DE CIUDADES — SIEMPRE VISIBLE
+                Es el método más fiable: 1 click → location set, sin depender
+                de IP ni GPS. Aparece SIEMPRE para que el usuario tenga una
+                opción que funciona. */}
+            <div className="mt-2 text-xs text-gray-600 bg-blue-50 border border-blue-200 rounded p-2">
+              <div className="flex items-start gap-1 mb-1.5">
+                <MapPin className="h-3 w-3 text-blue-600 flex-shrink-0 mt-0.5" />
+                <span>
+                  <strong>Elige tu ciudad</strong> (1 click, funciona siempre):
+                </span>
               </div>
-            )}
+              <div className="flex flex-wrap gap-1">
+                {SPANISH_CITIES.map((c) => (
+                  <button
+                    key={c.name}
+                    type="button"
+                    onClick={() => applyCity(c.name, c.lat, c.lng)}
+                    className={`px-2 py-0.5 rounded text-xs border transition-colors ${
+                      coordsSource === "preset" && coordsSourceLabel === c.name
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-white border-blue-200 text-blue-700 hover:bg-blue-100"
+                    }`}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setShowManualDialog(true)}
+                  className="px-2 py-0.5 rounded text-xs border bg-white border-blue-200 text-blue-700 hover:bg-blue-100"
+                >
+                  ✏️ Otra...
+                </button>
+              </div>
+            </div>
 
             <p className="mt-1.5 text-[10px] text-gray-400 leading-tight">
               🔒 Tu ubicación NO se guarda en ningún servidor. Solo se usa en tu navegador para filtrar.

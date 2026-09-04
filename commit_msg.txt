@@ -1,60 +1,36 @@
-﻿feat: mapa visual de carreras + geocodificación 100% + paso 9 nightly
+﻿fix: explicar el permiso de ubicación y manejar el caso bloqueado
 
-Manu pidió 3 cosas adicionales:
-1. Geocodificar las 5 carreras que faltaban (manual con queries alternativas)
-2. Que el nightly procese también la geocodificación de carreras nuevas
-3. Mapa visual con la ubicación del usuario y las carreras cercanas
+Manu reportó: "le sigue diciendo que he denegado el acceso a la ubicación
+y ni siquiera me ha preguntado". El problema es que algunos navegadores
+recuerdan la denegación y NO vuelven a mostrar el prompt. La solución
+estándar (usada por Google Maps, etc.) es:
 
-## 1. Geocodificación 100% (431/431)
+1. **Dialog explicativo ANTES de pedir permiso**
+   - Click en "Activar ubicación" → modal "Por qué pedimos tu ubicación"
+   - Botón explícito "Permitir ubicación" → ahí sí se llama getCurrentPosition
+   - Mucho más claro que el prompt nativo del navegador
 
-`scripts/fix-remaining-geo.ts` con queries alternativas + fallback manual:
-- Galdakao, Bizkaia (la province "valencia" estaba mal en BBDD)
-- Santa Eulària des Riu, Baleares (con acento oficial)
-- Bedmar, Jaén (sin la coletilla "y Garcíez")
-- Medellín, Badajoz, Extremadura (para evitar Medellín-Colombia)
-- Banyalbufar, Mallorca (con Sierra de Tramontana)
+2. **Detección del estado con navigator.permissions.query**
+   - Estados: "granted" | "denied" | "prompt" | "unsupported" | "error"
+   - Si está "denied" desde el principio, el botón cambia a:
+     "Ubicación bloqueada — ver cómo activarla" (color ámbar)
 
-Resultado: **431/431 geocodificadas (100%)**
+3. **Dialog de ayuda cuando está bloqueado**
+   - Instrucciones paso a paso para Chrome, Firefox, Safari
+   - "Click en el candado 🔒 → Ubicación → Permitir → Recarga"
 
-## 2. Paso 9/9 en nightly workflow
+4. **Mejor diagnóstico de errores**
+   - Cada error tiene un mensaje específico
+   - PERMISSION_DENIED: "El navegador ha bloqueado el permiso..."
+   - POSITION_UNAVAILABLE: "Activa el GPS o la Wi-Fi"
+   - TIMEOUT: "Reintenta con mejor señal"
+   - Default: "Error desconocido (código X)"
 
-`.github/workflows/daily-ingest.yml`:
-- Nuevo paso "9/9 Geocodificar carreras nuevas (Nominatim)"
-- Ejecuta `geocode-races.ts --only-missing` con 1.1s delay
-- continue-on-error para no romper el workflow
-- Las nuevas que aparezcan del ingest diario se geocodifican automáticamente
+## Cambios
 
-## 3. Mapa visual con Leaflet + OpenStreetMap
-
-### Dependencias
-- `leaflet` + `react-leaflet` + `@types/leaflet` (instalado)
-
-### Componentes
-- `components/race-map.tsx`: el mapa en sí (con pines, popups, círculo de radio)
-  - Pin central del usuario (rojo con borde blanco)
-  - Pines de carreras (verde, gris si está fuera de rango)
-  - Círculo del radio de filtrado (línea discontinua)
-  - Popup con nombre, fecha, distancia, link
-  - Tiles OpenStreetMap (gratis, sin API key)
-- `components/race-map-wrapper.tsx`: wrapper con `next/dynamic({ ssr: false })`
-  porque Leaflet toca `window` al importarse y rompe SSR
-
-### Integración en /carreras
-- Toggle "Lista | Mapa" en la cabecera
-- Cuando se activa el mapa, las carreras SIN coordenadas se ocultan
-  (no se pueden mostrar en un mapa)
-- El mapa se centra en la ubicación del usuario si está activa
-- Sin geolocalización, centra en el promedio de las carreras
-
-### Privacidad
-- Leaflet pide los tiles a OpenStreetMap (no a nosotros)
-- La ubicación del usuario NO se envía a ningún servidor
-- El cliente pide los tiles directamente al CDN de OSM
-
-## Detalle técnico
-
-- Error TS del build: `new Map<string, number>()` colisionaba con el
-  componente `Map` de react-leaflet. Fix: `new globalThis.Map<...>()`.
-- `formatDate` está en `@/lib/utils`, no en `@/lib/geo/distance` (corregido)
-- Iconos custom con L.divIcon (los iconos default de Leaflet no cargan
-  en Next.js por path resolution)
+- `components/race-distance-filter.tsx`: reescrito completo con
+  - Estado del permiso via Permissions API
+  - Dialog explicativo pre-prompt
+  - Dialog de ayuda si está bloqueado
+  - Mensajes de error específicos
+  - Cambio visual del botón según estado

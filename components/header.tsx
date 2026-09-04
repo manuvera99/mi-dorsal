@@ -1,11 +1,29 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { SignedIn, SignedOut, UserButton, SignInButton, SignUpButton, useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { isMockMode } from "@/lib/mock/provider";
-import { Trophy, Calendar, User, BarChart3, Home, Shield, ArrowLeftRight } from "lucide-react";
+import { Trophy, Calendar, User, BarChart3, Home, Shield, ArrowLeftRight, Menu, X } from "lucide-react";
+
+type NavItem = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  /** Si true, también marca como activo cualquier ruta que empiece por `href`. */
+  matchPrefix?: boolean;
+};
+
+const NAV_ITEMS: NavItem[] = [
+  { href: "/", label: "Inicio", icon: Home },
+  { href: "/carreras", label: "Carreras", icon: Trophy, matchPrefix: true },
+  { href: "/ranking", label: "Ranking", icon: BarChart3, matchPrefix: true },
+  { href: "/calendario", label: "Mi calendario", icon: Calendar, matchPrefix: true },
+  { href: "/perfil", label: "Perfil", icon: User, matchPrefix: true },
+];
 
 /**
  * Hook condicional: solo ejecuta la función si NO estamos en mock.
@@ -27,6 +45,36 @@ export function Header({ mockMode = false }: { mockMode?: boolean }) {
   // En mock mode, mostramos admin siempre para que el dev pueda acceder
   // sin tener que configurar Clerk. En producción, requiere role="admin".
   const showAdminLink = useMock ? true : isAdminReal;
+
+  // Estado del menú móvil
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Cerrar el menú al cambiar de ruta
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
+  // Cerrar con Escape + lock de scroll del body cuando está abierto
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileMenuOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [mobileMenuOpen]);
+
+  const isActive = (item: NavItem) => {
+    if (!pathname) return false;
+    if (item.href === "/") return pathname === "/";
+    return item.matchPrefix ? pathname === item.href || pathname.startsWith(item.href + "/") : pathname === item.href;
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/90 backdrop-blur-sm">
@@ -116,7 +164,72 @@ export function Header({ mockMode = false }: { mockMode?: boolean }) {
               </SignedIn>
             </>
           )}
+
+          {/* Hamburguesa — solo visible en móvil (<md). En desktop la nav ya está visible. */}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen((v) => !v)}
+            className="md:hidden inline-flex h-11 w-11 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100 active:bg-gray-200 transition-colors"
+            aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-menu-panel"
+          >
+            {mobileMenuOpen ? (
+              <X className="h-6 w-6" aria-hidden="true" />
+            ) : (
+              <Menu className="h-6 w-6" aria-hidden="true" />
+            )}
+          </button>
         </div>
+      </div>
+
+      {/* Panel del menú móvil (slide-down). Vive dentro del <header>
+          sticky para que scrollee junto al header y no se corte si un
+          padre tuviese overflow-hidden. Cierra con Escape, al cambiar de
+          ruta o al pulsar un enlace. */}
+      <div
+        id="mobile-menu-panel"
+        className={`md:hidden border-t border-gray-200 bg-white overflow-hidden transition-[max-height,opacity] duration-200 ease-out ${
+          mobileMenuOpen ? "max-h-[640px] opacity-100" : "max-h-0 opacity-0"
+        }`}
+        aria-hidden={!mobileMenuOpen}
+      >
+        <nav className="flex flex-col px-2 py-2" aria-label="Navegación principal">
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileMenuOpen(false)}
+                aria-current={active ? "page" : undefined}
+                className={`flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium transition-colors ${
+                  active
+                    ? "bg-runner-primary/10 text-runner-primary"
+                    : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <Icon className="h-5 w-5" aria-hidden="true" />
+                {item.label}
+              </Link>
+            );
+          })}
+          {showAdminLink && (
+            <Link
+              href="/admin"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-3 px-3 py-3 rounded-md text-sm font-semibold text-runner-primary hover:bg-gray-50 transition-colors"
+            >
+              <Shield className="h-5 w-5" aria-hidden="true" />
+              Admin
+            </Link>
+          )}
+          <div className="my-2 border-t border-gray-100" />
+          <p className="px-3 py-1 text-xs text-gray-500">
+            El hilo que te une a tu dorsal.
+          </p>
+        </nav>
       </div>
     </header>
   );

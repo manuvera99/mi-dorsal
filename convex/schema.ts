@@ -481,7 +481,32 @@ export default defineSchema({
     .index("by_user_race", ["userId", "raceId"]),
 
   // ---------------------------------------------------------------------------
-  // 10. DATA_SOURCES — fuentes de donde sacamos las carreras (RFEA, FEDME…)
+  // 10. STATS_CACHE — contadores denormalizados para el admin dashboard
+  // ---------------------------------------------------------------------------
+  // Se recalculan vía un cron cada 5 min (convex/crons/recalcStats.ts).
+  // La razón: adminGetStats() y getPublicStats() antes hacían
+  // .collect() de TODAS las tablas en cada carga, quemando 1GB/mes
+  // de Database I/O en plan free. Ahora leen 1 fila y listo.
+  // ---------------------------------------------------------------------------
+  statsCache: defineTable({
+    key: v.string(),                            // "global" (única fila por ahora)
+    computedAt: v.number(),                     // Date.now() del último recálculo
+    totalRaces: v.number(),
+    publishedRaces: v.number(),
+    featuredRaces: v.number(),
+    totalUsers: v.number(),
+    adminUsers: v.number(),
+    totalVotes: v.number(),
+    totalRatings: v.number(),
+    totalMyRaces: v.number(),
+    totalPRs: v.number(),
+    totalNotifications: v.number(),
+    racesByProvince: v.record(v.string(), v.number()),
+  })
+    .index("by_key", ["key"]),
+
+  // ---------------------------------------------------------------------------
+  // 11. DATA_SOURCES — fuentes de donde sacamos las carreras (RFEA, FEDME…)
   // ---------------------------------------------------------------------------
   // Cada carrera puede tener una FK opcional (dataSourceId en races).
   // El admin puede re-sincronizar una fuente desde el panel.

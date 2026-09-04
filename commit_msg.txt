@@ -1,41 +1,34 @@
-﻿feat: geolocalización GPS con pre-prompt + fix bug iOS PWA
+﻿feat: página de diagnóstico de geolocalización (/test-geo)
 
-Investigación web (MDN, web.dev, greadme.com) confirma el patrón correcto
-para pedir ubicación web:
+Manu reporta que el botón "Activar GPS" no muestra el prompt nativo del
+navegador. La causa más probable es una extensión (uBlock, Privacy Badger,
+Brave Shields) bloqueando navigator.geolocation, pero necesitamos
+herramientas para diagnosticarlo en el navegador real, no a ciegas.
 
-1. NUNCA llamar a getCurrentPosition() al cargar la página
-   (auto-prompt se deniega 80-90% y "quema" el único intento sticky)
-2. Solo llamar después de un click del usuario (user gesture)
-3. Mostrar un modal explicativo PROPIO antes del prompt nativo del navegador
-   ("pre-prompt"). El usuario acepta explícitamente, y solo entonces se
-   dispara getCurrentPosition. Tasa de aceptación 3-5x mayor.
-4. HTTPS obligatorio (ya estamos en Vercel)
-5. Siempre ofrecer fallback manual
+Cambios:
 
-Cambios en components/race-distance-filter.tsx:
+1. Nueva página /test-geo (pública, sin auth) que ejecuta 8 checks sobre
+   la API de geolocalización y muestra el resultado exacto:
+   - navigator existe
+   - secure context (HTTPS)
+   - no está en iframe
+   - navigator.geolocation existe
+   - Permissions API state (granted/prompt/denied)
+   - navegador detectado (Chrome/Edge/Firefox/Safari/Brave/Opera)
+   - Permissions-Policy
+   - getCurrentPosition real (muestra coordenadas o error con code+message)
 
-- Nuevo state `showPrePrompt`
-- Botón "Activar GPS" ya NO llama a getCurrentPosition directamente.
-  Ahora abre un modal propio que explica:
-    * Qué va a pasar (popup del navegador, qué hacemos con la ubicación)
-    * Política de privacidad (no se envía a ningún servidor, solo sessionStorage)
-  Con dos botones: "Ahora no" / "Pedir permiso".
-  Solo si el usuario pulsa "Pedir permiso" se llama a getCurrentPosition.
-- requestLocation reescrito a async/await + Promise.race con timeout local
-  para evitar el bug conocido de iOS PWA standalone donde getCurrentPosition
-  se cuelga indefinidamente cuando Location Services está en "Ask Next Time".
-  https://stackoverflow.com/q/67924991
-- Detección de iOS (userAgent + touch points) y PWA standalone (window.navigator.standalone
-  + display-mode: standalone) para mostrar mensaje específico.
-- Mensajes de error específicos por código:
-  * PERMISSION_DENIED en PWA iOS → ajustes de Safari Websites
-  * PERMISSION_DENIED en otros → candado 🔒 + desactivar extensiones (uBlock, Privacy Badger)
-  * POSITION_UNAVAILABLE → GPS/Wi-Fi activos
-  * TIMEOUT → reintentar
-  * Timeout local en iOS → bug conocido, ir a ajustes
-- timeout: 6s (4s en iOS para detectar el cuelgue antes)
-- maximumAge: 0 (siempre posición fresca)
+2. Botón "Probar getCurrentPosition" en la página de diagnóstico que
+   ejecuta la llamada real y muestra el err.message literal del navegador
+   (útil para detectar "Only secure origins are allowed", "User denied
+   Geolocation", etc.)
 
-El selector de ciudades y el input manual siguen siendo fallbacks.
-Si el usuario ya había dado permiso en una sesión anterior, el comportamiento
-no cambia.
+3. race-distance-filter.tsx: ahora muestra el err.message real del
+   navegador al final del mensaje de error, y detecta los strings típicos
+   (secure origin, user denied) para dar mensajes más específicos.
+
+4. Enlace "Diagnóstico avanzado" en el filtro de carreras, para que si
+   falla el GPS, Manu (y cualquier usuario) pueda ir directo a /test-geo.
+
+La página es segura de compartir — solo ejecuta checks en el navegador
+del usuario, no envía nada a ningún servidor.

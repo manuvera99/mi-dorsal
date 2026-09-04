@@ -160,23 +160,32 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
         ((window.navigator as Navigator & { standalone?: boolean }).standalone === true ||
           window.matchMedia?.("(display-mode: standalone)").matches);
 
+      // Detectar mensajes típicos que añaden info útil
+      const msg = (err as { message?: string }).message ?? "";
+      const isSecureOriginIssue = msg.toLowerCase().includes("only secure origins are allowed");
+      const isUserAgentIssue = msg.toLowerCase().includes("user denied");
+      const isIosHang = msg.toLowerCase().includes("kaios") || msg.toLowerCase().includes("internal error");
+
       switch (err.code) {
         case 1: // PERMISSION_DENIED
-          if (isPwaStandalone && isIOS) {
+          if (isSecureOriginIssue) {
+            detail =
+              "El navegador dice 'Only secure origins are allowed'. Esta página debe estar en HTTPS. Si ves esta página en http://, no funcionará.";
+          } else if (isPwaStandalone && isIOS) {
             detail =
               "Si tienes la app instalada (PWA) en iPhone, ve a Ajustes > Privacidad y seguridad > Localización > Safari Websites y ponlo en 'Mientras se usa' o 'Preguntar la próxima vez'. Luego reabre la app.";
           } else {
             detail =
-              "El navegador no devolvió tu ubicación. Comprueba el candado 🔒 a la izquierda de la URL → 'Ubicación' debe estar en 'Permitir'. Si ya lo está, recarga (Ctrl+Shift+R). Si sigue fallando, prueba a desactivar extensiones (uBlock, Privacy Badger) que pueden estar bloqueando la API.";
+              "El navegador no devolvió tu ubicación (PERMISSION_DENIED). Posibles causas: (1) Candado 🔒 a la izquierda de la URL → 'Ubicación' en 'Permitir'. (2) Una extensión (uBlock, Privacy Badger, AdBlock) está bloqueando la API. (3) Brave Shields activado. (4) Permiso denegado a nivel de sistema. Si nada funciona, ve a /test-geo para diagnóstico detallado.";
           }
           break;
         case 2: // POSITION_UNAVAILABLE
           detail =
-            "No se pudo determinar tu ubicación. Comprueba que tienes el GPS o la Wi-Fi activos, y que la ubicación del sistema operativo no esté desactivada.";
+            "No se pudo determinar tu ubicación (POSITION_UNAVAILABLE). Comprueba: GPS/Wi-Fi activos, ubicación del sistema operativo activada, que no estés en modo avión.";
           break;
         case 3: // TIMEOUT
           detail =
-            "La petición ha tardado demasiado. Reintenta con mejor señal o conexión.";
+            "La petición ha tardado demasiado (TIMEOUT). Reintenta con mejor señal o conexión. Si usas VPN, desactívala.";
           break;
         case 99: // timeout local
           if (isIOS) {
@@ -187,8 +196,17 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
           }
           break;
         default:
-          detail = `No se pudo obtener la ubicación (código ${err.code}). Si el problema persiste, prueba con la ciudad o las coordenadas manuales.`;
+          detail = `No se pudo obtener la ubicación (código ${err.code}${msg ? `, mensaje: "${msg}"` : ""}). Si el problema persiste, prueba con la ciudad o las coordenadas manuales, o ve a /test-geo para diagnóstico.`;
       }
+
+      // Si tenemos el mensaje real, lo añadimos al final para que el usuario
+      // (y nosotros en debugging) veamos exactamente qué dice el navegador.
+      if (msg && !isUserAgentIssue && !isSecureOriginIssue && err.code !== 1) {
+        detail += ` [Navegador: "${msg}"]`;
+      }
+      void isUserAgentIssue;
+      void isIosHang;
+
       setErrorDetail(detail);
       try {
         sessionStorage.setItem(STORAGE_KEY_ERROR, detail);
@@ -358,6 +376,13 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
                     >
                       <Trash2 className="h-3 w-3" /> Limpiar caché y reintentar
                     </button>
+                    <span>·</span>
+                    <a
+                      href="/test-geo"
+                      className="text-xs underline text-amber-800 hover:text-amber-900"
+                    >
+                      Diagnóstico avanzado
+                    </a>
                   </div>
                 )}
               </div>

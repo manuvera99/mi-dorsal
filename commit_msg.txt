@@ -1,36 +1,49 @@
-﻿fix: explicar el permiso de ubicación y manejar el caso bloqueado
+﻿fix: geolocalización robusta — quitar Permissions API que mentía
 
-Manu reportó: "le sigue diciendo que he denegado el acceso a la ubicación
-y ni siquiera me ha preguntado". El problema es que algunos navegadores
-recuerdan la denegación y NO vuelven a mostrar el prompt. La solución
-estándar (usada por Google Maps, etc.) es:
+Manu reportó: "me sigue saliendo que he denegado el permiso pero lo
+tengo permitido en la configuración de la web".
 
-1. **Dialog explicativo ANTES de pedir permiso**
-   - Click en "Activar ubicación" → modal "Por qué pedimos tu ubicación"
-   - Botón explícito "Permitir ubicación" → ahí sí se llama getCurrentPosition
-   - Mucho más claro que el prompt nativo del navegador
-
-2. **Detección del estado con navigator.permissions.query**
-   - Estados: "granted" | "denied" | "prompt" | "unsupported" | "error"
-   - Si está "denied" desde el principio, el botón cambia a:
-     "Ubicación bloqueada — ver cómo activarla" (color ámbar)
-
-3. **Dialog de ayuda cuando está bloqueado**
-   - Instrucciones paso a paso para Chrome, Firefox, Safari
-   - "Click en el candado 🔒 → Ubicación → Permitir → Recarga"
-
-4. **Mejor diagnóstico de errores**
-   - Cada error tiene un mensaje específico
-   - PERMISSION_DENIED: "El navegador ha bloqueado el permiso..."
-   - POSITION_UNAVAILABLE: "Activa el GPS o la Wi-Fi"
-   - TIMEOUT: "Reintenta con mejor señal"
-   - Default: "Error desconocido (código X)"
+Causa raíz: la Permissions API (`navigator.permissions.query`) tiene
+bugs conocidos en algunos navegadores — puede devolver "denied" cuando
+el permiso REAL está granted. Mi código confiaba en eso y mostraba
+"Ubicación bloqueada" incorrectamente.
 
 ## Cambios
 
-- `components/race-distance-filter.tsx`: reescrito completo con
-  - Estado del permiso via Permissions API
-  - Dialog explicativo pre-prompt
-  - Dialog de ayuda si está bloqueado
-  - Mensajes de error específicos
-  - Cambio visual del botón según estado
+### Quitar Permissions API
+- Antes: useEffect con `navigator.permissions.query({name: "geolocation"})`
+  que reporta el estado y lo muestra como "denied" falsamente
+- Ahora: NO usamos Permissions API. Vamos directo a `getCurrentPosition`
+  y dejamos que el navegador decida
+
+### Detección de iframe
+- Comprueba `window.self !== window.top` — si estamos en un iframe
+  (Vercel preview, embed, etc.), el navegador no puede mostrar el prompt
+  de permiso, así que mostramos un warning explícito sugiriendo IP o manual
+
+### Estado y errores
+- `permission` state eliminado (era la fuente del bug)
+- `attemptedButFailed` nuevo state: true después de un error, permite
+  mostrar el botón "Limpiar caché y reintentar"
+- `maximumAge: 0` en getCurrentPosition (no usar cache vieja)
+- Mensaje de error más informativo: "Si lo tienes permitido en la
+  web, prueba a recargar (Ctrl+Shift+R). Si sigue fallando, es
+  probable que una extensión (uBlock, Privacy Badger) esté bloqueando
+  la API."
+
+### Botón "Limpiar caché y reintentar"
+- Aparece en el alert de error si ya intentamos y falló
+- Limpia sessionStorage Y localStorage
+- Recarga la página (Ctrl+Shift+R equivalente)
+
+### Modal de ayuda
+- Ya no es el modal explicativo inicial
+- Solo aparece cuando se hace click en "Ver cómo activarlo"
+  desde el alert de error
+- Contiene instrucciones para Chrome/Edge, Firefox, Safari
+- Sugiere probar con IP o manual como alternativa
+
+## Lo que se mantiene igual
+- 3 métodos: GPS, IP (endpoint /api/geo/ip), coordenadas manuales
+- Persistencia en sessionStorage
+- Privacidad: nada se guarda en servidor

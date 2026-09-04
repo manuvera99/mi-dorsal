@@ -3,32 +3,32 @@
 /**
  * RaceDistanceFilter — geolocalización del usuario + slider de distancia máxima.
  *
- * Comportamiento:
- *  - Botón "Activar ubicación" muestra un dialog explicativo
- *  - Solo tras confirmar, pide permiso al navegador
- *  - Usa navigator.permissions.query para detectar el estado
- *  - Si está denegado, muestra instrucciones para activarlo
- *  - Estado en sessionStorage (no se guarda en BBDD — privacidad)
- *  - Slider funciona independiente de la geolocalización
+ * 3 métodos para obtener coordenadas:
+ *  - GPS del navegador (preferred, requiere permiso)
+ *  - IP pública (fallback, no requiere permiso, ~50km precisión)
+ *  - Coordenadas manuales (último recurso)
  *
- * Props:
- *  - onChange: callback cuando cambia (userCoords, maxDistanceKm)
- *  - initialMaxDistance: valor inicial del slider
+ * Estado en sessionStorage (no se guarda en BBDD — privacidad).
+ *
+ * NOTA: NO usamos navigator.permissions.query porque algunos navegadores
+ * reportan "denied" falsamente. Vamos directo a getCurrentPosition.
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { MapPin, X, Loader2, Navigation, AlertCircle, Info, ShieldCheck, ExternalLink, CheckCircle2 } from "lucide-react";
+import {
+  MapPin, X, Loader2, Navigation, AlertCircle, Info, ShieldCheck,
+  CheckCircle2, Globe, Edit3, Save, Trash2, AlertTriangle,
+} from "lucide-react";
 import type { Coords } from "@/lib/geo/distance";
 
 const STORAGE_KEY_USER = "mi-dorsal.userCoords";
 const STORAGE_KEY_DIST = "mi-dorsal.maxDistanceKm";
+const STORAGE_KEY_ERROR = "mi-dorsal.geoError";
 
 const MIN_DISTANCE = 0;
 const MAX_DISTANCE = 300;
 const STEP_DISTANCE = 10;
 const DEFAULT_DISTANCE = 200;
-
-type PermissionState = "unknown" | "granted" | "denied" | "prompt" | "unsupported" | "error";
 
 interface RaceDistanceFilterProps {
   onChange: (userCoords: Coords | null, maxDistanceKm: number) => void;
@@ -39,9 +39,23 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
   const [userCoords, setUserCoords] = useState<Coords | null>(null);
   const [maxDistance, setMaxDistance] = useState<number>(initialMaxDistance ?? DEFAULT_DISTANCE);
   const [requesting, setRequesting] = useState(false);
-  const [permission, setPermission] = useState<PermissionState>("unknown");
+  const [requestingIp, setRequestingIp] = useState(false);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [showHelpDialog, setShowHelpDialog] = useState(false);
+  const [showManualDialog, setShowManualDialog] = useState(false);
+  const [manualLat, setManualLat] = useState("");
+  const [manualLng, setManualLng] = useState("");
+  const [coordsSource, setCoordsSource] = useState<"browser" | "ip" | "manual" | null>(null);
+  const [coordsSourceLabel, setCoordsSourceLabel] = useState<string | null>(null);
+  const [isInIframe, setIsInIframe] = useState(false);
+  const [attemptedButFailed, setAttemptedButFailed] = useState(false);
+
+  // Detectar si estamos en iframe (problema común: el navegador no muestra
+  // el prompt de geolocalización dentro de iframes sin allow="geolocation")
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setIsInIframe(window.self !== window.top);
+  }, []);
 
   // Cargar de sessionStorage al montar
   useEffect(() => {
@@ -60,32 +74,9 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
           setMaxDistance(n);
         }
       }
+      // Si hay un error guardado de antes, lo limpiamos
+      sessionStorage.removeItem(STORAGE_KEY_ERROR);
     } catch {}
-  }, []);
-
-  // Detectar estado del permiso (si la API Permissions está disponible)
-  useEffect(() => {
-    if (typeof navigator === "undefined" || !navigator.permissions) {
-      setPermission("unsupported");
-      return;
-    }
-    let cancelled = false;
-    navigator.permissions
-      .query({ name: "geolocation" as PermissionName })
-      .then((result) => {
-        if (cancelled) return;
-        setPermission(result.state as PermissionState);
-        // Escuchar cambios
-        result.addEventListener("change", () => {
-          if (!cancelled) setPermission(result.state as PermissionState);
-        });
-      })
-      .catch(() => {
-        if (!cancelled) setPermission("unsupported");
-      });
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   // Persistir en sessionStorage y notificar al padre
@@ -108,12 +99,12 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
 
   const requestLocation = useCallback(() => {
     if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
-      setErrorDetail("Tu navegador no soporta geolocalización (geolocation API no disponible).");
-      setPermission("unsupported");
+      setErrorDetail("Tu navegador no soporta la API de geolocalización. Usa IP o coordenadas manuales.");
       return;
     }
     setRequesting(true);
     setErrorDetail(null);
+    setAttemptedButFailed(false);
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -122,17 +113,19 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
           longitude: pos.coords.longitude,
         });
         setRequesting(false);
-        setPermission("granted");
         setErrorDetail(null);
+        setCoordsSource("browser");
+        setCoordsSourceLabel("GPS del navegador");
+        setAttemptedButFailed(false);
       },
       (err) => {
         setRequesting(false);
+        setAttemptedButFailed(true);
         // Diagnóstico detallado
         let detail = "";
         switch (err.code) {
           case err.PERMISSION_DENIED:
-            detail = "El navegador ha bloqueado el permiso. Revisa el candado 🔒 en la barra de direcciones y permite la ubicación para este sitio.";
-            setPermission("denied");
+            detail = "El navegador dice que el permiso está denegado. Si lo tienes permitido en la web, prueba a recargar (Ctrl+Shift+R). Si sigue fallando, es probable que una extensión (uBlock, Privacy Badger) esté bloqueando la API.";
             break;
           case err.POSITION_UNAVAILABLE:
             detail = "No se pudo determinar tu ubicación. Activa el GPS o la Wi-Fi.";
@@ -144,19 +137,87 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
             detail = `Error desconocido (código ${err.code}): ${err.message || "sin detalles"}`;
         }
         setErrorDetail(detail);
+        try {
+          sessionStorage.setItem(STORAGE_KEY_ERROR, detail);
+        } catch {}
       },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 }, // maximumAge: 0 = NO cache, queremos posición fresca
     );
   }, []);
+
+  // Fallback: geolocalización por IP pública (city-level, ~50km precisión)
+  const requestIpLocation = useCallback(async () => {
+    setRequestingIp(true);
+    setErrorDetail(null);
+    try {
+      const res = await fetch("/api/geo/ip", { method: "GET" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      if (typeof data.latitude !== "number" || typeof data.longitude !== "number") {
+        throw new Error("Respuesta inválida");
+      }
+      setUserCoords({ latitude: data.latitude, longitude: data.longitude });
+      setCoordsSource("ip");
+      const label = [data.city, data.region, data.country].filter(Boolean).join(", ");
+      setCoordsSourceLabel(label || "Tu IP pública");
+      setAttemptedButFailed(false);
+    } catch (e: any) {
+      setErrorDetail(`No se pudo obtener ubicación por IP: ${e?.message ?? e}`);
+    } finally {
+      setRequestingIp(false);
+    }
+  }, []);
+
+  // Input manual de coordenadas
+  const applyManualCoords = useCallback(() => {
+    const lat = parseFloat(manualLat.replace(",", "."));
+    const lng = parseFloat(manualLng.replace(",", "."));
+    if (!isFinite(lat) || lat < -90 || lat > 90) {
+      setErrorDetail("Latitud inválida (rango -90 a 90)");
+      return;
+    }
+    if (!isFinite(lng) || lng < -180 || lng > 180) {
+      setErrorDetail("Longitud inválida (rango -180 a 180)");
+      return;
+    }
+    setUserCoords({ latitude: lat, longitude: lng });
+    setCoordsSource("manual");
+    setCoordsSourceLabel("Coordenadas manuales");
+    setShowManualDialog(false);
+    setErrorDetail(null);
+    setAttemptedButFailed(false);
+  }, [manualLat, manualLng]);
 
   const clearLocation = useCallback(() => {
     setUserCoords(null);
     setErrorDetail(null);
-    setPermission("prompt");
+    setCoordsSource(null);
+    setCoordsSourceLabel(null);
+    setAttemptedButFailed(false);
+    try {
+      sessionStorage.removeItem(STORAGE_KEY_USER);
+      sessionStorage.removeItem(STORAGE_KEY_ERROR);
+    } catch {}
   }, []);
 
-  // Estado derivado
-  const isBlocked = permission === "denied";
+  const clearAllCaches = useCallback(() => {
+    try {
+      sessionStorage.clear();
+      localStorage.clear();
+    } catch {}
+    setUserCoords(null);
+    setErrorDetail(null);
+    setCoordsSource(null);
+    setCoordsSourceLabel(null);
+    setMaxDistance(DEFAULT_DISTANCE);
+    setAttemptedButFailed(false);
+    // Forzar recarga
+    setTimeout(() => window.location.reload(), 100);
+  }, []);
+
   const isGranted = userCoords !== null;
   const showExplainDialog = showHelpDialog && !isGranted;
 
@@ -169,6 +230,12 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
             <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 flex items-center gap-1">
               <Navigation className="h-3 w-3" /> Tu ubicación
             </div>
+            {isInIframe && (
+              <div className="mb-2 flex items-start gap-1 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+                <AlertTriangle className="h-3 w-3 flex-shrink-0 mt-0.5" />
+                <span>Estás dentro de un iframe — el navegador no puede mostrar el prompt de permiso. Usa IP o coordenadas manuales.</span>
+              </div>
+            )}
             {isGranted ? (
               <div className="flex items-center gap-2">
                 <div className="flex-1 flex items-center gap-2 bg-green-50 border border-green-200 rounded-md px-3 py-2 text-sm">
@@ -177,7 +244,11 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
                     <div className="font-mono text-green-800">
                       {userCoords!.latitude.toFixed(4)}, {userCoords!.longitude.toFixed(4)}
                     </div>
-                    <div className="text-[10px] text-green-600">Ubicación activa · {permission === "granted" ? "permiso concedido" : ""}</div>
+                    <div className="text-[10px] text-green-600">
+                      {coordsSource === "browser" && "📍 GPS del navegador"}
+                      {coordsSource === "ip" && `🌐 IP (ciudad): ${coordsSourceLabel}`}
+                      {coordsSource === "manual" && "✏️ Coordenadas manuales"}
+                    </div>
                   </div>
                 </div>
                 <button
@@ -190,43 +261,66 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
                 </button>
               </div>
             ) : (
-              <>
+              <div className="space-y-2">
+                {/* Botón principal: GPS del navegador */}
                 <button
                   type="button"
-                  onClick={() => {
-                    if (isBlocked) {
-                      // Si ya está denegado, mostrar dialog de ayuda
-                      setShowHelpDialog(true);
-                      return;
-                    }
-                    // Si está en prompt o unknown, abrir dialog explicativo
-                    setShowHelpDialog(true);
-                  }}
-                  disabled={requesting}
-                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold disabled:opacity-50 ${
-                    isBlocked
-                      ? "bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200"
-                      : "bg-runner-primary text-white hover:opacity-90"
-                  }`}
+                  onClick={requestLocation}
+                  disabled={requesting || requestingIp}
+                  className="inline-flex items-center gap-2 bg-runner-primary text-white px-3 py-2 rounded-md text-sm font-semibold hover:opacity-90 disabled:opacity-50"
                 >
-                  {requesting ? <Loader2 className="h-4 w-4 animate-spin" /> :
-                   isBlocked ? <ShieldCheck className="h-4 w-4" /> :
-                   <MapPin className="h-4 w-4" />}
-                  {requesting ? "Obteniendo…" :
-                   isBlocked ? "Ubicación bloqueada — ver cómo activarla" :
-                   "Activar ubicación"}
+                  {requesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                  {requesting ? "Esperando permiso del navegador…" : "Activar GPS"}
                 </button>
-                {isBlocked && (
-                  <p className="mt-1.5 text-[11px] text-amber-700 leading-tight">
-                    Has denegado el permiso antes. Para activarlo, pulsa el botón de arriba.
-                  </p>
-                )}
-              </>
+                {/* Alternativas: IP o manual */}
+                <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+                  <span>o</span>
+                  <button
+                    type="button"
+                    onClick={requestIpLocation}
+                    disabled={requesting || requestingIp}
+                    className="inline-flex items-center gap-1 text-runner-primary hover:underline disabled:opacity-50"
+                  >
+                    {requestingIp ? <Loader2 className="h-3 w-3 animate-spin" /> : <Globe className="h-3 w-3" />}
+                    Usar mi IP
+                  </button>
+                  <span>·</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowManualDialog(true)}
+                    className="inline-flex items-center gap-1 text-runner-primary hover:underline"
+                  >
+                    <Edit3 className="h-3 w-3" />
+                    Coordenadas manuales
+                  </button>
+                </div>
+              </div>
             )}
             {errorDetail && !isGranted && (
-              <div className="mt-1.5 flex items-start gap-1 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
-                <AlertCircle className="h-3 w-3 flex-shrink-0 mt-0.5" />
-                <span>{errorDetail}</span>
+              <div className="mt-2 flex flex-col gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+                <div className="flex items-start gap-1">
+                  <AlertCircle className="h-3 w-3 flex-shrink-0 mt-0.5" />
+                  <span>{errorDetail}</span>
+                </div>
+                {attemptedButFailed && !isInIframe && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowHelpDialog(true)}
+                      className="text-xs underline text-amber-800 hover:text-amber-900"
+                    >
+                      Ver cómo activarlo
+                    </button>
+                    <span>·</span>
+                    <button
+                      type="button"
+                      onClick={clearAllCaches}
+                      className="text-xs underline text-amber-800 hover:text-amber-900 flex items-center gap-1"
+                    >
+                      <Trash2 className="h-3 w-3" /> Limpiar caché y reintentar
+                    </button>
+                  </div>
+                )}
               </div>
             )}
             <p className="mt-1.5 text-[10px] text-gray-400 leading-tight">
@@ -262,6 +356,73 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
         </div>
       </div>
 
+      {/* Modal input manual */}
+      {showManualDialog && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
+          onClick={() => setShowManualDialog(false)}
+        >
+          <div
+            className="bg-white rounded-lg max-w-md w-full p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3 mb-3">
+              <Edit3 className="h-6 w-6 text-runner-primary flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-bold text-lg">Coordenadas manuales</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Introduce las coordenadas de tu ciudad o pueblo. Puedes sacarlas de Google Maps haciendo click derecho en tu ubicación.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Latitud</label>
+                <input
+                  type="text"
+                  value={manualLat}
+                  onChange={(e) => setManualLat(e.target.value)}
+                  placeholder="38.3452"
+                  className="input font-mono"
+                />
+                <p className="text-[10px] text-gray-400 mt-0.5">Rango: -90 (sur) a 90 (norte). España: ~36 a ~44</p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Longitud</label>
+                <input
+                  type="text"
+                  value={manualLng}
+                  onChange={(e) => setManualLng(e.target.value)}
+                  placeholder="-0.4811"
+                  className="input font-mono"
+                />
+                <p className="text-[10px] text-gray-400 mt-0.5">Rango: -180 (oeste) a 180 (este). España: ~-9 a ~3</p>
+              </div>
+              <div className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded p-2">
+                <strong>💡 Ejemplos:</strong> Alicante 38.3452, -0.4811 · Valencia 39.4699, -0.3763 ·
+                Madrid 40.4168, -3.7038 · Murcia 37.9922, -1.1307 · Elche 38.2622, -0.6982
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                type="button"
+                onClick={() => setShowManualDialog(false)}
+                className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={applyManualCoords}
+                className="px-3 py-1.5 text-sm bg-runner-primary text-white rounded font-semibold hover:opacity-90 flex items-center gap-1.5"
+              >
+                <Save className="h-3.5 w-3.5" /> Aplicar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal explicativo / ayuda */}
       {showExplainDialog && (
         <div
@@ -273,65 +434,41 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start gap-3 mb-3">
-              {isBlocked ? (
-                <ShieldCheck className="h-6 w-6 text-amber-600 flex-shrink-0 mt-0.5" />
-              ) : (
-                <Info className="h-6 w-6 text-runner-primary flex-shrink-0 mt-0.5" />
-              )}
+              <ShieldCheck className="h-6 w-6 text-amber-600 flex-shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-bold text-lg">
-                  {isBlocked ? "Ubicación bloqueada" : "¿Por qué pedimos tu ubicación?"}
-                </h3>
+                <h3 className="font-bold text-lg">Activar ubicación</h3>
                 <p className="text-sm text-gray-600 mt-1">
-                  {isBlocked
-                    ? "Has denegado el permiso antes. El navegador ya no pregunta de nuevo. Sigue estos pasos según tu navegador:"
-                    : "Para mostrarte carreras cercanas a ti. Tu ubicación nunca se guarda en ningún servidor, solo se usa en tu navegador para filtrar la lista."}
+                  Para filtrar las carreras por distancia desde ti. Tu ubicación nunca se guarda en ningún servidor.
                 </p>
               </div>
             </div>
 
-            {isBlocked ? (
-              <div className="space-y-2 text-sm text-gray-700 bg-amber-50 border border-amber-200 rounded-md p-3">
-                <p><strong>Chrome / Edge:</strong></p>
-                <ol className="list-decimal list-inside space-y-0.5 text-xs">
-                  <li>Click en el candado 🔒 o icono ⓘ a la izquierda de la URL</li>
-                  <li>Busca "Ubicación" en el menú</li>
-                  <li>Selecciona "Permitir"</li>
-                  <li>Recarga la página (F5)</li>
-                </ol>
-                <p className="mt-2"><strong>Firefox:</strong></p>
-                <ol className="list-decimal list-inside space-y-0.5 text-xs">
-                  <li>Click en el candado 🔒 a la izquierda de la URL</li>
-                  <li>Click en "Permisos"</li>
-                  <li>Busca "Acceder a tu ubicación" y desmarca "Bloquear"</li>
-                  <li>Recarga la página</li>
-                </ol>
-                <p className="mt-2"><strong>Safari:</strong></p>
-                <ol className="list-decimal list-inside space-y-0.5 text-xs">
-                  <li>Menú Safari → Configuración de este sitio web</li>
-                  <li>Ubicación → Permitir</li>
-                </ol>
-              </div>
-            ) : (
-              <ul className="space-y-1.5 text-sm text-gray-700">
-                <li className="flex items-start gap-2">
-                  <span className="text-runner-primary">📍</span>
-                  <span>Te mostraremos carreras dentro del radio que elijas</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-runner-primary">🧭</span>
-                  <span>Verás la distancia a cada carrera en km</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-runner-primary">🔒</span>
-                  <span>Tu ubicación NO se guarda en el servidor, solo en tu navegador</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-runner-primary">🗺️</span>
-                  <span>En el mapa verás tu posición y el radio de filtrado</span>
-                </li>
-              </ul>
-            )}
+            <div className="space-y-2 text-sm text-gray-700 bg-amber-50 border border-amber-200 rounded-md p-3">
+              <p><strong>Chrome / Edge:</strong></p>
+              <ol className="list-decimal list-inside space-y-0.5 text-xs">
+                <li>Click en el candado 🔒 o icono ⓘ a la izquierda de la URL</li>
+                <li>Busca "Ubicación" en el menú</li>
+                <li>Selecciona "Permitir"</li>
+                <li>Recarga la página (F5)</li>
+              </ol>
+              <p className="mt-2"><strong>Firefox:</strong></p>
+              <ol className="list-decimal list-inside space-y-0.5 text-xs">
+                <li>Click en el candado 🔒 a la izquierda de la URL</li>
+                <li>Click en "Permisos"</li>
+                <li>Busca "Acceder a tu ubicación" y desmarca "Bloquear"</li>
+                <li>Recarga la página</li>
+              </ol>
+              <p className="mt-2"><strong>Safari:</strong></p>
+              <ol className="list-decimal list-inside space-y-0.5 text-xs">
+                <li>Menú Safari → Configuración de este sitio web</li>
+                <li>Ubicación → Permitir</li>
+              </ol>
+            </div>
+
+            <p className="mt-3 text-xs text-gray-600">
+              💡 <strong>¿Sigue fallando?</strong> Prueba con "Usar mi IP" (no necesita permiso, precisión ~50km)
+              o introduce tus coordenadas a mano.
+            </p>
 
             <div className="flex justify-end gap-2 mt-4">
               <button
@@ -339,20 +476,18 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
                 onClick={() => setShowHelpDialog(false)}
                 className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
               >
-                {isBlocked ? "Cerrar" : "Ahora no"}
+                Cerrar
               </button>
-              {!isBlocked && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowHelpDialog(false);
-                    requestLocation();
-                  }}
-                  className="px-3 py-1.5 text-sm bg-runner-primary text-white rounded font-semibold hover:opacity-90 flex items-center gap-1.5"
-                >
-                  <MapPin className="h-3.5 w-3.5" /> Permitir ubicación
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowHelpDialog(false);
+                  requestLocation();
+                }}
+                className="px-3 py-1.5 text-sm bg-runner-primary text-white rounded font-semibold hover:opacity-90 flex items-center gap-1.5"
+              >
+                <MapPin className="h-3.5 w-3.5" /> Reintentar GPS
+              </button>
             </div>
           </div>
         </div>

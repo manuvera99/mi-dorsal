@@ -7,11 +7,17 @@
  * "📍 [Mi comunidad]" + un chevron. Al hacer click, se abre un menú con
  * las 17 CCAA + Ceuta/Melilla, ordenadas alfabéticamente.
  *
+ * IMPORTANTE: el dropdown se monta en un PORTAL sobre el <body> para
+ * escapar de cualquier `overflow-hidden` del contenedor padre (el hero
+ * tiene `overflow-hidden` para que las luces decorativas no se salgan,
+ * y eso recortaba el menú visualmente).
+ *
  * Si el usuario NO tiene override manual y NO se detectó por IP,
  * muestra "Elige tu comunidad" (sin emoji de ubicación para no mentir).
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { MapPin, ChevronDown, Check, RefreshCw, X } from "lucide-react";
 import { useUserRegion } from "./use-user-region";
 import { cn } from "@/lib/utils";
@@ -26,13 +32,62 @@ export function RegionSwitcher({ variant = "hero", className }: RegionSwitcherPr
   const { community, setCommunity, clearOverride, hasManualOverride, allCommunities, loading } =
     useUserRegion();
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const isHero = variant === "hero";
+
+  // Mounting flag para evitar problemas de hidratación con createPortal
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Recalcular posición del menú cada vez que se abre / hace scroll / resize
+  useLayoutEffect(() => {
+    if (!open || !triggerRef.current) {
+      setMenuPos(null);
+      return;
+    }
+    function updatePosition() {
+      if (!triggerRef.current) return;
+      const rect = triggerRef.current.getBoundingClientRect();
+      const MENU_WIDTH = 288; // 18rem (w-72)
+      // Por defecto abre debajo del trigger, alineado a la derecha
+      let left = rect.right - MENU_WIDTH;
+      // Si se sale por la izquierda, lo alineamos al borde izquierdo
+      if (left < 8) left = 8;
+      // Si se sale por la derecha, lo alineamos al borde derecho
+      if (left + MENU_WIDTH > window.innerWidth - 8) {
+        left = window.innerWidth - MENU_WIDTH - 8;
+      }
+      setMenuPos({
+        top: rect.bottom + 8, // 8px = mt-2
+        left,
+        width: MENU_WIDTH,
+      });
+    }
+    updatePosition();
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [open]);
 
   // Cerrar al hacer click fuera
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        triggerRef.current &&
+        !triggerRef.current.contains(target) &&
+        menuRef.current &&
+        !menuRef.current.contains(target)
+      ) {
         setOpen(false);
       }
     };
@@ -50,11 +105,10 @@ export function RegionSwitcher({ variant = "hero", className }: RegionSwitcherPr
     return () => document.removeEventListener("keydown", handler);
   }, [open]);
 
-  const isHero = variant === "hero";
-
   return (
-    <div ref={ref} className={cn("relative inline-block", className)}>
+    <div className={cn("relative inline-block", className)}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
@@ -82,84 +136,92 @@ export function RegionSwitcher({ variant = "hero", className }: RegionSwitcherPr
         />
       </button>
 
-      {open && (
-        <div
-          role="listbox"
-          aria-label="Comunidades autónomas de España"
-          className={cn(
-            "absolute z-50 mt-2 max-h-80 w-72 overflow-y-auto rounded-lg shadow-xl",
-            "bg-white border border-gray-200 text-left",
-            // Mobile-friendly: alineado a la izquierda en desktop, a la derecha en móvil si se sale
-            "left-0 md:left-0 right-auto",
-            "-translate-x-0"
-          )}
-        >
-          <div className="sticky top-0 bg-white border-b border-gray-100 px-3 py-2 flex items-center justify-between">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              Tu comunidad
-            </p>
-            {hasManualOverride && (
+      {mounted && open && menuPos &&
+        createPortal(
+          <div
+            ref={menuRef}
+            role="listbox"
+            aria-label="Comunidades autónomas de España"
+            style={{
+              position: "fixed",
+              top: menuPos.top,
+              left: menuPos.left,
+              width: menuPos.width,
+            }}
+            className="z-[9999] max-h-80 overflow-y-auto rounded-lg shadow-2xl bg-white border border-gray-200 text-left"
+          >
+            <div className="sticky top-0 bg-white border-b border-gray-100 px-3 py-2 flex items-center justify-between">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Tu comunidad
+              </p>
+              {hasManualOverride && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    clearOverride();
+                    setOpen(false);
+                  }}
+                  className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-runner-primary"
+                  aria-label="Borrar selección manual y volver a detección automática"
+                >
+                  <RefreshCw className="h-3 w-3" aria-hidden="true" />
+                  Auto
+                </button>
+              )}
+            </div>
+            <ul className="py-1">
+              {allCommunities.map((c) => {
+                const selected = community?.id === c.id;
+                return (
+                  <li key={c.id}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={selected}
+                      onClick={() => {
+                        setCommunity(c.id);
+                        setOpen(false);
+                      }}
+                      className={cn(
+                        "w-full text-left px-3 py-2 text-sm flex items-center gap-2",
+                        "hover:bg-runner-warm focus:bg-runner-warm focus:outline-none",
+                        selected && "bg-red-50"
+                      )}
+                    >
+                      <span aria-hidden="true" className="text-base flex-shrink-0">
+                        {c.emoji}
+                      </span>
+                      <span
+                        className={cn(
+                          "flex-1 min-w-0 truncate",
+                          selected && "font-semibold text-runner-primary"
+                        )}
+                      >
+                        {c.name}
+                      </span>
+                      {selected && (
+                        <Check className="h-4 w-4 text-runner-primary flex-shrink-0" aria-hidden="true" />
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="border-t border-gray-100 px-3 py-2 flex items-center justify-between bg-gray-50">
+              <p className="text-xs text-gray-400">Lo usamos solo para mostrarte carreras cerca.</p>
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  clearOverride();
-                  setOpen(false);
-                }}
-                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-runner-primary"
-                aria-label="Borrar selección manual y volver a detección automática"
+                onClick={() => setOpen(false)}
+                className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+                aria-label="Cerrar selector de comunidad"
               >
-                <RefreshCw className="h-3 w-3" aria-hidden="true" />
-                Auto
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
-            )}
-          </div>
-          <ul className="py-1">
-            {allCommunities.map((c) => {
-              const selected = community?.id === c.id;
-              return (
-                <li key={c.id}>
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={selected}
-                    onClick={() => {
-                      setCommunity(c.id);
-                      setOpen(false);
-                    }}
-                    className={cn(
-                      "w-full text-left px-3 py-2 text-sm flex items-center gap-2",
-                      "hover:bg-runner-warm focus:bg-runner-warm focus:outline-none",
-                      selected && "bg-red-50"
-                    )}
-                  >
-                    <span aria-hidden="true" className="text-base">
-                      {c.emoji}
-                    </span>
-                    <span className={cn("flex-1", selected && "font-semibold text-runner-primary")}>
-                      {c.name}
-                    </span>
-                    {selected && (
-                      <Check className="h-4 w-4 text-runner-primary" aria-hidden="true" />
-                    )}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          <div className="border-t border-gray-100 px-3 py-2 flex items-center justify-between bg-gray-50">
-            <p className="text-xs text-gray-400">Lo usamos solo para mostrarte carreras cerca.</p>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="text-gray-400 hover:text-gray-600"
-              aria-label="Cerrar selector de comunidad"
-            >
-              <X className="h-3.5 w-3.5" aria-hidden="true" />
-            </button>
-          </div>
-        </div>
-      )}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

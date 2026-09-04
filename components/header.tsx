@@ -5,7 +5,7 @@ import { SignedIn, SignedOut, UserButton, SignInButton, SignUpButton, useUser } 
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { isMockMode } from "@/lib/mock/provider";
-import { Trophy, Calendar, User, BarChart3, Home, Shield } from "lucide-react";
+import { Trophy, Calendar, User, BarChart3, Home, Shield, ArrowLeftRight } from "lucide-react";
 
 /**
  * Hook condicional: solo ejecuta la función si NO estamos en mock.
@@ -62,6 +62,17 @@ export function Header({ mockMode = false }: { mockMode?: boolean }) {
           <Link href="/perfil" className="flex items-center gap-1.5 text-gray-700 hover:text-runner-primary transition-colors">
             <User className="h-4 w-4" /> Perfil
           </Link>
+          {/* Cross-link a DorsalSwap */}
+          <a
+            href={process.env.NEXT_PUBLIC_DORSWAP_URL || "https://dorsalswap.vercel.app"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-swap-700 bg-swap-50 hover:bg-swap-100 transition-colors"
+            title="Ir a DorsalSwap — cede o encuentra tu dorsal"
+          >
+            <ArrowLeftRight className="h-3.5 w-3.5" />
+            DorsalSwap
+          </a>
           {showAdminLink && (
             <Link href="/admin" className="flex items-center gap-1.5 text-runner-primary font-semibold hover:opacity-80 transition-colors">
               <Shield className="h-4 w-4" /> Admin

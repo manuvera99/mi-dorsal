@@ -40,6 +40,7 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
   const [requesting, setRequesting] = useState(false);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [showHelpDialog, setShowHelpDialog] = useState(false);
+  const [showPrePrompt, setShowPrePrompt] = useState(false);
   const [showManualDialog, setShowManualDialog] = useState(false);
   const [manualLat, setManualLat] = useState("");
   const [manualLng, setManualLng] = useState("");
@@ -106,52 +107,93 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
     } catch {}
   }, [maxDistance]);
 
-  const requestLocation = useCallback(() => {
+  const requestLocation = useCallback(async () => {
     if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
       setErrorDetail("Tu navegador no soporta la API de geolocalización. Elige una ciudad o introduce coordenadas.");
+      setAttemptedButFailed(true);
       return;
     }
     setRequesting(true);
     setErrorDetail(null);
     setAttemptedButFailed(false);
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setUserCoords({
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
+    // Wrapper basado en Promise para poder hacer Promise.race con un timeout
+    // y detectar el bug de iOS PWA que cuelga getCurrentPosition indefinidamente
+    // cuando Location Services está en "Ask Next Time".
+    const getPosition = (): Promise<GeolocationPosition> =>
+      new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: false,
+          timeout: 6000,
+          maximumAge: 0,
         });
-        setRequesting(false);
-        setErrorDetail(null);
-        setCoordsSource("browser");
-        setCoordsSourceLabel("GPS del navegador");
-        setAttemptedButFailed(false);
-      },
-      (err) => {
-        setRequesting(false);
-        setAttemptedButFailed(true);
-        // Mensaje neutro: no presuponemos que sea denegado, puede ser cualquier cosa
-        let detail = "";
-        switch (err.code) {
-          case err.PERMISSION_DENIED:
-            detail = "El navegador no devolvió tu ubicación. Si lo tienes permitido, prueba a recargar (Ctrl+Shift+R). Si sigue, una extensión puede estar bloqueándolo.";
-            break;
-          case err.POSITION_UNAVAILABLE:
-            detail = "No se pudo determinar tu ubicación. Activa el GPS o la Wi-Fi.";
-            break;
-          case err.TIMEOUT:
-            detail = "La petición ha tardado demasiado (>10s). Reintenta con mejor señal.";
-            break;
-          default:
-            detail = `No se pudo obtener la ubicación (código ${err.code}).`;
-        }
-        setErrorDetail(detail);
-        try {
-          sessionStorage.setItem(STORAGE_KEY_ERROR, detail);
-        } catch {}
-      },
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 0 },
+      });
+
+    // Detectar iOS (incluso PWA standalone) para aplicar timeout más corto y
+    // evitar el cuelgue conocido: https://stackoverflow.com/q/67924991
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const timeoutMs = isIOS ? 4000 : 6000;
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject({ code: 99, message: "Timeout local" }), timeoutMs),
     );
+
+    try {
+      const pos = await Promise.race([getPosition(), timeoutPromise]);
+      setUserCoords({
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+      });
+      setRequesting(false);
+      setErrorDetail(null);
+      setCoordsSource("browser");
+      setCoordsSourceLabel("GPS del navegador");
+      setAttemptedButFailed(false);
+      return;
+    } catch (rawErr: unknown) {
+      const err = rawErr as GeolocationPositionError | { code: number; message: string };
+      setRequesting(false);
+      setAttemptedButFailed(true);
+      let detail = "";
+      const isPwaStandalone =
+        typeof window !== "undefined" &&
+        ((window.navigator as Navigator & { standalone?: boolean }).standalone === true ||
+          window.matchMedia?.("(display-mode: standalone)").matches);
+
+      switch (err.code) {
+        case 1: // PERMISSION_DENIED
+          if (isPwaStandalone && isIOS) {
+            detail =
+              "Si tienes la app instalada (PWA) en iPhone, ve a Ajustes > Privacidad y seguridad > Localización > Safari Websites y ponlo en 'Mientras se usa' o 'Preguntar la próxima vez'. Luego reabre la app.";
+          } else {
+            detail =
+              "El navegador no devolvió tu ubicación. Comprueba el candado 🔒 a la izquierda de la URL → 'Ubicación' debe estar en 'Permitir'. Si ya lo está, recarga (Ctrl+Shift+R). Si sigue fallando, prueba a desactivar extensiones (uBlock, Privacy Badger) que pueden estar bloqueando la API.";
+          }
+          break;
+        case 2: // POSITION_UNAVAILABLE
+          detail =
+            "No se pudo determinar tu ubicación. Comprueba que tienes el GPS o la Wi-Fi activos, y que la ubicación del sistema operativo no esté desactivada.";
+          break;
+        case 3: // TIMEOUT
+          detail =
+            "La petición ha tardado demasiado. Reintenta con mejor señal o conexión.";
+          break;
+        case 99: // timeout local
+          if (isIOS) {
+            detail =
+              "iOS ha colgado la petición de ubicación (bug conocido en Safari/PWA). Ve a Ajustes > Privacidad y seguridad > Localización > Safari Websites y cámbialo de 'Preguntar la próxima vez' a 'Mientras se usa'. Luego reabre esta página.";
+          } else {
+            detail = "La petición ha tardado demasiado (>6s). Reintenta.";
+          }
+          break;
+        default:
+          detail = `No se pudo obtener la ubicación (código ${err.code}). Si el problema persiste, prueba con la ciudad o las coordenadas manuales.`;
+      }
+      setErrorDetail(detail);
+      try {
+        sessionStorage.setItem(STORAGE_KEY_ERROR, detail);
+      } catch {}
+    }
   }, []);
 
   // Input manual de coordenadas
@@ -273,7 +315,7 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
                 {/* Botón principal: GPS del navegador */}
                 <button
                   type="button"
-                  onClick={requestLocation}
+                  onClick={() => setShowPrePrompt(true)}
                   disabled={requesting}
                   className="inline-flex items-center gap-2 bg-runner-primary text-white px-3 py-2 rounded-md text-sm font-semibold hover:opacity-90 disabled:opacity-50"
                 >
@@ -388,6 +430,69 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
           </div>
         </div>
       </div>
+
+      {/* Modal pre-prompt: explicación ANTES del prompt nativo del navegador.
+          Patrón recomendado por web.dev y MDN para que el usuario entienda
+          por qué le pedimos la ubicación, y solo entonces se dispara
+          getCurrentPosition. */}
+      {showPrePrompt && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
+          onClick={() => setShowPrePrompt(false)}
+        >
+          <div
+            className="bg-white rounded-lg max-w-md w-full p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3 mb-3">
+              <MapPin className="h-6 w-6 text-runner-primary flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-bold text-lg">¿Usar tu ubicación?</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Vamos a pedirte permiso para usar tu GPS. Lo necesitamos para
+                  mostrarte solo las carreras que están cerca de ti (con el radio
+                  que elijas en el slider).
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-sm text-gray-700 bg-blue-50 border border-blue-200 rounded-md p-3">
+              <p className="font-semibold text-blue-900">¿Qué va a pasar?</p>
+              <ol className="list-decimal list-inside space-y-1 text-xs">
+                <li>Te saldrá un popup del navegador pidiendo permiso</li>
+                <li>Si aceptas, calculamos distancias a cada carrera</li>
+                <li>Si deniegas, puedes usar el selector de ciudades o las coordenadas manuales</li>
+              </ol>
+              <p className="font-semibold text-blue-900 mt-2">🔒 Tu privacidad</p>
+              <ul className="list-disc list-inside space-y-0.5 text-xs">
+                <li>Tu ubicación <strong>NO</strong> se envía a ningún servidor</li>
+                <li>Solo se guarda en este navegador (sessionStorage) mientras dure la sesión</li>
+                <li>No usamos tu ubicación para tracking ni analítica</li>
+              </ul>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                type="button"
+                onClick={() => setShowPrePrompt(false)}
+                className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+              >
+                Ahora no
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPrePrompt(false);
+                  void requestLocation();
+                }}
+                className="px-3 py-1.5 text-sm bg-runner-primary text-white rounded font-semibold hover:opacity-90 flex items-center gap-1.5"
+              >
+                <MapPin className="h-3.5 w-3.5" /> Pedir permiso
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal input manual */}
       {showManualDialog && (

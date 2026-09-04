@@ -1,34 +1,41 @@
-﻿feat: quitar geolocalización por IP (solo GPS + ciudades + manual)
+﻿feat: geolocalización GPS con pre-prompt + fix bug iOS PWA
 
-Manu pidió quitar la detección por IP — siempre devolvía Alemania
-(Frankfurt, IP del servidor Vercel en lugar de la del cliente), y
-prefería un control más explícito.
+Investigación web (MDN, web.dev, greadme.com) confirma el patrón correcto
+para pedir ubicación web:
+
+1. NUNCA llamar a getCurrentPosition() al cargar la página
+   (auto-prompt se deniega 80-90% y "quema" el único intento sticky)
+2. Solo llamar después de un click del usuario (user gesture)
+3. Mostrar un modal explicativo PROPIO antes del prompt nativo del navegador
+   ("pre-prompt"). El usuario acepta explícitamente, y solo entonces se
+   dispara getCurrentPosition. Tasa de aceptación 3-5x mayor.
+4. HTTPS obligatorio (ya estamos en Vercel)
+5. Siempre ofrecer fallback manual
 
 Cambios en components/race-distance-filter.tsx:
-- Eliminado useState requestingIp
-- Eliminada función requestIpLocation (fetch a /api/geo/ip)
-- Eliminado useEffect de auto-detect al cargar la página
-- Eliminado botón "Usar mi IP" del JSX
-- Eliminado estado detectedCountry / detectedCity
-- Eliminado import Globe (ya no se usa)
-- Eliminado import de useCallback que se usaba solo para requestIpLocation
-- Eliminado label "🌐 IP (ciudad)" del indicador de fuente
-- Texto del iframe ahora dice "elige una ciudad o introduce coordenadas"
-  en lugar de "Usa IP o coordenadas manuales"
-- Texto del modal de ayuda ahora dice "elige una ciudad o introduce
-  coordenadas" en lugar de "Usa IP o coordenadas manuales"
-- El slider de slider de distancia se mantiene sin cambios
 
-Métodos disponibles ahora:
-1. GPS del navegador (botón "Activar GPS" con permiso)
-2. Selector de ciudades españolas (1 click, 14 ciudades)
-3. Coordenadas manuales (lat/lng)
+- Nuevo state `showPrePrompt`
+- Botón "Activar GPS" ya NO llama a getCurrentPosition directamente.
+  Ahora abre un modal propio que explica:
+    * Qué va a pasar (popup del navegador, qué hacemos con la ubicación)
+    * Política de privacidad (no se envía a ningún servidor, solo sessionStorage)
+  Con dos botones: "Ahora no" / "Pedir permiso".
+  Solo si el usuario pulsa "Pedir permiso" se llama a getCurrentPosition.
+- requestLocation reescrito a async/await + Promise.race con timeout local
+  para evitar el bug conocido de iOS PWA standalone donde getCurrentPosition
+  se cuelga indefinidamente cuando Location Services está en "Ask Next Time".
+  https://stackoverflow.com/q/67924991
+- Detección de iOS (userAgent + touch points) y PWA standalone (window.navigator.standalone
+  + display-mode: standalone) para mostrar mensaje específico.
+- Mensajes de error específicos por código:
+  * PERMISSION_DENIED en PWA iOS → ajustes de Safari Websites
+  * PERMISSION_DENIED en otros → candado 🔒 + desactivar extensiones (uBlock, Privacy Badger)
+  * POSITION_UNAVAILABLE → GPS/Wi-Fi activos
+  * TIMEOUT → reintentar
+  * Timeout local en iOS → bug conocido, ir a ajustes
+- timeout: 6s (4s en iOS para detectar el cuelgue antes)
+- maximumAge: 0 (siempre posición fresca)
 
-El sessionStorage ahora guarda también `source` y `sourceLabel` para
-restaurar la fuente correcta al recargar. Si el source guardado era
-"ip" (versión vieja), se migra a "preset" automáticamente.
-
-Cambios en app/api/geo/ip/route.ts:
-- Reemplazado el handler real por un 410 Gone con mensaje explicativo.
-  El endpoint ya no se llama desde ningún sitio; mantener el archivo
-  evita imports rotos si algún cache tiene la ruta vieja.
+El selector de ciudades y el input manual siguen siendo fallbacks.
+Si el usuario ya había dado permiso en una sesión anterior, el comportamiento
+no cambia.

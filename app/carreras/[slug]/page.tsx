@@ -76,7 +76,7 @@ export async function generateMetadata({
             ]
           : [
               {
-                url: "/og-image",
+                url: "/og-image.png",
                 width: 1200,
                 height: 630,
                 alt: title,
@@ -87,7 +87,7 @@ export async function generateMetadata({
         card: "summary_large_image",
         title,
         description,
-        images: race.imageUrl ? [race.imageUrl] : ["/og-image"],
+        images: race.imageUrl ? [race.imageUrl] : ["/og-image.png"],
       },
       robots: {
         index: race.isPublished !== false,

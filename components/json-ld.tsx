@@ -42,9 +42,9 @@ export function organizationJsonLd() {
     url: BASE_URL,
     logo: {
       "@type": "ImageObject",
-      url: `${BASE_URL}/icon.svg`,
-      width: 64,
-      height: 64,
+      url: `${BASE_URL}/logo.png`,
+      width: 800,
+      height: 185,
     },
     description:
       "Planificador personal de carreras con tracking automático de dorsales. Catálogo, ranking, calendario y resultados de carreras populares en toda España.",

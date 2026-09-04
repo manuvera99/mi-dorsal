@@ -24,15 +24,17 @@ export function Header({ mockMode = false }: { mockMode?: boolean }) {
   const isSignedIn = userResult?.isSignedIn ?? false;
   const myProfile = useMockSafe(() => useQuery(api.users.getMyProfile), useMock);
   const isAdminReal = myProfile?.role === "admin";
-  const showAdminLink = useMock ? isSignedIn : isAdminReal;
+  // En mock mode, mostramos admin siempre para que el dev pueda acceder
+  // sin tener que configurar Clerk. En producción, requiere role="admin".
+  const showAdminLink = useMock ? true : isAdminReal;
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/90 backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2" aria-label="mi-dorsal — inicio">
-          {/* Isotipo SVG (logo profesional con la idea del dorsal + hilo) */}
+          {/* Isotipo (dorsal rojo con speed lines) — public/brand-assets/isotipo-mono-black.png */}
           <img
-            src="/icon.svg"
+            src="/favicon-48x48.png"
             alt=""
             width={36}
             height={36}
@@ -62,17 +64,20 @@ export function Header({ mockMode = false }: { mockMode?: boolean }) {
           <Link href="/perfil" className="flex items-center gap-1.5 text-gray-700 hover:text-runner-primary transition-colors">
             <User className="h-4 w-4" /> Perfil
           </Link>
-          {/* Cross-link a DorsalSwap */}
-          <a
-            href={process.env.NEXT_PUBLIC_DORSWAP_URL || "https://dorsalswap.vercel.app"}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-swap-700 bg-swap-50 hover:bg-swap-100 transition-colors"
-            title="Ir a DorsalSwap — cede o encuentra tu dorsal"
-          >
-            <ArrowLeftRight className="h-3.5 w-3.5" />
-            DorsalSwap
-          </a>
+          {/* Cross-link a DorsalSwap — OCULTO por ahora (Sprint 0).
+              Se re-activará cuando DorsalSwap tenga tracción validada. */}
+          {false && (
+            <a
+              href={process.env.NEXT_PUBLIC_DORSWAP_URL || "https://dorsalswap.vercel.app"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-swap-700 bg-swap-50 hover:bg-swap-100 transition-colors"
+              title="Ir a DorsalSwap — cede o encuentra tu dorsal"
+            >
+              <ArrowLeftRight className="h-3.5 w-3.5" />
+              DorsalSwap
+            </a>
+          )}
           {showAdminLink && (
             <Link href="/admin" className="flex items-center gap-1.5 text-runner-primary font-semibold hover:opacity-80 transition-colors">
               <Shield className="h-4 w-4" /> Admin

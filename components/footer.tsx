@@ -8,7 +8,7 @@ export function Footer() {
           {/* Columna 1: branding */}
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="flex items-center gap-2 mb-2" aria-label="mi-dorsal">
-              <img src="/icon.svg" alt="" width={32} height={32} className="h-8 w-8" aria-hidden="true" />
+              <img src="/favicon-48x48.png" alt="" width={32} height={32} className="h-8 w-8" aria-hidden="true" />
               <span className="text-base font-bold tracking-tight">
                 <span>mi</span>
                 <span className="text-gray-400 font-light">-</span>

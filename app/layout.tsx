@@ -72,7 +72,7 @@ export const metadata: Metadata = {
       "Catálogo de carreras populares en toda España. Predice tu tiempo, planifica tu temporada y recibe tu resultado oficial por email.",
     images: [
       {
-        url: "/og-image",
+        url: "/og-image.png",
         width: 1200,
         height: 630,
         alt: "mi-dorsal — Planifica tu temporada de carreras",
@@ -86,7 +86,7 @@ export const metadata: Metadata = {
     title: "mi-dorsal · Planifica tu temporada de carreras",
     description:
       "Catálogo de carreras populares en toda España. Predice tu tiempo, planifica tu temporada y recibe tu resultado oficial por email.",
-    images: ["/og-image"],
+    images: ["/og-image.png"],
   },
   robots: {
     index: true,

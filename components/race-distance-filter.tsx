@@ -113,6 +113,26 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
       setAttemptedButFailed(true);
       return;
     }
+
+    // Pre-check: si el estado de Permissions API es "denied" ya sabemos
+    // que getCurrentPosition va a fallar con PERMISSION_DENIED sin mostrar popup.
+    // Avisamos antes para que el usuario sepa qué hacer.
+    if ("permissions" in navigator) {
+      try {
+        const perm = await (navigator.permissions as Permissions).query({ name: "geolocation" as PermissionName });
+        if (perm.state === "denied") {
+          setRequesting(false);
+          setAttemptedButFailed(true);
+          setErrorDetail(
+            "El navegador tiene 'Ubicación' en DENEGADO para este sitio (estado sticky). El popup NO va a aparecer hasta que lo restablezcas. Ve a /test-geo y pulsa el botón rojo de 'Restablecer permiso de ubicación' — funciona en 1 click.",
+          );
+          return;
+        }
+      } catch {
+        // Permissions API no soporta geolocation en este navegador, seguir
+      }
+    }
+
     setRequesting(true);
     setErrorDetail(null);
     setAttemptedButFailed(false);

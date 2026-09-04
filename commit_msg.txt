@@ -1,34 +1,32 @@
-﻿feat: página de diagnóstico de geolocalización (/test-geo)
+﻿fix: /test-geo con reset programático + detección de "denied" en filtro
 
-Manu reporta que el botón "Activar GPS" no muestra el prompt nativo del
-navegador. La causa más probable es una extensión (uBlock, Privacy Badger,
-Brave Shields) bloqueando navigator.geolocation, pero necesitamos
-herramientas para diagnosticarlo en el navegador real, no a ciegas.
+Manu mandó capturas: Permissions API dice "denied" para mi-dorsal.vercel.app
+aunque en chrome://settings el permiso se ve como "Permitir". Esto es el
+comportamiento "sticky" típico: una vez denegado, el navegador no vuelve
+a preguntar aunque permitas después en settings. Hay que "restablecer
+permisos" explícitamente.
 
 Cambios:
 
-1. Nueva página /test-geo (pública, sin auth) que ejecuta 8 checks sobre
-   la API de geolocalización y muestra el resultado exacto:
-   - navigator existe
-   - secure context (HTTPS)
-   - no está en iframe
-   - navigator.geolocation existe
-   - Permissions API state (granted/prompt/denied)
-   - navegador detectado (Chrome/Edge/Firefox/Safari/Brave/Opera)
-   - Permissions-Policy
-   - getCurrentPosition real (muestra coordenadas o error con code+message)
+1. /test-geo reescrita. Cuando detecta state="denied" muestra un panel
+   rojo con 4 opciones para arreglarlo:
+   - Opción 1 (rápida): botón "Restablecer permiso de ubicación" que
+     llama a navigator.permissions.revoke() (disponible en Chrome 116+).
+     Un solo click y ya no necesitas ir a chrome://settings.
+   - Opción 2: instrucciones paso a paso para chrome://settings con
+     link directo a la página de configuración de este sitio
+     (chrome://settings/content/siteDetails?site=https%3A%2F%2Fmi-dorsal.vercel.app)
+   - Opción 3: desactivar extensiones (uBlock, Privacy Badger, AdBlock,
+     Brave Shields, DuckDuckGo Privacy Essentials) que interceptan
+     navigator.geolocation.
+   - Opción 4: ventana incógnito (Ctrl+Shift+N) como test definitivo.
+   - Instrucciones específicas por navegador (Chrome, Edge, Firefox, Safari)
+     debajo del todo.
 
-2. Botón "Probar getCurrentPosition" en la página de diagnóstico que
-   ejecuta la llamada real y muestra el err.message literal del navegador
-   (útil para detectar "Only secure origins are allowed", "User denied
-   Geolocation", etc.)
+2. race-distance-filter.tsx: pre-check de Permissions API ANTES de llamar
+   a getCurrentPosition. Si el estado es "denied", muestra mensaje claro
+   "estado sticky, ve a /test-geo para resetear" y aborta. Evita la
+   espera de 6s y la frustración de "no aparece el popup".
 
-3. race-distance-filter.tsx: ahora muestra el err.message real del
-   navegador al final del mensaje de error, y detecta los strings típicos
-   (secure origin, user denied) para dar mensajes más específicos.
-
-4. Enlace "Diagnóstico avanzado" en el filtro de carreras, para que si
-   falla el GPS, Manu (y cualquier usuario) pueda ir directo a /test-geo.
-
-La página es segura de compartir — solo ejecuta checks en el navegador
-del usuario, no envía nada a ningún servidor.
+3. Añadido check de navigator.permissions.revoke() en /test-geo para
+   saber si el navegador soporta la API programática.

@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CheckCircle2, XCircle, AlertCircle, MapPin, ExternalLink } from "lucide-react";
+import {
+  CheckCircle2, XCircle, AlertCircle, MapPin, ExternalLink,
+  Settings, RotateCcw, Shield, Globe, Chrome, Smartphone,
+} from "lucide-react";
 
 type CheckStatus = "pending" | "ok" | "warn" | "fail";
 
@@ -17,6 +20,9 @@ export default function TestGeoPage() {
   const [running, setRunning] = useState(true);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [rawError, setRawError] = useState<string | null>(null);
+  const [permState, setPermState] = useState<string | null>(null);
+  const [revoked, setRevoked] = useState(false);
+  const [browserName, setBrowserName] = useState("");
 
   const update = (name: string, status: CheckStatus, detail: string, hint?: string) => {
     setChecks((prev) => {
@@ -52,7 +58,7 @@ export default function TestGeoPage() {
         "secure",
         isSecure ? "ok" : "fail",
         `isSecureContext=${isSecure}, protocol=${protocol}, host=${hostname}`,
-        isSecure ? undefined : "La geolocalización SOLO funciona en HTTPS o localhost. Vercel ya sirve HTTPS, así que debería estar OK.",
+        isSecure ? undefined : "La geolocalización SOLO funciona en HTTPS o localhost.",
       );
     }
 
@@ -79,50 +85,64 @@ export default function TestGeoPage() {
     );
 
     // 5) Permission state via Permissions API
+    let detectedState: string | null = null;
     if (typeof navigator !== "undefined" && "permissions" in navigator) {
       try {
         const perm = await navigator.permissions.query({ name: "geolocation" });
+        detectedState = perm.state;
+        setPermState(perm.state);
         update(
           "permission-state",
           perm.state === "granted" ? "ok" : perm.state === "denied" ? "fail" : "warn",
           `Permissions API: state = "${perm.state}"`,
           perm.state === "denied"
-            ? "El permiso está denegado al nivel de navegador. Hay que ir a Configuración del sitio (candado 🔒) y poner Ubicación en 'Permitir', o usar la opción 'Restablecer permisos' del navegador."
+            ? "🚫 EL PERMISO ESTÁ DENEGADO. El navegador NO mostrará el popup hasta que lo 'restablezcas' abajo. Es estado 'sticky'."
             : perm.state === "prompt"
-            ? "El permiso aún no se ha decidido. Si no ves el popup al pulsar el botón, una extensión (uBlock, Privacy Badger, Brave Shields) lo está bloqueando."
+            ? "El permiso aún no se ha decidido. Si pulsas 'Probar' y no aparece el popup, una extensión lo está bloqueando."
             : undefined,
         );
       } catch (e) {
         update("permission-state", "warn", `Permissions API no soporta geolocation: ${(e as Error).message}`);
       }
     } else {
-      update("permission-state", "warn", "Permissions API no disponible en este navegador");
+      update("permission-state", "warn", "Permissions API no disponible");
     }
 
     // 6) User agent
     const ua = navigator.userAgent;
-    let browserHint = "";
-    if (/Chrome\/(\d+)/.test(ua)) {
-      const v = ua.match(/Chrome\/(\d+)/)?.[1];
-      browserHint = `Chrome ${v}`;
-    } else if (/Edg\/(\d+)/.test(ua)) {
-      const v = ua.match(/Edg\/(\d+)/)?.[1];
-      browserHint = `Edge ${v}`;
+    let browser = "Desconocido";
+    if (/Edg\/(\d+)/.test(ua)) {
+      browser = `Edge ${ua.match(/Edg\/(\d+)/)?.[1]}`;
+    } else if (/Chrome\/(\d+)/.test(ua)) {
+      browser = `Chrome ${ua.match(/Chrome\/(\d+)/)?.[1]}`;
     } else if (/Firefox\/(\d+)/.test(ua)) {
-      const v = ua.match(/Firefox\/(\d+)/)?.[1];
-      browserHint = `Firefox ${v}`;
-    } else if (/Safari\/(\d+)/.test(ua) && !/Chrome/.test(ua)) {
-      browserHint = "Safari";
+      browser = `Firefox ${ua.match(/Firefox\/(\d+)/)?.[1]}`;
     } else if (/OPR\/(\d+)/.test(ua) || /Opera/.test(ua)) {
-      browserHint = "Opera";
-    } else if (/Brave/.test(ua) || /brave/.test(ua)) {
-      browserHint = "Brave (Shields activado probablemente)";
-    } else {
-      browserHint = "Desconocido";
+      browser = "Opera";
+    } else if (/Brave/.test(ua)) {
+      browser = "Brave (Shields ON probablemente)";
+    } else if (/Safari\/(\d+)/.test(ua) && !/Chrome/.test(ua)) {
+      browser = "Safari";
     }
-    update("browser", "ok", browserHint, browserHint.includes("Brave") ? "Brave con Shields ACTIVOS bloquea geolocalización por defecto. Desactívalo para este sitio (icono del león en la barra)." : undefined);
+    setBrowserName(browser);
+    update("browser", "ok", browser, browser.includes("Brave") ? "Brave con Shields ACTIVOS bloquea geolocalización por defecto." : undefined);
 
-    // 7) Permissions Policy
+    // 7) revoke() disponible
+    if (typeof navigator !== "undefined" && "permissions" in navigator) {
+      const hasRevoke = typeof (navigator.permissions as { revoke?: unknown }).revoke === "function";
+      update(
+        "revoke-api",
+        hasRevoke ? "ok" : "warn",
+        hasRevoke
+          ? "navigator.permissions.revoke() disponible (Chrome 116+). Útil para limpiar el estado 'denied' sin ir a settings."
+          : "navigator.permissions.revoke() NO disponible. Usa el botón 'Restablecer permisos' manual.",
+        hasRevoke
+          ? undefined
+          : "Si la API revoke no existe en tu navegador, usa el paso 2: chrome://settings/content/siteDetails?site=...",
+      );
+    }
+
+    // 8) Permissions Policy
     if (typeof document !== "undefined") {
       const ppMeta = document.querySelector('meta[http-equiv="Permissions-Policy"]');
       const ppHeader = (document as unknown as { permissionsPolicy?: string }).permissionsPolicy;
@@ -131,22 +151,6 @@ export default function TestGeoPage() {
         "ok",
         `Meta: ${ppMeta?.getAttribute("content") ?? "(none)"} | Doc: ${ppHeader ?? "(default)"}`,
       );
-    }
-
-    // 8) TEST REAL: getCurrentPosition
-    if (typeof navigator !== "undefined" && "geolocation" in navigator) {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: false,
-          timeout: 8000,
-          maximumAge: 0,
-        });
-      });
-      setCoords({
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
-      });
-      update("real-test", "ok", `Coordenadas recibidas: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)} (precisión ±${Math.round(position.coords.accuracy)}m)`);
     }
 
     setRunning(false);
@@ -164,22 +168,37 @@ export default function TestGeoPage() {
         });
       });
       setCoords({ lat: position.coords.latitude, lng: position.coords.longitude });
-      update("real-test", "ok", `✅ Coordenadas recibidas: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`);
+      update("real-test", "ok", `✅ Coordenadas recibidas: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)} (precisión ±${Math.round(position.coords.accuracy)}m)`);
     } catch (err) {
       const e = err as GeolocationPositionError;
       const detail = `code=${e.code} | message="${e.message}" | PERMISSION_DENIED=${e.PERMISSION_DENIED} | POSITION_UNAVAILABLE=${e.POSITION_UNAVAILABLE} | TIMEOUT=${e.TIMEOUT}`;
       setRawError(detail);
       update("real-test", "fail", `❌ ${detail}`);
-
-      // Diagnóstico adicional
-      if (e.message?.includes("secure origins")) {
-        update("secure-hint", "fail", "El navegador dice 'Only secure origins are allowed'. La página debe estar en HTTPS.");
-      }
-      if (e.message?.includes("User denied") || e.message?.includes("denied")) {
-        update("denied-hint", "fail", "El usuario (o una extensión) ha denegado el permiso. Comprueba:");
-      }
     }
     setRunning(false);
+  }
+
+  async function revokeAndRetry() {
+    if (typeof navigator === "undefined" || !("permissions" in navigator)) return;
+    const permsApi = navigator.permissions as Navigator["permissions"] & {
+      revoke?: (descriptor: { name: string }) => Promise<void>;
+    };
+    if (typeof permsApi.revoke !== "function") {
+      update("revoke-result", "fail", "Tu navegador no soporta navigator.permissions.revoke(). Usa el paso 2 manual.");
+      return;
+    }
+    try {
+      await permsApi.revoke({ name: "geolocation" });
+      setRevoked(true);
+      setPermState("prompt");
+      update(
+        "revoke-result",
+        "ok",
+        "✅ Permiso revocado. Recarga la página y vuelve a pulsar 'Probar getCurrentPosition'. Ahora debería aparecer el popup.",
+      );
+    } catch (e) {
+      update("revoke-result", "fail", `Error al revocar: ${(e as Error).message}`);
+    }
   }
 
   const iconFor = (s: CheckStatus) =>
@@ -187,6 +206,10 @@ export default function TestGeoPage() {
     s === "fail" ? <XCircle className="h-4 w-4 text-red-600" /> :
     s === "warn" ? <AlertCircle className="h-4 w-4 text-amber-600" /> :
     <div className="h-4 w-4 rounded-full border-2 border-gray-300 border-t-blue-500 animate-spin" />;
+
+  const isChromeLike = browserName.startsWith("Chrome") || browserName.startsWith("Edge") || browserName.startsWith("Opera");
+  const isFirefox = browserName.startsWith("Firefox");
+  const isSafari = browserName === "Safari";
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -196,9 +219,8 @@ export default function TestGeoPage() {
             <MapPin className="h-6 w-6" /> Diagnóstico de geolocalización
           </h1>
           <p className="text-sm text-gray-600 mt-2">
-            Esta página ejecuta una batería de pruebas sobre la API de geolocalización
-            y reporta exactamente qué falla y por qué. Útil cuando el botón "Activar GPS"
-            del filtro de carreras no funciona.
+            Ejecuta pruebas sobre la API de geolocalización y te dice exactamente qué falla
+            y cómo arreglarlo. Cuando arregles, pulsa "Re-ejecutar diagnóstico".
           </p>
 
           {coords && (
@@ -207,6 +229,9 @@ export default function TestGeoPage() {
               <div className="font-mono text-sm text-green-800">
                 {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
               </div>
+              <a href="/carreras" className="text-sm text-runner-primary underline mt-2 inline-block">
+                ← Volver al filtro de carreras
+              </a>
             </div>
           )}
 
@@ -214,6 +239,98 @@ export default function TestGeoPage() {
             <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded">
               <div className="font-bold text-red-900">❌ Error real de getCurrentPosition:</div>
               <pre className="text-xs text-red-800 mt-1 whitespace-pre-wrap break-all">{rawError}</pre>
+            </div>
+          )}
+
+          {/* FIX RÁPIDO cuando el estado es "denied" */}
+          {permState === "denied" && (
+            <div className="mt-4 p-5 bg-red-50 border-2 border-red-300 rounded-lg">
+              <div className="flex items-start gap-2 mb-3">
+                <Shield className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h2 className="font-bold text-red-900 text-lg">Permiso denegado — hay que resetearlo</h2>
+                  <p className="text-sm text-red-800 mt-1">
+                    El navegador tiene guardado "no" para este sitio y NO te volverá a preguntar.
+                    Es estado <strong>sticky</strong> (se queda así hasta que pulses uno de los botones de abajo).
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {/* Paso 1: programático (Chrome 116+) */}
+                <div className="bg-white border border-red-200 rounded p-3">
+                  <div className="font-semibold text-sm flex items-center gap-1">
+                    <span className="bg-red-600 text-white rounded-full w-5 h-5 inline-flex items-center justify-center text-xs">1</span>
+                    Opción rápida: revocar programáticamente
+                    <span className="text-xs text-gray-500 font-normal">(Chrome 116+, Edge)</span>
+                  </div>
+                  <button
+                    onClick={revokeAndRetry}
+                    className="mt-2 inline-flex items-center gap-2 bg-red-600 text-white px-3 py-2 rounded text-sm font-semibold hover:bg-red-700"
+                  >
+                    <RotateCcw className="h-4 w-4" /> Restablecer permiso de ubicación
+                  </button>
+                  {revoked && (
+                    <div className="mt-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded p-2">
+                      ✅ Hecho. Ahora <strong>recarga esta página (Ctrl+Shift+R)</strong> y vuelve a pulsar
+                      "Probar getCurrentPosition". Debería aparecer el popup nativo.
+                    </div>
+                  )}
+                </div>
+
+                {/* Paso 2: chrome://settings manual */}
+                <div className="bg-white border border-red-200 rounded p-3">
+                  <div className="font-semibold text-sm flex items-center gap-1">
+                    <span className="bg-red-600 text-white rounded-full w-5 h-5 inline-flex items-center justify-center text-xs">2</span>
+                    Opción manual: Configuración del sitio
+                  </div>
+                  <ol className="list-decimal list-inside text-xs text-gray-700 mt-2 space-y-1">
+                    <li>Click en el candado 🔒 o icono ⓘ a la izquierda de la URL</li>
+                    <li>Busca "Ubicación" y cámbialo a <strong>"Permitir"</strong></li>
+                    <li>Pulsa el botón <strong>"Restablecer permisos"</strong> que aparece justo debajo</li>
+                    <li>Recarga la página con <strong>Ctrl+Shift+R</strong></li>
+                    <li>Vuelve a pulsar "Probar getCurrentPosition" aquí abajo</li>
+                  </ol>
+
+                  {isChromeLike && (
+                    <a
+                      href="chrome://settings/content/siteDetails?site=https%3A%2F%2Fmi-dorsal.vercel.app"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex items-center gap-1 text-xs text-blue-600 underline"
+                    >
+                      <Settings className="h-3 w-3" /> Abrir configuración directa de este sitio
+                    </a>
+                  )}
+                </div>
+
+                {/* Paso 3: extensions */}
+                <div className="bg-white border border-red-200 rounded p-3">
+                  <div className="font-semibold text-sm flex items-center gap-1">
+                    <span className="bg-red-600 text-white rounded-full w-5 h-5 inline-flex items-center justify-center text-xs">3</span>
+                    Si lo anterior no funciona: desactiva extensiones
+                  </div>
+                  <p className="text-xs text-gray-700 mt-2">
+                    uBlock Origin, Privacy Badger, AdBlock, DuckDuckGo Privacy Essentials y Brave Shields
+                    <strong> interceptan navigator.geolocation</strong> aunque el permiso esté permitido.
+                    Desactívalas para este sitio (icono de la extensión en la barra → "Desactivar en este sitio")
+                    y recarga.
+                  </p>
+                </div>
+
+                {/* Paso 4: ventana incógnito */}
+                <div className="bg-white border border-red-200 rounded p-3">
+                  <div className="font-semibold text-sm flex items-center gap-1">
+                    <span className="bg-red-600 text-white rounded-full w-5 h-5 inline-flex items-center justify-center text-xs">4</span>
+                    Test definitivo: ventana incógnito
+                  </div>
+                  <p className="text-xs text-gray-700 mt-2">
+                    <strong>Ctrl+Shift+N</strong> en Chrome/Edge. La incógnito NO carga extensiones por defecto.
+                    Si en incógnito funciona, es 100% cosa de una extensión. Si no funciona ni en incógnito,
+                    es cosa del navegador o del sistema.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
@@ -258,24 +375,48 @@ export default function TestGeoPage() {
             >
               <ExternalLink className="h-4 w-4" /> Probar Google Maps (control)
             </a>
+            <a
+              href="/carreras"
+              className="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-50"
+            >
+              ← Volver a /carreras
+            </a>
           </div>
 
-          <div className="mt-8 p-4 bg-amber-50 border border-amber-200 rounded text-sm">
-            <div className="font-bold text-amber-900 mb-2">🩺 Si ningún prompt aparece al pulsar "Probar getCurrentPosition":</div>
-            <ol className="list-decimal list-inside space-y-1 text-amber-900">
-              <li><strong>Comprueba el candado 🔒</strong> a la izquierda de la URL → Permisos del sitio → Ubicación → Permitir. Recarga con Ctrl+Shift+R después.</li>
-              <li><strong>Desactiva extensiones del navegador</strong> (uBlock Origin, Privacy Badger, AdBlock, Brave Shields) para este sitio. Recarga y prueba.</li>
-              <li><strong>Prueba en ventana incógnito</strong> (Ctrl+Shift+N) sin extensiones. Si ahí funciona, son las extensiones.</li>
-              <li><strong>Comprueba la configuración del sistema</strong>:
-                <ul className="list-disc list-inside ml-6 mt-1">
-                  <li>Windows: Inicio → Configuración → Privacidad → Ubicación → "Permitir que las aplicaciones accedan a la ubicación" debe estar ON</li>
-                  <li>macOS: Preferencias del sistema → Seguridad y privacidad → Ubicación → activa para tu navegador</li>
-                </ul>
-              </li>
-              <li><strong>Prueba con otro navegador</strong> (Chrome, Edge, Firefox) para descartar problema del navegador actual.</li>
-              <li><strong>Si todo falla</strong>, usa el selector de ciudades o las coordenadas manuales del filtro de carreras — funcionan siempre.</li>
-            </ol>
-          </div>
+          {/* Instrucciones específicas del navegador */}
+          {(isChromeLike || isFirefox || isSafari) && permState !== "denied" && (
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded text-sm">
+              <div className="font-bold text-blue-900 mb-2 flex items-center gap-1">
+                {isChromeLike && <Chrome className="h-4 w-4" />}
+                {isFirefox && <Globe className="h-4 w-4" />}
+                {isSafari && <Smartphone className="h-4 w-4" />}
+                Instrucciones para {browserName}
+              </div>
+              {isChromeLike && (
+                <ol className="list-decimal list-inside space-y-1 text-blue-900 text-xs">
+                  <li>Click en el candado 🔒 a la izquierda de la URL</li>
+                  <li>Busca "Ubicación" → cámbialo a "Permitir"</li>
+                  <li>Recarga con <strong>Ctrl+Shift+R</strong></li>
+                  <li>Si sigue fallando, ve a <code className="bg-white px-1 rounded">chrome://settings/content/location</code> y comprueba que no esté en "No permitir que ningún sitio rastree tu ubicación"</li>
+                </ol>
+              )}
+              {isFirefox && (
+                <ol className="list-decimal list-inside space-y-1 text-blue-900 text-xs">
+                  <li>Click en el candado 🔒 a la izquierda de la URL</li>
+                  <li>Click en "Permisos" → "Acceder a tu ubicación" → desmarca "Bloquear"</li>
+                  <li>Recarga con <strong>Ctrl+Shift+R</strong></li>
+                </ol>
+              )}
+              {isSafari && (
+                <ol className="list-decimal list-inside space-y-1 text-blue-900 text-xs">
+                  <li>Ajustes → Privacidad y seguridad → Localización</li>
+                  <li>Activa "Localización" general</li>
+                  <li>Safari Websites → "Preguntar la próxima vez" o "Mientras se usa"</li>
+                  <li>Recarga esta página</li>
+                </ol>
+              )}
+            </div>
+          )}
 
           <div className="mt-4 text-xs text-gray-500">
             🔒 Esta página no envía tu ubicación a ningún servidor. Solo se ejecuta en tu navegador.

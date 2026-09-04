@@ -99,7 +99,7 @@ jobs:
       # Si los secrets de IA no están, falla gracefully y sigue.
       # ------------------------------------------------------------------
 
-      - name: 8/8 Deep Extract IA (MiniMax M3, 30 carreras prioritarias)
+      - name: 8/9 Deep Extract IA (MiniMax M3, 30 carreras prioritarias)
         env:
           NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -114,6 +114,20 @@ jobs:
           echo "=== Deep Extract (priority mode, 30 carreras) ==="
           npx tsx scripts/deep-extract-all.ts --priority --limit=30 --delay=2000 2>&1 | tail -60 \
             || echo "⚠️  Deep extract failed, continuing"
+        continue-on-error: true
+
+      # ------------------------------------------------------------------
+      # 9/9 Geocodificación — asigna lat/lng a carreras nuevas para el
+      # filtro de distancia del usuario. Nominatim (OpenStreetMap, sin key).
+      # ------------------------------------------------------------------
+
+      - name: 9/9 Geocodificar carreras nuevas (Nominatim)
+        env:
+          NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+        run: |
+          echo "=== Geocodificar carreras sin lat/lng (Nominatim) ==="
+          npx tsx scripts/geocode-races.ts --only-missing 2>&1 | tail -30 \
+            || echo "⚠️  Geocoding failed, continuing"
         continue-on-error: true
 
       # ------------------------------------------------------------------

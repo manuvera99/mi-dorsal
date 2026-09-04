@@ -1,47 +1,60 @@
-﻿feat: filtro de carreras por distancia desde tu ubicación
+﻿feat: mapa visual de carreras + geocodificación 100% + paso 9 nightly
 
-Manu pidió poder filtrar las carreras del catálogo por distancia desde
-la ciudad del usuario, con un slider para ajustar el radio máximo.
+Manu pidió 3 cosas adicionales:
+1. Geocodificar las 5 carreras que faltaban (manual con queries alternativas)
+2. Que el nightly procese también la geocodificación de carreras nuevas
+3. Mapa visual con la ubicación del usuario y las carreras cercanas
 
-## Cambios
+## 1. Geocodificación 100% (431/431)
 
-### Schema
-- `convex/schema.ts`: añadidos `latitude: v.optional(v.number())` y
-  `longitude: v.optional(v.number())` a `races`
-- `convex/races.ts`: añadidos al validator de `systemUpdate` + `systemListAll`
-  también los devuelve (junto con locality/province para geocodificar)
+`scripts/fix-remaining-geo.ts` con queries alternativas + fallback manual:
+- Galdakao, Bizkaia (la province "valencia" estaba mal en BBDD)
+- Santa Eulària des Riu, Baleares (con acento oficial)
+- Bedmar, Jaén (sin la coletilla "y Garcíez")
+- Medellín, Badajoz, Extremadura (para evitar Medellín-Colombia)
+- Banyalbufar, Mallorca (con Sierra de Tramontana)
 
-### Geocodificación (Nominatim/OpenStreetMap, gratis, sin API key)
-- `scripts/geocode-races.ts`: nuevo script que busca `${locality}, ${province},
-  España` y guarda lat/lng. Respeta el rate limit de 1 req/seg.
-- `scripts/check-geo-stats.ts`: helper para ver cuántas tienen coords
-- Resultado: **426/431 carreras geocodificadas (99%)** en ~8 min
-- Las 5 que faltan son edge cases (nombres con tildes raros, pueblos pequeños
-  que Nominatim no indexa) — se pueden afinar manualmente si es necesario
+Resultado: **431/431 geocodificadas (100%)**
 
-### Componentes nuevos
-- `lib/geo/distance.ts`: fórmula de Haversine + `formatDistance` (m / km)
-- `components/race-distance-filter.tsx`: el panel con
-  - Botón "📍 Usar mi ubicación" (pide permiso vía `navigator.geolocation`)
-  - Slider 0-300km en pasos de 10km (default 200km)
-  - Estado en sessionStorage (NO se guarda en BBDD — privacidad)
-  - Mensaje claro si el usuario rechaza el permiso
-  - Botón X para limpiar la ubicación
-- `components/race-card.tsx`: nueva prop `distanceFromUser` opcional
-  que muestra "X km de ti" con icono de navegación en cada card
+## 2. Paso 9/9 en nightly workflow
 
-### Listado
-- `app/carreras/page.tsx`: integra el filtro de distancia encima de los
-  filtros existentes
-- Filtrado en cliente (no toca la query de Convex — trae todas y filtra
-  en JS, más simple y respeta los filtros existentes)
-- Carrera sin coordenadas: se muestra siempre (no podemos calcular)
-- Mensaje contextual: "X carreras dentro de Y km" + "Z ocultas por distancia"
-- Si no hay resultados por el radio, sugiere ampliar
+`.github/workflows/daily-ingest.yml`:
+- Nuevo paso "9/9 Geocodificar carreras nuevas (Nominatim)"
+- Ejecuta `geocode-races.ts --only-missing` con 1.1s delay
+- continue-on-error para no romper el workflow
+- Las nuevas que aparezcan del ingest diario se geocodifican automáticamente
 
-## Privacidad
+## 3. Mapa visual con Leaflet + OpenStreetMap
+
+### Dependencias
+- `leaflet` + `react-leaflet` + `@types/leaflet` (instalado)
+
+### Componentes
+- `components/race-map.tsx`: el mapa en sí (con pines, popups, círculo de radio)
+  - Pin central del usuario (rojo con borde blanco)
+  - Pines de carreras (verde, gris si está fuera de rango)
+  - Círculo del radio de filtrado (línea discontinua)
+  - Popup con nombre, fecha, distancia, link
+  - Tiles OpenStreetMap (gratis, sin API key)
+- `components/race-map-wrapper.tsx`: wrapper con `next/dynamic({ ssr: false })`
+  porque Leaflet toca `window` al importarse y rompe SSR
+
+### Integración en /carreras
+- Toggle "Lista | Mapa" en la cabecera
+- Cuando se activa el mapa, las carreras SIN coordenadas se ocultan
+  (no se pueden mostrar en un mapa)
+- El mapa se centra en la ubicación del usuario si está activa
+- Sin geolocalización, centra en el promedio de las carreras
+
+### Privacidad
+- Leaflet pide los tiles a OpenStreetMap (no a nosotros)
 - La ubicación del usuario NO se envía a ningún servidor
-- Solo se guarda en sessionStorage (se borra al cerrar el tab)
-- Se puede desactivar con la X o cerrar la pestaña
-- Sin geolocalización, el slider sigue funcionando pero muestra todas
-  (sin filtrar)
+- El cliente pide los tiles directamente al CDN de OSM
+
+## Detalle técnico
+
+- Error TS del build: `new Map<string, number>()` colisionaba con el
+  componente `Map` de react-leaflet. Fix: `new globalThis.Map<...>()`.
+- `formatDate` está en `@/lib/utils`, no en `@/lib/geo/distance` (corregido)
+- Iconos custom con L.divIcon (los iconos default de Leaflet no cargan
+  en Next.js por path resolution)

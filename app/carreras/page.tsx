@@ -8,8 +8,9 @@ import { RaceCard } from "@/components/race-card";
 import { RaceFilters } from "@/components/race-filters";
 import { RaceDistanceFilter } from "@/components/race-distance-filter";
 import { PROVINCE_LIST, RACE_TYPE_LIST, MONTH_LIST } from "@/lib/utils";
-import { Search, MapPin } from "lucide-react";
+import { Search, MapPin, List, Map } from "lucide-react";
 import { haversineDistanceKm, type Coords } from "@/lib/geo/distance";
+import { RaceMapWrapper } from "@/components/race-map-wrapper";
 
 function MockCarrerasPage() {
   const [filters, setFilters] = useState<any>({});
@@ -59,6 +60,8 @@ function CarrerasContent({
   const [userCoords, setUserCoords] = useState<Coords | null>(null);
   const [maxDistance, setMaxDistance] = useState<number>(200);
   const [filterEnabled, setFilterEnabled] = useState<boolean>(false);
+  // Toggle entre lista y mapa
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
 
   const handleDistanceChange = useCallback((coords: Coords | null, maxKm: number) => {
     setUserCoords(coords);
@@ -83,8 +86,8 @@ function CarrerasContent({
 
   // Calcular distancia para mostrar en cada card
   const raceDistances = useMemo(() => {
-    if (!userCoords) return new Map<string, number>();
-    const map = new Map<string, number>();
+    if (!userCoords) return new globalThis.Map<string, number>();
+    const map = new globalThis.Map<string, number>();
     for (const r of filteredRaces) {
       if (typeof r.latitude === "number" && typeof r.longitude === "number") {
         const d = haversineDistanceKm(userCoords, { latitude: r.latitude, longitude: r.longitude });
@@ -114,7 +117,33 @@ function CarrerasContent({
 
       <RaceDistanceFilter onChange={handleDistanceChange} initialMaxDistance={maxDistance} />
 
-      <RaceFilters filters={filters} onChange={onFilterChange} />
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <RaceFilters filters={filters} onChange={onFilterChange} />
+        <div className="flex items-center bg-white border border-gray-300 rounded-md p-0.5">
+          <button
+            type="button"
+            onClick={() => setViewMode("list")}
+            className={`flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded ${
+              viewMode === "list"
+                ? "bg-runner-primary text-white"
+                : "text-gray-600 hover:text-runner-primary"
+            }`}
+          >
+            <List className="h-3.5 w-3.5" /> Lista
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("map")}
+            className={`flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded ${
+              viewMode === "map"
+                ? "bg-runner-primary text-white"
+                : "text-gray-600 hover:text-runner-primary"
+            }`}
+          >
+            <Map className="h-3.5 w-3.5" /> Mapa
+          </button>
+        </div>
+      </div>
 
       {loading ? (
         <div className="text-center py-12 text-gray-500">Cargando carreras…</div>
@@ -130,6 +159,25 @@ function CarrerasContent({
             <p>No hay carreras con esos filtros. Prueba a ampliar la búsqueda.</p>
           )}
         </div>
+      ) : viewMode === "map" ? (
+        <>
+          {filterEnabled && totalWithCoords < races.length && (
+            <div className="text-xs text-gray-500 bg-blue-50 border border-blue-200 rounded-md p-2 mb-3 flex items-start gap-2">
+              <MapPin className="h-3.5 w-3.5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <span>
+                {totalWithCoords} de {races.length} carreras tienen coordenadas y se muestran en el mapa.
+                Las {races.length - totalWithCoords} sin coordenadas no aparecen aquí (pero sí en la lista).
+              </span>
+            </div>
+          )}
+          <RaceMapWrapper
+            races={filteredRaces.filter(
+              (r) => typeof r.latitude === "number" && typeof r.longitude === "number"
+            )}
+            userCoords={userCoords}
+            maxDistanceKm={maxDistance}
+          />
+        </>
       ) : (
         <>
           {filterEnabled && totalWithCoords < races.length && (

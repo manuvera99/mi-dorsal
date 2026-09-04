@@ -187,7 +187,7 @@ export const seedDefaults = mutation({
       { name: "ITRA", slug: "itra", type: "scraper" as const, description: "International Trail Running Association — carreras con puntos ITRA", baseUrl: "https://itra.run" },
       { name: "Sportmaniacs", slug: "sportmaniacs", type: "api" as const, description: "Plataforma de inscripciones deportivas — API REST pública con 25.000+ carreras (api-aws.sportmaniacs.com)", baseUrl: "https://sportmaniacs.com" },
       { name: "Runedia", slug: "runedia", type: "scraper" as const, description: "Calendario popular de carreras populares en España (anti-bot)", baseUrl: "https://runedia.es" },
-      { name: "Correbirras", slug: "correbirras", type: "scraper" as const, description: "Agenda de carreras en Murcia, Alicante, Almería y Albacete (datos vía Supabase REST)", baseUrl: "https://www.correbirras.com" },
+      { name: "Agenda Sureste", slug: "correbirras", type: "scraper" as const, description: "Agenda de carreras populares del sureste peninsular (datos vía Supabase REST)", baseUrl: "https://www.correbirras.com" },
       { name: "Manual", slug: "manual", type: "manual" as const, description: "Carreras añadidas a mano por el admin desde el panel" },
     ];
     const results: Array<{ slug: string; id: Id<"dataSources">; created: boolean }> = [];
@@ -351,7 +351,7 @@ export const systemSeedDefaults = mutation({
       { name: "ITRA", slug: "itra", type: "scraper" as const, description: "International Trail Running Association — carreras con puntos ITRA", baseUrl: "https://itra.run" },
       { name: "Sportmaniacs", slug: "sportmaniacs", type: "api" as const, description: "Plataforma de inscripciones deportivas — API REST pública con 25.000+ carreras (api-aws.sportmaniacs.com)", baseUrl: "https://sportmaniacs.com" },
       { name: "Runedia", slug: "runedia", type: "scraper" as const, description: "Calendario popular de carreras populares en España (anti-bot)", baseUrl: "https://runedia.es" },
-      { name: "Correbirras", slug: "correbirras", type: "scraper" as const, description: "Agenda de carreras en Murcia, Alicante, Almería y Albacete (datos vía Supabase REST)", baseUrl: "https://www.correbirras.com" },
+      { name: "Agenda Sureste", slug: "correbirras", type: "scraper" as const, description: "Agenda de carreras populares del sureste peninsular (datos vía Supabase REST)", baseUrl: "https://www.correbirras.com" },
       { name: "Manual", slug: "manual", type: "manual" as const, description: "Carreras añadidas a mano por el admin desde el panel" },
     ];
     const results: Array<{ slug: string; id: Id<"dataSources">; created: boolean }> = [];

@@ -29,14 +29,11 @@ export const metadata: Metadata = {
     template: "%s · mi-dorsal",
   },
   description:
-    "Catálogo de carreras del Levante español (Valencia, Alicante, Murcia, Castellón). Predice tu tiempo, planifica tu temporada y recibe tu resultado oficial por email.",
+    "Catálogo de carreras populares en toda España. Predice tu tiempo, planifica tu temporada y recibe tu resultado oficial por email.",
   applicationName: "mi-dorsal",
   keywords: [
     "carreras populares",
-    "carreras Valencia",
-    "carreras Alicante",
-    "carreras Murcia",
-    "carreras Castellón",
+    "carreras España",
     "running España",
     "trail running",
     "10K",
@@ -72,7 +69,7 @@ export const metadata: Metadata = {
     siteName: "mi-dorsal",
     title: "mi-dorsal · Planifica tu temporada de carreras",
     description:
-      "Catálogo de carreras del Levante español. Predice tu tiempo, planifica tu temporada y recibe tu resultado oficial por email.",
+      "Catálogo de carreras populares en toda España. Predice tu tiempo, planifica tu temporada y recibe tu resultado oficial por email.",
     images: [
       {
         url: "/og-image",
@@ -88,7 +85,7 @@ export const metadata: Metadata = {
     creator: "@midorsal",
     title: "mi-dorsal · Planifica tu temporada de carreras",
     description:
-      "Catálogo de carreras del Levante español. Predice tu tiempo, planifica tu temporada y recibe tu resultado oficial por email.",
+      "Catálogo de carreras populares en toda España. Predice tu tiempo, planifica tu temporada y recibe tu resultado oficial por email.",
     images: ["/og-image"],
   },
   robots: {

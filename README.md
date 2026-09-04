@@ -23,8 +23,8 @@ Ver [SETUP.md](./SETUP.md) para instrucciones paso a paso.
 
 ## Features (Ola 1 — MVP)
 
-- [x] **Catálogo de carreras** del Levante con filtros (provincia, mes, tipo, búsqueda)
-- [x] **Votación 8D** estilo correbirras (8 sliders 0-10 + comentario)
+- [x] **Catálogo de carreras** de toda España con filtros (provincia, mes, tipo, búsqueda)
+- [x] **Votación 8D** de la comunidad (8 sliders 0-10 + comentario)
 - [x] **Top 10 ranking** con 🥇🥈🥉 y mínimos de 3 votos
 - [x] **Login con magic link** (Clerk)
 - [x] **Calendario personal** con carreras planeadas + dorsal

@@ -162,7 +162,7 @@ export default function OpengraphImage() {
               marginLeft: 16,
             }}
           >
-            · Carreras, ranking, calendario y resultados del Levante español
+            · Carreras, ranking, calendario y resultados en toda España
           </div>
         </div>
       </div>

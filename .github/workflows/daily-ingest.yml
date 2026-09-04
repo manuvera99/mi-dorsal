@@ -29,7 +29,7 @@ jobs:
       # Scripts nuevos (suben DIRECTO a Convex vía systemUpsert idempotente)
       # ------------------------------------------------------------------
 
-      - name: 1/7 Ingest Sportmaniacs (API REST, 25k carreras)
+      - name: 1/8 Ingest Sportmaniacs (API REST, 25k carreras)
         env:
           NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
         run: |
@@ -37,12 +37,12 @@ jobs:
           npm run ingest:sportmaniacs -- --upload 2>&1 | tail -30 || echo "⚠️  Sportmaniacs failed, continuing"
         continue-on-error: true
 
-      - name: 2/7 Ingest Correbirras (Supabase REST, ~200 carreras)
+      - name: 2/8 Ingest Agenda Sureste (Supabase REST, ~200 carreras)
         env:
           NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
         run: |
-          echo "=== Correbirras (Supabase REST) ==="
-          npm run ingest:correbirras 2>&1 | tail -30 || echo "⚠️  Correbirras failed, continuing"
+          echo "=== Agenda Sureste (Supabase REST) ==="
+          npm run ingest:correbirras 2>&1 | tail -30 || echo "⚠️  Agenda Sureste failed, continuing"
         continue-on-error: true
 
       # ------------------------------------------------------------------
@@ -50,25 +50,25 @@ jobs:
       # ingest:to-convex los une y sube via systemUpsert
       # ------------------------------------------------------------------
 
-      - name: 3/7 Ingest RFEA (PDF + scraping)
+      - name: 3/8 Ingest RFEA (PDF + scraping)
         run: |
           echo "=== RFEA (Real Federación Española de Atletismo) ==="
           npm run ingest:rfea 2>&1 | tail -20 || echo "⚠️  RFEA failed, continuing"
         continue-on-error: true
 
-      - name: 4/7 Ingest FEDME (scraping HTML)
+      - name: 4/8 Ingest FEDME (scraping HTML)
         run: |
           echo "=== FEDME (Federación Deportes de Montaña) ==="
           npm run ingest:fedme 2>&1 | tail -20 || echo "⚠️  FEDME failed, continuing"
         continue-on-error: true
 
-      - name: 5/7 Ingest ITRA (scraping, 503 parcial)
+      - name: 5/8 Ingest ITRA (scraping, 503 parcial)
         run: |
           echo "=== ITRA (International Trail Running) ==="
           npm run ingest:itra 2>&1 | tail -20 || echo "⚠️  ITRA failed, continuing"
         continue-on-error: true
 
-      - name: 6/7 Ingest Runedia (scraping HTML)
+      - name: 6/8 Ingest Runedia (scraping HTML)
         run: |
           echo "=== Runedia (Mundo Deportivo) ==="
           npm run ingest:runedia 2>&1 | tail -20 || echo "⚠️  Runedia failed, continuing"
@@ -99,7 +99,7 @@ jobs:
       # Si los secrets de IA no están, falla gracefully y sigue.
       # ------------------------------------------------------------------
 
-      - name: 8/9 Deep Extract IA (MiniMax M3, 30 carreras prioritarias)
+      - name: 8/8 Deep Extract IA (MiniMax M3, 30 carreras prioritarias)
         env:
           NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

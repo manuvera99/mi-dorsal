@@ -47,7 +47,7 @@ export function organizationJsonLd() {
       height: 64,
     },
     description:
-      "Planificador personal de carreras con tracking automático de dorsales. Catálogo, ranking, calendario y resultados del Levante español.",
+      "Planificador personal de carreras con tracking automático de dorsales. Catálogo, ranking, calendario y resultados de carreras populares en toda España.",
     foundingDate: "2026",
     sameAs: [
       // Añadir cuando existan
@@ -105,6 +105,27 @@ export function breadcrumbJsonLd(
       position: idx + 1,
       name: item.name,
       item: item.url.startsWith("http") ? item.url : `${BASE_URL}${item.url}`,
+    })),
+  };
+}
+
+/**
+ * FAQPage schema — Google muestra las preguntas frecuentes directamente
+ * bajo el resultado de búsqueda (rich results). Esto sube CTR brutal.
+ *
+ * Recibe un array de { question, answer } y devuelve el schema correcto.
+ */
+export function faqJsonLd(items: Array<{ question: string; answer: string }>) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: items.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.answer,
+      },
     })),
   };
 }

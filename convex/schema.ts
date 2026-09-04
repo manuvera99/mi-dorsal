@@ -314,7 +314,7 @@ export default defineSchema({
     }),
 
   // ---------------------------------------------------------------------------
-  // 3. RACE_RATINGS — votaciones 8D estilo correbirras
+  // 3. RACE_RATINGS — votaciones 8D de la comunidad
   // ---------------------------------------------------------------------------
   raceRatings: defineTable({
     userId: v.id("profiles"),

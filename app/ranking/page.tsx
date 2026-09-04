@@ -39,10 +39,10 @@ function RankingContent({ top }: { top: any[] }) {
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-2">
           <Trophy className="h-6 w-6 text-yellow-500" />
-          <h1 className="text-3xl font-bold">Top 10 Correbirras</h1>
+          <h1 className="text-3xl font-bold">Top 10 de la comunidad</h1>
         </div>
         <p className="text-gray-600">
-          Las carreras favoritas del Levante, votadas por la comunidad.
+          Las carreras mejor valoradas de toda España, votadas por la comunidad de mi-dorsal.
         </p>
       </div>
 

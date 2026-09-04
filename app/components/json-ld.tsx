@@ -10,4 +10,5 @@ export {
   websiteJsonLd,
   breadcrumbJsonLd,
   raceEventJsonLd,
+  faqJsonLd,
 } from "@/components/json-ld";

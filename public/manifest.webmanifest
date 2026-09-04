@@ -1,0 +1,61 @@
+{
+  "name": "mi-dorsal · Planifica tu temporada de carreras",
+  "short_name": "mi-dorsal",
+  "description": "Catálogo de carreras populares en toda España. Predice tu tiempo, planifica tu temporada y recibe tu resultado oficial por email.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fafaf9",
+  "theme_color": "#dc2626",
+  "lang": "es-ES",
+  "categories": ["sports", "health", "lifestyle"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Carreras",
+      "short_name": "Carreras",
+      "description": "Ver calendario de carreras populares",
+      "url": "/carreras",
+      "icons": [
+        { "src": "/icon-192.png", "sizes": "192x192" }
+      ]
+    },
+    {
+      "name": "Mi calendario",
+      "short_name": "Calendario",
+      "description": "Tu temporada planificada",
+      "url": "/calendario",
+      "icons": [
+        { "src": "/icon-192.png", "sizes": "192x192" }
+      ]
+    },
+    {
+      "name": "Ranking",
+      "short_name": "Ranking",
+      "description": "Top corredores populares",
+      "url": "/ranking",
+      "icons": [
+        { "src": "/icon-192.png", "sizes": "192x192" }
+      ]
+    }
+  ]
+}

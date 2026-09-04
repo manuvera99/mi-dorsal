@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>mi-dorsal — Sistema de marca final</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+      background: #f5f5f4;
+      color: #0a0a0a;
+      padding: 40px 24px;
+    }
+    .wrap { max-width: 1200px; margin: 0 auto; }
+    h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 8px; }
+    .sub { color: #57534e; font-size: 15px; margin-bottom: 32px; }
+
+    .row {
+      background: white;
+      border: 1px solid #e7e5e4;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+    .row-header {
+      padding: 16px 24px;
+      background: #fafaf9;
+      border-bottom: 1px solid #e7e5e4;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .row-header .tag {
+      background: #dc2626;
+      color: white;
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+    }
+    .row-header .filename {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: #57534e;
+    }
+    .row-header .desc {
+      color: #57534e;
+      font-size: 13px;
+      margin-left: auto;
+    }
+    .row-body {
+      padding: 32px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 180px;
+    }
+    .dark { background: #0a0a0a; }
+    .cream { background: #fafaf9; }
+    .red { background: #dc2626; }
+    .row-body img { max-width: 100%; max-height: 240px; }
+
+    .sizes { display: flex; gap: 32px; align-items: flex-end; flex-wrap: wrap; }
+    .size-block { text-align: center; }
+    .size-block img { display: block; margin: 0 auto 8px; }
+    .size-block .label {
+      font-size: 11px;
+      color: #57534e;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .og img { max-width: 100%; }
+
+    .footer {
+      margin-top: 32px;
+      padding: 20px 24px;
+      background: #0a0a0a;
+      color: #fafaf9;
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .footer strong { color: #fafaf9; }
+    .footer .accent { color: #fbbf24; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>mi-dorsal — Sistema de marca</h1>
+  <p class="sub">Basado en los assets aprobados: dorsal rojo, wordmark "mi-dorsal", isotipo con speed lines.</p>
+
+  <!-- Logo principal horizontal -->
+  <div class="row">
+    <div class="row-header">
+      <span class="tag">LOGO</span>
+      <span class="filename">public/logo.png</span>
+      <span class="desc">Logo principal horizontal — fondo crema</span>
+    </div>
+    <div class="row-body cream">
+      <img src="logo.png" alt="Logo principal" style="max-height: 120px;">
+    </div>
+  </div>
+
+  <!-- Logo en fondo oscuro -->
+  <div class="row">
+    <div class="row-header">
+      <span class="tag">LOGO</span>
+      <span class="filename">public/logo-light.png</span>
+      <span class="desc">Wordmark sobre fondo oscuro</span>
+    </div>
+    <div class="row-body dark">
+      <img src="logo-light.png" alt="Logo invertido" style="max-height: 90px;">
+    </div>
+  </div>
+
+  <!-- Logo full con tagline -->
+  <div class="row">
+    <div class="row-header">
+      <span class="tag">LOGO</span>
+      <span class="filename">public/logo-wordmark.png · logo-wordmark.webp</span>
+      <span class="desc">Logo completo con tagline (PNG + WebP optimizado)</span>
+    </div>
+    <div class="row-body cream">
+      <img src="logo-wordmark.webp" alt="Logo full" style="max-height: 200px;">
+    </div>
+  </div>
+
+  <!-- Isotipos -->
+  <div class="row">
+    <div class="row-header">
+      <span class="tag">ISOTIPO</span>
+      <span class="filename">public/isotipo-red.png · isotipo-mono.png</span>
+      <span class="desc">Isotipo solo — versión roja y versión negra (1 tinta)</span>
+    </div>
+    <div class="row-body">
+      <div class="sizes">
+        <div class="size-block">
+          <img src="isotipo-red.png" width="140" height="140" alt="isotipo rojo">
+          <div class="label">isotipo-red.png<br>512×512</div>
+        </div>
+        <div class="size-block">
+          <img src="isotipo-mono.png" width="140" height="140" alt="isotipo mono">
+          <div class="label">isotipo-mono.png<br>512×512 · 1 tinta</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- App icons -->
+  <div class="row">
+    <div class="row-header">
+      <span class="tag">APP ICON</span>
+      <span class="filename">public/icon-192.png · icon-512.png · apple-touch-icon.png</span>
+      <span class="desc">App icon iOS — dorsal negro sobre fondo blanco, esquinas redondeadas</span>
+    </div>
+    <div class="row-body cream">
+      <div class="sizes">
+        <div class="size-block">
+          <img src="icon-192.png" width="120" height="120" alt="192">
+          <div class="label">icon-192.png<br>PWA 192×192</div>
+        </div>
+        <div class="size-block">
+          <img src="icon-512.png" width="120" height="120" alt="512">
+          <div class="label">icon-512.png<br>PWA 512×512</div>
+        </div>
+        <div class="size-block">
+          <img src="apple-touch-icon.png" width="120" height="120" alt="apple">
+          <div class="label">apple-touch-icon.png<br>iOS 180×180</div>
+        </div>
+        <div class="size-block">
+          <img src="app-icon-red-512.png" width="120" height="120" alt="red">
+          <div class="label">app-icon-red-512.png<br>variante fondo rojo</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Favicons -->
+  <div class="row">
+    <div class="row-header">
+      <span class="tag">FAVICON</span>
+      <span class="filename">public/favicon-*.png</span>
+      <span class="desc">Favicons con fondo crema (browser-friendly)</span>
+    </div>
+    <div class="row-body cream">
+      <div class="sizes">
+        <div class="size-block">
+          <img src="favicon-16x16.png" width="16" height="16" alt="16">
+          <img src="favicon-16x16.png" width="48" height="48" alt="16">
+          <div class="label">16×16</div>
+        </div>
+        <div class="size-block">
+          <img src="favicon-32x32.png" width="32" height="32" alt="32">
+          <img src="favicon-32x32.png" width="64" height="64" alt="32">
+          <div class="label">32×32</div>
+        </div>
+        <div class="size-block">
+          <img src="favicon-48x48.png" width="48" height="48" alt="48">
+          <div class="label">48×48</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OG image -->
+  <div class="row og">
+    <div class="row-header">
+      <span class="tag">OG IMAGE</span>
+      <span class="filename">public/og-image.png (1200×630)</span>
+      <span class="desc">Para Twitter, WhatsApp, LinkedIn, Slack</span>
+    </div>
+    <div class="row-body cream" style="padding: 16px;">
+      <img src="og-image.png" alt="OG image">
+    </div>
+  </div>
+
+  <div class="footer">
+    <strong>Single source of truth:</strong> los archivos fuente están en <span class="accent">public/brand-assets/</span> (NO tocar — solo el creativo/design tool debe editar estos).
+    <br><br>
+    <strong>Para regenerar todos los derivados</strong> (después de cambiar un fuente):
+    <br><span class="accent">python scripts/gen-og-image.py</span>
+    <br><br>
+    <strong>Para desplegar:</strong> <span class="accent">git add public/ app/layout.tsx && git commit && git push</span> (Vercel hace el resto).
+  </div>
+</div>
+</body>
+</html>

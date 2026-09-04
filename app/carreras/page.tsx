@@ -1,4 +1,4 @@
-﻿// PÃ¡gina dinÃ¡mica: depende de la IP del usuario (geo) y de queries a Convex.
+// PÃ¡gina dinÃ¡mica: depende de la IP del usuario (geo) y de queries a Convex.
 export const dynamic = "force-dynamic";
 
 import type { Metadata } from "next";

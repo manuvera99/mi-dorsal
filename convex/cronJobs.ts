@@ -27,5 +27,11 @@ crons.cron(
   internal.crons.yearReview.yearReview,
 );
 
+crons.interval(
+  "recalc-stats",
+  { minutes: 5 },
+  internal.crons.recalcStats.recalcStats,
+);
+
 export default crons;
 

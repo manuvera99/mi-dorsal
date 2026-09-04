@@ -147,6 +147,10 @@ export const adminGetProfile = query({
 
 /**
  * Stats globales del admin dashboard.
+ * OPTIMIZADO: lee de `statsCache` (1 fila ~200 bytes) en vez de hacer
+ * .collect() de 7 tablas. La cache la mantiene un cron cada 5 min
+ * (ver convex/stats.ts). Reduce Database I/O de ~GB/mes a ~MB/mes.
+ *
  * Devuelve zeros si no hay user/admin (en vez de throw).
  */
 export const adminGetStats = query({
@@ -156,42 +160,15 @@ export const adminGetStats = query({
     if (!profile || profile.role !== "admin") {
       // Devuelve estructura vacía para no romper la UI del admin
       return {
+        computedAt: 0,
         totalRaces: 0, publishedRaces: 0, featuredRaces: 0,
         totalUsers: 0, adminUsers: 0,
         totalVotes: 0, totalRatings: 0,
         totalMyRaces: 0, totalPRs: 0, totalNotifications: 0,
-        racesByProvince: {},
+        racesByProvince: {} as Record<string, number>,
       };
     }
-    const [races, profiles, votes, ratings, myRaces, prs, notifications] = await Promise.all([
-      ctx.db.query("races").collect(),
-      ctx.db.query("profiles").collect(),
-      ctx.db.query("raceVotes").collect(),
-      ctx.db.query("raceRatings").collect(),
-      ctx.db.query("myRaces").collect(),
-      ctx.db.query("personalRecords").collect(),
-      ctx.db.query("notificationLog").collect(),
-    ]);
-    const published = races.filter((r) => r.isPublished).length;
-    const featured = races.filter((r) => r.isFeatured).length;
-    const admins = profiles.filter((p) => p.role === "admin").length;
-    const byProvince: Record<string, number> = {};
-    races.forEach((r) => {
-      byProvince[r.province] = (byProvince[r.province] || 0) + 1;
-    });
-    return {
-      totalRaces: races.length,
-      publishedRaces: published,
-      featuredRaces: featured,
-      totalUsers: profiles.length,
-      adminUsers: admins,
-      totalVotes: votes.length,
-      totalRatings: ratings.length,
-      totalMyRaces: myRaces.length,
-      totalPRs: prs.length,
-      totalNotifications: notifications.length,
-      racesByProvince: byProvince,
-    };
+    return await ctx.runQuery(api.stats.getCachedStats, {});
   },
 });
 
@@ -199,25 +176,21 @@ export const adminGetStats = query({
  * Stats públicas (sin auth) — para mostrar contadores sin exponer PII.
  * Útil para marketing, dashboard inicial, y para que cualquiera verifique
  * cuántos admins hay sin necesidad de estar logueado.
+ *
+ * OPTIMIZADO: igual que adminGetStats, lee de statsCache.
  */
 export const getPublicStats = query({
   args: {},
   handler: async (ctx) => {
-    const [profiles, races, votes, ratings, myRaces] = await Promise.all([
-      ctx.db.query("profiles").collect(),
-      ctx.db.query("races").collect(),
-      ctx.db.query("raceVotes").collect(),
-      ctx.db.query("raceRatings").collect(),
-      ctx.db.query("myRaces").collect(),
-    ]);
+    const stats = await ctx.runQuery(api.stats.getCachedStats, {});
     return {
-      totalUsers: profiles.length,
-      adminCount: profiles.filter((p) => p.role === "admin").length,
-      totalRaces: races.length,
-      publishedRaces: races.filter((r) => r.isPublished).length,
-      totalVotes: votes.length,
-      totalRatings: ratings.length,
-      totalMyRaces: myRaces.length,
+      totalUsers: stats.totalUsers,
+      adminCount: stats.adminUsers,
+      totalRaces: stats.totalRaces,
+      publishedRaces: stats.publishedRaces,
+      totalVotes: stats.totalVotes,
+      totalRatings: stats.totalRatings,
+      totalMyRaces: stats.totalMyRaces,
     };
   },
 });

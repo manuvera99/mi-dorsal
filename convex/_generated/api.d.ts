@@ -11,6 +11,7 @@
 import type * as _helpers from "../_helpers.js";
 import type * as cronJobs from "../cronJobs.js";
 import type * as crons_checkResults from "../crons/checkResults.js";
+import type * as crons_recalcStats from "../crons/recalcStats.js";
 import type * as crons_reminderPreRace from "../crons/reminderPreRace.js";
 import type * as crons_weeklyDigest from "../crons/weeklyDigest.js";
 import type * as crons_yearReview from "../crons/yearReview.js";
@@ -23,6 +24,7 @@ import type * as predictions from "../predictions.js";
 import type * as races from "../races.js";
 import type * as ratings from "../ratings.js";
 import type * as scraper from "../scraper.js";
+import type * as stats from "../stats.js";
 import type * as users from "../users.js";
 import type * as votes from "../votes.js";
 
@@ -36,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   _helpers: typeof _helpers;
   cronJobs: typeof cronJobs;
   "crons/checkResults": typeof crons_checkResults;
+  "crons/recalcStats": typeof crons_recalcStats;
   "crons/reminderPreRace": typeof crons_reminderPreRace;
   "crons/weeklyDigest": typeof crons_weeklyDigest;
   "crons/yearReview": typeof crons_yearReview;
@@ -48,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   races: typeof races;
   ratings: typeof ratings;
   scraper: typeof scraper;
+  stats: typeof stats;
   users: typeof users;
   votes: typeof votes;
 }>;

@@ -6,6 +6,21 @@ import { isMockMode } from "@/lib/mock/provider";
 import Link from "next/link";
 import { Trophy, Users, ThumbsUp, MessageSquare, Calendar, MapPin, Loader2 } from "lucide-react";
 
+type AdminStats = {
+  computedAt: number;
+  totalRaces: number;
+  publishedRaces: number;
+  featuredRaces: number;
+  totalUsers: number;
+  adminUsers: number;
+  totalVotes: number;
+  totalRatings: number;
+  totalMyRaces: number;
+  totalPRs: number;
+  totalNotifications: number;
+  racesByProvince: Record<string, number>;
+};
+
 function MockDashboard() {
   // En mock mode, mostramos valores hardcoded representativos
   return (
@@ -23,7 +38,8 @@ function MockDashboard() {
 }
 
 function RealDashboard() {
-  const stats = useQuery(api.users.adminGetStats);
+  const statsRaw = useQuery(api.users.adminGetStats);
+  const stats = statsRaw as AdminStats | undefined;
   if (stats === undefined) {
     return (
       <div className="p-8 flex items-center justify-center">

@@ -96,19 +96,6 @@ export const recalcStats = internalMutation({
 });
 
 /**
- * Wrapper público para que scripts/admin puedan forzar un recálculo
- * (no expone datos, solo ejecuta la mutation interna).
- */
-export const forceRecalc = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    // Re-llama a recalcStats vía el runner interno
-    const { recalcStats } = await import("./stats");
-    return await ctx.runMutation(recalcStats, {});
-  },
-});
-
-/**
  * Query principal — llamada por adminGetStats y getPublicStats.
  * Devuelve la fila cacheada o, si no existe todavía, valores en cero
  * (la primera vez puede pasar si el cron no ha corrido aún).

@@ -1,40 +1,30 @@
-﻿fix: autodetectar ubicación por IP al cargar la página
+﻿feat: selector de ciudades españolas cuando la IP no es de España
 
-Manu reportó que la geolocalización del navegador no funciona en NINGÚN
-dispositivo (ordenador y móvil), ni siquiera sale el prompt. Después de 3
-intentos fallidos de arreglar el GPS, cambio el enfoque:
+Manu reportó que la IP detectada está en Frankfurt (Alemania), no en
+Alicante. Probablemente usa VPN corporativo o proxy del operador. La
+IP geo no es útil en su caso.
 
-**La IP pública se autodetecta al cargar la página**, sin que el usuario
-tenga que hacer nada. Funciona siempre, sin permisos, sin prompts.
+## Solución
 
-## Cambios
+Cuando la IP detectada NO es España, mostramos debajo del badge un
+**selector de ciudades españolas** con un click por ciudad. El usuario
+puede elegir su ciudad real y empieza a filtrar inmediatamente.
 
-### Auto-detección de IP al montar
-- Nuevo `useEffect` que llama a `/api/geo/ip` automáticamente al cargar
-- Si NO hay coords en sessionStorage, las setea con la IP detectada
-- `coordsSource` se marca como "ip" para que se muestre la fuente
-- Si ya hay coords (de sessionStorage), no se sobreescribe
+### Cambios
+- `SPANISH_CITIES` array: 14 ciudades españolas con coordenadas
+  (Elche, Alicante, Valencia, Murcia, Cartagena, Albacete, Madrid,
+  Barcelona, Sevilla, Bilbao, Málaga, Zaragoza, Granada)
+- `applyCity()`: aplica las coordenadas de la ciudad elegida
+- Nuevo `detectedCountry` / `detectedCity` state
+- UI: si la IP es de fuera de España, aparece un bloque azul con
+  los botones de ciudades
+- Botón "✏️ Otra..." para abrir el input manual
+- Cuando el usuario elige una ciudad, el badge verde se actualiza
+  y la fuente cambia de "ip" a "preset"
 
-### Indicador visual
-- El badge verde muestra "🌐 IP (ciudad): Alicante, España, detectada
-  automáticamente" cuando es por IP
-- El slider de distancia funciona INMEDIATAMENTE, sin que el usuario
-  tenga que hacer click en nada
-
-### GPS sigue disponible como mejora
-- Si Manu quiere más precisión, hace click en "Activar GPS" para
-  sobreescribir con coordenadas del navegador
-- El botón "Limpiar" (X) le permite quitar la detección automática
-  si quiere probar con GPS desde cero
-
-## Flujo ahora
-
+Flujo:
 1. Manu entra a /carreras
-2. En ~500ms, la página detecta su IP (Alicante) automáticamente
-3. El slider se posiciona en 200km por defecto
-4. Las carreras se filtran inmediatamente
-5. Si quiere más precisión → click en "Activar GPS"
-6. Si la IP no es exacta → click en "Coordenadas manuales"
-
-Cero clicks, cero permisos, cero prompts. Funciona en cualquier
-navegador, cualquier dispositivo, con o sin HTTPS.
+2. Detecta IP → Frankfurt, Alemania
+3. Aparece selector de ciudades españolas
+4. Click en "Elche" (un click) → location set
+5. Carreras filtradas desde Elche

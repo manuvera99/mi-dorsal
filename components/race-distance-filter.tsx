@@ -45,10 +45,12 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
   const [showManualDialog, setShowManualDialog] = useState(false);
   const [manualLat, setManualLat] = useState("");
   const [manualLng, setManualLng] = useState("");
-  const [coordsSource, setCoordsSource] = useState<"browser" | "ip" | "manual" | null>(null);
+  const [coordsSource, setCoordsSource] = useState<"browser" | "ip" | "preset" | "manual" | null>(null);
   const [coordsSourceLabel, setCoordsSourceLabel] = useState<string | null>(null);
   const [isInIframe, setIsInIframe] = useState(false);
   const [attemptedButFailed, setAttemptedButFailed] = useState(false);
+  const [detectedCountry, setDetectedCountry] = useState<string | null>(null);
+  const [detectedCity, setDetectedCity] = useState<string | null>(null);
 
   // Detectar si estamos en iframe (problema común: el navegador no muestra
   // el prompt de geolocalización dentro de iframes sin allow="geolocation")
@@ -93,6 +95,9 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
         const data = await res.json();
         if (cancelled) return;
         if (typeof data.latitude === "number" && typeof data.longitude === "number") {
+          // Guardar info del país detectado
+          setDetectedCountry(data.country ?? null);
+          setDetectedCity(data.city ?? null);
           // Solo autoload si NO hay coords en sessionStorage
           try {
             if (!sessionStorage.getItem(STORAGE_KEY_USER)) {
@@ -224,12 +229,39 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
     setAttemptedButFailed(false);
   }, [manualLat, manualLng]);
 
+  // Lista de ciudades españolas con sus coordenadas (preset)
+  const SPANISH_CITIES: Array<{ name: string; lat: number; lng: number }> = [
+    { name: "Elche", lat: 38.2622, lng: -0.6982 },
+    { name: "Alicante", lat: 38.3452, lng: -0.4811 },
+    { name: "Valencia", lat: 39.4699, lng: -0.3763 },
+    { name: "Elx (Elche)", lat: 38.2622, lng: -0.6982 },
+    { name: "Murcia", lat: 37.9922, lng: -1.1307 },
+    { name: "Cartagena", lat: 37.6257, lng: -0.9963 },
+    { name: "Albacete", lat: 38.9943, lng: -1.8585 },
+    { name: "Madrid", lat: 40.4168, lng: -3.7038 },
+    { name: "Barcelona", lat: 41.3851, lng: 2.1734 },
+    { name: "Sevilla", lat: 37.3886, lng: -5.9823 },
+    { name: "Bilbao", lat: 43.2630, lng: -2.9350 },
+    { name: "Málaga", lat: 36.7213, lng: -4.4214 },
+    { name: "Zaragoza", lat: 41.6488, lng: -0.8891 },
+    { name: "Granada", lat: 37.1773, lng: -3.5986 },
+  ];
+
+  const applyCity = useCallback((name: string, lat: number, lng: number) => {
+    setUserCoords({ latitude: lat, longitude: lng });
+    setCoordsSource("preset");
+    setCoordsSourceLabel(name);
+    setErrorDetail(null);
+  }, []);
+
   const clearLocation = useCallback(() => {
     setUserCoords(null);
     setErrorDetail(null);
     setCoordsSource(null);
     setCoordsSourceLabel(null);
     setAttemptedButFailed(false);
+    setDetectedCountry(null);
+    setDetectedCity(null);
     try {
       sessionStorage.removeItem(STORAGE_KEY_USER);
       sessionStorage.removeItem(STORAGE_KEY_ERROR);
@@ -356,6 +388,38 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
                 )}
               </div>
             )}
+
+            {/* Si la IP detectada NO es España, mostramos selector de ciudades */}
+            {isGranted && coordsSource === "ip" && detectedCountry && detectedCountry !== "Spain" && detectedCountry !== "España" && (
+              <div className="mt-2 text-xs text-gray-600 bg-blue-50 border border-blue-200 rounded p-2">
+                <div className="flex items-start gap-1 mb-1.5">
+                  <Globe className="h-3 w-3 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <span>
+                    Detectamos que tu IP está en <strong>{detectedCity ?? "?"}, {detectedCountry}</strong>. Si prefieres filtrar desde otra ciudad, elige una:
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {SPANISH_CITIES.map((c) => (
+                    <button
+                      key={c.name}
+                      type="button"
+                      onClick={() => applyCity(c.name, c.lat, c.lng)}
+                      className="px-2 py-0.5 bg-white border border-blue-200 rounded text-xs text-blue-700 hover:bg-blue-100"
+                    >
+                      {c.name}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setShowManualDialog(true)}
+                    className="px-2 py-0.5 bg-white border border-blue-200 rounded text-xs text-blue-700 hover:bg-blue-100"
+                  >
+                    ✏️ Otra...
+                  </button>
+                </div>
+              </div>
+            )}
+
             <p className="mt-1.5 text-[10px] text-gray-400 leading-tight">
               🔒 Tu ubicación NO se guarda en ningún servidor. Solo se usa en tu navegador para filtrar.
             </p>

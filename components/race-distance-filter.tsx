@@ -3,10 +3,9 @@
 /**
  * RaceDistanceFilter — geolocalización del usuario + slider de distancia máxima.
  *
- * 3 métodos para obtener coordenadas:
+ * 2 métodos para obtener coordenadas:
  *  - GPS del navegador (preferred, requiere permiso)
- *  - IP pública (fallback, no requiere permiso, ~50km precisión)
- *  - Coordenadas manuales (último recurso)
+ *  - Ciudad predefinida o coordenadas manuales (sin permiso)
  *
  * Estado en sessionStorage (no se guarda en BBDD — privacidad).
  *
@@ -16,8 +15,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-  MapPin, X, Loader2, Navigation, AlertCircle, Info, ShieldCheck,
-  CheckCircle2, Globe, Edit3, Save, Trash2, AlertTriangle,
+  MapPin, X, Loader2, Navigation, AlertCircle, ShieldCheck,
+  CheckCircle2, Edit3, Save, Trash2, AlertTriangle,
 } from "lucide-react";
 import type { Coords } from "@/lib/geo/distance";
 
@@ -39,18 +38,15 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
   const [userCoords, setUserCoords] = useState<Coords | null>(null);
   const [maxDistance, setMaxDistance] = useState<number>(initialMaxDistance ?? DEFAULT_DISTANCE);
   const [requesting, setRequesting] = useState(false);
-  const [requestingIp, setRequestingIp] = useState(false);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [showHelpDialog, setShowHelpDialog] = useState(false);
   const [showManualDialog, setShowManualDialog] = useState(false);
   const [manualLat, setManualLat] = useState("");
   const [manualLng, setManualLng] = useState("");
-  const [coordsSource, setCoordsSource] = useState<"browser" | "ip" | "preset" | "manual" | null>(null);
+  const [coordsSource, setCoordsSource] = useState<"browser" | "preset" | "manual" | null>(null);
   const [coordsSourceLabel, setCoordsSourceLabel] = useState<string | null>(null);
   const [isInIframe, setIsInIframe] = useState(false);
   const [attemptedButFailed, setAttemptedButFailed] = useState(false);
-  const [detectedCountry, setDetectedCountry] = useState<string | null>(null);
-  const [detectedCity, setDetectedCity] = useState<string | null>(null);
 
   // Detectar si estamos en iframe (problema común: el navegador no muestra
   // el prompt de geolocalización dentro de iframes sin allow="geolocation")
@@ -65,10 +61,17 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
       const savedCoords = sessionStorage.getItem(STORAGE_KEY_USER);
       if (savedCoords) {
         const parsed = JSON.parse(savedCoords);
-        if (parsed?.latitude && parsed?.longitude) {
-          setUserCoords(parsed);
-          setCoordsSource("ip");
-          setCoordsSourceLabel("Tu IP (cargado de sesión)");
+        if (parsed?.latitude && parsed?.longitude && parsed?.source) {
+          setUserCoords({ latitude: parsed.latitude, longitude: parsed.longitude });
+          // Restaurar source/label. Si era "ip" (sesión vieja), lo tratamos como "preset"
+          // genérico para no romper la UI.
+          if (parsed.source === "browser" || parsed.source === "manual" || parsed.source === "preset") {
+            setCoordsSource(parsed.source);
+            setCoordsSourceLabel(parsed.sourceLabel ?? null);
+          } else {
+            setCoordsSource("preset");
+            setCoordsSourceLabel("Ciudad seleccionada");
+          }
         }
       }
       const savedDist = sessionStorage.getItem(STORAGE_KEY_DIST);
@@ -82,52 +85,20 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
     } catch {}
   }, []);
 
-  // Auto-detectar ubicación por IP al cargar la primera vez
-  // (si no hay coords en sessionStorage). Funciona siempre, sin permisos.
-  useEffect(() => {
-    if (userCoords) return; // ya hay coords
-    // Detectar si ya está en proceso
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/geo/ip", { method: "GET" });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (cancelled) return;
-        if (typeof data.latitude === "number" && typeof data.longitude === "number") {
-          // Guardar info del país detectado
-          setDetectedCountry(data.country ?? null);
-          setDetectedCity(data.city ?? null);
-          // Solo autoload si NO hay coords en sessionStorage
-          try {
-            if (!sessionStorage.getItem(STORAGE_KEY_USER)) {
-              setUserCoords({ latitude: data.latitude, longitude: data.longitude });
-              setCoordsSource("ip");
-              const label = [data.city, data.region, data.country].filter(Boolean).join(", ");
-              setCoordsSourceLabel(label || "Tu IP pública");
-            }
-          } catch {}
-        }
-      } catch {
-        // Silenciar errores de IP — no pasa nada, el usuario puede usar GPS o manual
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []); // solo al montar
-
   // Persistir en sessionStorage y notificar al padre
   useEffect(() => {
     try {
       if (userCoords) {
-        sessionStorage.setItem(STORAGE_KEY_USER, JSON.stringify(userCoords));
+        sessionStorage.setItem(
+          STORAGE_KEY_USER,
+          JSON.stringify({ ...userCoords, source: coordsSource, sourceLabel: coordsSourceLabel }),
+        );
       } else {
         sessionStorage.removeItem(STORAGE_KEY_USER);
       }
     } catch {}
     onChange(userCoords, maxDistance);
-  }, [userCoords, onChange, maxDistance]);
+  }, [userCoords, onChange, maxDistance, coordsSource, coordsSourceLabel]);
 
   useEffect(() => {
     try {
@@ -137,7 +108,7 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
 
   const requestLocation = useCallback(() => {
     if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
-      setErrorDetail("Tu navegador no soporta la API de geolocalización. Usa IP o coordenadas manuales.");
+      setErrorDetail("Tu navegador no soporta la API de geolocalización. Elige una ciudad o introduce coordenadas.");
       return;
     }
     setRequesting(true);
@@ -181,32 +152,6 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
       },
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 0 },
     );
-  }, []);
-
-  // Fallback: geolocalización por IP pública (city-level, ~50km precisión)
-  const requestIpLocation = useCallback(async () => {
-    setRequestingIp(true);
-    setErrorDetail(null);
-    try {
-      const res = await fetch("/api/geo/ip", { method: "GET" });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
-      const data = await res.json();
-      if (typeof data.latitude !== "number" || typeof data.longitude !== "number") {
-        throw new Error("Respuesta inválida");
-      }
-      setUserCoords({ latitude: data.latitude, longitude: data.longitude });
-      setCoordsSource("ip");
-      const label = [data.city, data.region, data.country].filter(Boolean).join(", ");
-      setCoordsSourceLabel(label || "Tu IP pública");
-      setAttemptedButFailed(false);
-    } catch (e: any) {
-      setErrorDetail(`No se pudo obtener ubicación por IP: ${e?.message ?? e}`);
-    } finally {
-      setRequestingIp(false);
-    }
   }, []);
 
   // Input manual de coordenadas
@@ -260,8 +205,6 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
     setCoordsSource(null);
     setCoordsSourceLabel(null);
     setAttemptedButFailed(false);
-    setDetectedCountry(null);
-    setDetectedCity(null);
     try {
       sessionStorage.removeItem(STORAGE_KEY_USER);
       sessionStorage.removeItem(STORAGE_KEY_ERROR);
@@ -298,7 +241,7 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
             {isInIframe && (
               <div className="mb-2 flex items-start gap-1 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
                 <AlertTriangle className="h-3 w-3 flex-shrink-0 mt-0.5" />
-                <span>Estás dentro de un iframe — el navegador no puede mostrar el prompt de permiso. Usa IP o coordenadas manuales.</span>
+                <span>Estás dentro de un iframe — el navegador no puede mostrar el prompt de permiso. Elige una ciudad o introduce coordenadas.</span>
               </div>
             )}
             {isGranted ? (
@@ -311,7 +254,7 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
                     </div>
                     <div className="text-[10px] text-green-600">
                       {coordsSource === "browser" && "📍 GPS del navegador"}
-                      {coordsSource === "ip" && `🌐 IP (ciudad): ${coordsSourceLabel ?? "detectada automáticamente"}`}
+                      {coordsSource === "preset" && `📍 ${coordsSourceLabel ?? "ciudad seleccionada"}`}
                       {coordsSource === "manual" && "✏️ Coordenadas manuales"}
                     </div>
                   </div>
@@ -331,25 +274,14 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
                 <button
                   type="button"
                   onClick={requestLocation}
-                  disabled={requesting || requestingIp}
+                  disabled={requesting}
                   className="inline-flex items-center gap-2 bg-runner-primary text-white px-3 py-2 rounded-md text-sm font-semibold hover:opacity-90 disabled:opacity-50"
                 >
                   {requesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
                   {requesting ? "Esperando permiso del navegador…" : "Activar GPS"}
                 </button>
-                {/* Alternativas: IP o manual */}
-                <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
-                  <span>o</span>
-                  <button
-                    type="button"
-                    onClick={requestIpLocation}
-                    disabled={requesting || requestingIp}
-                    className="inline-flex items-center gap-1 text-runner-primary hover:underline disabled:opacity-50"
-                  >
-                    {requestingIp ? <Loader2 className="h-3 w-3 animate-spin" /> : <Globe className="h-3 w-3" />}
-                    Usar mi IP
-                  </button>
-                  <span>·</span>
+                <div className="text-xs text-gray-500">
+                  o{" "}
                   <button
                     type="button"
                     onClick={() => setShowManualDialog(true)}
@@ -391,8 +323,7 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
 
             {/* SELECTOR DE CIUDADES — SIEMPRE VISIBLE
                 Es el método más fiable: 1 click → location set, sin depender
-                de IP ni GPS. Aparece SIEMPRE para que el usuario tenga una
-                opción que funciona. */}
+                de permisos del navegador. */}
             <div className="mt-2 text-xs text-gray-600 bg-blue-50 border border-blue-200 rounded p-2">
               <div className="flex items-start gap-1 mb-1.5">
                 <MapPin className="h-3 w-3 text-blue-600 flex-shrink-0 mt-0.5" />
@@ -568,7 +499,7 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
             </div>
 
             <p className="mt-3 text-xs text-gray-600">
-              💡 <strong>¿Sigue fallando?</strong> Prueba con "Usar mi IP" (no necesita permiso, precisión ~50km)
+              💡 <strong>¿Sigue fallando?</strong> Elige una ciudad de la lista (1 click, funciona siempre)
               o introduce tus coordenadas a mano.
             </p>
 

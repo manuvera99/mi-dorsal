@@ -1,48 +1,34 @@
-﻿fix: dos bugs críticos en geolocalización
+﻿feat: quitar geolocalización por IP (solo GPS + ciudades + manual)
 
-## Bug 1: el endpoint IP pillaba la IP del servidor, no del cliente
+Manu pidió quitar la detección por IP — siempre devolvía Alemania
+(Frankfurt, IP del servidor Vercel en lugar de la del cliente), y
+prefería un control más explícito.
 
-Manu detectó que SIEMPRE le decía que estaba en Alemania, incluso
-desde el móvil. El problema: `/api/geo/ip` llamaba a `ipwho.is/` SIN
-pasar ninguna IP. `ipwho.is` veía la IP de quien le hacía la request,
-que era el SERVIDOR de Vercel en Frankfurt. Por eso siempre Alemania.
+Cambios en components/race-distance-filter.tsx:
+- Eliminado useState requestingIp
+- Eliminada función requestIpLocation (fetch a /api/geo/ip)
+- Eliminado useEffect de auto-detect al cargar la página
+- Eliminado botón "Usar mi IP" del JSX
+- Eliminado estado detectedCountry / detectedCity
+- Eliminado import Globe (ya no se usa)
+- Eliminado import de useCallback que se usaba solo para requestIpLocation
+- Eliminado label "🌐 IP (ciudad)" del indicador de fuente
+- Texto del iframe ahora dice "elige una ciudad o introduce coordenadas"
+  en lugar de "Usa IP o coordenadas manuales"
+- Texto del modal de ayuda ahora dice "elige una ciudad o introduce
+  coordenadas" en lugar de "Usa IP o coordenadas manuales"
+- El slider de slider de distancia se mantiene sin cambios
 
-Fix: extraemos la IP del cliente de los headers `x-forwarded-for`,
-`x-real-ip` o `cf-connecting-ip` y la pasamos a ipwho.is en la URL.
+Métodos disponibles ahora:
+1. GPS del navegador (botón "Activar GPS" con permiso)
+2. Selector de ciudades españolas (1 click, 14 ciudades)
+3. Coordenadas manuales (lat/lng)
 
-```ts
-// Antes:
-const res = await fetch("https://ipwho.is/", { ... });
+El sessionStorage ahora guarda también `source` y `sourceLabel` para
+restaurar la fuente correcta al recargar. Si el source guardado era
+"ip" (versión vieja), se migra a "preset" automáticamente.
 
-// Ahora:
-const clientIp = getClientIp(req);  // lee headers
-const res = await fetch(`https://ipwho.is/${clientIp}`, { ... });
-```
-
-También devuelvo la `clientIp` en la respuesta para debug.
-
-## Bug 2: el selector de ciudades solo aparecía en una condición
-
-El selector estaba condicionado a `coordsSource === "ip"`, así que si
-el usuario tenía coords de sessionStorage de una sesión anterior (por
-ejemplo manuales), no aparecía. Manu no veía el selector.
-
-Fix: el selector de ciudades SIEMPRE visible. Es el método más fiable
-porque no depende de IP ni GPS. Aparece en todos los casos.
-
-## Bonus: mensaje GPS más neutro
-
-Antes cuando `getCurrentPosition` fallaba con PERMISSION_DENIED, decíamos
-"El navegador dice que el permiso está denegado". Esto presupone que
-está denegado, pero hay otros casos (extensión bloqueando, iframe, etc.).
-Ahora el mensaje es: "El navegador no devolvió tu ubicación".
-
-## Cambios
-
-- `app/api/geo/ip/route.ts`: reescrito para usar x-forwarded-for
-- `components/race-distance-filter.tsx`:
-  - Quitada la condición que ocultaba el selector de ciudades
-  - El selector es SIEMPRE visible
-  - Botones de ciudad se resaltan en azul cuando están activos
-  - Mensaje de error GPS más neutro
-  - Timeout reducido de 10s a 8s
+Cambios en app/api/geo/ip/route.ts:
+- Reemplazado el handler real por un 410 Gone con mensaje explicativo.
+  El endpoint ya no se llama desde ningún sitio; mantener el archivo
+  evita imports rotos si algún cache tiene la ruta vieja.

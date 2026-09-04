@@ -301,26 +301,25 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
               </div>
             )}
             {isGranted ? (
-              <div className="flex items-center gap-2">
-                <div className="flex-1 flex items-center gap-2 bg-green-50 border border-green-200 rounded-md px-3 py-2 text-sm">
-                  <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-mono text-green-800">
-                      {userCoords!.latitude.toFixed(4)}, {userCoords!.longitude.toFixed(4)}
-                    </div>
-                    <div className="text-[10px] text-green-600">
-                      {coordsSource === "browser" && "📍 GPS del navegador"}
-                      {coordsSource === "manual" && "✏️ Coordenadas manuales"}
-                    </div>
-                  </div>
-                </div>
+              <div className="inline-flex items-center gap-2 bg-green-50 border border-green-200 rounded-full pl-3 pr-1 py-1 text-sm">
+                <span
+                  className="flex h-5 w-5 items-center justify-center rounded-full bg-green-600 text-white"
+                  aria-hidden="true"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                </span>
+                <span className="font-semibold text-green-800">Ubicación activa</span>
+                <span className="hidden sm:inline text-xs text-green-700/80">
+                  · {coordsSource === "manual" ? "manual" : "GPS"}
+                </span>
                 <button
                   type="button"
                   onClick={clearLocation}
-                  className="p-2 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50"
+                  className="ml-1 flex h-6 w-6 items-center justify-center rounded-full text-green-700 hover:bg-green-100 transition-colors"
                   title="Quitar ubicación"
+                  aria-label="Quitar ubicación"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
               </div>
             ) : (
@@ -330,10 +329,14 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
                   type="button"
                   onClick={() => setShowPrePrompt(true)}
                   disabled={requesting}
-                  className="inline-flex items-center gap-2 bg-runner-primary text-white px-3 py-2 rounded-md text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+                  className="inline-flex items-center gap-2 bg-white text-runner-primary border border-runner-primary/30 px-3 py-1.5 rounded-full text-sm font-semibold hover:bg-runner-warm disabled:opacity-50 transition-colors"
                 >
-                  {requesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
-                  {requesting ? "Esperando permiso del navegador…" : "Activar GPS"}
+                  {requesting ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <MapPin className="h-3.5 w-3.5" />
+                  )}
+                  {requesting ? "Pidiendo permiso…" : "Usar mi ubicación"}
                 </button>
                 <div className="text-xs text-gray-500">
                   o{" "}
@@ -394,7 +397,7 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1">
                 <span>Distancia máxima</span>
               </div>
-              <span className="text-sm font-mono font-bold text-runner-primary">
+              <span className="text-sm font-semibold text-runner-primary">
                 {maxDistance >= MAX_DISTANCE ? "Sin límite" : `${maxDistance} km`}
               </span>
             </div>
@@ -406,12 +409,8 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
               value={maxDistance}
               onChange={(e) => setMaxDistance(parseInt(e.target.value, 10))}
               className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-runner-primary"
+              aria-label="Distancia máxima en kilómetros"
             />
-            <div className="flex justify-between text-[10px] text-gray-400 mt-0.5">
-              <span>0 km</span>
-              <span>150 km</span>
-              <span>300+ km</span>
-            </div>
           </div>
         </div>
       </div>

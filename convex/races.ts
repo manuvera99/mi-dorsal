@@ -8,7 +8,50 @@ import { Doc } from "./_generated/dataModel";
 import { provinceValidator, raceTypeValidator, slugify, requireAdmin } from "./_helpers";
 
 /**
+ * Distancias canónicas (alineadas con `lib/utils.ts` `DISTANCE_CATEGORY_LIST`).
+ * Usadas como filtro de carreras — la API no recalcula categorías, las
+ * carreras en sí no almacenan la categoría, se calcula on-the-fly.
+ */
+const distanceCategoryValidator = v.union(
+  v.literal("5k"),
+  v.literal("10k"),
+  v.literal("15k"),
+  v.literal("half_marathon"),
+  v.literal("marathon"),
+  v.literal("ultra"),
+);
+
+/**
+ * Determina en qué categorías de distancia cae una distancia dada en km.
+ * Mismas reglas que `lib/utils.ts` `distanceToCategories` — duplicado
+ * intencional para evitar que la capa Convex importe de `lib/`.
+ */
+function distanceToCategories(distanceKm: number): string[] {
+  if (typeof distanceKm !== "number" || distanceKm <= 0) return [];
+  const out: string[] = [];
+  if (distanceKm >= 0    && distanceKm < 7.5)   out.push("5k");
+  if (distanceKm >= 7.5  && distanceKm < 12.5)  out.push("10k");
+  if (distanceKm >= 12.5 && distanceKm < 17.5)  out.push("15k");
+  if (distanceKm >= 17.5 && distanceKm < 23)    out.push("half_marathon");
+  if (distanceKm >= 40   && distanceKm < 44)    out.push("marathon");
+  if (distanceKm >= 44)                         out.push("ultra");
+  return out;
+}
+
+/**
  * Lista carreras con filtros opcionales. Lectura pública.
+ *
+ * Filtros soportados:
+ *  - province     : provincia exacta
+ *  - raceType     : road / trail / mixed / obstacle
+ *  - month        : 1-12
+ *  - search       : texto libre sobre name + locality
+ *  - organizer    : match exacto del campo `organizer` (case-insensitive)
+ *  - distanceCategories: array de categorías (5k/10k/15k/half_marathon/marathon/ultra).
+ *                        Una carrera cae en una categoría si su distanceKm está
+ *                        en el rango de esa categoría. Múltiples categorías
+ *                        = OR.
+ *  - limit        : cortar a N
  */
 export const list = query({
   args: {
@@ -16,6 +59,8 @@ export const list = query({
     raceType: v.optional(raceTypeValidator),
     month: v.optional(v.number()), // 1-12
     search: v.optional(v.string()),
+    organizer: v.optional(v.string()),
+    distanceCategories: v.optional(v.array(distanceCategoryValidator)),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -46,8 +91,19 @@ export const list = query({
       filtered = filtered.filter(
         (r) =>
           r.name.toLowerCase().includes(s) ||
-          r.locality?.toLowerCase().includes(s),
+          r.locality?.toLowerCase().includes(s) ||
+          r.organizer?.toLowerCase().includes(s),
       );
+    }
+    if (args.organizer) {
+      const o = args.organizer.toLowerCase();
+      filtered = filtered.filter((r) => r.organizer?.toLowerCase() === o);
+    }
+    if (args.distanceCategories && args.distanceCategories.length > 0) {
+      filtered = filtered.filter((r) => {
+        const cats = distanceToCategories(r.distanceKm);
+        return cats.some((c) => args.distanceCategories!.includes(c as never));
+      });
     }
 
     // Ordenar por fecha
@@ -58,6 +114,32 @@ export const list = query({
     });
 
     return args.limit ? filtered.slice(0, args.limit) : filtered;
+  },
+});
+
+/**
+ * Lista todas las organizadoras únicas con conteo de carreras.
+ * Usado para popular el combobox de filtro de organizadora.
+ * Lectura pública.
+ */
+export const listOrganizers = query({
+  handler: async (ctx) => {
+    const all = await ctx.db
+      .query("races")
+      .withIndex("by_published_date")
+      .filter((q) => q.eq(q.field("isPublished"), true))
+      .collect();
+
+    const counts = new globalThis.Map<string, number>();
+    for (const r of all) {
+      const org = r.organizer?.trim();
+      if (!org) continue;
+      counts.set(org, (counts.get(org) ?? 0) + 1);
+    }
+
+    return Array.from(counts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
   },
 });
 

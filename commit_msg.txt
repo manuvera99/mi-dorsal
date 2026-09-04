@@ -1,24 +1,60 @@
-﻿refactor: quitar selector de ciudades, dejar solo GPS + manual
+﻿feat: filtros de organizadora (combobox) + distancia (multi-select)
 
-Manu dice que el GPS ya funciona perfectamente en su Chrome, así que el
-selector de ciudades (14 botones de ciudades españolas) ya no aporta
-valor y complica la UI.
+Manu pidió 2 filtros nuevos en /carreras. Tras preguntarle, eligió:
+- Organizadora: desplegable con búsqueda integrada
+- Distancia: multi-select de categorías (5K, 10K, 15K, Media, Maratón, Ultra)
+- Persistencia: sessionStorage
 
-Cambios en components/race-distance-filter.tsx:
-- Eliminado el array SPANISH_CITIES (14 ciudades)
-- Eliminada la función applyCity
-- Eliminado el bloque JSX "Elige tu ciudad (1 click)"
-- Eliminado el type "preset" del state coordsSource (queda "browser" | "manual" | null)
-- Limpiada la lógica de sessionStorage para tratar sesiones viejas con
-  source "ip" o "preset" como "browser" genérico
-- Limpiados los textos de error/ayuda que mencionaban ciudades:
-  * "Elige una ciudad o introduce coordenadas" → "Introduce las coordenadas manualmente"
-  * "selector de ciudades o las coordenadas manuales" → "introducir las coordenadas manualmente"
-  * "Elige una ciudad de la lista (1 click, funciona siempre)" → "Introduce las coordenadas manualmente (no requiere permiso)"
-- Actualizado el comentario del header del componente
+Cambios:
 
-Métodos disponibles ahora:
-1. GPS del navegador (botón "Activar GPS" con pre-prompt)
-2. Coordenadas manuales (botón "Coordenadas manuales")
+1. lib/utils.ts: añadidas constantes DISTANCE_CATEGORY_LIST y helpers
+   distanceToCategories() y filterByDistanceCategories(). Las categorías
+   son rangos, no números exactos: 5K es 0-7.5km, 10K es 7.5-12.5km, etc.
+   Una carrera de 12K cae en 10K y 15K a la vez.
 
-Bundle de /carreras: 11.7 kB → 11.2 kB
+2. convex/races.ts:
+   - Extendido `list` con args `organizer` (match exacto case-insensitive)
+     y `distanceCategories` (array, lógica OR)
+   - `search` ahora también busca en `organizer`
+   - Nueva query `listOrganizers`: devuelve {name, count}[] de todas las
+     organizadoras únicas, ordenadas por nº de carreras
+   - Helper interno distanceToCategories() duplicado intencionalmente
+     para no importar desde lib/ en la capa Convex
+
+3. lib/mock/provider.tsx:
+   - Mismos filtros (organizer, distanceCategories) en mockApi.races.list
+   - Nueva función mockApi.races.listOrganizers
+   - Helper distanceToCategories duplicado por la misma razón
+
+4. components/organizer-combobox.tsx (nuevo):
+   - Botón con label + badge de conteo
+   - Al abrir, muestra buscador interno con placeholder contextual
+   - Lista scrollable con todas las organizadoras
+   - Filtro en cliente al escribir
+   - Click outside + Escape cierran
+   - ARIA: aria-expanded, aria-haspopup=listbox
+   - Soporte teclado: Enter selecciona el primer resultado
+
+5. components/distance-category-multiselect.tsx (nuevo):
+   - Pills horizontales con Check cuando seleccionadas
+   - Botón "Limpiar" cuando hay alguna activa
+   - 6 categorías: 5K, 10K, 15K, Media maratón, Maratón, Ultra
+
+6. components/race-filters.tsx (reescrito):
+   - Añadidos 2 nuevos filtros en una segunda fila
+   - Chips de filtros activos con X individual para quitar
+   - Botón "Limpiar todos" cuando hay algún filtro
+   - Exporta nuevo hook `useCarrerasFilters()` que persiste en
+     sessionStorage bajo clave "mi-dorsal.carrerasFilters"
+   - Exporta tipo `CarrerasFilters`
+
+7. app/carreras/page.tsx:
+   - Usa el nuevo hook useCarrerasFilters (sessionStorage)
+   - Pasa los nuevos args a api.races.list
+   - Cuenta y muestra nº de filtros activos en el header
+   - Empty state específico para "no hay carreras con esos filtros"
+   - SSR fix: usa mounted flag para evitar prerender de useQuery
+     sin ConvexProvider (antes funcionaba por suerte, ahora se hace
+     explícito)
+
+Build: /carreras de 11.2 kB a 13.6 kB (+2.4 kB por los 2 nuevos componentes).

@@ -121,3 +121,65 @@ export const RACE_TYPE_LIST = [
   { value: "mixed", label: "Mixta" },
   { value: "obstacle", label: "Obstáculos" },
 ] as const;
+
+// =============================================================================
+// DISTANCE CATEGORIES — clasificación estándar de carreras por distancia
+// =============================================================================
+// Usado en filtros y en race-card. Una carrera puede caer en 0, 1 o 2
+// categorías adyacentes (p.ej. una 12K es "10K" y "15K" a la vez).
+// =============================================================================
+
+export type DistanceCategory =
+  | "5k"
+  | "10k"
+  | "15k"
+  | "half_marathon"
+  | "marathon"
+  | "ultra";
+
+export const DISTANCE_CATEGORY_LIST: Array<{ value: DistanceCategory; label: string; min: number; max: number }> = [
+  { value: "5k",            label: "5K",            min: 0,    max: 7.5   },
+  { value: "10k",           label: "10K",           min: 7.5,  max: 12.5  },
+  { value: "15k",           label: "15K",           min: 12.5, max: 17.5  },
+  { value: "half_marathon", label: "Media maratón", min: 17.5, max: 23   },
+  { value: "marathon",      label: "Maratón",       min: 40,   max: 44   },
+  { value: "ultra",         label: "Ultra (>44K)",  min: 44,   max: 9999 },
+];
+
+/**
+ * Devuelve todas las categorías en las que cae una distancia dada.
+ * Ejemplos:
+ *   distanceToCategories(5)   -> ["5k"]
+ *   distanceToCategories(10)  -> ["10k"]
+ *   distanceToCategories(12)  -> ["10k", "15k"]    (entre dos categorías)
+ *   distanceToCategories(21)  -> ["half_marathon"]
+ *   distanceToCategories(42)  -> ["marathon"]
+ *   distanceToCategories(50)  -> ["ultra"]
+ *   distanceToCategories(0)   -> []
+ *   distanceToCategories(2.5) -> ["5k"]
+ */
+export function distanceToCategories(distanceKm: number): DistanceCategory[] {
+  if (typeof distanceKm !== "number" || distanceKm <= 0) return [];
+  const out: DistanceCategory[] = [];
+  for (const c of DISTANCE_CATEGORY_LIST) {
+    if (distanceKm >= c.min && distanceKm < c.max) {
+      out.push(c.value);
+    }
+  }
+  return out;
+}
+
+/**
+ * Inversa: filtra una lista de carreras devolviendo solo las que caen
+ * en al menos una de las categorías seleccionadas.
+ */
+export function filterByDistanceCategories<T extends { distanceKm: number }>(
+  races: T[],
+  categories: DistanceCategory[],
+): T[] {
+  if (categories.length === 0) return races;
+  return races.filter((r) => {
+    const cats = distanceToCategories(r.distanceKm);
+    return cats.some((c) => categories.includes(c));
+  });
+}

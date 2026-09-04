@@ -24,6 +24,20 @@ export function isMockMode(): boolean {
   );
 }
 
+// Misma lógica que en convex/races.ts — duplicado intencional para no
+// importar desde la capa Convex en modo mock.
+function distanceToCategories(distanceKm: number): string[] {
+  if (typeof distanceKm !== "number" || distanceKm <= 0) return [];
+  const out: string[] = [];
+  if (distanceKm >= 0    && distanceKm < 7.5)   out.push("5k");
+  if (distanceKm >= 7.5  && distanceKm < 12.5)  out.push("10k");
+  if (distanceKm >= 12.5 && distanceKm < 17.5)  out.push("15k");
+  if (distanceKm >= 17.5 && distanceKm < 23)    out.push("half_marathon");
+  if (distanceKm >= 40   && distanceKm < 44)    out.push("marathon");
+  if (distanceKm >= 44)                         out.push("ultra");
+  return out;
+}
+
 // Mock implementations de queries
 export const mockApi = {
   races: {
@@ -42,8 +56,21 @@ export const mockApi = {
         filtered = filtered.filter(
           (r) =>
             r.name.toLowerCase().includes(s) ||
-            r.locality?.toLowerCase().includes(s),
+            r.locality?.toLowerCase().includes(s) ||
+            (r as { organizer?: string }).organizer?.toLowerCase().includes(s),
         );
+      }
+      if (args.organizer) {
+        const o = args.organizer.toLowerCase();
+        filtered = filtered.filter(
+          (r) => (r as { organizer?: string }).organizer?.toLowerCase() === o,
+        );
+      }
+      if (args.distanceCategories && args.distanceCategories.length > 0) {
+        filtered = filtered.filter((r) => {
+          const cats = distanceToCategories(r.distanceKm);
+          return cats.some((c) => args.distanceCategories.includes(c));
+        });
       }
       filtered.sort((a, b) => (a.startDate ?? "").localeCompare(b.startDate ?? ""));
       return args.limit ? filtered.slice(0, args.limit) : filtered;
@@ -53,6 +80,17 @@ export const mockApi = {
     },
     getFeatured: async ({ limit = 6 }: { limit?: number } = {}) => {
       return ALL_MOCK_RACES.filter((r) => r.isFeatured).slice(0, limit);
+    },
+    listOrganizers: async () => {
+      const counts = new globalThis.Map<string, number>();
+      for (const r of ALL_MOCK_RACES) {
+        const org = (r as { organizer?: string }).organizer?.trim();
+        if (!org) continue;
+        counts.set(org, (counts.get(org) ?? 0) + 1);
+      }
+      return Array.from(counts.entries())
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
     },
   },
   ratings: {

@@ -1,47 +1,68 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { mockApi, isMockMode } from "@/lib/mock/provider";
 import { RaceCard } from "@/components/race-card";
-import { RaceFilters } from "@/components/race-filters";
+import { RaceFilters, useCarrerasFilters, type CarrerasFilters } from "@/components/race-filters";
 import { RaceDistanceFilter } from "@/components/race-distance-filter";
-import { PROVINCE_LIST, RACE_TYPE_LIST, MONTH_LIST } from "@/lib/utils";
-import { Search, MapPin, List, Map } from "lucide-react";
 import { haversineDistanceKm, type Coords } from "@/lib/geo/distance";
 import { RaceMapWrapper } from "@/components/race-map-wrapper";
+import { Search, MapPin, List, Map } from "lucide-react";
 
 function MockCarrerasPage() {
-  const [filters, setFilters] = useState<any>({});
+  const [filters, setFilters] = useCarrerasFilters();
   const [races, setRaces] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Re-fetch cuando cambien los filtros
   useEffect(() => {
     setLoading(true);
-    mockApi.races.list(filters).then((r) => {
+    void mockApi.races.list(filters).then((r) => {
       setRaces(r);
       setLoading(false);
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(filters)]);
 
   return <CarrerasContent races={races} loading={loading} filters={filters} onFilterChange={setFilters} />;
 }
 
 function RealCarrerasPage() {
-  const [filters, setFilters] = useState<any>({});
+  const [filters, setFilters] = useCarrerasFilters();
   const convexRaces = useQuery(api.races.list, {
     province: filters.province as any,
     raceType: filters.raceType as any,
     month: filters.month,
     search: filters.search,
+    organizer: filters.organizer,
+    distanceCategories: filters.distanceCategories as any,
   });
   const loading = convexRaces === undefined;
   return <CarrerasContent races={(convexRaces as any) ?? []} loading={loading} filters={filters} onFilterChange={setFilters} />;
 }
 
 export default function CarrerasPage() {
-  const useMock = isMockMode();
+  // isMockMode() lee `window` así que solo se puede evaluar en cliente.
+  // En SSR siempre devuelve false, lo que haría que Next intentase pre-renderizar
+  // RealCarrerasPage con useQuery sin ConvexProvider. Esperamos al primer render
+  // en cliente para decidir qué componente montar.
+  const [mounted, setMounted] = useState(false);
+  const [useMock, setUseMock] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    setUseMock(isMockMode());
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-8">
+        <h1 className="text-3xl font-bold mb-2">Catálogo de carreras</h1>
+        <div className="text-center py-12 text-gray-500">Cargando…</div>
+      </div>
+    );
+  }
   return useMock ? <MockCarrerasPage /> : <RealCarrerasPage />;
 }
 
@@ -53,8 +74,8 @@ function CarrerasContent({
 }: {
   races: any[];
   loading: boolean;
-  filters: any;
-  onFilterChange: (f: any) => void;
+  filters: CarrerasFilters;
+  onFilterChange: (f: CarrerasFilters) => void;
 }) {
   // Estado del filtro de distancia (geolocalización + slider)
   const [userCoords, setUserCoords] = useState<Coords | null>(null);
@@ -100,6 +121,13 @@ function CarrerasContent({
   // Stats del filtro
   const totalWithCoords = races.filter((r) => typeof r.latitude === "number" && typeof r.longitude === "number").length;
   const hiddenByDistance = filterEnabled ? races.length - filteredRaces.length : 0;
+  const activeFilterCount =
+    (filters.search ? 1 : 0) +
+    (filters.province ? 1 : 0) +
+    (filters.raceType ? 1 : 0) +
+    (filters.month ? 1 : 0) +
+    (filters.organizer ? 1 : 0) +
+    (filters.distanceCategories?.length ?? 0);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -108,18 +136,23 @@ function CarrerasContent({
         <p className="text-gray-600">
           {filterEnabled
             ? `${filteredRaces.length} de ${races.length} carreras dentro de ${maxDistance >= 300 ? "sin límite" : `${maxDistance} km`}`
-            : `${races.length} ${races.length === 1 ? "carrera" : "carreras"} en el Levante`}
+            : `${races.length} ${races.length === 1 ? "carrera" : "carreras"}`}
           {filterEnabled && hiddenByDistance > 0 && (
             <span className="text-gray-400"> · {hiddenByDistance} ocultas por distancia</span>
+          )}
+          {activeFilterCount > 0 && (
+            <span className="text-gray-400"> · {activeFilterCount} {activeFilterCount === 1 ? "filtro activo" : "filtros activos"}</span>
           )}
         </p>
       </div>
 
       <RaceDistanceFilter onChange={handleDistanceChange} initialMaxDistance={maxDistance} />
 
-      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <RaceFilters filters={filters} onChange={onFilterChange} />
-        <div className="flex items-center bg-white border border-gray-300 rounded-md p-0.5">
+      <div className="flex items-start justify-between mb-3 flex-wrap gap-3">
+        <div className="flex-1 min-w-0">
+          <RaceFilters filters={filters} onChange={onFilterChange} />
+        </div>
+        <div className="flex items-center bg-white border border-gray-300 rounded-md p-0.5 flex-shrink-0 mt-0.5">
           <button
             type="button"
             onClick={() => setViewMode("list")}
@@ -155,8 +188,13 @@ function CarrerasContent({
               <p>No hay carreras dentro de tu radio de {maxDistance} km.</p>
               <p className="text-sm mt-2">Prueba a ampliar la distancia o desactivar el filtro de ubicación.</p>
             </>
+          ) : activeFilterCount > 0 ? (
+            <>
+              <p>No hay carreras con esos filtros.</p>
+              <p className="text-sm mt-2">Prueba a quitar algún filtro arriba.</p>
+            </>
           ) : (
-            <p>No hay carreras con esos filtros. Prueba a ampliar la búsqueda.</p>
+            <p>No hay carreras disponibles.</p>
           )}
         </div>
       ) : viewMode === "map" ? (

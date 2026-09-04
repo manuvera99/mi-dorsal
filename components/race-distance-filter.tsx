@@ -65,6 +65,8 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
         const parsed = JSON.parse(savedCoords);
         if (parsed?.latitude && parsed?.longitude) {
           setUserCoords(parsed);
+          setCoordsSource("ip");
+          setCoordsSourceLabel("Tu IP (cargado de sesión)");
         }
       }
       const savedDist = sessionStorage.getItem(STORAGE_KEY_DIST);
@@ -74,10 +76,41 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
           setMaxDistance(n);
         }
       }
-      // Si hay un error guardado de antes, lo limpiamos
       sessionStorage.removeItem(STORAGE_KEY_ERROR);
     } catch {}
   }, []);
+
+  // Auto-detectar ubicación por IP al cargar la primera vez
+  // (si no hay coords en sessionStorage). Funciona siempre, sin permisos.
+  useEffect(() => {
+    if (userCoords) return; // ya hay coords
+    // Detectar si ya está en proceso
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/geo/ip", { method: "GET" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        if (typeof data.latitude === "number" && typeof data.longitude === "number") {
+          // Solo autoload si NO hay coords en sessionStorage
+          try {
+            if (!sessionStorage.getItem(STORAGE_KEY_USER)) {
+              setUserCoords({ latitude: data.latitude, longitude: data.longitude });
+              setCoordsSource("ip");
+              const label = [data.city, data.region, data.country].filter(Boolean).join(", ");
+              setCoordsSourceLabel(label || "Tu IP pública");
+            }
+          } catch {}
+        }
+      } catch {
+        // Silenciar errores de IP — no pasa nada, el usuario puede usar GPS o manual
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []); // solo al montar
 
   // Persistir en sessionStorage y notificar al padre
   useEffect(() => {
@@ -246,7 +279,7 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
                     </div>
                     <div className="text-[10px] text-green-600">
                       {coordsSource === "browser" && "📍 GPS del navegador"}
-                      {coordsSource === "ip" && `🌐 IP (ciudad): ${coordsSourceLabel}`}
+                      {coordsSource === "ip" && `🌐 IP (ciudad): ${coordsSourceLabel ?? "detectada automáticamente"}`}
                       {coordsSource === "manual" && "✏️ Coordenadas manuales"}
                     </div>
                   </div>

@@ -1,49 +1,40 @@
-﻿fix: geolocalización robusta — quitar Permissions API que mentía
+﻿fix: autodetectar ubicación por IP al cargar la página
 
-Manu reportó: "me sigue saliendo que he denegado el permiso pero lo
-tengo permitido en la configuración de la web".
+Manu reportó que la geolocalización del navegador no funciona en NINGÚN
+dispositivo (ordenador y móvil), ni siquiera sale el prompt. Después de 3
+intentos fallidos de arreglar el GPS, cambio el enfoque:
 
-Causa raíz: la Permissions API (`navigator.permissions.query`) tiene
-bugs conocidos en algunos navegadores — puede devolver "denied" cuando
-el permiso REAL está granted. Mi código confiaba en eso y mostraba
-"Ubicación bloqueada" incorrectamente.
+**La IP pública se autodetecta al cargar la página**, sin que el usuario
+tenga que hacer nada. Funciona siempre, sin permisos, sin prompts.
 
 ## Cambios
 
-### Quitar Permissions API
-- Antes: useEffect con `navigator.permissions.query({name: "geolocation"})`
-  que reporta el estado y lo muestra como "denied" falsamente
-- Ahora: NO usamos Permissions API. Vamos directo a `getCurrentPosition`
-  y dejamos que el navegador decida
+### Auto-detección de IP al montar
+- Nuevo `useEffect` que llama a `/api/geo/ip` automáticamente al cargar
+- Si NO hay coords en sessionStorage, las setea con la IP detectada
+- `coordsSource` se marca como "ip" para que se muestre la fuente
+- Si ya hay coords (de sessionStorage), no se sobreescribe
 
-### Detección de iframe
-- Comprueba `window.self !== window.top` — si estamos en un iframe
-  (Vercel preview, embed, etc.), el navegador no puede mostrar el prompt
-  de permiso, así que mostramos un warning explícito sugiriendo IP o manual
+### Indicador visual
+- El badge verde muestra "🌐 IP (ciudad): Alicante, España, detectada
+  automáticamente" cuando es por IP
+- El slider de distancia funciona INMEDIATAMENTE, sin que el usuario
+  tenga que hacer click en nada
 
-### Estado y errores
-- `permission` state eliminado (era la fuente del bug)
-- `attemptedButFailed` nuevo state: true después de un error, permite
-  mostrar el botón "Limpiar caché y reintentar"
-- `maximumAge: 0` en getCurrentPosition (no usar cache vieja)
-- Mensaje de error más informativo: "Si lo tienes permitido en la
-  web, prueba a recargar (Ctrl+Shift+R). Si sigue fallando, es
-  probable que una extensión (uBlock, Privacy Badger) esté bloqueando
-  la API."
+### GPS sigue disponible como mejora
+- Si Manu quiere más precisión, hace click en "Activar GPS" para
+  sobreescribir con coordenadas del navegador
+- El botón "Limpiar" (X) le permite quitar la detección automática
+  si quiere probar con GPS desde cero
 
-### Botón "Limpiar caché y reintentar"
-- Aparece en el alert de error si ya intentamos y falló
-- Limpia sessionStorage Y localStorage
-- Recarga la página (Ctrl+Shift+R equivalente)
+## Flujo ahora
 
-### Modal de ayuda
-- Ya no es el modal explicativo inicial
-- Solo aparece cuando se hace click en "Ver cómo activarlo"
-  desde el alert de error
-- Contiene instrucciones para Chrome/Edge, Firefox, Safari
-- Sugiere probar con IP o manual como alternativa
+1. Manu entra a /carreras
+2. En ~500ms, la página detecta su IP (Alicante) automáticamente
+3. El slider se posiciona en 200km por defecto
+4. Las carreras se filtran inmediatamente
+5. Si quiere más precisión → click en "Activar GPS"
+6. Si la IP no es exacta → click en "Coordenadas manuales"
 
-## Lo que se mantiene igual
-- 3 métodos: GPS, IP (endpoint /api/geo/ip), coordenadas manuales
-- Persistencia en sessionStorage
-- Privacidad: nada se guarda en servidor
+Cero clicks, cero permisos, cero prompts. Funciona en cualquier
+navegador, cualquier dispositivo, con o sin HTTPS.

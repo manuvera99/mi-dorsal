@@ -5,8 +5,9 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { isMockMode } from "@/lib/mock/provider";
 import Link from "next/link";
-import { Plus, Search, Edit2, Trash2, Loader2, MapPin, Calendar, Sparkles } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, Loader2, MapPin, Calendar, Sparkles, Zap, CheckCircle2, AlertCircle } from "lucide-react";
 import { PROVINCE_LIST, formatRaceType } from "@/lib/utils";
+import { deepExtractAndApplyAction } from "./[id]/actions";
 
 function MockRacesList() {
   return (
@@ -44,6 +45,37 @@ function RealRacesList() {
   const handleDelete = async (id: any, name: string) => {
     if (confirm(`¿Eliminar "${name}"? Esta acción no se puede deshacer.`)) {
       await deleteMutation({ id });
+    }
+  };
+
+  // Estado del 1-click extract inline (por raceId)
+  const [extracting, setExtracting] = useState<Record<string, boolean>>({});
+  const [extractMessages, setExtractMessages] = useState<Record<string, { ok: boolean; text: string }>>({});
+  const handleInlineExtract = async (raceId: string, name: string) => {
+    if (!confirm(`¿Re-extraer "${name}" con IA y aplicar? (10-30s, sobrescribe campos vacíos)`)) return;
+    setExtracting((e) => ({ ...e, [raceId]: true }));
+    setExtractMessages((m) => ({ ...m, [raceId]: { ok: false, text: "" } }));
+    try {
+      const res = await deepExtractAndApplyAction(raceId);
+      if ("error" in res) {
+        setExtractMessages((m) => ({ ...m, [raceId]: { ok: false, text: res.error } }));
+      } else {
+        setExtractMessages((m) => ({
+          ...m,
+          [raceId]: { ok: true, text: `✅ ${res.fieldsApplied} campos (${res.confidence ?? "?"})` },
+        }));
+        // Auto-clear el mensaje de éxito tras 6s
+        setTimeout(() => {
+          setExtractMessages((m) => {
+            const { [raceId]: _, ...rest } = m;
+            return rest;
+          });
+        }, 6000);
+      }
+    } catch (e: any) {
+      setExtractMessages((m) => ({ ...m, [raceId]: { ok: false, text: e?.message ?? "Error" } }));
+    } finally {
+      setExtracting((e) => ({ ...e, [raceId]: false }));
     }
   };
 
@@ -184,6 +216,20 @@ function RealRacesList() {
                       />
                     </td>
                     <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => handleInlineExtract(r._id, r.name)}
+                        disabled={extracting[r._id]}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs text-purple-600 hover:text-purple-800 disabled:opacity-50"
+                        title="Re-extraer con IA y aplicar (1-click)"
+                      >
+                        {extracting[r._id] ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
+                        {extracting[r._id] ? "Extrayendo…" : "Re-extraer"}
+                      </button>
+                      {extractMessages[r._id] && (
+                        <span className={`ml-2 text-xs ${extractMessages[r._id].ok ? "text-green-600" : "text-red-600"}`}>
+                          {extractMessages[r._id].text}
+                        </span>
+                      )}
                       <Link
                         href={`/admin/races/${r._id}`}
                         className="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:text-runner-primary"

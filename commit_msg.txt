@@ -1,30 +1,54 @@
-﻿fix: query systemListAll devolvía solo 6 campos (sin deep-extracted)
+﻿feat: deep extract IA con 1-click en admin y procesado automático nightly
 
-El check-bulk-status mostraba 0 con longDescription/altimetryData/raceFormats
-pero en realidad se estaban guardando bien. La causa era que `systemListAll`
-solo devolvía _id, name, slug, officialUrl, extractedAt, extractionConfidence.
+Manu pidió dos cosas:
+1. Que el nightly procese las carreras NUEVAS que aparezcan con el ingest
+2. Que el admin tenga un botón 1-click para extraer datos de cada carrera
 
-Ahora devuelve también:
-- extractedFromUrl
-- longDescription
-- altimetryData
-- raceFormats
-- aidStations
-- priceTiers
-- categories
-- galleryUrls
-- services
-- organizer
-- contactEmail
+## 1. Nightly ya cubre carreras nuevas (verificado en run real)
 
-También añadí process.on('unhandledRejection'/'uncaughtException') en el
-script para que un error aislado de la API no aborte el bulk completo.
+El script deep-extract-all.ts ya tenía el flag --priority que ordena:
+  0 = nunca extraída (NUEVAS del ingest diario)
+  1 = sin longDescription
+  2 = sin altimetryData
+  3 = sin raceFormats
+  4 = completa
 
-Estado real del bulk (verificado tras el fix):
-- 319/361 carreras con extractedAt (88%)
-- 285 con longDescription (~80% del total)
-- 234 con raceFormats (~65% del total)
-- 0 con altimetryData (la IA no devolvió altimetría per-km; requiere
-  un GPX/track subido, no se puede sacar solo de HTML)
+En el último run real del workflow, cogió:
+  - 1 carrera nueva de Sportmaniacs
+  - 40 carreras nuevas de Correbirras (de 196 scrapeadas)
+  - Todas con extractedAt actualizado en el mismo workflow
 
-Quedan 42 por procesar. El script es ahora robusto a unhandledRejection.
+El paso 8/8 ya está en el workflow `daily-ingest.yml`.
+
+## 2. Botón 1-click en admin
+
+### app/admin/races/[id]/actions.ts
+Nueva action `deepExtractAndApplyAction(raceId, url?)` que:
+- Verifica admin (vía Clerk + Convex profile)
+- Si no se pasa URL, usa la officialUrl de la carrera
+- Extrae con IA (MiniMax M3)
+- Aplica directamente via adminUpdate (sin revisión previa)
+- Devuelve { ok, fieldsApplied, confidence, url }
+
+Mantiene la action original `deepExtractAction` (2-pasos) para los
+que quieran revisar antes de aplicar.
+
+### app/admin/races/[id]/page.tsx
+- Nuevo botón prominente "⚡ Re-extraer y aplicar (1-click)" en la
+  cabecera (al lado de "Eliminar")
+- Gradiente morado-rosa para destacar
+- Muestra resultado inline ("✅ N campos aplicados (confidence: X)")
+- Auto-recarga la página tras éxito
+
+### app/admin/races/page.tsx (listado)
+- Nuevo botón "⚡ Re-extraer" inline en cada fila
+- Confirm antes de ejecutar
+- Muestra resultado temporal inline
+- Permite extraer cualquier carrera sin entrar al detalle
+
+## Otros cambios
+
+- Bug fix en el listado: el botón "Editar" se veía después del nuevo
+  botón "Re-extraer", manteniendo el orden visual correcto
+- Bug fix en action: imports añadidos (auth, ConvexHttpClient, api)
+- Type `DeepExtractAndApplyResult` exportado para uso en cliente

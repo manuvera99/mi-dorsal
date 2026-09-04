@@ -7,8 +7,8 @@ import { api } from "@/convex/_generated/api";
 import { isMockMode } from "@/lib/mock/provider";
 import { PROVINCE_LIST } from "@/lib/utils";
 import Link from "next/link";
-import { ArrowLeft, Save, Loader2, Trash2, Wand2, Sparkles, CheckCircle2, AlertCircle, AlertTriangle, ExternalLink } from "lucide-react";
-import { deepExtractAction } from "./actions";
+import { ArrowLeft, Save, Loader2, Trash2, Wand2, Sparkles, CheckCircle2, AlertCircle, AlertTriangle, ExternalLink, Zap } from "lucide-react";
+import { deepExtractAction, deepExtractAndApplyAction } from "./actions";
 import type { ExtractedRaceDeep } from "@/lib/ai/extract-race-deep";
 
 export default function EditRacePage() {
@@ -31,6 +31,9 @@ export default function EditRacePage() {
   const [extracting, startExtract] = useTransition();
   const [applying, setApplying] = useState(false);
   const [applyMessage, setApplyMessage] = useState<string | null>(null);
+  // 1-click extract & apply
+  const [oneClickBusy, setOneClickBusy] = useState(false);
+  const [oneClickResult, setOneClickResult] = useState<string | null>(null);
 
   useEffect(() => {
     if (race) {
@@ -152,6 +155,24 @@ export default function EditRacePage() {
     });
   };
 
+  const handleOneClickExtract = async () => {
+    setError(null);
+    setOneClickResult(null);
+    setOneClickBusy(true);
+    try {
+      const res = await deepExtractAndApplyAction(id, deepUrl || undefined);
+      if ("error" in res) {
+        setError(res.error);
+        return;
+      }
+      setOneClickResult(`✅ ${res.fieldsApplied} campos aplicados (confidence: ${res.confidence ?? "?"}). Recarga para verlos.`);
+      // Recargar la página para que el formulario se actualice con los nuevos datos
+      setTimeout(() => router.refresh(), 800);
+    } finally {
+      setOneClickBusy(false);
+    }
+  };
+
   const handleApplyExtraction = async () => {
     if (!extracted || !update) return;
     setApplying(true);
@@ -216,10 +237,27 @@ export default function EditRacePage() {
       </Link>
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-3xl font-bold">Editar carrera</h1>
-        <button onClick={handleDelete} className="text-red-600 hover:text-red-800 flex items-center gap-1 text-sm">
-          <Trash2 className="h-4 w-4" /> Eliminar
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleOneClickExtract}
+            disabled={oneClickBusy}
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-md font-semibold hover:opacity-90 disabled:opacity-50 text-sm"
+            title="Extrae con IA y aplica todos los campos en 1 click (~10-30s). Para revisar antes, usa la sección inferior."
+          >
+            {oneClickBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+            {oneClickBusy ? "Extrayendo + aplicando…" : "Re-extraer y aplicar (1-click)"}
+          </button>
+          <button onClick={handleDelete} className="text-red-600 hover:text-red-800 flex items-center gap-1 text-sm">
+            <Trash2 className="h-4 w-4" /> Eliminar
+          </button>
+        </div>
       </div>
+      {oneClickResult && (
+        <div className="bg-green-50 border border-green-200 text-green-800 text-sm rounded-md p-3 mb-4">
+          {oneClickResult}
+        </div>
+      )}
       <p className="text-gray-600 mb-6 text-sm">Slug: <code className="bg-gray-100 px-1 rounded">{race.slug}</code> (se regenera si cambias el nombre)</p>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-md p-3 mb-4">{error}</div>}

@@ -5,12 +5,13 @@
  *
  * 2 métodos para obtener coordenadas:
  *  - GPS del navegador (preferred, requiere permiso)
- *  - Ciudad predefinida o coordenadas manuales (sin permiso)
+ *  - Coordenadas manuales (sin permiso, último recurso)
  *
  * Estado en sessionStorage (no se guarda en BBDD — privacidad).
  *
- * NOTA: NO usamos navigator.permissions.query porque algunos navegadores
- * reportan "denied" falsamente. Vamos directo a getCurrentPosition.
+ * NOTA: NO usamos navigator.permissions.query para decidir si llamar a
+ * getCurrentPosition (Safari miente con el state). Lo usamos solo como
+ * pre-check para avisar antes si está en "denied" (estado sticky).
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -44,7 +45,7 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
   const [showManualDialog, setShowManualDialog] = useState(false);
   const [manualLat, setManualLat] = useState("");
   const [manualLng, setManualLng] = useState("");
-  const [coordsSource, setCoordsSource] = useState<"browser" | "preset" | "manual" | null>(null);
+  const [coordsSource, setCoordsSource] = useState<"browser" | "manual" | null>(null);
   const [coordsSourceLabel, setCoordsSourceLabel] = useState<string | null>(null);
   const [isInIframe, setIsInIframe] = useState(false);
   const [attemptedButFailed, setAttemptedButFailed] = useState(false);
@@ -64,14 +65,14 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
         const parsed = JSON.parse(savedCoords);
         if (parsed?.latitude && parsed?.longitude && parsed?.source) {
           setUserCoords({ latitude: parsed.latitude, longitude: parsed.longitude });
-          // Restaurar source/label. Si era "ip" (sesión vieja), lo tratamos como "preset"
-          // genérico para no romper la UI.
-          if (parsed.source === "browser" || parsed.source === "manual" || parsed.source === "preset") {
+          // Restaurar source/label. Si era "ip" o "preset" (versiones viejas),
+          // lo tratamos como "browser" genérico.
+          if (parsed.source === "browser" || parsed.source === "manual") {
             setCoordsSource(parsed.source);
             setCoordsSourceLabel(parsed.sourceLabel ?? null);
           } else {
-            setCoordsSource("preset");
-            setCoordsSourceLabel("Ciudad seleccionada");
+            setCoordsSource("browser");
+            setCoordsSourceLabel("Ubicación guardada");
           }
         }
       }
@@ -109,7 +110,7 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
 
   const requestLocation = useCallback(async () => {
     if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
-      setErrorDetail("Tu navegador no soporta la API de geolocalización. Elige una ciudad o introduce coordenadas.");
+      setErrorDetail("Tu navegador no soporta la API de geolocalización. Introduce las coordenadas manualmente.");
       setAttemptedButFailed(true);
       return;
     }
@@ -216,7 +217,7 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
           }
           break;
         default:
-          detail = `No se pudo obtener la ubicación (código ${err.code}${msg ? `, mensaje: "${msg}"` : ""}). Si el problema persiste, prueba con la ciudad o las coordenadas manuales, o ve a /test-geo para diagnóstico.`;
+          detail = `No se pudo obtener la ubicación (código ${err.code}${msg ? `, mensaje: "${msg}"` : ""}). Si el problema persiste, introduce las coordenadas manualmente, o ve a /test-geo para diagnóstico.`;
       }
 
       // Si tenemos el mensaje real, lo añadimos al final para que el usuario
@@ -253,31 +254,6 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
     setErrorDetail(null);
     setAttemptedButFailed(false);
   }, [manualLat, manualLng]);
-
-  // Lista de ciudades españolas con sus coordenadas (preset)
-  const SPANISH_CITIES: Array<{ name: string; lat: number; lng: number }> = [
-    { name: "Elche", lat: 38.2622, lng: -0.6982 },
-    { name: "Alicante", lat: 38.3452, lng: -0.4811 },
-    { name: "Valencia", lat: 39.4699, lng: -0.3763 },
-    { name: "Elx (Elche)", lat: 38.2622, lng: -0.6982 },
-    { name: "Murcia", lat: 37.9922, lng: -1.1307 },
-    { name: "Cartagena", lat: 37.6257, lng: -0.9963 },
-    { name: "Albacete", lat: 38.9943, lng: -1.8585 },
-    { name: "Madrid", lat: 40.4168, lng: -3.7038 },
-    { name: "Barcelona", lat: 41.3851, lng: 2.1734 },
-    { name: "Sevilla", lat: 37.3886, lng: -5.9823 },
-    { name: "Bilbao", lat: 43.2630, lng: -2.9350 },
-    { name: "Málaga", lat: 36.7213, lng: -4.4214 },
-    { name: "Zaragoza", lat: 41.6488, lng: -0.8891 },
-    { name: "Granada", lat: 37.1773, lng: -3.5986 },
-  ];
-
-  const applyCity = useCallback((name: string, lat: number, lng: number) => {
-    setUserCoords({ latitude: lat, longitude: lng });
-    setCoordsSource("preset");
-    setCoordsSourceLabel(name);
-    setErrorDetail(null);
-  }, []);
 
   const clearLocation = useCallback(() => {
     setUserCoords(null);
@@ -321,7 +297,7 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
             {isInIframe && (
               <div className="mb-2 flex items-start gap-1 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
                 <AlertTriangle className="h-3 w-3 flex-shrink-0 mt-0.5" />
-                <span>Estás dentro de un iframe — el navegador no puede mostrar el prompt de permiso. Elige una ciudad o introduce coordenadas.</span>
+                <span>Estás dentro de un iframe — el navegador no puede mostrar el prompt de permiso. Introduce las coordenadas manualmente.</span>
               </div>
             )}
             {isGranted ? (
@@ -334,7 +310,6 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
                     </div>
                     <div className="text-[10px] text-green-600">
                       {coordsSource === "browser" && "📍 GPS del navegador"}
-                      {coordsSource === "preset" && `📍 ${coordsSourceLabel ?? "ciudad seleccionada"}`}
                       {coordsSource === "manual" && "✏️ Coordenadas manuales"}
                     </div>
                   </div>
@@ -408,41 +383,6 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
               </div>
             )}
 
-            {/* SELECTOR DE CIUDADES — SIEMPRE VISIBLE
-                Es el método más fiable: 1 click → location set, sin depender
-                de permisos del navegador. */}
-            <div className="mt-2 text-xs text-gray-600 bg-blue-50 border border-blue-200 rounded p-2">
-              <div className="flex items-start gap-1 mb-1.5">
-                <MapPin className="h-3 w-3 text-blue-600 flex-shrink-0 mt-0.5" />
-                <span>
-                  <strong>Elige tu ciudad</strong> (1 click, funciona siempre):
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {SPANISH_CITIES.map((c) => (
-                  <button
-                    key={c.name}
-                    type="button"
-                    onClick={() => applyCity(c.name, c.lat, c.lng)}
-                    className={`px-2 py-0.5 rounded text-xs border transition-colors ${
-                      coordsSource === "preset" && coordsSourceLabel === c.name
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-white border-blue-200 text-blue-700 hover:bg-blue-100"
-                    }`}
-                  >
-                    {c.name}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setShowManualDialog(true)}
-                  className="px-2 py-0.5 rounded text-xs border bg-white border-blue-200 text-blue-700 hover:bg-blue-100"
-                >
-                  ✏️ Otra...
-                </button>
-              </div>
-            </div>
-
             <p className="mt-1.5 text-[10px] text-gray-400 leading-tight">
               🔒 Tu ubicación NO se guarda en ningún servidor. Solo se usa en tu navegador para filtrar.
             </p>
@@ -506,7 +446,7 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
               <ol className="list-decimal list-inside space-y-1 text-xs">
                 <li>Te saldrá un popup del navegador pidiendo permiso</li>
                 <li>Si aceptas, calculamos distancias a cada carrera</li>
-                <li>Si deniegas, puedes usar el selector de ciudades o las coordenadas manuales</li>
+                <li>Si deniegas, puedes introducir las coordenadas manualmente</li>
               </ol>
               <p className="font-semibold text-blue-900 mt-2">🔒 Tu privacidad</p>
               <ul className="list-disc list-inside space-y-0.5 text-xs">
@@ -649,7 +589,7 @@ export function RaceDistanceFilter({ onChange, initialMaxDistance }: RaceDistanc
             </div>
 
             <p className="mt-3 text-xs text-gray-600">
-              💡 <strong>¿Sigue fallando?</strong> Elige una ciudad de la lista (1 click, funciona siempre)
+              💡 <strong>¿Sigue fallando?</strong> Introduce las coordenadas manualmente (no requiere permiso)
               o introduce tus coordenadas a mano.
             </p>
 

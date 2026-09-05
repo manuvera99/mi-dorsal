@@ -149,7 +149,7 @@ export const getMyRaceForNotification = internalQuery({
 
 export const checkResults = internalAction({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx: any) => {
     const { races, skipped } = await ctx.runQuery(internal.crons.checkResults.getRacesToCheck);
     console.log(
       `[check-results] ${races.length} carreras a chequear, ${skipped} saltadas`,

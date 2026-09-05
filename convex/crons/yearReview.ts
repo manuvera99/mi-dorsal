@@ -9,7 +9,7 @@ import { internal } from "../_generated/api";
 
 export const getUsersForYearReview = internalQuery({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx: any) => {
     const all = await ctx.db.query("profiles").collect();
     const year = new Date().getFullYear() - 1;
     const yearStart = new Date(`${year}-01-01`).getTime();
@@ -37,7 +37,7 @@ export const getUsersForYearReview = internalQuery({
 
 export const yearReview = internalAction({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx: any) => {
     const users = await ctx.runQuery(internal.crons.yearReview.getUsersForYearReview);
     console.log(`[year-review] Would generate for ${users.length} users`);
     // TODO: send year in review emails

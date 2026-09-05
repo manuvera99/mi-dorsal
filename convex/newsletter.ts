@@ -21,12 +21,99 @@ import { requireAdmin, getOptionalUser } from "./_helpers";
 // ---------------------------------------------------------------------------
 
 /**
+ * Suscripción directa (single opt-in con consentimiento explícito en frontend).
+ * Crea el suscriptor como "active" directamente y guarda prueba de consentimiento
+ * (timestamp + IP hasheada + UA) para auditoría RGPD.
+ *
+ * Si el email ya existe:
+ * - Si está "active" o "pending": no duplica, devuelve ya existía
+ * - Si está "unsubscribed" o "bounced": lo reactiva a "active" con nuevo log de consentimiento
+ *
+ * El frontend debe:
+ * - Mostrar un checkbox "Acepto recibir emails" que el usuario marca
+ * - El botón de submit está disabled hasta que el email es válido Y el checkbox marcado
+ * - Eso es la prueba de consentimiento explícito (cumple LSSI/RGPD)
+ */
+export const subscribeDirect = mutation({
+  args: {
+    email: v.string(),
+    source: v.union(
+      v.literal("blog"),
+      v.literal("landing"),
+      v.literal("footer"),
+      v.literal("admin"),
+      v.literal("import"),
+    ),
+    consentIpHash: v.optional(v.string()),
+    consentUserAgent: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const email = args.email.trim().toLowerCase();
+    if (!isValidEmail(email)) {
+      throw new Error("Email inválido");
+    }
+
+    const consentAt = Date.now();
+
+    const existing = await ctx.db
+      .query("newsletterSubscribers")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .unique();
+
+    if (existing) {
+      // Si estaba unsubscribed o bounced, lo reactivamos como active
+      if (existing.status === "unsubscribed" || existing.status === "bounced") {
+        // Reutilizamos el unsubscribeToken si existe, o generamos uno nuevo
+        const unsubscribeToken = existing.unsubscribeToken ?? generateToken();
+        await ctx.db.patch(existing._id, {
+          status: "active",
+          source: args.source,
+          subscribedAt: consentAt,
+          confirmedAt: consentAt,
+          unsubscribedAt: undefined,
+          unsubscribedReason: undefined,
+          consentAt,
+          consentIpHash: args.consentIpHash,
+          consentUserAgent: args.consentUserAgent,
+        });
+        return { id: existing._id, unsubscribeToken, reactivated: true, alreadyExisted: true };
+      }
+      // Si ya está active o pending, devolvemos sin cambios
+      return { id: existing._id, unsubscribeToken: existing.unsubscribeToken ?? "", reactivated: false, alreadyExisted: true };
+    }
+
+    const unsubscribeToken = generateToken();
+    const id = await ctx.db.insert("newsletterSubscribers", {
+      email,
+      status: "active",
+      source: args.source,
+      preferences: {
+        editorialEnabled: true,
+        raceRemindersEnabled: true,
+        resultsEnabled: true,
+      },
+      unsubscribeToken,
+      subscribedAt: consentAt,
+      confirmedAt: consentAt,
+      consentAt,
+      consentIpHash: args.consentIpHash,
+      consentUserAgent: args.consentUserAgent,
+    });
+
+    return { id, unsubscribeToken, reactivated: false, alreadyExisted: false };
+  },
+});
+
+/**
  * Crea un suscriptor en estado "pending" con un token de confirmación.
  * Idempotente: si el email ya existe en pending o active, no duplica.
  *
  * Se llama desde POST /api/newsletter/subscribe (route.ts), NO directamente
  * desde el cliente (necesitamos capturar IP hasheada y user agent para
  * auditoría RGPD).
+ *
+ * NOTA: deprecated desde sept 2026, se usa subscribeDirect (single opt-in).
+ * Se mantiene por compatibilidad hacia atrás.
  */
 export const subscribePending = mutation({
   args: {

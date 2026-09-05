@@ -664,6 +664,11 @@ export default defineSchema({
     subscriptionUserAgent: v.optional(v.string()),
     unsubscribedReason: v.optional(v.string()),
     profileId: v.optional(v.id("profiles")),
+    // Single opt-in (RGPD): el checkbox del frontend es prueba de consentimiento.
+    // Guardamos timestamp + IP hasheada + UA como prueba de auditoría.
+    consentAt: v.optional(v.number()),
+    consentIpHash: v.optional(v.string()),
+    consentUserAgent: v.optional(v.string()),
   })
     .index("by_email", ["email"])
     .index("by_status", ["status"])

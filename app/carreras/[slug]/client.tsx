@@ -12,8 +12,9 @@ import {
   LongDescriptionSection, RaceFormatsSection, CourseVisualsSection,
   AidStationsSection, PriceTiersSection, DorsalPickupSection, GallerySection,
 } from "@/components/race-detail-sections";
+import { AddToCalendarWidget } from "@/components/add-to-calendar-widget";
 import {
-  MapPin, Calendar, Mountain, ExternalLink, FileText, Plus, Check, User,
+  MapPin, Calendar, Mountain, ExternalLink, FileText, Plus, Check,
   Globe, Mail, Phone, Clock, Users, Tag, Trophy, DollarSign, Share2,
   Instagram, Facebook, Twitter, Youtube, Award, AlertCircle, Download,
   Navigation, Car, ShowerHead, Shirt, Medal, Coffee, Camera, Heart,
@@ -69,7 +70,6 @@ const SERVICE_LABELS: Record<string, { label: string; icon: any }> = {
 };
 
 function RaceDetailContent({ race, summary }: { race: any; summary: any }) {
-  const [dorsalInput, setDorsalInput] = useState("");
   const [copied, setCopied] = useState(false);
 
   if (!race) {
@@ -619,38 +619,11 @@ function RaceDetailContent({ race, summary }: { race: any; summary: any }) {
           {/* ============== SIDEBAR STICKY ============== */}
           <div className="space-y-4">
             <div className="sticky top-20 space-y-4">
-              {/* Añadir a mi calendario */}
-              <div className="card">
-                <h3 className="font-semibold mb-2">¿Vas a correrla?</h3>
-                <p className="text-sm text-gray-600 mb-3">
-                  Añádela a tu calendario y te predecimos tu tiempo.
-                  Te llegará el resultado oficial por email.
-                </p>
-                <div className="space-y-2">
-                  <label className="label">Tu dorsal (si ya inscrito)</label>
-                  <input
-                    type="text"
-                    className="input"
-                    placeholder="1234"
-                    value={dorsalInput}
-                    onChange={(e) => setDorsalInput(e.target.value)}
-                  />
-                  <button className="btn-primary w-full">
-                    <Plus className="h-4 w-4 mr-1.5" />
-                    Añadir a mi calendario
-                  </button>
-                  {dorsalInput && (
-                    <p className="text-xs text-gray-500 flex items-center gap-1">
-                      <Check className="h-3 w-3 text-green-600" />
-                      Dorsal guardado
-                    </p>
-                  )}
-                </div>
-                <div className="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
-                  <User className="h-3 w-3 inline mr-1" />
-                  {summary?.totalRatings ?? 0} corredores la han valorado
-                </div>
-              </div>
+              {/* Añadir a mi calendario (dorsal opcional) */}
+              <AddToCalendarWidget
+                raceId={race._id}
+                footerText={`${summary?.totalRatings ?? 0} corredores la han valorado`}
+              />
 
               {/* Mini CTAs sidebar */}
               <div className="card space-y-2">

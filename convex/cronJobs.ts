@@ -51,7 +51,7 @@ crons.cron(
 crons.interval(
   "recalc-stats",
   { minutes: 30 },
-  internal["crons/recalcStats"].recalcStats,
+  (internal as any)["crons/recalcStats"].recalcStats,
 );
 
 // Newsletter editorial: día 1 de cada mes a las 10:00 UTC.

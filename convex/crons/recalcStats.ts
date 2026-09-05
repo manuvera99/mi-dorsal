@@ -18,8 +18,8 @@ import { internal } from "../_generated/api";
 
 export const recalcStats = internalAction({
   args: {},
-  handler: async (ctx) => {
-    const result = await ctx.runMutation(internal.stats.recalcStats, {});
+  handler: async (ctx: any) => {
+    const result = await ctx.runMutation((internal.stats.recalcStats as any), {});
     console.log(
       `[recalc-stats] OK: ${result.totalRaces} races, ${result.totalUsers} users, ` +
       `${result.totalVotes} votes, ${result.totalRatings} ratings. ` +

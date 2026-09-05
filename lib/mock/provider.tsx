@@ -15,13 +15,15 @@ import {
 const ALL_MOCK_RACES: MockRace[] = [...MOCK_RACES, ...MOCK_RACES_FROM_SCRAPERS];
 
 export function isMockMode(): boolean {
-  if (typeof window === "undefined") {
-    return process.env.NEXT_PUBLIC_USE_MOCK === "true";
+  // SSR / build time: process.env existe
+  if (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_USE_MOCK === "true") {
+    return true;
   }
-  return (
-    (window as any).__NEXT_PUBLIC_USE_MOCK__ === true ||
-    process.env.NEXT_PUBLIC_USE_MOCK === "true"
-  );
+  // Cliente: comprobar override inyectado por window
+  if (typeof window !== "undefined" && (window as any).__NEXT_PUBLIC_USE_MOCK__ === true) {
+    return true;
+  }
+  return false;
 }
 
 // Misma lógica que en convex/races.ts — duplicado intencional para no

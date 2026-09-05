@@ -17,7 +17,7 @@ const FORTY_EIGHT_HOURS = 48 * 3600 * 1000;
  */
 export const getRacesWithoutResult = internalQuery({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx: any) => {
     const now = Date.now();
     const all = await ctx.db
       .query("myRaces")
@@ -60,9 +60,26 @@ export const getRacesWithoutResult = internalQuery({
   },
 });
 
+/**
+ * Query: email + preferencias de notificación de un profile
+ * (usada desde el action `resultNotFound`, que NO puede usar `ctx.db`).
+ */
+export const getProfileForNotification = internalQuery({
+  args: { userId: v.id("profiles") },
+  handler: async (ctx: any, { userId }) => {
+    const profile = await ctx.db.get(userId);
+    if (!profile) return null;
+    return {
+      _id: profile._id,
+      email: profile.email,
+      emailResultsEnabled: profile.emailResultsEnabled,
+    };
+  },
+});
+
 export const resultNotFound = internalAction({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx: any) => {
     const items = await ctx.runQuery(
       internal.crons.resultNotFound.getRacesWithoutResult,
     );
@@ -74,7 +91,10 @@ export const resultNotFound = internalAction({
     let skippedNoEmail = 0;
 
     for (const item of items) {
-      const profile = await ctx.db.get(item.userId as any);
+      const profile = await ctx.runQuery(
+        internal.crons.resultNotFound.getProfileForNotification,
+        { userId: item.userId as any },
+      );
       if (!profile?.email) {
         skippedNoEmail++;
         continue;

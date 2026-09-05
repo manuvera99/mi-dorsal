@@ -71,7 +71,7 @@ function getCheckFrequency(raceTimeMs: number, nowMs: number): "skip" | "aggress
 
 export const getRacesToCheck = internalQuery({
   args: {},
-  handler: async (ctx): Promise<{ races: RaceToCheck[]; skipped: number }> => {
+  handler: async (ctx: any): Promise<{ races: RaceToCheck[]; skipped: number }> => {
     const now = Date.now();
     const all = await ctx.db
       .query("myRaces")
@@ -219,7 +219,7 @@ export const checkResults = internalAction({
         );
 
         if (notifData) {
-          await ctx.runAction(internal.emails.sendResultFoundEmail, {
+          await ctx.runAction(internal.emailNotifications.sendResultFoundEmail, {
             userId: notifData.profile._id,
             myRaceId: item.myRaceId as Id<"myRaces">,
             raceName: item.raceName,

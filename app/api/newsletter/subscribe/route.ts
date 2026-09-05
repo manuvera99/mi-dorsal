@@ -25,6 +25,13 @@ function isValidEmail(s: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log("[newsletter/POST] HIT", {
+      hasResendKey: !!process.env.RESEND_API_KEY,
+      hasFromEmail: !!process.env.RESEND_FROM_EMAIL,
+      hasAppUrl: !!process.env.NEXT_PUBLIC_APP_URL,
+      hasConvexUrl: !!process.env.NEXT_PUBLIC_CONVEX_URL,
+      debugFlag: process.env.NEXT_PUBLIC_DEBUG_NEWSLETTER ?? "off",
+    });
     const body = await request.json().catch(() => ({}));
     const { email, source } = body as { email?: string; source?: string };
 

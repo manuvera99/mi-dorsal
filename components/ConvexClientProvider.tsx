@@ -6,11 +6,17 @@ import { ClerkProvider, useAuth } from "@clerk/nextjs";
 import { ReactNode } from "react";
 
 // Helper: leer process.env de forma segura en build time (SSR) y cliente.
-// En cliente, Next.js reemplaza NEXT_PUBLIC_* inline, pero por si acaso
-// (p.ej. Vercel no detectó la var) protegemos con typeof.
+// En build time: `process` existe, retorna process.env[key].
+// En cliente: Next.js reemplaza NEXT_PUBLIC_* inline (literal), por lo que
+// `process.env[key]` ya no es un acceso sino un valor estático.
+// Si por algún motivo la var no se reemplazó, `process` no existe en
+// navegador y `process.env[key]` lanza ReferenceError → capturamos y undefined.
 function readEnv(key: string): string | undefined {
-  if (typeof process === "undefined" || !process.env) return undefined;
-  return process.env[key];
+  try {
+    return process.env[key];
+  } catch {
+    return undefined;
+  }
 }
 
 const convexUrl = readEnv("NEXT_PUBLIC_CONVEX_URL");

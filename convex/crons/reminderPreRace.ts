@@ -17,7 +17,7 @@ import { v } from "convex/values";
 
 export const getRacesNeedingReminder = internalQuery({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx: any) => {
     const now = Date.now();
     const target7d = now + 7 * 86400 * 1000;
     const target1d = now + 1 * 86400 * 1000;
@@ -75,7 +75,7 @@ export const getRacesNeedingReminder = internalQuery({
 
 export const reminderPreRace = internalAction({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx: any) => {
     const { needs7d, needs1d } = await ctx.runQuery(
       internal.crons.reminderPreRace.getRacesNeedingReminder,
     );
@@ -102,7 +102,7 @@ export const reminderPreRace = internalAction({
       if (profile.emailRemindersEnabled === false) continue;
 
       try {
-        await ctx.runAction(internal.emails.sendReminderEmail, {
+        await ctx.runAction(internal.emailNotifications.sendReminderEmail, {
           userId: profile._id,
           myRaceId: myRace._id,
           raceName: race.name,
@@ -133,7 +133,7 @@ export const reminderPreRace = internalAction({
       if (profile.emailRemindersEnabled === false) continue;
 
       try {
-        await ctx.runAction(internal.emails.sendReminderEmail, {
+        await ctx.runAction(internal.emailNotifications.sendReminderEmail, {
           userId: profile._id,
           myRaceId: myRace._id,
           raceName: race.name,
@@ -162,7 +162,7 @@ export const reminderPreRace = internalAction({
  */
 export const getProfile = internalQuery({
   args: { userId: v.id("profiles") },
-  handler: async (ctx, { userId }) => {
+  handler: async (ctx: any, { userId }) => {
     return await ctx.db.get(userId);
   },
 });

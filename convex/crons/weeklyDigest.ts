@@ -9,7 +9,7 @@ import { internal } from "../_generated/api";
 
 export const getActiveUsers = internalQuery({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx: any) => {
     // Usuarios con al menos 1 myRace en últimos 30 días
     const thirtyDaysAgo = Date.now() - 30 * 86400 * 1000;
     const all = await ctx.db.query("profiles").collect();
@@ -31,7 +31,7 @@ export const getActiveUsers = internalQuery({
 
 export const weeklyDigest = internalAction({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx: any) => {
     const users = await ctx.runQuery(internal.crons.weeklyDigest.getActiveUsers);
     console.log(`[weekly-digest] Would send to ${users.length} users`);
     // TODO: send emails

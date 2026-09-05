@@ -186,7 +186,21 @@ function CarrerasShell({ races, top, loading, filters, onChange }: CarrerasShell
   }, [nearbyRaces, upcomingRaces]);
 
   const restOfRaces = useMemo(() => {
-    let list = racesAfterDistance.filter((r) => !featuredIds.has(r._id));
+    // Solo excluimos featuredIds del grid cuando los carruseles se van a
+    // renderizar (activeFilterCount === 0). Si hay filtros activos, los
+    // carruseles están ocultos, así que no hay razón para duplicar la
+    // exclusión en el grid: las carreras que upcomingRaces/nearbyRaces
+    // contendrían se perderían visualmente.
+    const hasActiveFilters =
+      !!filters.search ||
+      !!filters.province ||
+      !!filters.raceType ||
+      !!filters.month ||
+      !!filters.organizer ||
+      (filters.distanceCategories?.length ?? 0) > 0;
+    let list = !hasActiveFilters
+      ? racesAfterDistance.filter((r) => !featuredIds.has(r._id))
+      : racesAfterDistance;
     switch (sortBy) {
       case "name":
         list = list.sort((a, b) => a.name.localeCompare(b.name));
@@ -199,7 +213,7 @@ function CarrerasShell({ races, top, loading, filters, onChange }: CarrerasShell
         list = list.sort((a, b) => (a.startDate ?? "").localeCompare(b.startDate ?? ""));
     }
     return list;
-  }, [racesAfterDistance, featuredIds, sortBy]);
+  }, [racesAfterDistance, featuredIds, sortBy, filters]);
 
   // Active filter count
   const activeFilterCount =

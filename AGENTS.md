@@ -273,6 +273,25 @@ mi-dorsal/
 
 **NO usar `git add -A`** indiscriminadamente. Varios archivos del working tree (`docs/MONETIZATION_PLAN.md`, `docs/DORSALSWAP_MVP.md`, `docs/INTERCAMBIO_DORSALES.md`, `docs/ANALISIS_BACKEND_DORSALES.md`, `convex/crons/resultNotFound.ts`, `components/dorsal-swap-widget.tsx`) son generados por el IDE del usuario o por otros procesos en background, no por la sesión de agente. **Antes de commit, hacer `git status` y revisar.**
 
+### 9.2 Procedimiento pre-deploy obligatorio (local antes que PRO)
+
+**NUNCA pushear a `master` sin haber validado el build en local primero.** Vercel detecta typechecks e inferencias de tipos que `tsc --noEmit` local puede pasar por alto (caché incremental, profundidad de inferencia, etc.). Confiar en que "local pasa" sin un build completo es un anti-patrón que ha costado varios deploys rotos y挽回 de emergencia.
+
+**Checklist pre-deploy (ejecutar en este orden):**
+
+1. **Typecheck explícito**: `npx tsc --noEmit` → 0 errores. Si hay errores, NO continuar.
+2. **Build completo local**: `npm run build` → debe terminar con `✓ Compiled successfully`. Si falla, NO pushear, arreglar primero.
+3. **Verificar que las rutas afectadas existen en el output del build**: revisar la tabla de rutas en la consola de `next build`. Si una ruta que tocas NO aparece, hay un problema (ruta mal nombrada, dynamic route sin `force-dynamic`, etc.).
+4. **Solo entonces** commit selectivo (`git add <archivos específicos>`, NUNCA `git add -A`) + `git push origin master`.
+5. Tras el push, monitorizar el deploy: `vercel ls mi-dorsal --yes`. Si sale `● Error`, leer logs con `vercel inspect <deployment> --logs`, NO acumular commits de parche a ciegas.
+
+**Si Vercel falla pero local pasa**: casi siempre es uno de estos tres:
+- **Caché corrupto de Vercel**: forzar redeploy con `vercel deploy --prod --force --yes` (verificar que `Skipping build cache, deployment was triggered without cache` aparece en el log).
+- **Asume un archivo que no commiteaste**: `git status` para ver qué falta, commitear y pushear.
+- **Inferencia de Convex 1.18 más estricta que local**: `ctx: any` en handlers de `internalAction`/`internalQuery` o cast a string para `runMutation(internal.X.Y as any)`. Ver entrada en memoria de agente.
+
+**Aplicar a cualquier deploy de cualquier proyecto del workspace**, no solo mi-dorsal.
+
 ---
 
 ## 10. Lo que NO hacer (anti-patrones)
@@ -288,6 +307,7 @@ mi-dorsal/
 9. **No desplegar sin verificar 200 OK y 0 errores 500** en los logs de Vercel.
 10. **No prometer "toda España" sin geo** — si la IP no se detecta, mostrar fallback honesto, no fingir personalización.
 11. **No eliminar la hamburguesa / panel mobile del header** (`components/header.tsx`) — la nav desktop es `hidden` en móvil y solo el panel cubre <768 px. Sin él, Carreras, Perfil, Calendario y Ranking quedan inaccesibles (ver §6.6).
+12. **No pushear a `master` sin haber ejecutado `npm run build` local primero**. `tsc --noEmit` no es suficiente — Vercel detecta typechecks más estrictos (inferencias de Convex, tipos profundos, etc.) que local puede pasar por alto. Saltarse el build local ha costado 5+ deploys rotos seguidos en esta sesión. Ver §9.2 para el procedimiento completo.
 
 ---
 

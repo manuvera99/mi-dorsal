@@ -8,6 +8,7 @@ import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 import { GoogleTagManager } from "@/components/analytics/GoogleTagManager";
 import { JsonLd, organizationJsonLd, websiteJsonLd } from "@/components/json-ld";
 import { GoogleAdSense } from "@/components/analytics/GoogleAdSense";
+import { Analytics } from "@vercel/analytics/next";
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://mi-dorsal.vercel.app";
 
@@ -163,6 +164,9 @@ export default function RootLayout({
 
         {/* Banner de cookies (RGPD) */}
         <CookieBanner />
+
+        {/* Vercel Analytics — page views sin cookies, RGPD-safe (no requiere consentimiento) */}
+        <Analytics />
       </body>
     </html>
   );

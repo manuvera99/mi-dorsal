@@ -17,7 +17,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { Search, Calendar, MapPin, Sparkles } from "lucide-react";
+import { Search, Calendar, MapPin, Sparkles, X } from "lucide-react";
 import { useUserRegion } from "@/components/use-user-region";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +30,14 @@ interface CarrerasHeroProps {
 export function CarrerasHero({ totalRaces, onSearch, initialQuery = "" }: CarrerasHeroProps) {
   const { community, loading } = useUserRegion();
   const [query, setQuery] = useState(initialQuery);
+
+  // Sincronizar el input con initialQuery cuando cambia desde fuera
+  // (ej. useCarrerasFilters carga de sessionStorage en un useEffect posterior
+  // al primer render, así que initialQuery pasa de "" a "nocturna" después
+  // del mount). Sin esto, el input muestra "" aunque el filtro esté activo.
+  useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -100,13 +108,27 @@ export function CarrerasHero({ totalRaces, onSearch, initialQuery = "" }: Carrer
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className={cn(
-                "w-full h-14 pl-12 pr-4 rounded-2xl text-base",
+                "w-full h-14 pl-12 rounded-2xl text-base",
+                query ? "pr-12" : "pr-4",
                 "bg-white border-2 border-gray-200",
                 "focus:border-runner-primary focus:outline-none focus:ring-4 focus:ring-runner-primary/10",
                 "placeholder:text-gray-400 transition-all"
               )}
               autoComplete="off"
             />
+            {query && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  onSearch("");
+                }}
+                aria-label="Limpiar búsqueda"
+                className="absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8 inline-flex items-center justify-center rounded-full text-gray-400 hover:text-runner-primary hover:bg-gray-100 transition-colors"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
           </form>
 
           {/* Trust signals */}

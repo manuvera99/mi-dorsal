@@ -25,13 +25,6 @@ function isValidEmail(s: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("[newsletter/POST] HIT", {
-      hasResendKey: !!process.env.RESEND_API_KEY,
-      hasFromEmail: !!process.env.RESEND_FROM_EMAIL,
-      hasAppUrl: !!process.env.NEXT_PUBLIC_APP_URL,
-      hasConvexUrl: !!process.env.NEXT_PUBLIC_CONVEX_URL,
-      debugFlag: process.env.NEXT_PUBLIC_DEBUG_NEWSLETTER ?? "off",
-    });
     const body = await request.json().catch(() => ({}));
     const { email, source } = body as { email?: string; source?: string };
 
@@ -81,21 +74,6 @@ export async function POST(request: NextRequest) {
     const stripBom = (s: string) => s.replace(/^\uFEFF/, "");
     const baseUrl = stripBom(process.env.NEXT_PUBLIC_APP_URL || "https://www.mi-dorsal.com");
     const confirmUrl = `${baseUrl}/api/newsletter/confirm?token=${result.confirmToken}`;
-
-    // DEBUG: loguear charCodes de las env vars y de la URL para diagnosticar BOM
-    if (process.env.NEXT_PUBLIC_DEBUG_NEWSLETTER === "1") {
-      const dump = (label: string, s: string) =>
-        console.log(
-          `[newsletter/debug] ${label}: len=${s.length} first8=[${[...s.slice(0, 8)].map((c) => "U+" + c.charCodeAt(0).toString(16).padStart(4, "0")).join(",")}]`,
-        );
-      dump("RESEND_API_KEY", process.env.RESEND_API_KEY || "");
-      dump("RESEND_FROM_EMAIL", process.env.RESEND_FROM_EMAIL || "");
-      dump("NEXT_PUBLIC_APP_URL", process.env.NEXT_PUBLIC_APP_URL || "");
-      dump("baseUrl", baseUrl);
-      dump("confirmUrl", confirmUrl);
-      dump("email", email);
-      dump("confirmToken", String(result.confirmToken));
-    }
 
     if (process.env.RESEND_API_KEY) {
       try {

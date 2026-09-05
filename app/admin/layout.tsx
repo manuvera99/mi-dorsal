@@ -8,11 +8,13 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { isMockMode } from "@/lib/mock/provider";
-import { LayoutDashboard, Trophy, Users, BarChart3, Database, ArrowLeft, Loader2 } from "lucide-react";
+import { LayoutDashboard, Trophy, Users, BarChart3, Database, ArrowLeft, Loader2, BookOpen, Mail } from "lucide-react";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/races", label: "Carreras", icon: Trophy },
+  { href: "/admin/blog", label: "Blog", icon: BookOpen },
+  { href: "/admin/newsletter", label: "Newsletter", icon: Mail },
   { href: "/admin/sources", label: "Fuentes", icon: Database },
   { href: "/admin/users", label: "Usuarios", icon: Users },
 ];

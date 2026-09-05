@@ -19,7 +19,9 @@
     "ingest:correbirras": "tsx scripts/scrape-correbirras.ts --upload",
     "ingest:all": "tsx scripts/ingest-rfea.ts && tsx scripts/ingest-fedme.ts && tsx scripts/ingest-itra.ts && tsx scripts/ingest-sportmaniacs.ts && tsx scripts/ingest-runedia.ts && tsx scripts/ingest-all.ts",
     "ingest:merge-mock": "tsx scripts/merge-mock.ts",
-    "ingest:to-convex": "tsx scripts/ingest-to-convex.ts"
+    "ingest:to-convex": "tsx scripts/ingest-to-convex.ts",
+    "content:new": "tsx scripts/content/generate-post.ts",
+    "content:publish": "tsx scripts/content/publish-post.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.9.0",
@@ -43,6 +45,7 @@
     "react-leaflet": "^5.0.0",
     "recharts": "^2.15.0",
     "resend": "^4.0.0",
+    "svix": "^1.99.1",
     "tailwind-merge": "^2.5.5",
     "zod": "^3.24.1"
   },

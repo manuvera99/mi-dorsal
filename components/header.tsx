@@ -7,7 +7,7 @@ import { SignedIn, SignedOut, UserButton, SignInButton, SignUpButton, useUser } 
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { isMockMode } from "@/lib/mock/provider";
-import { Trophy, Calendar, User, BarChart3, Home, Shield, ArrowLeftRight, Menu, X } from "lucide-react";
+import { Trophy, Calendar, User, BarChart3, Home, Shield, ArrowLeftRight, Menu, X, BookOpen } from "lucide-react";
 
 type NavItem = {
   href: string;
@@ -20,6 +20,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Inicio", icon: Home },
   { href: "/carreras", label: "Carreras", icon: Trophy, matchPrefix: true },
+  { href: "/blog", label: "Blog", icon: BookOpen, matchPrefix: true },
   { href: "/ranking", label: "Ranking", icon: BarChart3, matchPrefix: true },
   { href: "/calendario", label: "Mi calendario", icon: Calendar, matchPrefix: true },
   { href: "/perfil", label: "Perfil", icon: User, matchPrefix: true },

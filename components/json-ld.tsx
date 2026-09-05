@@ -57,7 +57,7 @@ export function organizationJsonLd() {
     contactPoint: {
       "@type": "ContactPoint",
       contactType: "customer support",
-      email: "hola@mi-dorsal.es",
+      email: "hola@mi-dorsal.com",
       availableLanguage: ["Spanish"],
     },
   };

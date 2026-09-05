@@ -57,6 +57,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Carreras dinámicas desde Convex
   let raceEntries: MetadataRoute.Sitemap = [];
+  let blogEntries: MetadataRoute.Sitemap = [];
   try {
     const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
     const races = await convex.query(api.races.listForSitemap, {});
@@ -73,11 +74,52 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: isFeatured ? 0.9 : isFuture ? 0.8 : 0.4,
       };
     });
+
+    // Blog posts (Historias de dorsal)
+    try {
+      const blogData = await convex.query(api.blog.list, { limit: 500 });
+      blogEntries = (blogData?.items ?? []).map((p: any) => ({
+        url: `${BASE_URL}/blog/${p.slug}`,
+        lastModified: p.publishedAt ? new Date(p.publishedAt) : new Date(),
+        changeFrequency: "monthly" as const,
+        priority: p.isFeatured ? 0.8 : 0.6,
+      }));
+    } catch (err) {
+      console.error("[sitemap] No se pudieron cargar posts del blog:", err);
+    }
   } catch (err) {
     // Si Convex falla, devolvemos solo las páginas estáticas.
     // Esto evita romper el build si Convex está caído.
     console.error("[sitemap] No se pudieron cargar carreras de Convex:", err);
   }
 
-  return [...staticPages, ...raceEntries];
+  // Landings de categorías del blog (SEO long tail)
+  const categoryEntries: MetadataRoute.Sitemap = [
+    "historias",
+    "guias",
+    "curiosidades",
+    "tendencias",
+  ].map((cat) => ({
+    url: `${BASE_URL}/blog/categoria/${cat}`,
+    lastModified: new Date(),
+    changeFrequency: "weekly" as const,
+    priority: 0.5,
+  }));
+
+  const blogLanding: MetadataRoute.Sitemap = [
+    {
+      url: `${BASE_URL}/blog`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.7,
+    },
+    {
+      url: `${BASE_URL}/newsletter`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.5,
+    },
+  ];
+
+  return [...staticPages, ...raceEntries, ...blogLanding, ...blogEntries, ...categoryEntries];
 }

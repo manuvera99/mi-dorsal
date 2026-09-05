@@ -21,6 +21,10 @@ export default defineSchema({
     avatarUrl: v.optional(v.string()),
     bio: v.optional(v.string()),
     club: v.optional(v.string()),
+    // Email real (Sprint 0): lo sincronizamos desde Clerk vía webhook o JWT.
+    // Hasta entonces puede ser undefined, y los crons saltarán al usuario.
+    email: v.optional(v.string()),
+    emailVerified: v.optional(v.boolean()),
     // Strava (Ola 2)
     stravaUserId: v.optional(v.number()),
     stravaAccessToken: v.optional(v.string()),
@@ -559,4 +563,111 @@ export default defineSchema({
   })
     .index("by_data_source", ["dataSourceId"])
     .index("by_status", ["status"]),
+
+  // ---------------------------------------------------------------------------
+  // 12. BLOG_POSTS — contenido editorial "Historias de dorsal"
+  // ---------------------------------------------------------------------------
+  // Cada post tiene su slug único, se almacena en markdown y se renderiza
+  // con el componente <BlogPost />. La metadata SEO (seoTitle,
+  // seoDescription, seoKeywords) se inyecta en <head> y en Schema.org Article.
+  //
+  // relatedRaceIds permite internal linking automático desde el post hacia
+  // fichas de carreras reales del catálogo (mejora SEO y navegación).
+  //
+  // newsletterSentAt se setea cuando el post se incluye en la newsletter
+  // editorial mensual, para no repetir el mismo post dos veces.
+  // ---------------------------------------------------------------------------
+  blogPosts: defineTable({
+    slug: v.string(),
+    title: v.string(),
+    excerpt: v.string(),                         // máx ~200 chars, se muestra en listados
+    content: v.string(),                         // markdown
+    coverImageId: v.optional(v.id("_storage")),
+    coverImageUrl: v.optional(v.string()),       // url alternativa (CDN, externa)
+    coverImageAlt: v.optional(v.string()),
+    category: v.union(
+      v.literal("historias"),
+      v.literal("guias"),
+      v.literal("curiosidades"),
+      v.literal("tendencias"),
+    ),
+    tags: v.optional(v.array(v.string())),
+    authorId: v.optional(v.id("profiles")),
+    authorName: v.optional(v.string()),
+    publishedAt: v.optional(v.number()),
+    isPublished: v.optional(v.boolean()),
+    isFeatured: v.optional(v.boolean()),
+    seoTitle: v.optional(v.string()),
+    seoDescription: v.optional(v.string()),
+    seoKeywords: v.optional(v.array(v.string())),
+    readingTimeMinutes: v.optional(v.number()),
+    views: v.optional(v.number()),
+    relatedRaceIds: v.optional(v.array(v.id("races"))),
+    newsletterSentAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_published_date", ["isPublished", "publishedAt"])
+    .index("by_category", ["category", "isPublished", "publishedAt"])
+    .index("by_featured", ["isFeatured", "isPublished", "publishedAt"])
+    .searchIndex("search_blog", {
+      searchField: "title",
+      filterFields: ["category", "isPublished"],
+    }),
+
+  // ---------------------------------------------------------------------------
+  // 13. NEWSLETTER_SUBSCRIBERS — suscriptores externos (sin cuenta en mi-dorsal)
+  // ---------------------------------------------------------------------------
+  // Doble opt-in (RGPD España LSSI): status "pending" hasta que confirma
+  // vía email, luego "active". "unsubscribed" y "bounced" son terminales.
+  //
+  // preferences permite segmentar: editorial (mensual), raceReminders
+  // (T-14d / T-3d), results (cuando se publica resultado).
+  //
+  // Si el suscriptor es también usuario de mi-dorsal, profileId lo enlaza
+  // para evitar duplicados.
+  //
+  // subscriptionIp + subscriptionUserAgent son auditoría RGPD; se almacenan
+  // hasheados en producción (ver app/api/newsletter/subscribe/route.ts).
+  // ---------------------------------------------------------------------------
+  newsletterSubscribers: defineTable({
+    email: v.string(),
+    status: v.union(
+      v.literal("pending"),       // doble opt-in pendiente
+      v.literal("active"),        // confirmado, recibiendo emails
+      v.literal("unsubscribed"),  // baja voluntaria
+      v.literal("bounced"),       // email rebotado
+    ),
+    source: v.union(
+      v.literal("blog"),
+      v.literal("landing"),
+      v.literal("footer"),
+      v.literal("admin"),
+      v.literal("import"),
+    ),
+    preferences: v.object({
+      editorialEnabled: v.boolean(),
+      raceRemindersEnabled: v.boolean(),
+      resultsEnabled: v.boolean(),
+    }),
+    locale: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    confirmToken: v.optional(v.string()),         // one-shot, se borra al confirmar
+    unsubscribeToken: v.optional(v.string()),    // estable, se mantiene siempre
+    confirmedAt: v.optional(v.number()),
+    subscribedAt: v.number(),
+    unsubscribedAt: v.optional(v.number()),
+    lastSentAt: v.optional(v.number()),
+    // RGPD audit
+    subscriptionIpHash: v.optional(v.string()),  // SHA-256, nunca IP en claro
+    subscriptionUserAgent: v.optional(v.string()),
+    unsubscribedReason: v.optional(v.string()),
+    profileId: v.optional(v.id("profiles")),
+  })
+    .index("by_email", ["email"])
+    .index("by_status", ["status"])
+    .index("by_status_locale", ["status", "locale"])
+    .index("by_status_editorial", ["status", "preferences.editorialEnabled"])
+    .index("by_profile", ["profileId"]),
 });

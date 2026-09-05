@@ -1058,3 +1058,21 @@ export const getRelated = query({
     return filtered;
   },
 });
+
+/**
+ * Devuelve varias carreras por id (público). Usado por el blog para
+ * enlazar a carreras mencionadas en un post. Solo devuelve published.
+ */
+export const getByIds = query({
+  args: { ids: v.array(v.id("races")) },
+  handler: async (ctx, { ids }) => {
+    if (ids.length === 0) return [];
+    const out = await Promise.all(
+      ids.map(async (id) => {
+        const r = await ctx.db.get(id);
+        return r && r.isPublished ? r : null;
+      }),
+    );
+    return out.filter(Boolean);
+  },
+});

@@ -46,7 +46,7 @@ export const metadata: Metadata = {
     "RFEA",
     "FEDME",
   ],
-  authors: [{ name: "mi-dorsal", url: BASE_URL }],
+  authors: [{ name: "mi-dorsal", url: BASE_URL, email: "hola@mi-dorsal.com" }],
   creator: "mi-dorsal",
   publisher: "mi-dorsal",
   category: "sports",

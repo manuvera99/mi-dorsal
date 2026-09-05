@@ -1,0 +1,7 @@
+// Diagnostic: list functions to see what 'blog:publish' expects
+import { execSync } from "child_process";
+const out = execSync(`npx convex function-spec --prod 2>&1 | findstr /C:"blog.js:publish" /A:30`, {
+  encoding: "utf-8",
+  shell: "powershell.exe",
+});
+console.log(out);

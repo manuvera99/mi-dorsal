@@ -545,6 +545,25 @@ export const systemCreate = mutation({
   },
 });
 
+/**
+ * Publica un post (system-level, sin requireAdmin).
+ * Usado por el script CLI de publicación. NO invocar desde el cliente
+ * sin auth — debe seguir siendo uso interno del sistema editorial.
+ */
+export const systemPublish = mutation({
+  args: { id: v.id("blogPosts") },
+  handler: async (ctx, { id }) => {
+    const post = await ctx.db.get(id);
+    if (!post) throw new Error("Post no encontrado");
+    await ctx.db.patch(id, {
+      isPublished: true,
+      publishedAt: post.publishedAt ?? Date.now(),
+      updatedAt: Date.now(),
+    });
+    return id;
+  },
+});
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------

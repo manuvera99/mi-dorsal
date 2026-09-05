@@ -42,11 +42,25 @@ crons.cron(
   internal.crons.yearReview.yearReview,
 );
 
-// Recalcular stats del admin cada 5 min
+// Recalcular stats del admin cada 30 min
+// (antes 5 min quemaba ~6 GB/mes de Database bandwidth en plan free;
+// 30 min lo deja en ~1 GB/mes, dentro del límite. Para una app con
+// 1 admin y pocos beta testers, 30 min de delay en el dashboard es
+// invisible. Si en el futuro hay 50+ usuarios activos, subir a Pro o
+// cambiar a 1h + cache en cliente.)
 crons.interval(
   "recalc-stats",
-  { minutes: 5 },
+  { minutes: 30 },
   internal["crons/recalcStats"].recalcStats,
+);
+
+// Newsletter editorial: día 1 de cada mes a las 10:00 UTC.
+// Envía el post editorial más reciente (no enviado aún) a todos los
+// suscriptores activos con editorialEnabled=true.
+crons.cron(
+  "newsletter-editorial",
+  "0 10 1 * *", // día 1 de cada mes, 10:00 UTC
+  internal.crons.newsletterEditorial.newsletterEditorial,
 );
 
 export default crons;

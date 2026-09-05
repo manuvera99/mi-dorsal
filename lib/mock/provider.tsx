@@ -15,12 +15,13 @@ import {
 const ALL_MOCK_RACES: MockRace[] = [...MOCK_RACES, ...MOCK_RACES_FROM_SCRAPERS];
 
 export function isMockMode(): boolean {
-  // SSR / build time: process.env existe
-  if (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_USE_MOCK === "true") {
+  // Cliente: comprobar window override primero (sin tocar process)
+  if (typeof window !== "undefined" && (window as any).__NEXT_PUBLIC_USE_MOCK__ === true) {
     return true;
   }
-  // Cliente: comprobar override inyectado por window
-  if (typeof window !== "undefined" && (window as any).__NEXT_PUBLIC_USE_MOCK__ === true) {
+  // SSR / build time: process.env existe, Next.js hace inline replacement
+  // de NEXT_PUBLIC_USE_MOCK en build time si la referencia es directa.
+  if (typeof window === "undefined" && process.env.NEXT_PUBLIC_USE_MOCK === "true") {
     return true;
   }
   return false;

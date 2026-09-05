@@ -5,26 +5,21 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { ClerkProvider, useAuth } from "@clerk/nextjs";
 import { ReactNode } from "react";
 
-// Helper: leer process.env de forma segura en build time (SSR) y cliente.
-// En build time: `process` existe, retorna process.env[key].
-// En cliente: Next.js reemplaza NEXT_PUBLIC_* inline (literal), por lo que
-// `process.env[key]` ya no es un acceso sino un valor estático.
-// Si por algún motivo la var no se reemplazó, `process` no existe en
-// navegador y `process.env[key]` lanza ReferenceError → capturamos y undefined.
-function readEnv(key: string): string | undefined {
-  try {
-    return process.env[key];
-  } catch {
-    return undefined;
-  }
-}
+// Acceso DIRECTO a process.env.NEXT_PUBLIC_*: Next.js hace inline replacement
+// en build time SOLO si el patrón es detectable estáticamente (no dentro
+// de funciones helper). Si lo metieras en una función, el bundle del
+// cliente acabaría con `process.env.X` literal y fallaría en runtime.
 
-const convexUrl = readEnv("NEXT_PUBLIC_CONVEX_URL");
+// `convex` se inicializa una vez a nivel de módulo (no por render).
+// En SSR: process existe, retorna la URL.
+// En cliente: Next.js ya reemplazó NEXT_PUBLIC_CONVEX_URL con el literal.
+const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
 
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
-  const useMock = readEnv("NEXT_PUBLIC_USE_MOCK") === "true";
-  const clerkPublishableKey = readEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY");
+  // Acceso directo (mismo motivo: inline replacement en build time).
+  const useMock = process.env.NEXT_PUBLIC_USE_MOCK === "true";
+  const clerkPublishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
   // Mock mode: skip Clerk and Convex, return children directly
   if (useMock) {

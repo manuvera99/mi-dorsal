@@ -184,10 +184,18 @@ export async function publishPost(
  */
 export async function publishFromFile(
   filePath: string,
-  options: { baseUrl?: string; dryRun?: boolean } = {},
+  options: { baseUrl?: string; dryRun?: boolean; publish?: boolean } = {},
 ): Promise<PublishResult> {
   const md = await readFile(filePath, "utf-8");
-  const { frontmatter, content } = parseFrontmatter(md);
+  let { frontmatter, content } = parseFrontmatter(md);
+
+  // Override de `publish` desde CLI: si el flag está presente, sobrescribe
+  // el valor del frontmatter. Así puedes tener `publish: false` por defecto
+  // en el .md (convención de los agentes) y publicar con `npm run content:publish ... --publish`
+  // sin editar el archivo.
+  if (typeof options.publish === "boolean") {
+    frontmatter.publish = options.publish;
+  }
 
   // Validación mínima
   const required: (keyof PostFrontmatter)[] = ["title", "excerpt", "category"];

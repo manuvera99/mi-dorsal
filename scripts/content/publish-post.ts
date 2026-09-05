@@ -45,7 +45,7 @@ El contenido empieza justo después del segundo \`---\`.
   // Si --publish está en el frontmatter del archivo, lo respetamos.
   // El flag CLI --publish fuerza publicar incluso si el frontmatter dice false.
   console.log(`[publish-post] Procesando ${filePath}…`);
-  const result = await publishFromFile(filePath, { dryRun, baseUrl });
+  const result = await publishFromFile(filePath, { dryRun, baseUrl, publish });
 
   if (result.ok) {
     console.log(`✅ Post procesado correctamente`);

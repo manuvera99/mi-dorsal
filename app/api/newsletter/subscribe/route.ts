@@ -69,15 +69,33 @@ export async function POST(request: NextRequest) {
     }
 
     // Enviar email de confirmación con el token
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.mi-dorsal.com";
+    // Normalizamos BOM invisible que pueda venir de env vars de Vercel/CLI
+    // (bug observado: `Cannot convert argument to a ByteString` con U+FEFF).
+    const stripBom = (s: string) => s.replace(/^\uFEFF/, "");
+    const baseUrl = stripBom(process.env.NEXT_PUBLIC_APP_URL || "https://www.mi-dorsal.com");
     const confirmUrl = `${baseUrl}/api/newsletter/confirm?token=${result.confirmToken}`;
+
+    // DEBUG: loguear charCodes de las env vars y de la URL para diagnosticar BOM
+    if (process.env.NEXT_PUBLIC_DEBUG_NEWSLETTER === "1") {
+      const dump = (label: string, s: string) =>
+        console.log(
+          `[newsletter/debug] ${label}: len=${s.length} first8=[${[...s.slice(0, 8)].map((c) => "U+" + c.charCodeAt(0).toString(16).padStart(4, "0")).join(",")}]`,
+        );
+      dump("RESEND_API_KEY", process.env.RESEND_API_KEY || "");
+      dump("RESEND_FROM_EMAIL", process.env.RESEND_FROM_EMAIL || "");
+      dump("NEXT_PUBLIC_APP_URL", process.env.NEXT_PUBLIC_APP_URL || "");
+      dump("baseUrl", baseUrl);
+      dump("confirmUrl", confirmUrl);
+      dump("email", email);
+      dump("confirmToken", String(result.confirmToken));
+    }
 
     if (process.env.RESEND_API_KEY) {
       try {
         const { Resend } = await import("resend");
-        const resend = new Resend(process.env.RESEND_API_KEY);
+        const resend = new Resend(stripBom(process.env.RESEND_API_KEY));
         await resend.emails.send({
-          from: process.env.RESEND_FROM_EMAIL ?? "hola@mi-dorsal.es",
+          from: stripBom(process.env.RESEND_FROM_EMAIL ?? "hola@mi-dorsal.es"),
           to: email,
           subject: "Confirma tu suscripción a la newsletter de mi-dorsal",
           html: renderConfirmEmail({ confirmUrl }),

@@ -455,6 +455,105 @@ export const markNewsletterSent = internalMutation({
   },
 });
 
+/**
+ * systemCreate: crea (o publica/destaca) un post desde el script CLI
+ * `scripts/content/publish-post.ts` (auth-free, igual que
+ * `races.systemCreate`). NO usar desde la app — ahí siempre se pasa por
+ * `create`/`publish`/`toggleFeatured` con `requireAdmin`.
+ *
+ * Resuelve `relatedRaceSlugs` a `relatedRaceIds` aquí mismo: los agentes
+ * de contenido y el frontmatter de los drafts solo conocen slugs, no Ids
+ * de Convex. Un slug que no exista en el catálogo se ignora y se reporta
+ * en `unresolvedRaceSlugs` en vez de romper la creación del post.
+ */
+export const systemCreate = mutation({
+  args: {
+    title: v.string(),
+    slug: v.optional(v.string()),
+    excerpt: v.string(),
+    content: v.string(),
+    category: categoryValidator,
+    tags: v.optional(v.array(v.string())),
+    coverImageUrl: v.optional(v.string()),
+    coverImageAlt: v.optional(v.string()),
+    seoTitle: v.optional(v.string()),
+    seoDescription: v.optional(v.string()),
+    seoKeywords: v.optional(v.array(v.string())),
+    relatedRaceSlugs: v.optional(v.array(v.string())),
+    authorName: v.optional(v.string()),
+    publish: v.optional(v.boolean()),
+    featured: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    // Slug: si no se pasa, se genera del título. Si ya existe, sufijo numérico.
+    let slug = args.slug?.trim() || slugify(args.title);
+    const existing = await ctx.db
+      .query("blogPosts")
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
+      .unique();
+    if (existing) {
+      let i = 2;
+      while (true) {
+        const next = `${slug}-${i}`;
+        const conflict = await ctx.db
+          .query("blogPosts")
+          .withIndex("by_slug", (q) => q.eq("slug", next))
+          .unique();
+        if (!conflict) {
+          slug = next;
+          break;
+        }
+        i++;
+      }
+    }
+
+    // Resolver relatedRaceSlugs → relatedRaceIds. Un slug que no exista no
+    // rompe la creación del post, pero se reporta para que el script CLI
+    // avise (evita perder internal linking en silencio).
+    const relatedRaceIds: Array<import("./_generated/dataModel").Id<"races">> = [];
+    const unresolvedRaceSlugs: string[] = [];
+    for (const raceSlug of args.relatedRaceSlugs ?? []) {
+      const race = await ctx.db
+        .query("races")
+        .withIndex("by_slug", (q) => q.eq("slug", raceSlug))
+        .first();
+      if (race) {
+        relatedRaceIds.push(race._id);
+      } else {
+        unresolvedRaceSlugs.push(raceSlug);
+      }
+    }
+
+    const now = Date.now();
+    const readingTimeMinutes = estimateReadingTime(args.content);
+
+    const postId = await ctx.db.insert("blogPosts", {
+      slug,
+      title: args.title,
+      excerpt: args.excerpt,
+      content: args.content,
+      coverImageUrl: args.coverImageUrl,
+      coverImageAlt: args.coverImageAlt,
+      category: args.category,
+      tags: args.tags,
+      authorName: args.authorName ?? "mi-dorsal",
+      publishedAt: args.publish ? now : undefined,
+      isPublished: !!args.publish,
+      isFeatured: !!args.featured,
+      seoTitle: args.seoTitle,
+      seoDescription: args.seoDescription,
+      seoKeywords: args.seoKeywords,
+      readingTimeMinutes,
+      views: 0,
+      relatedRaceIds: relatedRaceIds.length > 0 ? relatedRaceIds : undefined,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return { postId, slug, unresolvedRaceSlugs };
+  },
+});
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------

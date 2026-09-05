@@ -46,12 +46,19 @@ export type PublishResult = {
   slug?: string;
   url?: string;
   published?: boolean;
+  unresolvedRaceSlugs?: string[];
   error?: string;
 };
 
 /**
  * Parsea el frontmatter YAML de un markdown. Soporta solo el subset que
- * necesitamos (no usa librería externa para evitar dependencias).
+ * necesitamos (no usa librería externa para evitar dependencias):
+ *   - clave: valor
+ *   - clave: "valor con comillas"
+ *   - clave: true / false
+ *   - clave: [a, b, c]              (array inline)
+ *   - clave:\n  - a\n  - b\n  - c   (array en formato bloque, el que generan
+ *                                    generate-post.ts y los agentes de contenido)
  */
 export function parseFrontmatter(md: string): { frontmatter: PostFrontmatter; content: string } {
   const match = md.match(/^---\s*\n([\s\S]+?)\n---\s*\n([\s\S]*)$/);
@@ -62,14 +69,41 @@ export function parseFrontmatter(md: string): { frontmatter: PostFrontmatter; co
   }
   const [, fmRaw, content] = match;
 
-  // Parser YAML minimalista: solo soporta clave: valor, clave: [a, b], clave: true
   const frontmatter: any = {};
   const lines = fmRaw.split("\n");
-  for (const line of lines) {
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
     const m = line.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*(.*)$/);
-    if (!m) continue;
+    if (!m) {
+      i++;
+      continue;
+    }
     const key = m[1];
-    let value: any = m[2].trim();
+    let rawValue = m[2].trim();
+
+    // Array en formato bloque: "clave:" (sin valor en la misma línea) seguido
+    // de líneas "  - item". Ej. el relatedRaceSlugs de generate-post.ts.
+    if (rawValue === "") {
+      const items: string[] = [];
+      let j = i + 1;
+      while (j < lines.length && /^\s*-\s+(.*)$/.test(lines[j])) {
+        const itemMatch = lines[j].match(/^\s*-\s+(.*)$/)!;
+        items.push(itemMatch[1].trim().replace(/^["']|["']$/g, ""));
+        j++;
+      }
+      if (items.length > 0) {
+        frontmatter[key] = items;
+        i = j;
+        continue;
+      }
+      // "clave:" sin valor y sin lista debajo → string vacío, no undefined
+      frontmatter[key] = "";
+      i++;
+      continue;
+    }
+
+    let value: any = rawValue;
 
     // Quitar comillas
     if (typeof value === "string" && /^["'].*["']$/.test(value)) {
@@ -79,8 +113,8 @@ export function parseFrontmatter(md: string): { frontmatter: PostFrontmatter; co
     // Boolean
     if (value === "true") value = true;
     else if (value === "false") value = false;
-    // Array
-    else if (value.startsWith("[") && value.endsWith("]")) {
+    // Array inline: clave: [a, b, c]
+    else if (typeof value === "string" && value.startsWith("[") && value.endsWith("]")) {
       value = value
         .slice(1, -1)
         .split(",")
@@ -89,14 +123,24 @@ export function parseFrontmatter(md: string): { frontmatter: PostFrontmatter; co
     }
 
     frontmatter[key] = value;
+    i++;
   }
 
   return { frontmatter: frontmatter as PostFrontmatter, content: content.trim() };
 }
 
 /**
- * Sube un post a Convex. Si `publish` está en true, lo publica
- * inmediatamente.
+ * Sube un post a Convex vía `blog.systemCreate` (mutation auth-free para
+ * scripts CLI — igual patrón que `races.systemCreate`). Las mutations
+ * `blog.create` / `blog.publish` / `blog.toggleFeatured` / `blog.adminGet`
+ * exigen `requireAdmin` (JWT de Clerk vía `ctx.auth.getUserIdentity()`), que
+ * un `ConvexHttpClient` de script CLI no tiene forma de satisfacer — por
+ * eso este script NUNCA debe llamarlas directamente.
+ *
+ * Resuelve `relatedRaceSlugs` a `relatedRaceIds` dentro de la mutation. Si
+ * algún slug no existe en el catálogo, se reporta en `unresolvedRaceSlugs`
+ * en vez de fallar — así el internal linking roto se ve, no se pierde en
+ * silencio.
  */
 export async function publishPost(
   client: ConvexHttpClient,
@@ -105,8 +149,7 @@ export async function publishPost(
   baseUrl: string = "https://www.mi-dorsal.com",
 ): Promise<PublishResult> {
   try {
-    // 1. Crear el post (queda como draft por defecto)
-    const postId = await client.mutation(api.blog.create, {
+    const result = await client.mutation(api.blog.systemCreate, {
       title: fm.title,
       slug: fm.slug,
       excerpt: fm.excerpt,
@@ -118,27 +161,18 @@ export async function publishPost(
       seoKeywords: fm.seoKeywords,
       coverImageUrl: fm.coverImageUrl,
       coverImageAlt: fm.coverImageAlt,
+      relatedRaceSlugs: fm.relatedRaceSlugs,
+      publish: fm.publish,
+      featured: fm.featured,
     });
-
-    // 2. Si marked featured, destacarlo
-    if (fm.featured) {
-      await client.mutation(api.blog.toggleFeatured, { id: postId, value: true });
-    }
-
-    // 3. Si marked publish, publicarlo
-    if (fm.publish) {
-      await client.mutation(api.blog.publish, { id: postId });
-    }
-
-    // 4. Recoger el slug final
-    const post = await client.query(api.blog.adminGet, { id: postId });
 
     return {
       ok: true,
-      postId,
-      slug: post?.slug,
-      url: `${baseUrl}/blog/${post?.slug}`,
+      postId: result.postId,
+      slug: result.slug,
+      url: `${baseUrl}/blog/${result.slug}`,
       published: !!fm.publish,
+      unresolvedRaceSlugs: result.unresolvedRaceSlugs,
     };
   } catch (e: any) {
     return { ok: false, error: e?.message ?? String(e) };
@@ -174,6 +208,11 @@ export async function publishFromFile(
 
   if (options.dryRun) {
     console.log(`[blog-publisher] DRY-RUN: "${frontmatter.title}" (${content.length} chars)`);
+    if (frontmatter.relatedRaceSlugs && frontmatter.relatedRaceSlugs.length > 0) {
+      console.log(
+        `[blog-publisher] DRY-RUN: ${frontmatter.relatedRaceSlugs.length} relatedRaceSlugs en frontmatter (no verificados contra el catálogo real en modo dry-run — se validan al publicar de verdad).`,
+      );
+    }
     return { ok: true, slug: frontmatter.slug, published: !!frontmatter.publish };
   }
 

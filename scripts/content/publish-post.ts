@@ -53,6 +53,13 @@ El contenido empieza justo después del segundo \`---\`.
     if (result.url) console.log(`   URL: ${result.url}`);
     if (result.postId) console.log(`   ID: ${result.postId}`);
     if (dryRun) console.log(`   (DRY-RUN: no se subió a Convex)`);
+    if (result.unresolvedRaceSlugs && result.unresolvedRaceSlugs.length > 0) {
+      console.warn(
+        `⚠️  ${result.unresolvedRaceSlugs.length} slug(s) de relatedRaceSlugs no existen en el catálogo y se han ignorado:`,
+      );
+      for (const s of result.unresolvedRaceSlugs) console.warn(`   - ${s}`);
+      console.warn(`   El internal linking a esas carreras NO se ha guardado. Revisa el slug o quítalo del frontmatter.`);
+    }
   } else {
     console.error(`❌ Error: ${result.error}`);
     process.exit(1);

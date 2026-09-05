@@ -98,21 +98,24 @@ export function Header({ mockMode = false }: { mockMode?: boolean }) {
         </Link>
 
         <nav className="hidden md:flex items-center gap-6 text-sm">
-          <Link href="/" className="flex items-center gap-1.5 text-gray-700 hover:text-runner-primary transition-colors">
-            <Home className="h-4 w-4" /> Inicio
-          </Link>
-          <Link href="/carreras" className="flex items-center gap-1.5 text-gray-700 hover:text-runner-primary transition-colors">
-            <Trophy className="h-4 w-4" /> Carreras
-          </Link>
-          <Link href="/ranking" className="flex items-center gap-1.5 text-gray-700 hover:text-runner-primary transition-colors">
-            <BarChart3 className="h-4 w-4" /> Ranking
-          </Link>
-          <Link href="/calendario" className="flex items-center gap-1.5 text-gray-700 hover:text-runner-primary transition-colors">
-            <Calendar className="h-4 w-4" /> Mi calendario
-          </Link>
-          <Link href="/perfil" className="flex items-center gap-1.5 text-gray-700 hover:text-runner-primary transition-colors">
-            <User className="h-4 w-4" /> Perfil
-          </Link>
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={`flex items-center gap-1.5 transition-colors ${
+                  active
+                    ? "text-runner-primary font-semibold"
+                    : "text-gray-700 hover:text-runner-primary"
+                }`}
+              >
+                <Icon className="h-4 w-4" /> {item.label}
+              </Link>
+            );
+          })}
           {/* Cross-link a DorsalSwap — OCULTO por ahora (Sprint 0).
               Se re-activará cuando DorsalSwap tenga tracción validada. */}
           {false && (

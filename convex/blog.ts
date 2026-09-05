@@ -10,6 +10,14 @@ import { v } from "convex/values";
 import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { requireAdmin, getOptionalUser, slugify } from "./_helpers";
 
+// CATEGORY_LABELS / CATEGORY_DESCRIPTIONS viven en lib/blog-categories.ts,
+// no aquí: son constantes de presentación que también usan componentes
+// "use client" (admin/blog, /blog, PostCard), y ese código NO puede
+// importar de convex/blog.ts sin arrastrar convex/_generated/server.js al
+// bundle del navegador (rompe con "process is not defined"). Se re-exportan
+// desde aquí solo por compatibilidad con quien ya importaba desde @/convex/blog.
+export { CATEGORY_LABELS, CATEGORY_DESCRIPTIONS } from "../lib/blog-categories";
+
 // ---------------------------------------------------------------------------
 // Validadores reusables
 // ---------------------------------------------------------------------------
@@ -20,23 +28,6 @@ const categoryValidator = v.union(
   v.literal("curiosidades"),
   v.literal("tendencias"),
 );
-
-export const CATEGORY_LABELS: Record<string, string> = {
-  historias: "Historias de dorsal",
-  guias: "Guías de carrera",
-  curiosidades: "Curiosidades",
-  tendencias: "Tendencias con contexto",
-};
-
-export const CATEGORY_DESCRIPTIONS: Record<string, string> = {
-  historias:
-    "Reportajes personales, Behobia, San Silvestre, lo que se siente al cruzar una meta.",
-  guias:
-    "Ruta, perfil, avituallamiento, qué llevar. Datos reales del catálogo de mi-dorsal.",
-  curiosidades: "Récords raros, historia del running popular español, datos que no esperabas.",
-  tendencias:
-    "Material, entrenamiento, calendario. Lo que se mueve, con contexto de mi-dorsal.",
-};
 
 // ---------------------------------------------------------------------------
 // QUERIES PÚBLICAS

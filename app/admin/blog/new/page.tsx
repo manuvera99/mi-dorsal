@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { isMockMode } from "@/lib/mock/provider";
-import { CATEGORY_LABELS } from "@/convex/blog";
+import { CATEGORY_LABELS } from "@/lib/blog-categories";
 import Link from "next/link";
 import { ArrowLeft, Save, Loader2, FileText } from "lucide-react";
 

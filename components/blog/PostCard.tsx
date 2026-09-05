@@ -8,7 +8,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Clock, ArrowRight } from "lucide-react";
-import { CATEGORY_LABELS } from "@/convex/blog";
+import { CATEGORY_LABELS } from "@/lib/blog-categories";
 
 const CATEGORY_STYLES: Record<string, { bg: string; text: string }> = {
   historias: { bg: "bg-runner-primary/10", text: "text-runner-primary" },

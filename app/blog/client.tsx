@@ -9,7 +9,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { PostCard } from "@/components/blog/PostCard";
 import { NewsletterForm } from "@/components/newsletter/NewsletterForm";
-import { CATEGORY_LABELS, CATEGORY_DESCRIPTIONS } from "@/convex/blog";
+import { CATEGORY_LABELS, CATEGORY_DESCRIPTIONS } from "@/lib/blog-categories";
 import { Loader2, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";

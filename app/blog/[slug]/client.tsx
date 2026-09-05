@@ -13,7 +13,7 @@ import { api } from "@/convex/_generated/api";
 import { MarkdownRenderer } from "@/components/blog/MarkdownRenderer";
 import { PostCard } from "@/components/blog/PostCard";
 import { NewsletterForm } from "@/components/newsletter/NewsletterForm";
-import { CATEGORY_LABELS } from "@/convex/blog";
+import { CATEGORY_LABELS } from "@/lib/blog-categories";
 import { Clock, Calendar, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";

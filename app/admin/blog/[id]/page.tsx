@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { isMockMode } from "@/lib/mock/provider";
-import { CATEGORY_LABELS } from "@/convex/blog";
+import { CATEGORY_LABELS } from "@/lib/blog-categories";
 import { ArrowLeft, Save, Loader2, Eye, Trash2 } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
 

@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { isMockMode } from "@/lib/mock/provider";
-import { CATEGORY_LABELS } from "@/convex/blog";
+import { CATEGORY_LABELS } from "@/lib/blog-categories";
 import {
   Plus,
   Search,

@@ -234,6 +234,15 @@ export default defineSchema({
     isFeatured: v.optional(v.boolean()),
     scraperAdapter: v.optional(v.string()),
 
+    // -------- CHIPLEVANTE ADAPTER (scraper de resultados) --------
+    // El adapter de chiplevante.com necesita IDs internos que no están en la URL.
+    // Los cacheamos aquí la primera vez que se scrapa para evitar parsear HTML en cada check.
+    //   - chiplevanteEmpresa: "1" o "" (varía por evento)
+    //   - chiplevanteCarreraIds: ["1","2","3"] (id de cada modalidad: 10K, 5K, etc.)
+    // Solo se usan cuando scraperAdapter === "chiplevante".
+    chiplevanteEmpresa: v.optional(v.string()),
+    chiplevanteCarreraIds: v.optional(v.array(v.string())),
+
     // Hashtags / SEO
     hashtags: v.optional(v.array(v.string())),
     // FK opcional a la fuente de datos (RFEA, FEDME, etc.)

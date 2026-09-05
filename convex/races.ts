@@ -603,8 +603,22 @@ export const systemUpsert = mutation({
     // Atribución
     scraperAdapter: v.optional(v.string()),
     dataSourceId: v.optional(v.id("dataSources")),
+    // Cache del adapter de chiplevante (empresa + carrera_id internos)
+    chiplevanteEmpresa: v.optional(v.string()),
+    chiplevanteCarreraIds: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
+    // Auto-asignación de scraperAdapter según el officialUrl.
+    // Si el caller no pasó scraperAdapter y la URL es de un cronometrador conocido,
+    // lo inferimos. Esto es seguro porque los adapters son no-op para URLs que no son suyas.
+    if (!args.scraperAdapter && args.officialUrl) {
+      const u = args.officialUrl.toLowerCase();
+      if (u.includes("chiplevante.com")) {
+        args.scraperAdapter = "chiplevante";
+      }
+      // Aquí se pueden añadir más auto-asignaciones en el futuro (dorsalchip, etc.)
+    }
+
     const norm = (s: string | undefined) =>
       (s ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
     const isHomepageUrl = (url: string | undefined) => {

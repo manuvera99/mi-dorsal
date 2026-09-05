@@ -9,6 +9,7 @@
  */
 
 import type * as _helpers from "../_helpers.js";
+import type * as adminTools from "../adminTools.js";
 import type * as blog from "../blog.js";
 import type * as cronJobs from "../cronJobs.js";
 import type * as crons_checkResults from "../crons/checkResults.js";
@@ -44,6 +45,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   _helpers: typeof _helpers;
+  adminTools: typeof adminTools;
   blog: typeof blog;
   cronJobs: typeof cronJobs;
   "crons/checkResults": typeof crons_checkResults;

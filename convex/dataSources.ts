@@ -17,6 +17,7 @@ export const SCRAPER_SCRIPTS: Record<string, string> = {
   sportmaniacs: "ingest:sportmaniacs",
   runedia: "ingest:runedia",
   correbirras: "ingest:correbirras",
+  chiplevante: "ingest:chiplevante",
   all: "ingest:all",
 };
 

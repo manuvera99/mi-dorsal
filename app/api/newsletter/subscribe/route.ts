@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
         await resend.emails.send({
           from: stripBom(process.env.RESEND_FROM_EMAIL ?? "hola@mi-dorsal.es"),
           to: email,
-          subject: "¡Bienvenido a la familia del dorsal!",
+          subject: "El hilo que te une a tu dorsal",
           html: renderWelcomeEmail({ unsubscribeUrl }),
         });
       } catch (e) {
@@ -132,7 +132,7 @@ function stripBom(s: string): string {
 function renderWelcomeEmail({ unsubscribeUrl }: { unsubscribeUrl: string }): string {
   return `<!doctype html>
 <html lang="es">
-<head><meta charset="utf-8"><title>¡Bienvenido a la familia del dorsal!</title></head>
+<head><meta charset="utf-8"><title>El hilo que te une a tu dorsal</title></head>
 <body style="margin:0;padding:0;background:#fafaf9;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;color:#0a0a0a;">
   <div style="max-width:560px;margin:0 auto;padding:32px 20px;">
     <!-- pill "mi-dorsal" en rojo -->
@@ -141,53 +141,80 @@ function renderWelcomeEmail({ unsubscribeUrl }: { unsubscribeUrl: string }): str
     </div>
     <!-- caja blanca con el mensaje -->
     <div style="background:white;border:1px solid #e7e5e4;border-radius:12px;padding:28px 24px;">
-      <h1 style="font-size:24px;margin:0 0 14px 0;">¡Bienvenido a la familia del dorsal!</h1>
-      <p style="font-size:15px;line-height:1.6;color:#44403c;margin:0 0 18px 0;">
-        Soy <strong>Manu</strong> y te escribo desde la línea de meta.
+      <p style="font-size:15px;line-height:1.65;color:#44403c;margin:0 0 20px 0;">
+        Cruzas la meta. Te dan un dorsal de cartón. Te lo llevas
+        a casa y lo metes en un cajón. Y ahí se queda la historia
+        de esa carrera para siempre.
       </p>
-      <p style="font-size:15px;line-height:1.6;color:#44403c;margin:0 0 18px 0;">
-        <strong>mi-dorsal</strong> es el sitio para corredores populares como tú.
-        Aquí planificas tu temporada, predices tus tiempos con la fórmula de Daniels
-        y, lo más importante, recibes el <strong>resultado oficial</strong> de cada
-        carrera por email. Sin pulseras, sin GPS, sin conectar tu smartwatch.
-        Solo tú, tu dorsal y la línea de meta.
+      <p style="font-size:15px;line-height:1.65;color:#44403c;margin:0 0 20px 0;">
+        <strong>mi-dorsal</strong> es la web que recoge esas historias.
       </p>
-      <p style="font-size:15px;line-height:1.6;color:#44403c;margin:0 0 18px 0;">
-        Esta newsletter es el proyecto hermano: una vez al mes te cuento
-        lo que no cabe en la app. <strong>Historias reales</strong> de la línea de
-        meta, <strong>guías prácticas</strong> para tu próxima carrera y
-        <strong>algún dato curioso</strong> del running popular. Sin spam,
-        sin patrocinios, sin prisa.
+      <p style="font-size:15px;line-height:1.65;color:#44403c;margin:0 0 20px 0;">
+        Apuntarte a carreras, predecir tus tiempos con el método
+        Daniels y, sobre todo, recibir el <strong>resultado oficial</strong>
+        de cada carrera por email. Sin pulseras, sin GPS, sin conectar
+        tu smartwatch.
+      </p>
+      <p style="font-size:15px;line-height:1.65;color:#44403c;margin:0 0 22px 0;">
+        Esto es la newsletter mensual: lo que no cabe en la app,
+        cabe aquí.
       </p>
 
-      <!-- CTA principal -->
-      <div style="text-align:center;margin:28px 0 12px 0;">
-        <a href="https://www.mi-dorsal.com/carreras"
-           style="display:inline-block;background:#dc2626;color:white;text-decoration:none;font-weight:600;padding:12px 24px;border-radius:8px;">
-          Explora carreras
-        </a>
-      </div>
+      <hr style="border:none;border-top:1px solid #e7e5e4;margin:22px 0;">
 
-      <!-- 3 links secundarios -->
-      <div style="text-align:center;margin:18px 0 4px 0;font-size:14px;color:#78716c;">
-        También puedes ver el
-        <a href="https://www.mi-dorsal.com/blog" style="color:#dc2626;text-decoration:underline;">blog</a>,
-        tu
-        <a href="https://www.mi-dorsal.com/perfil" style="color:#dc2626;text-decoration:underline;">perfil</a>
-        o el
-        <a href="https://www.mi-dorsal.com/calendario" style="color:#dc2626;text-decoration:underline;">calendario</a>
-        de tu temporada.
-      </div>
+      <p style="font-size:14px;font-weight:600;color:#0a0a0a;margin:0 0 10px 0;">
+        Cada mes vas a recibir
+      </p>
+      <p style="font-size:15px;line-height:1.7;color:#44403c;margin:0 0 6px 0;">
+        &nbsp;&nbsp;&middot; 1 historia real de la línea de meta
+      </p>
+      <p style="font-size:15px;line-height:1.7;color:#44403c;margin:0 0 6px 0;">
+        &nbsp;&nbsp;&middot; 1 guía práctica para tu próxima carrera
+      </p>
+      <p style="font-size:15px;line-height:1.7;color:#44403c;margin:0 0 18px 0;">
+        &nbsp;&nbsp;&middot; Algún dato curioso del mundillo
+      </p>
 
-      <hr style="border:none;border-top:1px solid #e7e5e4;margin:24px 0;">
+      <p style="font-size:14px;font-weight:600;color:#0a0a0a;margin:0 0 10px 0;">
+        Lo que NO vas a recibir
+      </p>
+      <p style="font-size:15px;line-height:1.7;color:#44403c;margin:0 0 6px 0;">
+        &nbsp;&nbsp;&middot; Spam
+      </p>
+      <p style="font-size:15px;line-height:1.7;color:#44403c;margin:0 0 6px 0;">
+        &nbsp;&nbsp;&middot; Patrocinios
+      </p>
+      <p style="font-size:15px;line-height:1.7;color:#44403c;margin:0 0 18px 0;">
+        &nbsp;&nbsp;&middot; Emails para &quot;rellenar&quot;
+      </p>
 
-      <p style="font-size:13px;color:#78716c;margin:0 0 8px 0;line-height:1.5;">
-        Si te cansas de mí, date de baja cuando quieras con
-        <a href="${unsubscribeUrl}" style="color:#78716c;text-decoration:underline;">este link</a>.
+      <p style="font-size:15px;line-height:1.65;color:#44403c;margin:0 0 22px 0;">
+        Si un mes no hay nada que merezca tu tiempo, no se manda.
+        Así de simple.
+      </p>
+
+      <hr style="border:none;border-top:1px solid #e7e5e4;margin:22px 0;">
+
+      <p style="font-size:14px;font-weight:600;color:#0a0a0a;margin:0 0 10px 0;">
+        Mientras tanto, empieza por aquí
+      </p>
+      <p style="font-size:15px;line-height:1.7;color:#44403c;margin:0 0 6px 0;">
+        &nbsp;&nbsp;&middot; <a href="https://www.mi-dorsal.com/carreras" style="color:#dc2626;text-decoration:underline;">Carreras cerca de ti</a>
+      </p>
+      <p style="font-size:15px;line-height:1.7;color:#44403c;margin:0 0 6px 0;">
+        &nbsp;&nbsp;&middot; <a href="https://www.mi-dorsal.com/blog" style="color:#dc2626;text-decoration:underline;">El blog</a>
+      </p>
+      <p style="font-size:15px;line-height:1.7;color:#44403c;margin:0 0 22px 0;">
+        &nbsp;&nbsp;&middot; <a href="https://www.mi-dorsal.com/perfil" style="color:#dc2626;text-decoration:underline;">Tu perfil</a>
+      </p>
+
+      <p style="font-size:13px;color:#78716c;margin:24px 0 0 0;line-height:1.5;">
+        Si algún día te cansas, te das de baja con 1 click
+        <a href="${unsubscribeUrl}" style="color:#78716c;text-decoration:underline;">aquí</a>.
         Sin preguntas, sin formularios.
       </p>
-      <p style="font-size:13px;color:#78716c;margin:0;line-height:1.5;">
-        ¡Nos vemos en la línea de salida! 🏃
+      <p style="font-size:13px;color:#78716c;margin:8px 0 0 0;line-height:1.5;">
+        Nos vemos en la línea de salida.
       </p>
     </div>
   </div>

@@ -55,8 +55,11 @@ export async function POST(request: NextRequest) {
       locale,
     });
 
-    // Si el suscriptor ya estaba activo, no enviamos email de confirmación
-    if (result.alreadyExisted) {
+    // Si el suscriptor ya existía y NO se reactivó, no enviamos email
+    // (caso: ya está active o pending y simplemente re-intenta suscribirse).
+    // Si se reactivó (estaba unsubscribed/bounced) o es nuevo, SÍ enviamos
+    // email de confirmación con el confirmToken (que puede ser recién generado).
+    if (result.alreadyExisted && !result.reactivated) {
       // Mirar el estado actual para devolver feedback
       const status = await convex.query(api.newsletter.getStatus, {
         email: email.toLowerCase().trim(),

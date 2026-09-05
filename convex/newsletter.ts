@@ -69,10 +69,10 @@ export const subscribePending = mutation({
           subscriptionUserAgent: args.userAgent ?? existing.subscriptionUserAgent,
           locale: args.locale ?? existing.locale,
         });
-        return { id: existing._id, confirmToken, alreadyExisted: true };
+        return { id: existing._id, confirmToken, reactivated: true, alreadyExisted: true };
       }
       // Si ya está active o pending, devolvemos sin cambios
-      return { id: existing._id, confirmToken: existing.confirmToken, alreadyExisted: true };
+      return { id: existing._id, confirmToken: existing.confirmToken, reactivated: false, alreadyExisted: true };
     }
 
     const confirmToken = generateToken();
@@ -94,7 +94,7 @@ export const subscribePending = mutation({
       locale: args.locale,
     });
 
-    return { id, confirmToken, unsubscribeToken, alreadyExisted: false };
+    return { id, confirmToken, unsubscribeToken, reactivated: false, alreadyExisted: false };
   },
 });
 

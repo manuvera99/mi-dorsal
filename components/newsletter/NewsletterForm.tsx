@@ -72,7 +72,7 @@ export function NewsletterForm({
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder={placeholder}
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-runner-primary/20 focus:border-runner-primary"
+          className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-runner-primary/20 focus:border-runner-primary"
           disabled={status === "submitting"}
         />
         <button
@@ -110,7 +110,7 @@ export function NewsletterForm({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder={placeholder}
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-runner-primary/20 focus:border-runner-primary"
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-md text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-runner-primary/20 focus:border-runner-primary"
             disabled={status === "submitting"}
           />
           <button

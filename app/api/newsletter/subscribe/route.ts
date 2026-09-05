@@ -135,9 +135,11 @@ function renderWelcomeEmail({ unsubscribeUrl }: { unsubscribeUrl: string }): str
 <head><meta charset="utf-8"><title>El hilo que te une a tu dorsal</title></head>
 <body style="margin:0;padding:0;background:#fafaf9;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;color:#0a0a0a;">
   <div style="max-width:560px;margin:0 auto;padding:32px 20px;">
-    <!-- pill "mi-dorsal" en rojo -->
+    <!-- Logo de marca como enlace a la web -->
     <div style="text-align:center;margin-bottom:24px;">
-      <span style="display:inline-block;background:#dc2626;color:white;font-weight:700;font-size:14px;padding:4px 10px;border-radius:999px;">mi-dorsal</span>
+      <a href="https://www.mi-dorsal.com" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none;">
+        <img src="https://www.mi-dorsal.com/logo-light.png" alt="mi-dorsal" width="220" style="display:block;margin:0 auto;border:0;outline:none;text-decoration:none;" />
+      </a>
     </div>
     <!-- caja blanca con el mensaje -->
     <div style="background:white;border:1px solid #e7e5e4;border-radius:12px;padding:28px 24px;">

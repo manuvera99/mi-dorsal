@@ -14,12 +14,14 @@
 // =============================================================================
 
 import { internalAction } from "../_generated/server";
-import { internal } from "../_generated/api";
 
 export const recalcStats = internalAction({
   args: {},
   handler: async (ctx: any) => {
-    const result = await ctx.runMutation((internal.stats.recalcStats as any), {});
+    // Cast a string para evitar circular type del API cuando Convex infiere
+    // el tipo del internalMutation `stats.recalcStats` desde `_generated/api`.
+    // (Bug Convex 1.18 con schema grande, ver memoria agente.)
+    const result = await ctx.runMutation("stats:recalcStats" as any, {});
     console.log(
       `[recalc-stats] OK: ${result.totalRaces} races, ${result.totalUsers} users, ` +
       `${result.totalVotes} votes, ${result.totalRatings} ratings. ` +

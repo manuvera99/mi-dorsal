@@ -5,7 +5,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -16,10 +16,12 @@ import { Id } from "@/convex/_generated/dataModel";
 
 const CATEGORY_KEYS = ["historias", "guias", "curiosidades", "tendencias"] as const;
 
-export default function EditBlogPostPage({ params }: { params: { id: string } }) {
+export default function EditBlogPostPage() {
   const router = useRouter();
+  const params = useParams();
+  const postId = params.id as Id<"blogPosts">;
   const useMock = isMockMode();
-  const post = useQuery(api.blog.adminGet, { id: params.id as Id<"blogPosts"> });
+  const post = useQuery(api.blog.adminGet, { id: postId });
   const update = useMutation(api.blog.update);
   const publish = useMutation(api.blog.publish);
   const unpublish = useMutation(api.blog.unpublish);

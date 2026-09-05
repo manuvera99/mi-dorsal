@@ -83,27 +83,37 @@ export const add = mutation({
     const race = await ctx.db.get(args.raceId);
     if (!race) throw new Error("Race not found");
 
-    // Calcular predicción
+    // Calcular predicción. Si falla (ej. usuario sin PRs) seguimos adelante:
+    // añadir al calendario no debe depender de tener PRs.
     const prs = await ctx.db
       .query("personalRecords")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .filter((q) => q.eq(q.field("isCurrent"), true))
       .collect();
 
-    const prediction = predictForMyRace({
-      race: {
-        distanceKm: race.distanceKm,
-        elevationGainM: race.elevationGainM,
-        raceType: race.raceType,
-        startDate: race.startDate,
-      },
-      userPRs: prs.map((pr) => ({
-        distanceM: pr.distanceM,
-        distanceLabel: pr.distanceLabel,
-        timeSeconds: pr.timeSeconds,
-      })),
-      expectedTempC: estimateTempForRace(race.startDate, race.locality),
-    });
+    let prediction: ReturnType<typeof predictForMyRace> | null = null;
+    try {
+      prediction = predictForMyRace({
+        race: {
+          distanceKm: race.distanceKm,
+          elevationGainM: race.elevationGainM,
+          raceType: race.raceType,
+          startDate: race.startDate,
+        },
+        userPRs: prs.map((pr) => ({
+          distanceM: pr.distanceM,
+          distanceLabel: pr.distanceLabel,
+          timeSeconds: pr.timeSeconds,
+        })),
+        expectedTempC: estimateTempForRace(race.startDate, race.locality),
+      });
+    } catch (e) {
+      // Sin PRs o cualquier error del predictor: añadimos la carrera sin predicción.
+      console.warn(
+        `[myRaces.add] Sin predicción para raceId=${args.raceId} userId=${user._id}:`,
+        e instanceof Error ? e.message : e,
+      );
+    }
 
     const id = await ctx.db.insert("myRaces", {
       userId: user._id,
@@ -112,21 +122,23 @@ export const add = mutation({
       registrationDate: args.registrationDate,
       notes: args.notes,
       status: "planned",
-      predictedTimeSeconds: prediction.predictedTimeSeconds,
-      predictionConfidence: prediction.confidence,
-      predictionFactors: prediction.factors,
+      predictedTimeSeconds: prediction?.predictedTimeSeconds,
+      predictionConfidence: prediction?.confidence,
+      predictionFactors: prediction?.factors,
     });
 
-    // Guardar log de predicción
-    await ctx.db.insert("predictions", {
-      userId: user._id,
-      raceId: args.raceId,
-      myRaceId: id,
-      predictedTimeSeconds: prediction.predictedTimeSeconds,
-      confidence: prediction.confidence,
-      modelVersion: "daniels-vdot-v1",
-      factors: prediction.factors,
-    });
+    // Guardar log de predicción solo si tenemos predicción
+    if (prediction) {
+      await ctx.db.insert("predictions", {
+        userId: user._id,
+        raceId: args.raceId,
+        myRaceId: id,
+        predictedTimeSeconds: prediction.predictedTimeSeconds,
+        confidence: prediction.confidence,
+        modelVersion: "daniels-vdot-v1",
+        factors: prediction.factors,
+      });
+    }
 
     return id;
   },

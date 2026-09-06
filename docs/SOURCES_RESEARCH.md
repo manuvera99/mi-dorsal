@@ -13,9 +13,9 @@
 | **Sportmaniacs** (Localbi/Evide) | ✅ API pública `/api/races` | ✅ API `/api/events/{uuid}/race-rankings` (durante live + ~pocas horas post) | ✅ Adapter completo, **2208+ carreras ingestadas** (sep 2026) |
 | **ChipLevante** | ✅ AJAX `/modulos/list_pruebas.php` | ✅ AJAX `/secciones/clasificaciones/dame_id_corredor.php` | ✅ Adapter completo, **114 carreras en prod** (sep 2026) |
 | **RPM Sports** (Barcelona) | — | — | ❌ **Es Sportmaniacs** — el Maratón Barcelona y Mitja usan su plataforma |
-| **Time Runners** (Madrid) | — | — | ❌ **No viable** — resultados solo en PDFs estáticos con MYLAPS BibTag |
-| **CronoChip** (Valencia) | — | — | ❌ **No viable** — usa Timingsense CHIP, sin API pública |
-| **Gesconchip** (Cataluña) | — | — | ❌ **No viable** — ChampionChip/MYLAPS, sin API pública |
+| **Time Runners** (Madrid) | — (manual) | ✅ PDF estático con MYLAPS BibTag | ✅ **Adapter PDF genérico** (sep 2026). Admin añade las carreras a mano. |
+| **CronoChip** (Valencia) | — (manual) | ✅ PDF estático | ✅ **Adapter PDF genérico**. Mismo adapter que Time Runners. |
+| **Gesconchip** (Cataluña) | — (manual) | ✅ PDF estático | ✅ **Adapter PDF genérico**. Mismo adapter que Time Runners. |
 | **MYLAPS Speedhive** (general) | — | — | ❌ **No viable** — requiere API key + onboarding + NDA |
 
 ---
@@ -119,25 +119,38 @@ Ya cubierto por el adapter de Sportmaniacs. Nada que hacer.
 
 ---
 
-## 4. Time Runners (Madrid) — ❌ NO VIABLE
+## 4. Time Runners (Madrid) — ✅ ADAPTER PDF GENÉRICO (sep 2026)
 
 **Cobertura**: Rock 'n' Roll Madrid Marathon y otros eventos de la zona centro.
 
-### Por qué no
+### Estado actual
 - Web WordPress antigua en `timerunners.es`.
 - Resultados publicados como **PDFs estáticos** en `https://timerunners.es/resultados/{nombre}.pdf`.
 - Hardware MYLAPS BibTag (compartido con muchas carreras populares).
 - **No hay API pública** ni endpoint AJAX.
-- Parsear PDFs con `pdf-parse` sería el último recurso, pero:
-  - El formato del PDF varía por evento.
-  - No podemos asociar un dorsal sin OCR o regex específico.
-  - Cualquier cambio de formato en el PDF rompe el parser.
-- **MYLAPS Speedhive** (`api-cloudtiming.mylaps.com`) podría exponer
-  resultados, pero requiere API key + onboarding + NDA. No viable para
-  scraping público.
 
-**Decisión**: NO invertir tiempo. El ROI es bajo (1-2 carreras grandes/año
-en Madrid, ya hay otras fuentes para esas).
+### Cómo lo cubrimos ahora
+- **Adapter PDF genérico** (sep 2026): el admin añade manualmente las
+  carreras con `scraperAdapter: "pdf"` y `resultsUrl` apuntando al PDF.
+- El parser vive en un endpoint de Vercel (`/api/pdf/parse`) que descarga
+  el PDF, lo extrae con `pdf-parse`, busca el dorsal y devuelve tiempo +
+  nombre.
+- Convex no puede bundlear `pdf-parse` (necesita `fs`/`http` nativos) ni
+  `pdfjs-dist` (canvas / structuredClone con transfer), por eso el parser
+  se hostea en Vercel que sí tiene Node.js completo.
+- **Test E2E validado** contra Fuencarral 2012: 4/4 dorsales OK (1414,
+  934, 1751, 99999→null).
+- **Cobertura ampliable a**: Gesconchip, CronoChip y cualquier cronometrador
+  que publique PDFs con formato `Dorsal Nombre Marca` (el más común en
+  España).
+
+### Limitaciones
+- El admin tiene que añadir las carreras a mano (no hay catálogo público
+  scrapeable).
+- PDFs escaneados (sin texto extraíble) no funcionan — habría que añadir
+  OCR.
+- El formato del PDF varía: si Time Runners cambia la estructura de
+  columnas, hay que ajustar el regex.
 
 ---
 
@@ -146,27 +159,27 @@ en Madrid, ya hay otras fuentes para esas).
 **Cobertura**: carreras populares de la Comunidad Valenciana, Murcia y
 Alicante. Hardware Timingsense CHIP.
 
-### Por qué no
+### Estado actual
 - Web en `cronochip.com` sin endpoint AJAX ni API pública.
-- Resultados publicados en HTML estático, sin estructura consistente.
-- No hay manera programática de obtener "dorsal → tiempo".
+- Resultados publicados en HTML estático o PDF, sin estructura consistente.
+- No hay manera programática de obtener "dorsal → tiempo" desde HTML.
 
-**Decisión**: NO invertir tiempo. La zona ya está cubierta por
-ChipLevante (Alicante/Murcia/Valencia).
+### Cómo lo cubrimos
+- **Adapter PDF genérico** (mismo que Time Runners) si publican PDFs.
+- Para HTML, todavía no hay adapter (regex difícil por inconsistencia).
 
 ---
 
-## 6. Gesconchip (Cataluña) — ❌ NO VIABLE
+## 6. Gesconchip (Cataluña) — ✅ ADAPTER PDF GENÉRICO
 
 **Cobertura**: carreras populares de Cataluña. Hardware ChampionChip /
 MYLAPS.
 
-### Por qué no
-- Mismo problema que Time Runners / CronoChip: web estática, sin API.
-- Hardware MYLAPS ya descartado (necesita API key).
-
-**Decisión**: NO invertir tiempo. Zona catalana parcialmente cubierta
-por Sportmaniacs (carreras que también se inscriben allí).
+### Estado actual
+- Web estática, sin API.
+- Hardware MYLAPS ya descartado para scraping directo (necesita API key).
+- **Si publican PDFs con clasificaciones**, el adapter PDF genérico
+  (ver §4) los cubre.
 
 ---
 

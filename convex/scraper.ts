@@ -26,10 +26,10 @@ const ADAPTERS: Record<
 /**
  * Punto de entrada: scrapea la URL buscando el dorsal, usando el adapter apropiado.
  *
- * Caso especial: `chiplevante` no se basa en parsear HTML — tiene un endpoint
- * AJAX público (`/secciones/clasificaciones/dame_id_corredor.php`) que devuelve
- * JSON con `tiempo_oficial`, `pos_carrera`, `pos_categoria` directamente.
- * Por eso lo despachamos ANTES del fetch HTML.
+ * Casos especiales (JSON-based, no HTML):
+ *   - `chiplevante` → endpoint AJAX propio.
+ *   - `sportmaniacs` → endpoint API público de Sportmaniacs.
+ * Por eso los despachamos ANTES del fetch HTML.
  */
 export async function scrapeResults(
   url: string,
@@ -38,6 +38,9 @@ export async function scrapeResults(
 ): Promise<RunnerResult | null> {
   if (adapterName === "chiplevante") {
     return scrapeChiplevante(url, dorsal);
+  }
+  if (adapterName === "sportmaniacs") {
+    return scrapeSportmaniacs(url, dorsal);
   }
 
   try {
@@ -367,4 +370,199 @@ function toIntOrUndefined(v: unknown): number | undefined {
   if (v == null) return undefined;
   const n = typeof v === "number" ? v : parseInt(String(v), 10);
   return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Adapter: Sportmaniacs (sportmaniacs.com / api-aws.sportmaniacs.com)
+// ---------------------------------------------------------------------------
+//
+// Sportmaniacs es la mayor plataforma de inscripciones + cronometraje del
+// running popular español. Cubre cientos de carreras en todo el país
+// (muchas de las grandes maratones y medias están aquí: Zurich Marató
+// Barcelona, Maratón Sevilla, Mitja Marató Barcelona, eBay Maratón
+// Zaragoza, y muchísimas populares locales).
+//
+// **Limitación importante de la API pública**: el endpoint que devuelve
+// el ranking completo de una carrera (`/api/events/{uuid}/race-rankings`)
+// solo expone `data.Rankings[]` cuando la carrera está en vivo o recién
+// pasada. Una vez que se archiva, devuelve `ranking: false` y
+// `Rankings: []`. Por tanto el adapter:
+//
+//   1. Funcionará en cuanto se publiquen los resultados de cada carrera.
+//   2. Devolverá `null` si la carrera aún no tiene resultados públicos.
+//   3. NO hace falta hacer reintentos: el cron de `checkResults` se ejecuta
+//      periódicamente y volverá a probar cada pocas horas.
+//
+// URL típica de la carrera en la webapp:
+//   https://sportmaniacs.com/es/races/{slug}/{event-uuid}/results
+//   https://sportmaniacs.com/es/races/{slug}/{event-uuid}/rankings
+//   https://sportmaniacs.com/es/races/{slug}/{event-uuid}/live
+//
+// Endpoint API:
+//   GET https://api-aws.sportmaniacs.com/api/events/{event-uuid}/race-rankings
+//   Headers: X-Requested-With: XMLHttpRequest, Origin/Referer: sportmaniacs.com
+//   Respuesta:
+//     { data: {
+//         Event: {id, idEvent, name, distance, ranking, has_diploma, ...},
+//         Race: {idRace, name, slug, ...},
+//         Splits: [...],
+//         Categories: [...],
+//         Rankings: [
+//           { dorsal, name, club, category, gender,
+//             pos, posCategory, posGender,
+//             officialTime, realTime, ... },
+//           ...
+//         ],
+//         Averages: {...},
+//         Summary: [...]
+//     }, status: "ok" }
+//
+// Cuando no hay resultados: data.Rankings = [] y data.Event.ranking = false.
+// ---------------------------------------------------------------------------
+
+const SPORTMANIACS_API_BASE = "https://api-aws.sportmaniacs.com/api";
+const SPORTMANIACS_USER_AGENT = "Mozilla/5.0 mi-dorsal/0.1";
+
+/**
+ * Extrae el event UUID de una URL de sportmaniacs.com.
+ * Devuelve null si la URL no encaja con el patrón.
+ *
+ * Acepta tanto `sportmaniacs.com` como `api-aws.sportmaniacs.com`.
+ * El UUID siempre está en el path: `/races/{slug}/{uuid}/...` o
+ * `/events/{uuid}/...` o `/api/events/{uuid}/...`.
+ */
+export function parseSportmaniacsUrl(url: string): { event: string } | null {
+  const m = url.match(
+    /sportmaniacs\.com\/(?:es\/)?(?:api\/)?(?:races\/[^/]+\/)?(?:events\/)?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i,
+  );
+  if (!m) return null;
+  return { event: m[1] };
+}
+
+/**
+ * Adapter principal: scrapea sportmaniacs.com buscando el dorsal del corredor.
+ * Devuelve null si:
+ *   - la URL no es de sportmaniacs.com
+ *   - el endpoint devuelve 4xx/5xx
+ *   - la carrera no tiene resultados públicos (Rankings = [])
+ *   - el dorsal no aparece en los Rankings
+ *
+ * No lanza excepciones: cualquier error se loga y se trata como "no encontrado".
+ */
+export async function scrapeSportmaniacs(
+  url: string,
+  dorsal: string,
+): Promise<RunnerResult | null> {
+  const parsed = parseSportmaniacsUrl(url);
+  if (!parsed) {
+    console.warn(`[scraper:sportmaniacs] URL no encaja con el patrón: ${url}`);
+    return null;
+  }
+  const { event } = parsed;
+
+  const apiUrl = `${SPORTMANIACS_API_BASE}/events/${event}/race-rankings`;
+
+  let res: Response;
+  try {
+    res = await fetch(apiUrl, {
+      headers: {
+        Accept: "application/json, text/plain, */*",
+        "User-Agent": SPORTMANIACS_USER_AGENT,
+        "X-Requested-With": "XMLHttpRequest",
+        Origin: "https://sportmaniacs.com",
+        Referer: `https://sportmaniacs.com/es/races//${event}/results`,
+      },
+    });
+  } catch (err) {
+    console.error(`[scraper:sportmaniacs] Fetch failed for ${apiUrl}:`, err);
+    return null;
+  }
+
+  if (!res.ok) {
+    // 404 y similares son esperados: la API devuelve `{"status":"ko"}` con 200
+    // para carreras que no expone, pero también puede devolver 404 si el endpoint
+    // cambió. Lo tratamos como "sin resultados" sin log de error.
+    if (res.status === 404) {
+      console.log(`[scraper:sportmaniacs] 404 for ${apiUrl} (endpoint cambió o carrera sin datos)`);
+      return null;
+    }
+    console.warn(`[scraper:sportmaniacs] HTTP ${res.status} for ${apiUrl}`);
+    return null;
+  }
+
+  let body: any;
+  try {
+    body = await res.json();
+  } catch (err) {
+    console.error(`[scraper:sportmaniacs] Respuesta no es JSON válido:`, err);
+    return null;
+  }
+
+  // Estructura: { data: { Event, Race, Splits, Categories, Rankings, ... }, status }
+  // Si status != "ok" o no hay data, devolvemos null (sin error).
+  if (!body || body.status !== "ok" || !body.data) {
+    return null;
+  }
+
+  const rankings: any[] = body.data.Rankings || [];
+
+  // Si Rankings está vacío, la carrera aún no tiene resultados públicos.
+  // NO es un error, simplemente el endpoint público no los expone aún.
+  if (rankings.length === 0) {
+    console.log(
+      `[scraper:sportmaniacs] Carrera ${event} sin Rankings públicos (puede ser que aún no se han publicado)`,
+    );
+    return null;
+  }
+
+  // Buscar el dorsal. Los dorsales pueden ser number o string según la carrera.
+  const target = String(dorsal).trim();
+  const entry = rankings.find((r) => {
+    if (r == null) return false;
+    const d = r.dorsal ?? r.bib ?? r.dorsalNumber;
+    return d != null && String(d).trim() === target;
+  });
+
+  if (!entry) {
+    // No es un error: el corredor puede que no participara o no haya terminado.
+    return null;
+  }
+
+  // Campos confirmados del JSON del bundle Sportmaniacs:
+  //   dorsal, name, club, category, pos, posCategory, posGender,
+  //   officialTime (HH:MM:SS), realTime (HH:MM:SS)
+  // Los nombres exactos los verificamos empíricamente; si difieren,
+  // hay fallbacks abajo.
+  const runnerName =
+    entry.name ?? entry.fullName ?? entry.athleteName ?? undefined;
+  const officialTime =
+    entry.officialTime ?? entry.time ?? entry.finishTime ?? entry.netTime;
+  const positionOverall = toIntOrUndefined(
+    entry.pos ?? entry.position ?? entry.positionOverall,
+  );
+  const positionCategory = toIntOrUndefined(
+    entry.posCategory ?? entry.categoryPos ?? entry.positionCategory,
+  );
+
+  if (officialTime == null) {
+    console.warn(
+      `[scraper:sportmaniacs] Dorsal ${dorsal} en carrera ${event} sin officialTime (¿abandonó?)`,
+    );
+    return null;
+  }
+
+  const timeSeconds = parseTime(String(officialTime));
+  if (timeSeconds == null || timeSeconds <= 0) {
+    console.warn(
+      `[scraper:sportmaniacs] Tiempo inválido "${officialTime}" para dorsal ${dorsal} en carrera ${event}`,
+    );
+    return null;
+  }
+
+  return {
+    runnerName: runnerName || undefined,
+    positionOverall,
+    positionCategory,
+    timeSeconds,
+  };
 }

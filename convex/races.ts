@@ -615,6 +615,8 @@ export const systemUpsert = mutation({
       const u = args.officialUrl.toLowerCase();
       if (u.includes("chiplevante.com")) {
         args.scraperAdapter = "chiplevante";
+      } else if (u.includes("sportmaniacs.com")) {
+        args.scraperAdapter = "sportmaniacs";
       }
       // Aquí se pueden añadir más auto-asignaciones en el futuro (dorsalchip, etc.)
     }

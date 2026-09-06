@@ -5,6 +5,15 @@
 // =============================================================================
 
 import * as cheerio from "cheerio";
+// `pdf-parse` es una dep pure-JS (sin nativas), funciona en Node runtime de
+// Convex. La tipamos como any para evitar que Convex se queje del index.js
+// sin .d.ts en el typecheck.
+const pdfParse: (data: Buffer | Uint8Array) => Promise<{
+  numpages: number;
+  info: Record<string, unknown>;
+  text: string;
+  metadata?: unknown;
+}> = require("pdf-parse");
 
 export interface RunnerResult {
   runnerName?: string;
@@ -26,9 +35,10 @@ const ADAPTERS: Record<
 /**
  * Punto de entrada: scrapea la URL buscando el dorsal, usando el adapter apropiado.
  *
- * Casos especiales (JSON-based, no HTML):
+ * Casos especiales (JSON-based o PDF, no HTML):
  *   - `chiplevante` → endpoint AJAX propio.
  *   - `sportmaniacs` → endpoint API público de Sportmaniacs.
+ *   - `pdf` → PDF descargable (Time Runners, etc.).
  * Por eso los despachamos ANTES del fetch HTML.
  */
 export async function scrapeResults(
@@ -41,6 +51,9 @@ export async function scrapeResults(
   }
   if (adapterName === "sportmaniacs") {
     return scrapeSportmaniacs(url, dorsal);
+  }
+  if (adapterName === "pdf" || /\.pdf(\?|#|$)/i.test(url)) {
+    return scrapePdf(url, dorsal);
   }
 
   try {
@@ -363,6 +376,186 @@ async function scrapeChiplevanteSingle(
     positionOverall,
     positionCategory,
     timeSeconds,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Adapter: PDF genérico (timerunners.es, cronohip, gesconchip, etc.)
+// ---------------------------------------------------------------------------
+//
+// **Limitación importante**: el catálogo de carreras de estos cronometradores
+// no se puede ingestar programáticamente (no hay API ni sitemap con URLs de
+// PDFs estables). Por tanto este adapter NO se auto-asigna por URL. Solo se
+// usa cuando el admin añade una carrera a mano con `resultsUrl` apuntando
+// directamente a un PDF y `scraperAdapter: "pdf"`.
+//
+// Funciona con PDFs de clasificaciones que tienen la estructura estándar:
+//   Dorsal Nombre Apellidos Sexo Año Cat. P.Cat Marca Pos. Ritmo Dif. 1º Loc T. Real
+// Donde:
+//   - El dorsal es el primer token de cada registro (1-4 dígitos)
+//   - El nombre+apellidos están PEGADOS al dorsal sin espacio
+//   - El tiempo oficial ("Marca") es un string con formato `H:MM:SS` o `HH:MM:SS`
+//
+// Cronómetros que tienen este formato en sus PDFs:
+//   - Time Runners (timerunners.es) — Rock 'n' Roll Madrid Maratón, etc.
+//   - Gesconchip, CronoChip, MYLAPS BibTag (varios formatos de export)
+//
+// Si el formato es muy diferente (tabla con celdas bien separadas), el
+// adapter devolverá null y se puede implementar uno específico más adelante.
+// ---------------------------------------------------------------------------
+
+const PDF_USER_AGENT = "Mozilla/5.0 mi-dorsal/0.1";
+const PDF_MAX_BYTES = 25 * 1024 * 1024; // 25 MB — protección contra PDFs monstruosos
+
+/**
+ * Detecta si una URL apunta a un PDF.
+ * Devuelve true si la URL termina en `.pdf` o tiene `.pdf?` / `.pdf#` etc.
+ */
+export function isPdfUrl(url: string): boolean {
+  return /\.pdf(\?|#|$)/i.test(url);
+}
+
+/**
+ * Descarga un PDF desde una URL. Devuelve los bytes como Buffer o null si
+ * falla la red / la URL no responde / el content-type no es PDF.
+ */
+async function downloadPdf(url: string): Promise<Buffer | null> {
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: { "User-Agent": PDF_USER_AGENT, Accept: "application/pdf,*/*" },
+    });
+  } catch (err) {
+    console.error(`[scraper:pdf] Fetch failed for ${url}:`, err);
+    return null;
+  }
+  if (!res.ok) {
+    console.warn(`[scraper:pdf] HTTP ${res.status} for ${url}`);
+    return null;
+  }
+  const ct = res.headers.get("content-type") ?? "";
+  // Algunos servidores envían `application/octet-stream` para PDFs — confiamos
+  // más en la extensión de la URL que en el content-type, pero si el servidor
+  // dice que NO es PDF, fallamos por seguridad.
+  if (ct && !ct.includes("pdf") && !ct.includes("octet-stream")) {
+    console.warn(`[scraper:pdf] Content-Type no es PDF (${ct}) para ${url}`);
+    return null;
+  }
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.length > PDF_MAX_BYTES) {
+    console.warn(
+      `[scraper:pdf] PDF demasiado grande (${buf.length} bytes) para ${url}`,
+    );
+    return null;
+  }
+  return buf;
+}
+
+/**
+ * Parsea el texto extraído de un PDF de clasificaciones y busca el dorsal.
+ * Devuelve el primer tiempo que matchee el dorsal, o null si no lo encuentra.
+ *
+ * Estrategia de parsing (formato estándar de cronómetros españoles):
+ *   1. pdf-parse extrae el texto. Los registros suelen estar partidos en
+ *      varias líneas (dorsal+nombre en una, tiempo en la siguiente).
+ *   2. Detectamos cada registro: una línea que empieza por un dorsal (1-4
+ *      dígitos) seguida inmediatamente de una letra MAYÚSCULA (el nombre).
+ *   3. Juntamos las líneas del registro (hasta el próximo dorsal).
+ *   4. Buscamos el primer `H:MM:SS` en el registro → tiempo oficial.
+ *   5. Extraemos el nombre hasta la primera M o F (género).
+ */
+export function findRunnerInPdfText(
+  text: string,
+  dorsal: string,
+): { runnerName?: string; timeSeconds: number } | null {
+  const target = String(dorsal).trim();
+  const lines = text.split("\n").map((l) => l.trim()).filter((l) => l);
+
+  // Detectar líneas que empiezan con un dorsal (1-4 dígitos) + MAYÚSCULA
+  const dorsalAtStart = /^(\d{1,4})([A-ZÁÉÍÓÚÑ])/;
+  const recordStarts: number[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (dorsalAtStart.test(lines[i])) recordStarts.push(i);
+  }
+  if (recordStarts.length === 0) return null;
+
+  for (let r = 0; r < recordStarts.length; r++) {
+    const start = recordStarts[r];
+    const end = r + 1 < recordStarts.length ? recordStarts[r + 1] : lines.length;
+    const record = lines.slice(start, end).join(" ");
+
+    // ¿Este registro empieza con el dorsal buscado?
+    const m = record.match(new RegExp(`^${target}([A-ZÁÉÍÓÚÑ])`));
+    if (!m) continue;
+
+    // Buscar el primer tiempo con formato H:MM:SS o HH:MM:SS
+    const timeMatch = record.match(/\b(\d{1,2}:\d{2}:\d{2})\b/);
+    if (!timeMatch) continue;
+
+    const timeSeconds = parseTime(timeMatch[1]);
+    if (timeSeconds == null || timeSeconds <= 0) continue;
+
+    // Extraer el nombre: desde el dorsal hasta la primera M o F (género).
+    // El nombre va PEGADO al dorsal (sin espacio), y termina justo antes de
+    // la M o F del sexo (con 0+ espacios opcionales entre medias).
+    //   "1414JOSE FELIXORTIZ GARCIAM / 11974M35" → "JOSE FELIXORTIZ GARCIA"
+    const nameMatch = record.match(
+      new RegExp(`^${target}([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\\s]*?)\\s*[MF]\\b`),
+    );
+    const runnerName = nameMatch
+      ? nameMatch[1].trim().replace(/\s+/g, " ")
+      : undefined;
+
+    return { runnerName, timeSeconds };
+  }
+  return null;
+}
+
+/**
+ * Adapter principal: descarga un PDF, lo parsea y busca el dorsal.
+ * Devuelve null si:
+ *   - la URL no parece apuntar a un PDF
+ *   - la descarga falla o el content-type no es PDF
+ *   - el texto extraído no contiene un registro con ese dorsal
+ *
+ * No lanza excepciones: cualquier error se loga y se trata como "no encontrado".
+ */
+export async function scrapePdf(
+  url: string,
+  dorsal: string,
+): Promise<RunnerResult | null> {
+  if (!isPdfUrl(url)) {
+    console.warn(`[scraper:pdf] URL no parece apuntar a un PDF: ${url}`);
+    return null;
+  }
+
+  const buf = await downloadPdf(url);
+  if (!buf) return null;
+
+  let text: string;
+  try {
+    const data = await pdfParse(buf);
+    text = data.text;
+  } catch (err) {
+    console.error(`[scraper:pdf] Error parseando PDF de ${url}:`, err);
+    return null;
+  }
+
+  if (!text || text.length < 100) {
+    console.warn(
+      `[scraper:pdf] PDF sin texto extraíble (puede ser escaneado/imagen): ${url}`,
+    );
+    return null;
+  }
+
+  const found = findRunnerInPdfText(text, dorsal);
+  if (!found) {
+    return null;
+  }
+
+  return {
+    runnerName: found.runnerName,
+    timeSeconds: found.timeSeconds,
   };
 }
 

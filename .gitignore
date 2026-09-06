@@ -50,3 +50,7 @@ logs/
 
 .vercel
 .env*
+
+# debug test scripts (created during dev, not for repo)
+test-*.cjs
+test-*.mjs

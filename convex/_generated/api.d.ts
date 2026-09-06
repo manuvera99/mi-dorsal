@@ -28,6 +28,7 @@ import type * as emails_templates_resultFound from "../emails/templates/resultFo
 import type * as http from "../http.js";
 import type * as myRaces from "../myRaces.js";
 import type * as newsletter from "../newsletter.js";
+import type * as pdfScraper from "../pdfScraper.js";
 import type * as personalRecords from "../personalRecords.js";
 import type * as predictions from "../predictions.js";
 import type * as races from "../races.js";
@@ -64,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   myRaces: typeof myRaces;
   newsletter: typeof newsletter;
+  pdfScraper: typeof pdfScraper;
   personalRecords: typeof personalRecords;
   predictions: typeof predictions;
   races: typeof races;

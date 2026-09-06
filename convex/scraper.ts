@@ -432,8 +432,16 @@ const SPORTMANIACS_USER_AGENT = "Mozilla/5.0 mi-dorsal/0.1";
  * `/events/{uuid}/...` o `/api/events/{uuid}/...`.
  */
 export function parseSportmaniacsUrl(url: string): { event: string } | null {
+  // Buscamos un UUID v4 en cualquier punto del path después de sportmaniacs.com.
+  // Esto cubre todos los formatos:
+  //   /es/races/{slug}/{event-uuid}/results   (webapp)
+  //   /races/{slug}/{event-uuid}/rankings     (webapp, sin lang)
+  //   /races/rankings/{event-uuid}            (webapp classic)
+  //   /rankings/{event-uuid}                  (webapp classic, short)
+  //   /api/events/{event-uuid}/...            (api-aws.sportmaniacs.com)
+  //   /api/races/{event-uuid}/...             (api-aws)
   const m = url.match(
-    /sportmaniacs\.com\/(?:es\/)?(?:api\/)?(?:races\/[^/]+\/)?(?:events\/)?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i,
+    /sportmaniacs\.com\/[^\s?#]*?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i,
   );
   if (!m) return null;
   return { event: m[1] };

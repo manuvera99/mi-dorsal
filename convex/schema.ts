@@ -174,6 +174,9 @@ export default defineSchema({
     resultsUrl: v.optional(v.string()),            // link a resultados del cronometrador
     rulesUrl: v.optional(v.string()),              // reglamento
 
+    // URL dentro de la fuente de datos (ej. la ficha de la carrera en RFEA/Sportmaniacs)
+    sourceUrl: v.optional(v.string()),             // enlace directo a la carrera en su dataSource
+
     // Organización
     organizer: v.optional(v.string()),
     organizerUrl: v.optional(v.string()),

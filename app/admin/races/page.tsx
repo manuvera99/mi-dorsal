@@ -8,6 +8,7 @@ import Link from "next/link";
 import { Plus, Search, Edit2, Trash2, Loader2, MapPin, Calendar, Sparkles, Zap, CheckCircle2, AlertCircle } from "lucide-react";
 import { PROVINCE_LIST, formatRaceType } from "@/lib/utils";
 import { deepExtractAndApplyAction } from "./[id]/actions";
+import { SourceBadge } from "@/components/admin/source-badge";
 
 function MockRacesList() {
   return (
@@ -166,13 +167,11 @@ function RealRacesList() {
                       <div className="text-xs text-gray-400">{r.slug}</div>
                     </td>
                     <td className="px-4 py-3 text-xs">
-                      {src ? (
-                        <span className="inline-block bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
-                          {src.name}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
+                      <SourceBadge
+                        sourceName={src?.name}
+                        sourceUrl={r.sourceUrl}
+                        officialUrl={r.officialUrl}
+                      />
                     </td>
                     <td className="px-4 py-3 text-gray-600">
                       {r.locality ? (

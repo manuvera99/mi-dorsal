@@ -44,8 +44,8 @@ export const list = query({
 });
 
 /**
- * Lista todas las fuentes (público, sin auth) — solo nombre y status,
- * para mostrar badges en la UI.
+ * Lista todas las fuentes (público, sin auth) — nombre, status y baseUrl,
+ * para mostrar badges (con o sin enlace) en la UI.
  */
 export const listPublic = query({
   args: {},
@@ -57,6 +57,7 @@ export const listPublic = query({
       slug: s.slug,
       type: s.type,
       status: s.status,
+      baseUrl: s.baseUrl,
       lastSyncAt: s.lastSyncAt,
       lastSyncError: s.lastSyncError,
     }));

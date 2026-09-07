@@ -67,7 +67,9 @@ export function ConnectionsSection() {
               <p className="text-xs text-gray-500">
                 {summary?.total
                   ? `${summary.total} actividades · ${summary.racesMatched} carreras detectadas`
-                  : "Aún no has conectado Strava"}
+                  : oauthStatus?.connected
+                    ? "Conectado, sincronizando…"
+                    : "Aún no has conectado Strava"}
               </p>
             </div>
           </div>

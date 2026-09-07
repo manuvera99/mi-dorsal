@@ -172,8 +172,10 @@ async function runIngest(ctx: any, args: IngestArgs) {
   for (let i = 0; i < normalized.length; i++) {
     const activity = normalized[i];
 
-    // Cross-reference
-    const matchedRaceId = findBestRaceMatch(activity, raceCandidates);
+    // Cross-reference. findBestRaceMatch devuelve `string | null`, pero los
+    // validadores de Convex son v.optional(v.id("races")) — null no matchea
+    // eso (Convex distingue null de undefined), así que se normaliza aquí.
+    const matchedRaceId = findBestRaceMatch(activity, raceCandidates) ?? undefined;
 
     // Upsert actividad
     await ctx.runMutation(internal.stravaExport.upsertActivityInternal, {

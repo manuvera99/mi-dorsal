@@ -135,7 +135,10 @@ export const handleEvent = action({
       rawPayload: activity as unknown as Record<string, unknown>,
     };
 
-    const matchedRaceId = findBestRaceMatch(normalized, raceCandidates);
+    // findBestRaceMatch devuelve `string | null`, pero los validadores de
+    // Convex son v.optional(v.id("races")) — null no matchea eso (Convex
+    // distingue null de undefined), así que se normaliza aquí.
+    const matchedRaceId = findBestRaceMatch(normalized, raceCandidates) ?? undefined;
 
     // Upsert actividad
     await ctx.runMutation(internal.stravaExport.upsertActivityInternal, {

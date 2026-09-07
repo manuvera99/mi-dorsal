@@ -34,9 +34,10 @@ const NON_SPAIN_LOCALITIES = new Set([
   "san salvador", "nueva san salvador",
   // Honduras
   "tegucigalpa",
-  // México
+  // México (top 13 del audit)
   "saltillo", "torreón", "toluca", "morelia", "celaya", "nuevo laredo",
   "querétaro", "villahermosa", "cancún", "san luis potosí", "los mochis",
+  "concón",
   // Chile
   "viña del mar", "valparaíso",
   // Portugal
@@ -49,21 +50,29 @@ const NON_SPAIN_LOCALITIES = new Set([
   "bogotá",
   // UK
   "swansea", "port talbot",
-  // Marruecos
-  "morocco",  // literalmente "Morocco" como locality
+  // Marruecos (string literal "Morocco" como locality)
+  "morocco",
   // Kirguistán
   "toktogul",
-  // Russia
+  // Russia (cirílico)
   "красноярск",
-  // Polonia
-  "niepołomice", "bydgoszcz",
+  // Polonia (con diacríticos)
+  "niepołomice", "bydgoszcz", "kępno", "ostrzęszów", "aleksandrów kujawski",
+  "konstantynów łódzki", "łódź", "słuzewie",
   // R. Dominicana
   "santo domingo",
+  // Otros
+  "el paredón buena vista",
 ]);
 
 function isNonSpainLocality(loc: string | null | undefined): boolean {
   if (!loc) return false;
-  return NON_SPAIN_LOCALITIES.has(loc.toLowerCase().trim());
+  if (NON_SPAIN_LOCALITIES.has(loc.toLowerCase().trim())) return true;
+  // Detección adicional: locality con caracteres cirílicos (rusos, kazajos, etc.)
+  // o polacos con diacríticos específicos (ąćęłńśźż). NO incluimos
+  // ò à è porque esos son catalanes/españoles.
+  if (/[а-яёА-ЯЁ]|ą|Ą|ć|Ć|ę|Ę|ł|Ł|ń|Ń|ś|Ś|ź|Ź|ż|Ż/.test(loc)) return true;
+  return false;
 }
 
 async function main() {

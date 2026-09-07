@@ -16,7 +16,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { validateState } from "@/lib/strava/state";
 import { exchangeCodeForTokens, encodeTokens } from "@/lib/strava/client";
 import { ConvexHttpClient } from "convex/browser";
-import { api, internal } from "@/convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 
 export const runtime = "nodejs";
 
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
     const convex = new ConvexHttpClient(convexUrl);
 
     // Buscar el profile del userId de Clerk
-    const profile = await convex.query(internal.stravaOauth.getProfileByClerkId, {
+    const profile = await convex.query(api.stravaOauth.getProfileByClerkId, {
       clerkUserId: userId,
     });
     if (!profile) {
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
 
     // Guardar tokens cifrados
     const encoded = encodeTokens(tokens);
-    await convex.mutation(internal.stravaOauth.saveTokens, {
+    await convex.mutation(api.stravaOauth.saveTokens, {
       profileId: profile._id,
       accessTokenEncrypted: encoded.accessTokenEncrypted,
       refreshTokenEncrypted: encoded.refreshTokenEncrypted,
@@ -100,9 +100,13 @@ export async function GET(request: NextRequest) {
       console.error("[strava/callback] initial sync failed:", e);
     });
   } catch (e: any) {
-    console.error("[strava/callback] saving tokens failed:", e?.message);
+    console.error("[strava/callback] saving tokens failed:");
+    console.error("  message:", e?.message);
+    console.error("  stack:", e?.stack);
+    console.error("  data:", JSON.stringify(e?.data ?? {}, null, 2));
+    const reason = `save_failed:${e?.message?.slice(0, 100) ?? "unknown"}`;
     return NextResponse.redirect(
-      `${baseUrl}/perfil?strava=error&reason=${encodeURIComponent("save_failed")}`,
+      `${baseUrl}/perfil?strava=error&reason=${encodeURIComponent(reason)}`,
     );
   }
 

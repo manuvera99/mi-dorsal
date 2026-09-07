@@ -63,10 +63,10 @@ export const updateTokens = internalMutation({
 
 /**
  * Busca un profile por clerkUserId. Usado por el callback OAuth (que solo
- * tiene el userId de Clerk del state). Internal porque solo se llama desde
- * el API route, no desde el cliente.
+ * tiene el userId de Clerk del state). Query pública porque el cliente
+ * también la usa para resolver su propio profile.
  */
-export const getProfileByClerkId = internalQuery({
+export const getProfileByClerkId = query({
   args: { clerkUserId: v.string() },
   handler: async (ctx, { clerkUserId }) => {
     return await ctx.db
@@ -80,10 +80,15 @@ export const getProfileByClerkId = internalQuery({
  * Guarda los tokens cifrados tras el callback OAuth. Idempotente: si ya
  * había una conexión, actualiza los tokens.
  *
- * INTERNAL: la identidad del usuario ya está validada por el state firmado
- * en el API route que llama a esta mutation. No necesita check de Clerk.
+ * IMPORTANTE: esta mutation NO requiere check de Clerk porque la identidad
+ * ya está validada por el state HMAC firmado en el API route que la llama.
+ * El API route (callback) verifica el state y resuelve el profileId correcto.
+ * Si la llamamos desde el cliente web, el userId de Clerk de la sesión
+ * debe coincidir con el profile.clerkUserId (esa verificación la hace el
+ * caller; aquí no podemos hacerlo porque el ConvexHttpClient del server
+ * no tiene sesión Clerk).
  */
-export const saveTokens = internalMutation({
+export const saveTokens = mutation({
   args: {
     profileId: v.id("profiles"),
     accessTokenEncrypted: v.string(),
@@ -113,11 +118,9 @@ export const saveTokens = internalMutation({
  * Desconecta y borra todas las actividades ingestadas vía OAuth.
  * Las actividades del upload (strava-export) NO se tocan.
  *
- * INTERNAL: la identidad del usuario está validada por Clerk en el API
- * route (que llama a esta mutation). El check defensivo de clerkUserId
- * lo hace el API route antes de llamar aquí.
+ * Misma nota que saveTokens: la identidad la valida el API route.
  */
-export const disconnectAndPurge = internalMutation({
+export const disconnectAndPurge = mutation({
   args: { profileId: v.id("profiles") },
   handler: async (ctx, { profileId }) => {
     const profile = await ctx.db.get(profileId);

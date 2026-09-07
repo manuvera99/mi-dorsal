@@ -22,6 +22,10 @@ import { DistanceCategoryMultiSelect } from "./distance-category-multiselect";
 
 const STORAGE_KEY = "mi-dorsal.carrerasFilters";
 
+export const PAGE_SIZE_OPTIONS = [10, 15, 50, 100] as const;
+export type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
+export const DEFAULT_PAGE_SIZE: PageSize = 50;
+
 export interface CarrerasFilters {
   search?: string;
   province?: string;
@@ -35,6 +39,13 @@ export interface CarrerasFilters {
    * `startDate >= hoy` (fecha local del cliente).
    */
   includePast?: boolean;
+  /**
+   * Tamaño de página del catálogo. 0-indexed `page` va de 0 a
+   * `Math.ceil(total / pageSize) - 1`. NO se persiste en sessionStorage
+   * porque es estado de navegación, no preferencia del usuario.
+   */
+  pageSize?: PageSize;
+  page?: number;
 }
 
 interface FiltersProps {
@@ -209,13 +220,17 @@ export function useCarrerasFilters(): [CarrerasFilters, (f: CarrerasFilters) => 
     } catch {}
   }, []);
 
-  // Persistir cambios
+  // Persistir cambios. `page` NO se persiste: es estado de navegación
+  // (el usuario siempre debe volver a la primera página al recargar,
+  // no a una página fuera de rango que ya no exista). `pageSize` sí
+  // se persiste porque es una preferencia del usuario.
   useEffect(() => {
     try {
-      if (Object.keys(filters).length === 0) {
+      const { page: _page, ...persisted } = filters;
+      if (Object.keys(persisted).length === 0) {
         sessionStorage.removeItem(STORAGE_KEY);
       } else {
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(filters));
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
       }
     } catch {}
   }, [filters]);

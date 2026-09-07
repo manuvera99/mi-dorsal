@@ -15,7 +15,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery } from "convex/react";
-import { Search, MapPin, List, Map, Calendar, X, ArrowUpDown, Sparkles, Clock } from "lucide-react";
+import { Search, MapPin, List, Map, Calendar, X, ArrowUpDown, Sparkles, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { mockApi, isMockMode } from "@/lib/mock/provider";
 import { RaceCard } from "@/components/race-card";
@@ -26,7 +26,12 @@ import { QuickFilterChips } from "@/components/carreras/quick-filter-chips";
 import { AdvancedFilters } from "@/components/carreras/advanced-filters";
 import { CarrerasHero } from "@/components/carreras/carreras-hero";
 import { useUserRegion } from "@/components/use-user-region";
-import { useCarrerasFilters, type CarrerasFilters } from "@/components/race-filters";
+import {
+  useCarrerasFilters,
+  type CarrerasFilters,
+  PAGE_SIZE_OPTIONS,
+  DEFAULT_PAGE_SIZE,
+} from "@/components/race-filters";
 import { haversineDistanceKm, type Coords } from "@/lib/geo/distance";
 import type { DistanceCategory } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -143,6 +148,28 @@ function CarrerasShell({
   const [sortBy, setSortBy] = useState<"date" | "name" | "votes">("date");
   const { community } = useUserRegion();
 
+  // Paginación
+  const pageSize = filters.pageSize ?? DEFAULT_PAGE_SIZE;
+  const page = filters.page ?? 0;
+
+  /**
+   * Wrapper sobre `onChange` que resetea la página a 0 cuando se cambia
+   * cualquier filtro o el tamaño de página. Solo respeta el `page` si
+   * el patch es exclusivamente un cambio de página.
+   */
+  const updateFilters = useCallback(
+    (patch: Partial<CarrerasFilters>) => {
+      const keys = Object.keys(patch);
+      const isPageOnly = keys.length === 1 && keys[0] === "page";
+      onChange(
+        isPageOnly
+          ? { ...filters, ...patch }
+          : { ...filters, ...patch, page: 0 },
+      );
+    },
+    [filters, onChange],
+  );
+
   const handleDistanceChange = useCallback((coords: Coords | null, maxKm: number) => {
     setUserCoords(coords);
     setMaxDistance(maxKm);
@@ -151,10 +178,10 @@ function CarrerasShell({
 
   // Aplicar quick chips
   const handleSelectDistance = (d: DistanceCategory | null) => {
-    onChange({ ...filters, distanceCategories: d ? [d] : undefined });
+    updateFilters({ distanceCategories: d ? [d] : undefined });
   };
   const handleSelectMonth = (m: number | null) => {
-    onChange({ ...filters, month: m ?? undefined });
+    updateFilters({ month: m ?? undefined });
   };
 
   // Filtrar por distancia GPS si está activa
@@ -241,6 +268,26 @@ function CarrerasShell({
     return list;
   }, [racesAfterDistance, featuredIds, sortBy, filters]);
 
+  // Paginación: slice de la lista completa ya ordenada.
+  // `page` se clampa por seguridad (p.ej. si el set se encoge y la página
+  // actual queda fuera de rango, navegamos a la última válida).
+  const totalPages = Math.max(1, Math.ceil(restOfRaces.length / pageSize));
+  const safePage = Math.min(Math.max(0, page), Math.max(0, totalPages - 1));
+  const pageStart = safePage * pageSize;
+  const pageEnd = pageStart + pageSize;
+  const pagedRaces = useMemo(
+    () => restOfRaces.slice(pageStart, pageEnd),
+    [restOfRaces, pageStart, pageEnd],
+  );
+
+  // Si safePage !== page, navegar a la página segura (en background).
+  useEffect(() => {
+    if (page !== safePage) {
+      onChange({ ...filters, page: safePage });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [safePage]);
+
   // Active filter count
   const activeFilterCount =
     (filters.search ? 1 : 0) +
@@ -259,7 +306,7 @@ function CarrerasShell({
       {/* 1. HERO */}
       <CarrerasHero
         totalRaces={races.length}
-        onSearch={(q) => onChange({ ...filters, search: q || undefined })}
+        onSearch={(q) => updateFilters({ search: q || undefined })}
         initialQuery={filters.search ?? ""}
       />
 
@@ -277,7 +324,7 @@ function CarrerasShell({
       {/* 4. FILTROS AVANZADOS PLEGABLES */}
       <AdvancedFilters
         filters={filters}
-        onChange={(patch) => onChange({ ...filters, ...patch })}
+        onChange={(patch) => updateFilters(patch)}
       />
 
       {/* 5. HEADER DE RESULTADOS + SORT + VIEW MODE */}
@@ -307,8 +354,7 @@ function CarrerasShell({
                   type="checkbox"
                   checked={filters.includePast === true}
                   onChange={(e) =>
-                    onChange({
-                      ...filters,
+                    updateFilters({
                       includePast: e.target.checked || undefined,
                     })
                   }
@@ -328,7 +374,22 @@ function CarrerasShell({
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+          <div className="flex items-center gap-1.5 text-xs text-gray-600">
+            <span aria-hidden="true" className="text-gray-500">Por página</span>
+            <select
+              aria-label="Resultados por página"
+              value={pageSize}
+              onChange={(e) =>
+                updateFilters({ pageSize: Number(e.target.value) as (typeof PAGE_SIZE_OPTIONS)[number] })
+              }
+              className="bg-transparent border border-gray-200 rounded-md px-2 py-1 text-xs font-semibold focus:outline-none focus:border-runner-primary cursor-pointer"
+            >
+              {PAGE_SIZE_OPTIONS.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </div>
           <div className="flex items-center gap-1.5 text-xs text-gray-600">
             <ArrowUpDown className="h-3.5 w-3.5" aria-hidden="true" />
             <select
@@ -439,8 +500,8 @@ function CarrerasShell({
           hasDistance={filterEnabled}
           maxDistance={maxDistance}
           includePast={filters.includePast === true}
-          onShowPast={() => onChange({ ...filters, includePast: true })}
-          onClear={() => onChange({})}
+          onShowPast={() => updateFilters({ includePast: true })}
+          onClear={() => updateFilters({})}
         />
       ) : (
         <>
@@ -453,7 +514,7 @@ function CarrerasShell({
             </h2>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {restOfRaces.map((race) => (
+            {pagedRaces.map((race) => (
               <RaceCard
                 key={race._id}
                 race={race}
@@ -461,6 +522,15 @@ function CarrerasShell({
               />
             ))}
           </div>
+          {totalPages > 1 && (
+            <Pagination
+              page={safePage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              total={restOfRaces.length}
+              onChange={(newPage) => updateFilters({ page: newPage })}
+            />
+          )}
         </>
       )}
     </div>
@@ -561,5 +631,74 @@ function EmptyState({
         />
       </div>
     </div>
+  );
+}
+
+interface PaginationProps {
+  page: number; // 0-indexed
+  totalPages: number;
+  pageSize: number;
+  total: number;
+  onChange: (page: number) => void;
+}
+
+/**
+ * Paginador del catálogo: "Mostrando X-Y de Z" + « Anterior | Página N/M | Siguiente ».
+ * La página llega 0-indexed; se muestra 1-indexed en la UI.
+ */
+function Pagination({ page, totalPages, pageSize, total, onChange }: PaginationProps) {
+  const from = page * pageSize + 1;
+  const to = Math.min((page + 1) * pageSize, total);
+  const isFirst = page <= 0;
+  const isLast = page >= totalPages - 1;
+  return (
+    <nav
+      aria-label="Paginación del catálogo"
+      className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-gray-100"
+    >
+      <p className="text-xs text-gray-500 order-2 sm:order-1">
+        Mostrando <strong className="font-semibold text-runner-dark">{from}</strong>–
+        <strong className="font-semibold text-runner-dark">{to}</strong> de{" "}
+        <strong className="font-semibold text-runner-dark">{total}</strong>
+      </p>
+      <div className="flex items-center gap-1 order-1 sm:order-2">
+        <button
+          type="button"
+          onClick={() => onChange(page - 1)}
+          disabled={isFirst}
+          aria-label="Página anterior"
+          className={cn(
+            "inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-md border transition-colors",
+            isFirst
+              ? "border-gray-200 text-gray-300 cursor-not-allowed"
+              : "border-gray-300 text-gray-700 hover:border-runner-primary hover:text-runner-primary cursor-pointer",
+          )}
+        >
+          <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
+          Anterior
+        </button>
+        <span
+          aria-current="page"
+          className="px-3 py-1.5 text-xs font-semibold text-runner-dark tabular-nums"
+        >
+          Página <span className="text-runner-primary">{page + 1}</span> de {totalPages}
+        </span>
+        <button
+          type="button"
+          onClick={() => onChange(page + 1)}
+          disabled={isLast}
+          aria-label="Página siguiente"
+          className={cn(
+            "inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-md border transition-colors",
+            isLast
+              ? "border-gray-200 text-gray-300 cursor-not-allowed"
+              : "border-gray-300 text-gray-700 hover:border-runner-primary hover:text-runner-primary cursor-pointer",
+          )}
+        >
+          Siguiente
+          <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
+      </div>
+    </nav>
   );
 }

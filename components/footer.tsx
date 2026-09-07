@@ -11,7 +11,7 @@ export function Footer() {
               <img src="/favicon-48x48.png" alt="" width={32} height={32} className="h-8 w-8" aria-hidden="true" />
               <span className="text-base font-bold tracking-tight">
                 <span>mi</span>
-                <span className="text-gray-400 font-light">-</span>
+                <span className="text-gray-500 font-light">-</span>
                 <span className="text-runner-primary">dorsal</span>
               </span>
             </Link>
@@ -50,14 +50,14 @@ export function Footer() {
                   hola@mi-dorsal.es
                 </a>
               </li>
-              <li className="text-xs text-gray-400 mt-3">
+              <li className="text-xs text-gray-500 mt-3">
                 Hecho con ❤ por un corredor<br />para corredores. v0.1
               </li>
             </ul>
           </div>
         </div>
 
-        <div className="pt-6 border-t border-gray-100 text-center text-xs text-gray-400">
+        <div className="pt-6 border-t border-gray-100 text-center text-xs text-gray-500">
           <p>© {new Date().getFullYear()} mi-dorsal · Todos los datos de carreras pertenecen a sus respectivos organizadores.</p>
         </div>
       </div>

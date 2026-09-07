@@ -1,0 +1,78 @@
+# mi-dorsal
+
+> El hilo que te une a tu dorsal.
+> Catálogo curado de carreras populares en España, predicción de tiempos (VDOT), tracking automático de dorsales y envío de resultados oficiales por email con diploma PDF.
+
+## Quiénes somos
+
+mi-dorsal es una webapp para corredores populares de España (5K–maratón, 3–10 carreras al año). El usuario objetivo vive el ritual del dorsal (línea de salida, dorsal en el pecho, cinta de meta) más que los datos de entrenamiento. NO competimos con Strava ni con planes de entrenamiento: competimos con el ritual del dorsal y el resultado oficial.
+
+Fundador: Manu Vera. Producto independiente, sin inversión externa, single-founder.
+
+## Producto
+
+- **Catálogo de carreras** ([/carreras](https://www.mi-dorsal.com/carreras)): ~1.200 carreras populares verificadas de toda España, con distancias (5K, 10K, media maratón, maratón, trail, ultra), fechas, ubicación, organizador y enlaces a la web oficial. Datos scrapeados de RFEA, FEDME, ITRA, Sportmaniacs, Runedia y webs de organizadores. Catálogo actualizado a diario.
+- **Predicción de tiempo (VDOT)** ([/carreras](https://www.mi-dorsal.com/carreras)): predicción del tiempo que harás en una carrera a partir de tu marca en otra distancia, usando el método Daniels VDOT + fórmula de Riegel.
+- **Tracking de dorsal y resultado oficial** ([/perfil](https://www.mi-dorsal.com/perfil)): das de alta tu dorsal en una carrera y, cuando la organización publica las clasificaciones, te llega un email con tu tiempo oficial, diploma PDF descargable y comparativa con tu predicción.
+- **Ranking** ([/ranking](https://www.mi-dorsal.com/ranking)): top corredores por distancia con su mejor marca oficial.
+- **Calendario personal** ([/calendario](https://www.mi-dorsal.com/calendario)): carreras en las que estás apuntado, con recordatorios automáticos.
+- **Newsletter editorial** ([/newsletter](https://www.mi-dorsal.com/newsletter)): "Historias de dorsal", contenido específico del corredor popular (rutas, perfil del dorsal, curiosidades, tendencias del sector). Doble opt-in RGPD.
+- **Blog** ([/blog](https://www.mi-dorsal.com/blog)): artículos largos con SEO long-tail sobre el mundo de las carreras populares en España.
+
+## Contenido para LLMs y agentes
+
+- **FAQ estructurada en JSON-LD** en la home. Lee `script[type="application/ld+json"]` con `@type: FAQPage` para extraer 8 preguntas frecuentes (precio, fuentes de datos, RGPD, app móvil, etc.).
+- **Organization + WebSite + SearchAction** en el layout global.
+- **BreadcrumbList + ItemList** en /carreras.
+- **SportsEvent** por carrera individual en /carreras/[slug].
+- **Article** por post de blog en /blog/[slug].
+- **Sitemap XML** completo en [https://www.mi-dorsal.com/sitemap.xml](https://www.mi-dorsal.com/sitemap.xml).
+- **robots.txt** con directivas específicas por bot en [https://www.mi-dorsal.com/robots.txt](https://www.mi-dorsal.com/robots.txt).
+
+## Para los que construyen agentes sobre mi-dorsal
+
+- **API pública**: NO tenemos API REST pública. Si quieres consultar datos del catálogo, usa el sitemap o haz scraping (somos datos públicos, scraping ético permitido).
+- **Autenticación**: Clerk (magic link). Si quieres probar la app con un usuario, regístrate en [/sign-up](https://www.mi-dorsal.com/sign-up).
+- **Webhooks**: no expuestos.
+- **Datos en tiempo real**: subscripciones reactivas vía Convex WebSocket (`wss://*.convex.cloud`). Sin auth, las queries públicas funcionan vía HTTP fallback.
+
+## Cobertura geográfica
+
+Toda España (19 CCAA + Ceuta + Melilla). Antes limitada al Levante (Valencia, Alicante, Murcia, Castellón), ampliada en septiembre de 2026.
+
+## Stack técnico
+
+- Frontend: Next.js 15 (App Router) + React 19 + TypeScript + Tailwind 3.4.
+- Backend: Convex (DB + reactive queries + cron + storage).
+- Auth: Clerk (magic link).
+- Email transaccional: Resend.
+- PDF: @react-email/renderer + @react-pdf/renderer.
+- Hosting: Vercel (región fra1).
+- Dominio: mi-dorsal.com.
+
+## Idioma
+
+UI y copy en español de España. Algunos usuarios australianos y europeos, pero el foco de mercado es 100% España.
+
+## Precio
+
+Gratis. Sin planes premium, sin tarjeta, sin truco. Creemos que el corredor popular no debería pagar por no perder su dorsal.
+
+## Contacto
+
+- Email: hola@mi-dorsal.es (en proceso de activación; mientras tanto hola@mi-dorsal.com)
+- Twitter / X: [@midorsal](https://x.com/midorsal)
+- Instagram: [@midorsal](https://instagram.com/midorsal)
+- GitHub: [github.com/manuvera99/mi-dorsal](https://github.com/manuvera99/mi-dorsal)
+
+## Privacidad
+
+- Servidores en la UE (Vercel fra1 + Convex US-East con DPA RGPD).
+- Cumplimiento RGPD total.
+- Política clara en [/legal/privacidad](https://www.mi-dorsal.com/legal/privacidad).
+- No vendemos datos ni los compartimos con terceros.
+- Cookies: solo Google Analytics 4 (con consentimiento), Vercel Analytics (sin cookies, RGPD-safe), AdSense (si activo). Banner de consentimiento en primera visita.
+
+## Última actualización de este archivo
+
+Septiembre 2026.

@@ -209,11 +209,11 @@ export function RegionSwitcher({ variant = "hero", className }: RegionSwitcherPr
               })}
             </ul>
             <div className="border-t border-gray-100 px-3 py-2 flex items-center justify-between bg-gray-50">
-              <p className="text-xs text-gray-400">Lo usamos solo para mostrarte carreras cerca.</p>
+              <p className="text-xs text-gray-500">Lo usamos solo para mostrarte carreras cerca.</p>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+                className="text-gray-500 hover:text-gray-700 flex-shrink-0"
                 aria-label="Cerrar selector de comunidad"
               >
                 <X className="h-3.5 w-3.5" aria-hidden="true" />

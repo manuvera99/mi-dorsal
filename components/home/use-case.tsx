@@ -112,7 +112,7 @@ function EmailMockup({ label, title, body, footer, highlight }: EmailMockupProps
       <div className="p-4">
         <p className="text-sm font-bold text-runner-dark mb-1.5">{title}</p>
         <p className="text-sm text-gray-600 leading-relaxed mb-3">{body}</p>
-        <p className="text-[11px] text-gray-400 italic">{footer}</p>
+        <p className="text-[11px] text-gray-500 italic">{footer}</p>
       </div>
     </div>
   );

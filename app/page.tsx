@@ -6,39 +6,25 @@
 // reescribe tras hidratación sin afectar al HTML cacheado.
 //
 // Ver AGENTS.md §6.1 (la nota sobre force-dynamic aplica a /carreras, no a /).
+//
+// Sobre el HTML inicial: Vercel comprime con brotli los HTML dinámicos
+// (/carreras) y los assets estáticos (CSS, JS, fuentes), pero NO comprime
+// el HTML estático de ISR (revalidate). La home se transfiere sin comprimir
+// (~130 KB). Para reducir el impacto en PSI mobile, las 6 secciones
+// below-the-fold se cargan con `ssr: false` vía lazy-sections.tsx.
 import { Hero } from "@/components/home/hero";
 import { TrustBar } from "@/components/home/trust-bar";
 import { Problem } from "@/components/home/problem";
 import { HowItWorks } from "@/components/home/how-it-works";
 import { Features } from "@/components/home/features";
-import { FeaturedRaces } from "@/components/home/featured-races";
-import { CommunityRanking } from "@/components/home/community-ranking";
-import { UseCase } from "@/components/home/use-case";
-import { Testimonials } from "@/components/home/testimonials";
-import { Faq } from "@/components/home/faq";
-import { FinalCta } from "@/components/home/final-cta";
-
-// Lazy-hydrate de las secciones debajo del fold. Reduce el TBT (Total
-// Blocking Time) porque el bundle de cada componente se carga después del
-// primer paint. Se mantiene `ssr: true` para que el HTML inicial siga
-// completo (SEO), solo se difiere la hidratación JS.
-import dynamic from "next/dynamic";
-const UseCaseLazy = dynamic(
-  () => import("@/components/home/use-case").then((m) => m.UseCase),
-  { ssr: true, loading: () => <SectionSkeleton minH="500px" /> }
-);
-const TestimonialsLazy = dynamic(
-  () => import("@/components/home/testimonials").then((m) => m.Testimonials),
-  { ssr: true, loading: () => <SectionSkeleton minH="400px" /> }
-);
-const FaqLazy = dynamic(
-  () => import("@/components/home/faq").then((m) => m.Faq),
-  { ssr: true, loading: () => <SectionSkeleton minH="400px" /> }
-);
-const FinalCtaLazy = dynamic(
-  () => import("@/components/home/final-cta").then((m) => m.FinalCta),
-  { ssr: true, loading: () => <SectionSkeleton minH="300px" /> }
-);
+import {
+  FeaturedRacesLazy,
+  CommunityRankingLazy,
+  UseCaseLazy,
+  TestimonialsLazy,
+  FaqLazy,
+  FinalCtaLazy,
+} from "@/components/home/lazy-sections";
 
 // Revalidar cada 5 minutos. La home es la misma para todos los usuarios de
 // una ventana de 5 min; las queries a Convex (FeaturedRaces, CommunityRanking)
@@ -79,39 +65,25 @@ export default function HomePage() {
         {/* 5. FEATURES */}
         <Features />
 
-        {/* 6. CARRERAS DESTACADAS (con geo-personalización) */}
-        <FeaturedRaces />
+        {/* 6. CARRERAS DESTACADAS (lazy: ssr:false, ahorra ~12 KB del HTML inicial) */}
+        <FeaturedRacesLazy />
 
-        {/* 7. RANKING COMUNIDAD */}
-        <CommunityRanking />
+        {/* 7. RANKING COMUNIDAD (lazy: ssr:false, ahorra ~5 KB) */}
+        <CommunityRankingLazy />
 
-        {/* 8. CASO DE USO / STORYTELLING (lazy) */}
+        {/* 8. CASO DE USO / STORYTELLING (lazy: ssr:false) */}
         <UseCaseLazy />
 
-        {/* 9. TESTIMONIOS (lazy) */}
+        {/* 9. TESTIMONIOS (lazy: ssr:false) */}
         <TestimonialsLazy />
 
-        {/* 10. FAQ (lazy — el JSON-LD va inline arriba, así que SEO no se pierde) */}
+        {/* 10. FAQ (lazy: ssr:false — el JSON-LD va inline arriba, SEO intacto) */}
         <FaqLazy />
 
-        {/* 11. CTA FINAL (lazy) */}
+        {/* 11. CTA FINAL (lazy: ssr:false) */}
         <FinalCtaLazy />
       </div>
     </>
-  );
-}
-
-/**
- * Skeleton genérico para reservar el alto mientras se carga la sección lazy.
- * Evita CLS adicional y da feedback visual.
- */
-function SectionSkeleton({ minH }: { minH: string }) {
-  return (
-    <div
-      className="rounded-lg bg-gray-100/60 animate-pulse"
-      style={{ minHeight: minH }}
-      aria-hidden="true"
-    />
   );
 }
 

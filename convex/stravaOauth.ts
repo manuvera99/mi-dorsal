@@ -207,10 +207,14 @@ export const triggerSyncNow = mutation({
 
     // Programar la action de sync para que se ejecute inmediatamente
     // (las mutations no pueden llamar a actions directamente; hay que
-    // pasarlas por el scheduler)
-    await ctx.scheduler.runAfter(0, internal.stravaInitialSync.startInitialSync, {
-      profileId: user._id,
-    });
+    // pasarlas por el scheduler).
+    // La action vive en convex/actions/stravaInitialSync.ts, por lo que
+    // su path en el namespace es "actions/stravaInitialSync" (con prefijo).
+    await ctx.scheduler.runAfter(
+      0,
+      (internal as any)["actions/stravaInitialSync"].startInitialSync,
+      { profileId: user._id },
+    );
 
     return { ok: true, message: "Sync iniciado en background" };
   },

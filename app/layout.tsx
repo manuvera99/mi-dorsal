@@ -10,6 +10,7 @@ import { GoogleTagManager } from "@/components/analytics/GoogleTagManager";
 import { JsonLd, organizationJsonLd, websiteJsonLd } from "@/components/json-ld";
 import { GoogleAdSense } from "@/components/analytics/GoogleAdSense";
 import { Analytics } from "@vercel/analytics/next";
+import { ToastProvider } from "@/components/ui/toast";
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://mi-dorsal.vercel.app";
 
@@ -171,9 +172,11 @@ export default function RootLayout({
         {gtmId && <GoogleTagManager gtmId={gtmId} />}
 
         <ConvexClientProvider>
-          <Header mockMode={useMock} />
-          <main className="flex-1">{children}</main>
-          <Footer />
+          <ToastProvider>
+            <Header mockMode={useMock} />
+            <main className="flex-1">{children}</main>
+            <Footer />
+          </ToastProvider>
         </ConvexClientProvider>
 
         {/* Google Analytics 4 */}

@@ -43,15 +43,28 @@ function CalendarioContent({ myRaces }: { myRaces: any[] }) {
       </div>
 
       {myRaces.length === 0 ? (
-        <div className="card text-center py-12">
-          <Calendar className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-          <h3 className="font-semibold mb-2">Tu calendario está vacío</h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Explora el catálogo y añade las carreras que quieras correr esta temporada.
+        <div className="card text-center py-12 px-6">
+          {/* Dorsal mini decorativo (consistente con el welcome overlay) */}
+          <div
+            aria-hidden="true"
+            className="inline-flex items-center justify-center mb-4 rounded-2xl bg-runner-primary text-white px-5 py-3 shadow-lg shadow-red-500/20"
+          >
+            <span className="font-mono text-3xl font-bold tracking-tighter">001</span>
+          </div>
+          <h3 className="text-xl font-bold text-stone-900 mb-2 tracking-tight">
+            Tu hilo empieza con el primer dorsal
+          </h3>
+          <p className="text-sm text-stone-600 max-w-md mx-auto mb-6 leading-relaxed">
+            Apúntate a las carreras que te motivan. Aquí irán apareciendo
+            con su dorsal, su fecha y, cuando llegue el día, tu tiempo
+            oficial directo del buzón.
           </p>
           <Link href="/carreras" className="btn-primary inline-flex">
-            Ver carreras
+            Ver carreras cerca de mí
           </Link>
+          <p className="mt-6 text-xs text-stone-400 max-w-sm mx-auto">
+            No guardamos nada hasta que tú le des. Sin compromiso, sin spam, sin notificaciones raras.
+          </p>
         </div>
       ) : (
         <div className="space-y-4">

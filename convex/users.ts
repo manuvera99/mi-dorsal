@@ -194,3 +194,87 @@ export const getPublicStats = query({
     };
   },
 });
+
+// =============================================================================
+// ONBOARDING (Sprint 1)
+// =============================================================================
+// Estado del wizard de bienvenida post-primer-login. Es 100% client-side
+// driven: el cliente decide cuándo mostrar el WelcomeOverlay leyendo
+// `getOnboardingState` y llama a las mutations para actualizar el estado.
+//
+// La mutation `markWelcomeSeen` también agenda el envío del email de
+// bienvenida (vía `ctx.scheduler.runAfter`) si no se ha enviado antes. La
+// idempotencia la garantiza el campo `onboardingWelcomeEmailSentAt`: si ya
+// está set, la internal action `sendWelcomeEmail` no hace nada.
+// =============================================================================
+
+/**
+ * Estado del onboarding del usuario actual. Devuelve `null` si el usuario
+ * no está logueado o no tiene profile todavía (caso del primer render
+ * post-login antes de que Clerk haya hidratado).
+ */
+export const getOnboardingState = query({
+  args: {},
+  handler: async (ctx) => {
+    const profile = await getOptionalUser(ctx);
+    if (!profile) return null;
+    return {
+      welcomeSeen: profile.onboardingWelcomeSeen === true,
+      hasFirstRace: typeof profile.onboardingFirstRaceSavedAt === "number",
+      hasFirstPr: typeof profile.onboardingFirstPrAddedAt === "number",
+      hasWelcomeEmail: typeof profile.onboardingWelcomeEmailSentAt === "number",
+    };
+  },
+});
+
+/**
+ * Marca el welcome como visto. Si el email de bienvenida no se ha enviado
+ * aún (`onboardingWelcomeEmailSentAt` es null), agenda el envío vía
+ * `internal.emailDispatch.sendWelcomeEmail`. La action es idempotente
+ * (chequea el flag antes de mandar), así que un reintento del cliente
+ * nunca produce duplicados.
+ */
+export const markWelcomeSeen = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const profile = await requireUser(ctx);
+    await ctx.db.patch(profile._id, { onboardingWelcomeSeen: true });
+
+    if (profile.onboardingWelcomeEmailSentAt == null) {
+      await ctx.scheduler.runAfter(0, internal.emailDispatch.sendWelcomeEmail, {
+        userId: profile._id,
+      });
+    }
+  },
+});
+
+/**
+ * Marca que el usuario guardó su primera carrera. Idempotente: si ya está
+ * set, no hace nada. Llamado desde el botón "guardar carrera" cuando
+ * `myRaces` pasa de 0 a 1 fila para ese usuario.
+ */
+export const markFirstRaceSaved = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const profile = await requireUser(ctx);
+    if (profile.onboardingFirstRaceSavedAt != null) return;
+    await ctx.db.patch(profile._id, {
+      onboardingFirstRaceSavedAt: Date.now(),
+    });
+  },
+});
+
+/**
+ * Marca que el usuario añadió su primer PR. Idempotente. Llamado desde
+ * la mutation de añadir PR cuando `personalRecords` pasa de 0 a 1 fila.
+ */
+export const markFirstPrAdded = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const profile = await requireUser(ctx);
+    if (profile.onboardingFirstPrAddedAt != null) return;
+    await ctx.db.patch(profile._id, {
+      onboardingFirstPrAddedAt: Date.now(),
+    });
+  },
+});

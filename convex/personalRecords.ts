@@ -4,6 +4,7 @@
 
 import { v } from "convex/values";
 import { mutation, query, internalQuery, internalMutation } from "./_generated/server";
+import { api } from "./_generated/api";
 import { requireUser, getOptionalUser, getDistanceLabel } from "./_helpers";
 
 /**
@@ -24,6 +25,14 @@ export const listMine = query({
 
 /**
  * Upsert de un PR. Marca el antiguo como `isCurrent=false` y el nuevo como true.
+ *
+ * Dispara automáticamente el trigger de onboarding `users.markFirstPrAdded`
+ * (idempotente) cuando se inserta un PR nuevo. Devuelve un objeto con:
+ *   - id:          id del PR insertado (o el current si no se insertó nada)
+ *   - isFirstPr:   true si este fue el primer PR del usuario (no había current
+ *                  en NINGUNA distancia, no solo esta)
+ *   - wasImproved: true si el nuevo tiempo mejoró un PR existente en esta
+ *                  distancia (false si era el primer PR en esta distancia)
  */
 export const upsert = mutation({
   args: {
@@ -50,13 +59,21 @@ export const upsert = mutation({
     if (current) {
       // Si el nuevo tiempo es peor, no hacer nada
       if (args.timeSeconds >= current.timeSeconds) {
-        return current._id;
+        return { id: current._id, isFirstPr: false, wasImproved: false };
       }
       // Marcar el antiguo como histórico
       await ctx.db.patch(current._id, { isCurrent: false });
     }
 
-    return await ctx.db.insert("personalRecords", {
+    // Detectar si este es el primer PR del usuario (en cualquier distancia)
+    // antes de hacer el insert.
+    const totalPRsBefore = await ctx.db
+      .query("personalRecords")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+    const isFirstPr = totalPRsBefore.length === 0;
+
+    const id = await ctx.db.insert("personalRecords", {
       userId: user._id,
       distanceM: args.distanceM,
       distanceLabel: args.distanceLabel,
@@ -66,6 +83,11 @@ export const upsert = mutation({
       source: "manual",
       isCurrent: true,
     });
+
+    // Trigger de onboarding (idempotente — solo setea si no estaba)
+    await ctx.runMutation(api.users.markFirstPrAdded, {});
+
+    return { id, isFirstPr, wasImproved: current != null };
   },
 });
 

@@ -25,6 +25,8 @@ import {
   FaqLazy,
   FinalCtaLazy,
 } from "@/components/home/lazy-sections";
+import { WelcomeOverlay } from "@/components/onboarding/welcome-overlay";
+import { ResultBanner } from "@/components/home/result-banner";
 
 // Revalidar cada 5 minutos. La home es la misma para todos los usuarios de
 // una ventana de 5 min; las queries a Convex (FeaturedRaces, CommunityRanking)
@@ -83,6 +85,22 @@ export default function HomePage() {
         {/* 11. CTA FINAL (lazy: ssr:false) */}
         <FinalCtaLazy />
       </div>
+
+      {/* 12. RESULT BANNER (client island) — se muestra solo para
+          usuarios logueados con un resultado oficial reciente.
+          Posicionado tras las 11 secciones para no romper el orden
+          documentado en AGENTS.md §3. */}
+      <div className="mx-auto max-w-7xl px-4">
+        <ResultBanner />
+      </div>
+
+      {/* 13. ONBOARDING WELCOME OVERLAY (client island) */}
+      {/* Modal esquivable que aparece la primera vez que un usuario
+          logueado aterriza en la home. Solo lee Clerk+Convex en cliente,
+          no afecta al ISR de la home (revalidate=300). Si el usuario
+          ya cerró el welcome o no está logueado, el componente no
+          renderiza nada. Ver components/onboarding/welcome-overlay.tsx */}
+      <WelcomeOverlay />
     </>
   );
 }

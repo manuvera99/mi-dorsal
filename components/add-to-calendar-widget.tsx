@@ -21,6 +21,7 @@ import { isMockMode } from "@/lib/mock/provider";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Calendar, Check, ExternalLink, LogIn, Plus, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/toast";
 
 interface AddToCalendarWidgetProps {
   raceId: Id<"races">;
@@ -208,6 +209,7 @@ function MockAddToCalendar({ raceId, footerText }: AddToCalendarWidgetProps) {
 
 function RealAddToCalendar({ raceId, footerText }: AddToCalendarWidgetProps) {
   const { isSignedIn, isLoaded } = useUser();
+  const toast = useToast();
   const addMutation = useMutation(api.myRaces.add);
   const existing = useQuery(
     api.myRaces.listMine,
@@ -227,12 +229,39 @@ function RealAddToCalendar({ raceId, footerText }: AddToCalendarWidgetProps) {
     setError(null);
     setSubmitting(true);
     try {
-      await addMutation({
+      const result = await addMutation({
         raceId,
         dorsalNumber: dorsal.trim() || undefined,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
+
+      // Onboarding: celebramos según el momento.
+      //   - isFirstRace:      primera carrera (0 → 1) — el "momento 2" del plan
+      //   - justReachedThree: pasa de 2 a 3 — el "momento 5" (hilo con forma)
+      //   - default:          carrera N+1 — feedback normal
+      if (result.isFirstRace) {
+        toast.show({
+          variant: "success",
+          title: "🏃 Dorsal guardado en tu hilo",
+          description: "Te avisamos cuando la organización publique los tiempos.",
+          action: { label: "Ver mi calendario", href: "/calendario" },
+        });
+      } else if (result.justReachedThree) {
+        toast.show({
+          variant: "success",
+          title: "🎉 ¡3 carreras! Tu hilo coge forma",
+          description: "Buena temporada. Cuando acabes la primera, te llega el resultado oficial al buzón.",
+          action: { label: "Ver hilo", href: "/calendario" },
+        });
+      } else {
+        toast.show({
+          variant: "success",
+          title: "Carrera añadida",
+          description: "La verás en tu calendario.",
+          action: { label: "Ver", href: "/calendario" },
+        });
+      }
     } catch (e: any) {
       const msg = e?.message ?? "Error al añadir la carrera";
       if (msg.includes("ya está en tu calendario")) {

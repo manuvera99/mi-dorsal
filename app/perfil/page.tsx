@@ -7,6 +7,10 @@ import { mockApi, isMockMode } from "@/lib/mock/provider";
 import { formatTime } from "@/lib/utils";
 import { User, Trophy, TrendingUp, Plus } from "lucide-react";
 import { ConnectionsSection } from "@/components/perfil/connections";
+import { PredictionsCard } from "@/components/perfil/predictions-card";
+import { RunnerTypeCard } from "@/components/perfil/runner-type-card";
+import { ActivityStatsCard } from "@/components/perfil/activity-stats";
+import { ActivityFeed } from "@/components/perfil/activity-feed";
 
 function MockPerfil() {
   const [profile, setProfile] = useState<any>(null);
@@ -54,6 +58,31 @@ function PerfilContent({ profile, prs }: { profile: any; prs: any[] }) {
       {/* Conexiones (Strava export, etc.) — solo en modo real */}
       {!isMockMode() && <ConnectionsSection />}
 
+      {/* Tu hilo runner (heurísticas) — solo en modo real */}
+      {!isMockMode() && <RunnerTypeCard />}
+
+      {/* Stats de actividad */}
+      {!isMockMode() && <ActivityStatsCard />}
+
+      {/* Feed de actividades */}
+      {!isMockMode() && <ActivityFeed />}
+
+      {/* Predicciones VDOT inline — solo si hay al menos 1 PR.
+          Es la "celebración" del momento 3 del onboarding: cuando el
+          usuario tiene su primer PR, esta card aparece con VDOT y
+          predicciones para 5K/10K/Media/Maratón. */}
+      {prs.length > 0 && (
+        <div className="mb-6">
+          <PredictionsCard
+            prs={prs.map((pr) => ({
+              distanceM: pr.distanceM,
+              distanceLabel: pr.distanceLabel,
+              timeSeconds: pr.timeSeconds,
+            }))}
+          />
+        </div>
+      )}
+
       {/* PRs */}
       <div className="card mb-6">
         <div className="flex items-center justify-between mb-4">
@@ -65,9 +94,27 @@ function PerfilContent({ profile, prs }: { profile: any; prs: any[] }) {
           </button>
         </div>
         {prs.length === 0 ? (
-          <p className="text-sm text-gray-500 py-4 text-center">
-            No has añadido ningún PR. Añade al menos uno para predecir tus tiempos.
-          </p>
+          <div className="py-6 px-2 text-center">
+            {/* Dorsal mini decorativo */}
+            <div
+              aria-hidden="true"
+              className="inline-flex items-center justify-center mb-3 rounded-xl bg-runner-warm border border-stone-200 px-4 py-3"
+            >
+              <span className="font-mono text-2xl font-bold text-stone-300 tracking-tighter">--:--</span>
+            </div>
+            <h3 className="font-semibold text-stone-900 mb-1">
+              Tu primer PR abre el hilo
+            </h3>
+            <p className="text-sm text-stone-600 max-w-sm mx-auto mb-4 leading-relaxed">
+              Añade tu mejor marca en una distancia (5K, 10K, lo que sea).
+              Con una sola marca te predecimos el resto: media maratón,
+              maratón, lo que te echen.
+            </p>
+            <p className="text-xs text-stone-400">
+              Próximamente: formulario inline. Por ahora, escríbenos desde
+              el footer y te lo añadimos en 24h.
+            </p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {prs.map((pr) => (

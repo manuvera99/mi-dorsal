@@ -18,6 +18,21 @@ export function formatTime(seconds: number | null | undefined): string {
   return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
 }
 
+export function formatDuration(sec: number | null | undefined): string {
+  if (!sec || !Number.isFinite(sec)) return "—";
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = Math.round(sec % 60);
+  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m`;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+export function formatDistanceKm(m: number | null | undefined): string {
+  if (m === null || m === undefined) return "—";
+  if (m < 1000) return `${Math.round(m)} m`;
+  return `${(m / 1000).toFixed(1)} km`;
+}
+
 export function formatDate(dateStr: string | undefined): string {
   if (!dateStr) return "—";
   try {

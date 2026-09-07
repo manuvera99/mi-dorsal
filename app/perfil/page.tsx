@@ -9,6 +9,7 @@ import { User, Trophy, TrendingUp, Plus, Trash2 } from "lucide-react";
 import { ConnectionsSection } from "@/components/perfil/connections";
 import { PredictionsCard } from "@/components/perfil/predictions-card";
 import { RunnerTypeCard } from "@/components/perfil/runner-type-card";
+import { CoachAnalysisCard } from "@/components/perfil/coach-analysis-card";
 import { ActivityStatsCard } from "@/components/perfil/activity-stats";
 import { ActivityFeed } from "@/components/perfil/activity-feed";
 import { PrFormModal } from "@/components/perfil/pr-form-modal";
@@ -38,6 +39,23 @@ export default function PerfilPage() {
 function PerfilContent({ profile, prs }: { profile: any; prs: any[] }) {
   const [editing, setEditing] = useState(false);
   const age = ageFromBirthDate(profile?.birthDate);
+
+  // Defensivo: si la query devolviera duplicados por la misma distancia
+  // (legacy data, inconsistencia), nos quedamos con la mejor marca (menor
+  // tiempo) por distancia. El backend ya filtra `isCurrent: true`, pero
+  // esto blinda la UI ante cualquier sorpresa.
+  const bestPrsByDistance = (() => {
+    const byDistance = new Map<number, any>();
+    for (const pr of prs) {
+      const prev = byDistance.get(pr.distanceM);
+      if (!prev || pr.timeSeconds < prev.timeSeconds) {
+        byDistance.set(pr.distanceM, pr);
+      }
+    }
+    return Array.from(byDistance.values()).sort(
+      (a, b) => a.distanceM - b.distanceM,
+    );
+  })();
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
@@ -97,16 +115,20 @@ function PerfilContent({ profile, prs }: { profile: any; prs: any[] }) {
       )}
 
       {/* PRs — primero: la acción principal del corredor popular */}
-      {isMockMode() ? <PrsSectionReadOnly prs={prs} /> : <PrsSection prs={prs} />}
+      {isMockMode() ? (
+        <PrsSectionReadOnly prs={bestPrsByDistance} />
+      ) : (
+        <PrsSection prs={bestPrsByDistance} />
+      )}
 
       {/* Predicciones VDOT inline — solo si hay al menos 1 PR.
           Es la "celebración" del momento 3 del onboarding: cuando el
           usuario tiene su primer PR, esta card aparece con VDOT y
           predicciones para 5K/10K/Media/Maratón. */}
-      {prs.length > 0 && (
+      {bestPrsByDistance.length > 0 && (
         <div className="mb-6">
           <PredictionsCard
-            prs={prs.map((pr) => ({
+            prs={bestPrsByDistance.map((pr) => ({
               distanceM: pr.distanceM,
               distanceLabel: pr.distanceLabel,
               timeSeconds: pr.timeSeconds,
@@ -123,6 +145,14 @@ function PerfilContent({ profile, prs }: { profile: any; prs: any[] }) {
 
       {/* Tu hilo runner (heurísticas) — renombrado a "Tu tipo de corredor" en el card */}
       {!isMockMode() && <RunnerTypeCard />}
+
+      {/* Análisis narrativo del entrenador IA — a petición, cacheado en el profile */}
+      {!isMockMode() && (
+        <CoachAnalysisCard
+          coachAnalysisText={profile?.coachAnalysisText}
+          coachAnalysisAt={profile?.coachAnalysisAt}
+        />
+      )}
 
       {/* Conexiones (Strava export, etc.) — al final, donde están los ajustes */}
       {!isMockMode() && <ConnectionsSection />}

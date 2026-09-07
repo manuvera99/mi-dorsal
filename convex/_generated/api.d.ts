@@ -9,6 +9,7 @@
  */
 
 import type * as _helpers from "../_helpers.js";
+import type * as actions_coachAnalysis from "../actions/coachAnalysis.js";
 import type * as actions_stravaExportIngest from "../actions/stravaExportIngest.js";
 import type * as actions_stravaInitialSync from "../actions/stravaInitialSync.js";
 import type * as actions_stravaWebhookHandler from "../actions/stravaWebhookHandler.js";
@@ -17,6 +18,7 @@ import type * as activities_normalize from "../activities/normalize.js";
 import type * as activities_queries from "../activities/queries.js";
 import type * as adminTools from "../adminTools.js";
 import type * as blog from "../blog.js";
+import type * as coachAnalysisHelpers from "../coachAnalysisHelpers.js";
 import type * as cronJobs from "../cronJobs.js";
 import type * as crons_checkResults from "../crons/checkResults.js";
 import type * as crons_newsletterEditorial from "../crons/newsletterEditorial.js";
@@ -59,6 +61,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   _helpers: typeof _helpers;
+  "actions/coachAnalysis": typeof actions_coachAnalysis;
   "actions/stravaExportIngest": typeof actions_stravaExportIngest;
   "actions/stravaInitialSync": typeof actions_stravaInitialSync;
   "actions/stravaWebhookHandler": typeof actions_stravaWebhookHandler;
@@ -67,6 +70,7 @@ declare const fullApi: ApiFromModules<{
   "activities/queries": typeof activities_queries;
   adminTools: typeof adminTools;
   blog: typeof blog;
+  coachAnalysisHelpers: typeof coachAnalysisHelpers;
   cronJobs: typeof cronJobs;
   "crons/checkResults": typeof crons_checkResults;
   "crons/newsletterEditorial": typeof crons_newsletterEditorial;

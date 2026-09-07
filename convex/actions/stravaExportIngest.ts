@@ -198,6 +198,7 @@ async function runIngest(ctx: any, args: IngestArgs) {
       matchedRaceId: matchedRaceId as any,
       isPrivate: activity.isPrivate,
       rawPayload: JSON.stringify(activity.rawPayload ?? {}),
+      stravaSportType: activity.stravaType,
     });
 
     if (matchedRaceId) matchedInChunk++;

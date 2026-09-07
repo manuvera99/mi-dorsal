@@ -1,0 +1,114 @@
+"use client";
+
+// =============================================================================
+// mi-dorsal — Tarjeta de análisis del entrenador IA en /perfil
+// =============================================================================
+// Botón que dispara convex/actions/coachAnalysis.ts (LLM con voz de
+// entrenador experimentado), muestra el resultado cacheado en el profile
+// (coachAnalysisText/coachAnalysisAt), y permite regenerarlo.
+// =============================================================================
+
+import { useState } from "react";
+import { useAction } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { MarkdownRenderer } from "@/components/blog/MarkdownRenderer";
+import { Sparkles, Loader2, RefreshCw } from "lucide-react";
+
+interface CoachAnalysisCardProps {
+  coachAnalysisText?: string;
+  coachAnalysisAt?: number;
+}
+
+export function CoachAnalysisCard({ coachAnalysisText, coachAnalysisAt }: CoachAnalysisCardProps) {
+  // La action vive en convex/actions/coachAnalysis.ts, por lo que su path
+  // en el namespace es "actions/coachAnalysis" (con prefijo de carpeta) —
+  // mismo patrón que las actions de Strava, ver AGENTS.md / memoria del
+  // agente sobre este gotcha de Convex.
+  const generateAnalysis = useAction((api as any)["actions/coachAnalysis"].generateMyAnalysis);
+  const [text, setText] = useState(coachAnalysisText);
+  const [generatedAt, setGeneratedAt] = useState(coachAnalysisAt);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleGenerate = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await generateAnalysis({});
+      setText(result.text);
+      setGeneratedAt(result.generatedAt);
+    } catch (e: any) {
+      setError(e?.message ?? "No se pudo generar el análisis. Inténtalo de nuevo en un momento.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="card mb-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-runner-primary" />
+          Análisis de tu entrenador
+        </h2>
+        {text && (
+          <button
+            onClick={handleGenerate}
+            disabled={loading}
+            className="text-xs text-runner-primary hover:underline flex items-center gap-1 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+            Regenerar
+          </button>
+        )}
+      </div>
+
+      {!text ? (
+        <div className="py-6 px-2 text-center">
+          <p className="text-sm text-stone-600 max-w-sm mx-auto mb-4 leading-relaxed">
+            Un entrenador con criterio propio, no un generador de frases motivacionales:
+            analiza tu registro de entrenamiento (volumen, consistencia, tipos de sesión,
+            marcas) y te dice qué estás haciendo bien y qué cambiaría.
+          </p>
+          <button onClick={handleGenerate} disabled={loading} className="btn-primary">
+            {loading ? (
+              <span className="flex items-center justify-center gap-1.5">
+                <Loader2 className="h-4 w-4 animate-spin" /> Analizando tu registro…
+              </span>
+            ) : (
+              "Pedir análisis"
+            )}
+          </button>
+          {error && (
+            <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-md p-2 mt-3">
+              {error}
+            </p>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="prose-sm max-w-none [&_h2]:text-base [&_h2]:mt-4 [&_h2]:mb-2 [&_h2]:font-semibold">
+            <MarkdownRenderer content={text} />
+          </div>
+          {generatedAt && (
+            <p className="text-xs text-gray-400 mt-3">
+              Generado el{" "}
+              {new Date(generatedAt).toLocaleDateString("es-ES", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}
+              . Los datos cambian con cada nueva actividad — regenera cuando quieras una lectura
+              actualizada.
+            </p>
+          )}
+          {error && (
+            <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-md p-2 mt-3">
+              {error}
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

@@ -30,6 +30,7 @@ import {
   matchPRDistance,
   matchBestEffortName,
   classifyActivity,
+  stravaApiCadenceToSpm,
   type NormalizedActivity,
   type StravaCsvRow,
   type RaceMatchCandidate,
@@ -225,6 +226,9 @@ async function ingestOneActivity(
   const startedAt = new Date(activity.start_date_local).getTime();
   const distanceM = activity.distance;
   const durationSec = activity.moving_time;
+  // Strava API devuelve cadencia de running en zancadas de UNA pierna/min —
+  // convertir a spm reales antes de usarla en cualquier sitio.
+  const avgCadenceSpm = stravaApiCadenceToSpm(activity.average_cadence);
 
   // Clasificar con la heurística real (distancia/pace/desnivel/cadencia),
   // NO con el mapeo plano por sport_type que había aquí antes (marcaba
@@ -235,7 +239,7 @@ async function ingestOneActivity(
     distanceM,
     durationSec,
     activity.total_elevation_gain,
-    activity.average_cadence,
+    avgCadenceSpm,
   );
 
   // Normalizar para cross-reference
@@ -251,7 +255,7 @@ async function ingestOneActivity(
       : undefined,
     avgHeartRate: activity.average_heartrate,
     maxHeartRate: activity.max_heartrate,
-    avgCadence: activity.average_cadence,
+    avgCadence: avgCadenceSpm,
     elevationGainM: activity.total_elevation_gain,
     elevationLossM: undefined, // Strava API no devuelve esto directamente
     stravaType: activity.sport_type as any,
@@ -285,6 +289,7 @@ async function ingestOneActivity(
     matchedRaceId: matchedRaceId as any,
     isPrivate: normalized.isPrivate,
     rawPayload: JSON.stringify(activity),
+    stravaSportType: activity.sport_type ?? activity.type,
   });
 
   // PR check.

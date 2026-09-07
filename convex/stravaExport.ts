@@ -60,6 +60,7 @@ export const upsertActivityInternal = internalMutation({
     isOfficialResult: v.optional(v.boolean()),
     isPrivate: v.optional(v.boolean()),
     rawPayload: v.optional(v.string()),
+    stravaSportType: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Idempotencia: buscar existente por (provider, providerActivityId)
@@ -87,6 +88,7 @@ export const upsertActivityInternal = internalMutation({
         description: args.description,
         matchedRaceId: args.matchedRaceId,
         isPrivate: args.isPrivate,
+        stravaSportType: args.stravaSportType,
         syncedAt: Date.now(),
       });
       return { id: existing._id, created: false };

@@ -52,6 +52,50 @@ export type StravaActivityType =
   | "Yoga"
   | "Other";
 
+/**
+ * Deportes de Strava que SON correr. Strava ingiere bajo el mismo endpoint
+ * cualquier deporte que el usuario registre (pádel, ciclismo, esquí, pesas,
+ * senderismo, natación...) — sin este filtro, el feed/stats/perfil de
+ * corredor se contaminan con actividades que no son running.
+ *
+ * "Race" se incluye porque Strava lo usa como sport_type cuando el usuario
+ * marca la actividad como carrera oficial — en la práctica siempre es una
+ * carrera a pie salvo que el usuario corra en bici y la marque como "Race"
+ * por error, caso raro que no merece complejidad adicional aquí.
+ */
+export const RUNNING_SPORT_TYPES: readonly string[] = ["Run", "TrailRun", "VirtualRun", "Race"];
+
+/** ¿Este sport_type de Strava es running? */
+export function isRunningSportType(sportType: string | undefined | null): boolean {
+  if (!sportType) return true; // actividades pre-2026-09-07 sin el campo: asumir running (ver nota en schema.ts)
+  return RUNNING_SPORT_TYPES.includes(sportType);
+}
+
+/**
+ * Convierte la cadencia de running que devuelve la API de Strava
+ * (`average_cadence` en GET /athlete/activities y GET /activities/{id}) a
+ * pasos por minuto reales (spm).
+ *
+ * Strava, para actividades de running, expresa `average_cadence` en
+ * zancadas de UNA sola pierna por minuto (típico ~75-95 en carrera normal),
+ * no en pasos totales (~150-190). No está documentado explícitamente en el
+ * spec oficial de developers.strava.com, pero se confirma con datos reales
+ * de este proyecto: valores crudos de ~50-90 no tienen sentido como "pasos
+ * por minuto" para ningún corredor, pero sí como zancadas de una pierna —
+ * y ×2 da cifras coherentes con lo que cualquier reloj GPS muestra.
+ *
+ * IMPORTANTE: esto es específico de la API REST. NO se ha podido verificar
+ * si el CSV de bulk export usa la misma unidad o no (no hay documentación
+ * oficial ni una muestra real disponible en este proyecto para comparar) —
+ * por eso normalizeStravaCsvRow (más abajo) NO aplica esta conversión. Si
+ * en el futuro se confirma que el CSV también viene en zancadas/pierna,
+ * aplicar aquí también.
+ */
+export function stravaApiCadenceToSpm(avgCadence: number | undefined): number | undefined {
+  if (avgCadence === undefined || avgCadence <= 0) return undefined;
+  return avgCadence * 2;
+}
+
 /** Fila cruda del CSV de Strava. Tolerante: cualquier campo puede ser undefined. */
 export interface StravaCsvRow {
   "Activity ID"?: string | number;
@@ -283,14 +327,18 @@ export function matchBestEffortName(name: string): number | null {
  *   2. Strava "TrailRun" Y desnivel/km > 15m → trail
  *   3. Strava "TrailRun" → trail (más raro pero posible que sea llano)
  *   4. Strava "VirtualRun" → easy (cinta, no carrera)
- *   5. Distancia > 25km y pace lento → long_run
- *   6. Strava "Run" + cadence alta + pace rápido → tempo
- *   7. Strava "Run" + pace rápido (< 4:00/km) → tempo
- *   8. Strava "Run" + distancia < 8km + pace lento → easy
- *   9. Strava "Run" + distance < 5km → easy (probable sesión corta)
- *   10. Strava "Workout" → interval (series, fartlek, etc.)
- *   11. Strava "Walk" / "Hike" → recovery
- *   12. Default → easy
+ *   5. Strava "Run" + cadence alta + pace rápido → tempo
+ *   6. Strava "Run" + pace rápido (< 4:00/km) → tempo
+ *   7. Strava "Run" + desnivel/km > 20m → trail
+ *   8. Strava "Run" + duración > 1h O distancia ≥ 10km → long_run (no hay
+ *      un umbral de distancia universal para "tirada larga" — depende del
+ *      nivel del corredor — así que se usa duración como criterio
+ *      principal, con la distancia como alternativa)
+ *   9. Strava "Run" + distancia < 5km → easy
+ *   10. Strava "Run" + resto → easy (sesión estándar)
+ *   11. Strava "Workout" → interval (series, fartlek, etc.)
+ *   12. Strava "Walk" / "Hike" → recovery
+ *   13. Default → easy
  *
  * Esto NO es ML. Es determinista y el corredor puede auditarlo.
  */
@@ -339,11 +387,10 @@ export function classifyActivity(
   if (stravaType === "Run" || stravaType === "Unknown") {
     if (distanceM === 0 || durationSec === 0) return "easy";
 
-    // Distancia larga + pace lento = tirada larga
-    if (distanceM > 25000 && paceSecPerKm > 300) return "long_run";
-    if (distanceM > 25000) return "long_run";
-
-    // Cadencia alta + pace rápido = tempo
+    // Cadencia alta + pace rápido = tempo. Se evalúa ANTES de long_run para
+    // que un 10K de carrera a ritmo fuerte no se cuele como "tirada larga"
+    // solo por llegar a los 10km — una tirada larga es a ritmo tranquilo,
+    // no una carrera rápida de esa distancia.
     if (avgCadence !== undefined && avgCadence > 175 && paceSecPerKm < 270) {
       return "tempo";
     }
@@ -354,16 +401,19 @@ export function classifyActivity(
     // Distancia media con desnivel = trail
     if (elevationPerKm > 20) return "trail";
 
+    // Tirada larga: más de 1h de duración O al menos 10km, a un ritmo que
+    // ya no es "tempo" (descartado arriba). No hay un estándar universal
+    // de distancia (depende del nivel del corredor — un 5K-runner y un
+    // maratoniano tienen tiradas largas de tamaño muy distinto), así que
+    // se usa duración como criterio principal con la distancia como
+    // alternativa para salidas cortas en tiempo pero largas en km.
+    if (durationSec > 3600 || distanceM >= 10000) return "long_run";
+
     // Distancia corta = easy
     if (distanceM < 5000) return "easy";
 
     // Distancia media = easy (sesión estándar)
-    if (distanceM < 15000) return "easy";
-
-    // Distancia larga con pace no muy rápido = long_run
-    if (paceSecPerKm >= 300) return "long_run";
-
-    return "long_run";
+    return "easy";
   }
 
   return "easy";

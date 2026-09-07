@@ -8,6 +8,7 @@ import { v } from "convex/values";
 import { query } from "../_generated/server";
 import { requireUser, getOptionalUser } from "../_helpers";
 import { computeRunnerType, type ActivityInput, type RunnerTypeResult } from "../runnerType";
+import { isRunningSportType } from "./normalize";
 
 // ---------------------------------------------------------------------------
 // Feed de actividades
@@ -39,14 +40,18 @@ export const listMyActivities = query({
     const limit = Math.min(args.limit ?? 50, 200);
 
     // Query con índice by_user_started (userId, startedAt desc implícito)
-    let q = ctx.db
+    const all = await ctx.db
       .query("activities")
       .withIndex("by_user_started", (q) => q.eq("userId", user._id))
-      .order("desc");
+      .order("desc")
+      .collect();
 
-    const all = await q.collect();
+    // Filtro "solo running": Strava ingiere cualquier deporte (pádel,
+    // ciclismo, esquí, pesas...) bajo el mismo endpoint — sin esto, el feed
+    // muestra actividades que no son correr.
+    const runningOnly = all.filter((a) => isRunningSportType(a.stravaSportType));
 
-    let filtered = all;
+    let filtered = runningOnly;
     if (args.type) {
       filtered = filtered.filter((a) => a.type === args.type);
     }
@@ -59,7 +64,8 @@ export const listMyActivities = query({
 });
 
 /**
- * Cuenta el total de actividades del usuario.
+ * Cuenta el total de actividades de RUNNING del usuario (excluye otros
+ * deportes que Strava haya ingerido bajo el mismo perfil).
  */
 export const getMyActivityCount = query({
   args: {},
@@ -70,13 +76,14 @@ export const getMyActivityCount = query({
       .query("activities")
       .withIndex("by_user_started", (q) => q.eq("userId", user._id))
       .collect();
-    return all.length;
+    return all.filter((a) => isRunningSportType(a.stravaSportType)).length;
   },
 });
 
 /**
  * Stats resumen del usuario: total km, km/semana, cadencia media, etc.
  * Calculado on-the-fly (las queries son baratas, ~500ms para 1000 act).
+ * Solo cuenta actividades de running — ver isRunningSportType.
  */
 export const getMyActivityStats = query({
   args: {},
@@ -84,10 +91,11 @@ export const getMyActivityStats = query({
     const user = await getOptionalUser(ctx);
     if (!user) return null;
 
-    const activities = await ctx.db
+    const allRaw = await ctx.db
       .query("activities")
       .withIndex("by_user_started", (q) => q.eq("userId", user._id))
       .collect();
+    const activities = allRaw.filter((a) => isRunningSportType(a.stravaSportType));
 
     if (activities.length === 0) {
       return {
@@ -168,6 +176,7 @@ export const getMyActivityStats = query({
  * Calcula el tipo de corredor del usuario actual.
  * Calcula on-the-fly cada vez (las heurísticas son baratas, ~200ms para 1000 act).
  * Si en el futuro el cálculo se vuelve pesado, podemos cachearlo en el profile.
+ * Solo cuenta actividades de running — ver isRunningSportType.
  */
 export const getMyRunnerType = query({
   args: {},
@@ -175,10 +184,11 @@ export const getMyRunnerType = query({
     const user = await getOptionalUser(ctx);
     if (!user) return null;
 
-    const activities = await ctx.db
+    const allRaw = await ctx.db
       .query("activities")
       .withIndex("by_user_started", (q) => q.eq("userId", user._id))
       .collect();
+    const activities = allRaw.filter((a) => isRunningSportType(a.stravaSportType));
 
     // Mapear a ActivityInput
     const inputs: ActivityInput[] = activities.map((a) => ({

@@ -53,6 +53,11 @@ export default defineSchema({
       tag: v.string(),
       score: v.number(),
     }))),
+    // Análisis del entrenador IA (Ola 2): texto narrativo generado a
+    // petición del usuario desde /perfil, cacheado para no llamar al LLM
+    // en cada visita — se regenera solo cuando el usuario pulsa el botón.
+    coachAnalysisText: v.optional(v.string()),
+    coachAnalysisAt: v.optional(v.number()),
     // Onboarding (primer login)
     onboardingWelcomeSeen: v.optional(v.boolean()),
     onboardingWelcomeEmailSentAt: v.optional(v.number()),

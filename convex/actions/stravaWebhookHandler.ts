@@ -91,12 +91,15 @@ export const handleEvent = action({
     // 5) Clasificar e ingestar. Import dinámico porque este archivo lleva
     // "use node" y normalize.ts se mantiene como módulo puro sin esa
     // directiva.
-    const { classifyActivity, findBestRaceMatch, matchPRDistance, matchBestEffortName } =
+    const { classifyActivity, findBestRaceMatch, matchPRDistance, matchBestEffortName, stravaApiCadenceToSpm } =
       await import("../activities/normalize");
     const stravaType = activity.sport_type ?? activity.type;
     const startedAt = new Date(activity.start_date_local).getTime();
     const distanceM = activity.distance;
     const durationSec = activity.moving_time;
+    // Strava API devuelve cadencia de running en zancadas de UNA pierna/min —
+    // convertir a spm reales antes de usarla en cualquier sitio.
+    const avgCadenceSpm = stravaApiCadenceToSpm(activity.average_cadence);
     // Heurística real (distancia/pace/desnivel/cadencia), NO el mapeo plano
     // por sport_type que había aquí antes (marcaba cualquier "Run" como
     // long_run sin mirar duración ni distancia).
@@ -105,7 +108,7 @@ export const handleEvent = action({
       distanceM,
       durationSec,
       activity.total_elevation_gain,
-      activity.average_cadence,
+      avgCadenceSpm,
     );
 
     // Cargar catálogo para cross-reference
@@ -136,7 +139,7 @@ export const handleEvent = action({
         : undefined,
       avgHeartRate: activity.average_heartrate,
       maxHeartRate: activity.max_heartrate,
-      avgCadence: activity.average_cadence,
+      avgCadence: avgCadenceSpm,
       elevationGainM: activity.total_elevation_gain,
       elevationLossM: undefined,
       stravaType: stravaType as any,
@@ -170,6 +173,7 @@ export const handleEvent = action({
       matchedRaceId: matchedRaceId as any,
       isPrivate: normalized.isPrivate,
       rawPayload: JSON.stringify(activity),
+      stravaSportType: activity.sport_type ?? activity.type,
     });
 
     // PR check. Mismo criterio que stravaInitialSync.ts:

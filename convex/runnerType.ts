@@ -65,7 +65,7 @@ function clamp(n: number, min: number, max: number): number {
 // Inputs derivados
 // ---------------------------------------------------------------------------
 
-interface DerivedInputs {
+export interface DerivedInputs {
   totalActivities: number;
   distanceMedianM: number;
   weeklyVolumeMedianKm: number;
@@ -88,7 +88,7 @@ interface DerivedInputs {
  * Calcula todos los inputs derivados a partir de las actividades.
  * Actividades de menos de 3 meses se usan para "isNewbie".
  */
-function deriveInputs(activities: ActivityInput[]): DerivedInputs {
+export function deriveInputs(activities: ActivityInput[]): DerivedInputs {
   if (activities.length === 0) {
     return {
       totalActivities: 0,

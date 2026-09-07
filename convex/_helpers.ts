@@ -215,6 +215,17 @@ export function formatTime(seconds: number): string {
   return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
 }
 
+export function getDistanceLabel(distanceM: number): string {
+  if (distanceM === 5000) return "5K";
+  if (distanceM === 10000) return "10K";
+  if (distanceM === 15000) return "15K";
+  if (distanceM === 21097 || (distanceM > 20000 && distanceM < 22000))
+    return "Media maratón";
+  if (distanceM === 42195 || (distanceM > 41000 && distanceM < 43000))
+    return "Maratón";
+  return `${(distanceM / 1000).toFixed(1)}K`;
+}
+
 export function slugify(text: string): string {
   return text
     .toLowerCase()

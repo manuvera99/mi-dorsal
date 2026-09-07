@@ -3,7 +3,7 @@
 // =============================================================================
 
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalQuery } from "./_generated/server";
 import { requireUser, getOptionalUser } from "./_helpers";
 
 /**
@@ -80,5 +80,25 @@ export const remove = mutation({
     if (!pr) throw new Error("PR not found");
     if (pr.userId !== user._id) throw new Error("Forbidden");
     await ctx.db.delete(id);
+  },
+});
+
+/**
+ * PR actual del usuario en una distancia (para emails: detectar si un
+ * nuevo resultado bate el récord antes de enviar el email).
+ * Devuelve null si no hay PR en esa distancia.
+ */
+export const getCurrentForUserAndDistance = internalQuery({
+  args: {
+    userId: v.id("profiles"),
+    distanceM: v.number(),
+  },
+  handler: async (ctx, { userId, distanceM }) => {
+    return await ctx.db
+      .query("personalRecords")
+      .withIndex("by_user_distance_current", (q) =>
+        q.eq("userId", userId).eq("distanceM", distanceM).eq("isCurrent", true),
+      )
+      .unique();
   },
 });

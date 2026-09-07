@@ -4,7 +4,7 @@
 
 import { v } from "convex/values";
 import { mutation, query, internalQuery } from "./_generated/server";
-import { requireUser, getOptionalUser, raceStatusValidator } from "./_helpers";
+import { requireUser, getOptionalUser, raceStatusValidator, getDistanceLabel } from "./_helpers";
 import { predictForMyRace } from "../lib/prediction/predict";
 import { Doc, Id } from "./_generated/dataModel";
 
@@ -297,13 +297,4 @@ function estimateTempForRace(
   return temps[month];
 }
 
-function getDistanceLabel(distanceM: number): string {
-  if (distanceM === 5000) return "5K";
-  if (distanceM === 10000) return "10K";
-  if (distanceM === 15000) return "15K";
-  if (distanceM === 21097 || (distanceM > 20000 && distanceM < 22000))
-    return "Media Maratón";
-  if (distanceM === 42195 || (distanceM > 41000 && distanceM < 43000))
-    return "Maratón";
-  return `${distanceM / 1000}K`;
-}
+

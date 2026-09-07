@@ -338,11 +338,13 @@ async function main() {
       continue;
     }
     const slug = buildSlug(r.name, r.date, r.id);
-    // La URL pública de una carrera en Sportmaniacs usa el singular /race/{slug}
-    // (no /races/, que es la home del listado). Confirmado en:
-    //   - scripts/ingest-sportmaniacs-curated.ts (5 carreras hardcodeadas)
-    //   - scripts/output/sportmaniacs-races.json (muestra del API)
-    const officialUrl = `https://sportmaniacs.com/es/race/${r.slug}`;
+    // IMPORTANTE: la URL pública de una carrera en Sportmaniacs es
+    // /es/races/{slug} (PLURAL, sin UUID, sin /results).
+    // El singular /es/race/ da 404. Confirmado por HTTP probe directo.
+    // Histórico: versiones previas de este script usaban /es/race/{slug}
+    // y /es/races/{slug}/{uuid}/results — ambos dan 404. Solo /es/races/{slug}
+    // funciona. 2026-09-07.
+    const officialUrl = `https://sportmaniacs.com/es/races/${r.slug}`;
     // sourceUrl = misma URL que officialUrl para Sportmaniacs: la fuente ES Sportmaniacs,
     // así que la "URL en la fuente" coincide con la URL pública de la carrera.
     const sourceUrl = officialUrl;

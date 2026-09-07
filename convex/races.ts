@@ -762,6 +762,10 @@ export const systemUpsert = mutation({
     const id = await ctx.db.insert("races", {
       // Campos requeridos por el schema (con fallbacks seguros)
       name: args.name,
+      // NOTA 2026-09-07: el fallback province ?? "valencia" es un parche legacy.
+      // Si la carrera no tiene province, termina marcada como Valencia en la DB,
+      // aunque sea de otro país. Llamadas deben pasar province cuando se conozca.
+      // Log de aviso para detectar ingestas que olvidan pasarlo.
       province: args.province ?? ("valencia" as any),
       distanceKm: args.distanceKm ?? 10,
       raceType: args.raceType ?? ("road" as const),

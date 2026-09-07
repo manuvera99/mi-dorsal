@@ -3,20 +3,17 @@
 // =============================================================================
 // Corrige las URLs rotas de carreras de Sportmaniacs en la base de datos.
 //
-// Bug histórico: scripts/ingest-sportmaniacs.ts construía las URLs con
-// "/es/races/{slug}" (plural) en lugar del "/es/race/{slug}" (singular) que
-// usa Sportmaniacs. Esto provocaba 404 al pulsar el badge "Fuente" en
-// /admin/races o al seguir enlaces externos.
+// Historia:
+//   - Bug original (commit 5a6bfde, mal): pensaba que el formato correcto era
+//     /es/race/{slug} (singular). Lo escribí así en scripts/ingest-sportmaniacs.ts
+//     y arreglé la DB de /races/ a /race/.
+//   - Realidad (verificada por HTTP probe el 2026-09-07): el formato que
+//     funciona es /es/races/{slug} (PLURAL, sin UUID, sin /results).
+//     El singular /es/race/ da 404. Las URLs con UUID o /results también
+//     dan 404.
 //
-// El script es IDEMPOTENTE:
-//   - Si la URL ya está en singular ("/es/race/"), la deja como está.
-//   - Solo modifica carreras con scraperAdapter="sportmaniacs" para no
-//     tocar URLs de otros orígenes.
-//   - Si officialUrl y organizerUrl son el mismo valor roto, ambos se
-//     arreglan. Si difieren, se arregla cada uno por separado.
-//
-// También rellena sourceUrl con la URL arreglada, ya que para Sportmaniacs
-// "URL en la fuente" == "URL pública de la carrera".
+// Este script revierte la rotura anterior: convierte /es/race/ → /es/races/.
+// Es IDEMPOTENTE y solo toca carreras con scraperAdapter="sportmaniacs".
 //
 // Uso:
 //   npx tsx --env-file=.env.local scripts/fix-sportmaniacs-urls.ts          # dry-run
@@ -28,11 +25,30 @@ import { api } from "../convex/_generated/api";
 
 const APPLY = process.argv.includes("--apply");
 
-const BROKEN_PREFIX = "https://sportmaniacs.com/es/races/";
-const FIXED_PREFIX = "https://sportmaniacs.com/es/race/";
+// Invertir: lo que está en singular (/race/) es lo que está MAL. Lo correcto es /races/.
+const BROKEN_PREFIX = "https://sportmaniacs.com/es/race/";
+const FIXED_PREFIX = "https://sportmaniacs.com/es/races/";
+
+// Quita el UUID y /results de la URL (si los hay) para quedarse con la forma
+// canónica /es/races/{slug}. Esto arregla URLs como:
+//   /es/race/foo/UUID         -> /es/races/foo
+//   /es/race/foo/UUID/results -> /es/races/foo
+//   /es/races/foo/UUID        -> /es/races/foo
+//   /es/races/foo/UUID/results -> /es/races/foo
+function canonicalize(url: string | undefined): string | undefined {
+  if (!url) return url;
+  // Quitar /results al final
+  let u = url.replace(/\/results\/?$/, "");
+  // Quitar el UUID (formato 8-4-4-4-12)
+  u = u.replace(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?$/i, "");
+  // Quitar slashes sobrantes al final
+  u = u.replace(/\/$/, "");
+  return u;
+}
 
 function fixUrl(url: string | undefined): string | undefined {
   if (!url) return url;
+  // Si empieza por /race/ (singular), lo cambiamos a /races/ (plural)
   if (url.startsWith(BROKEN_PREFIX)) {
     return FIXED_PREFIX + url.slice(BROKEN_PREFIX.length);
   }
@@ -40,7 +56,17 @@ function fixUrl(url: string | undefined): string | undefined {
 }
 
 function isBroken(url: string | undefined): boolean {
-  return !!url && url.startsWith(BROKEN_PREFIX);
+  if (!url) return false;
+  // Cualquier URL de Sportmaniacs que no esté en la forma canónica /es/races/{slug}
+  // se considera rota (puede tener /race/ en vez de /races/, o /UUID, o /results).
+  if (url.startsWith(BROKEN_PREFIX)) return true;
+  if (url.startsWith(FIXED_PREFIX)) {
+    const rest = url.slice(FIXED_PREFIX.length);
+    // Si tiene más allá del slug (UUID, /results, etc.), está mal
+    if (rest.includes("/")) return true;
+    return false;
+  }
+  return false;
 }
 
 async function main() {
@@ -82,7 +108,7 @@ async function main() {
   console.log(`Carreras con alguna URL rota: ${broken.length}`);
 
   if (broken.length === 0) {
-    console.log("\n✅ Nada que arreglar. Todas las URLs de Sportmaniacs ya están en singular.");
+    console.log("\n✅ Nada que arreglar. Todas las URLs de Sportmaniacs ya están en formato canónico /es/races/{slug}.");
     return;
   }
 
@@ -105,8 +131,9 @@ async function main() {
   let ok = 0, fail = 0;
   for (let i = 0; i < broken.length; i++) {
     const r = broken[i];
-    const newOfficial = fixUrl(r.officialUrl);
-    const newOrganizer = fixUrl(r.organizerUrl);
+    // canonicalize: convierte a la forma /es/races/{slug} (sin UUID ni /results)
+    const newOfficial = canonicalize(fixUrl(r.officialUrl));
+    const newOrganizer = canonicalize(fixUrl(r.organizerUrl));
     // sourceUrl: usar la URL pública arreglada (para Sportmaniacs, fuente = web oficial)
     const newSource = newOfficial ?? newOrganizer;
     try {

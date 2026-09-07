@@ -40,6 +40,7 @@ interface SportmaniacsRace {
   idRaceType: string;
   province?: string | null;
   country?: string | null;
+  country_id?: string | null;   // "ESP", "UZB", "GTM", etc. — filtro de país
   city?: string | null;
 }
 
@@ -122,6 +123,22 @@ async function main() {
     );
   }
 
+  // 2b. Filtrar por país: solo España (country_id === "ESP").
+  // Sin este filtro, carreras de Guatemala, El Salvador, Uzbekistán, etc.
+  // acaban en la DB con province="valencia" por un fallback del systemUpsert.
+  // Añadido el 2026-09-07 después de detectar 86 carreras mal ubicadas.
+  const beforeCountry = allRaces.length;
+  for (let i = allRaces.length - 1; i >= 0; i--) {
+    const cid = (allRaces[i] as any).country_id;
+    if (cid !== "ESP") allRaces.splice(i, 1);
+  }
+  if (allRaces.length < beforeCountry) {
+    console.log(
+      `Filtro aplicado: solo country_id === "ESP". ` +
+        `Eliminadas ${beforeCountry - allRaces.length} de otros países.`,
+    );
+  }
+
   // 3. Stats
   const byProv: Record<string, number> = {};
   const byMonth: Record<string, number> = {};
@@ -199,6 +216,9 @@ async function main() {
     try {
       const res: any = await client.mutation(api.races.systemUpsert, {
         name: r.name,
+        // Pasar province cuando esté disponible evita el fallback
+        // "valencia" del systemUpsert, que enmascara carreras mal ubicadas.
+        province: r.province ? (r.province.toLowerCase() as any) : undefined,
         locality: r.city ?? undefined,
         startDate: r.date,
         organizer: "Sportmaniacs",

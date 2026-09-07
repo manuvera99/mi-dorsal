@@ -88,12 +88,25 @@ export const handleEvent = action({
       return { ok: false, reason: "strava_api_failed" };
     }
 
-    // 5) Clasificar e ingestar
+    // 5) Clasificar e ingestar. Import dinámico porque este archivo lleva
+    // "use node" y normalize.ts se mantiene como módulo puro sin esa
+    // directiva.
+    const { classifyActivity, findBestRaceMatch, matchPRDistance, matchBestEffortName } =
+      await import("../activities/normalize");
     const stravaType = activity.sport_type ?? activity.type;
-    const classifiedType = mapStravaTypeToOurs(stravaType);
     const startedAt = new Date(activity.start_date_local).getTime();
     const distanceM = activity.distance;
     const durationSec = activity.moving_time;
+    // Heurística real (distancia/pace/desnivel/cadencia), NO el mapeo plano
+    // por sport_type que había aquí antes (marcaba cualquier "Run" como
+    // long_run sin mirar duración ni distancia).
+    const classifiedType = classifyActivity(
+      stravaType as any,
+      distanceM,
+      durationSec,
+      activity.total_elevation_gain,
+      activity.average_cadence,
+    );
 
     // Cargar catálogo para cross-reference
     const fromDateMs = startedAt - 7 * 24 * 60 * 60 * 1000;
@@ -111,9 +124,6 @@ export const handleEvent = action({
       distanceKm: r.distanceKm,
     }));
 
-    const { findBestRaceMatch, matchPRDistance } = await import(
-      "../activities/normalize"
-    );
     const normalized = {
       providerActivityId: String(activity.id),
       name: activity.name,
@@ -162,10 +172,31 @@ export const handleEvent = action({
       rawPayload: JSON.stringify(activity),
     });
 
-    // PR check. Incluye "trail" porque los ultras (50K+) casi siempre llevan
-    // desnivel y se clasifican como trail, no como race/long_run/tempo.
+    // PR check. Mismo criterio que stravaInitialSync.ts:
+    //   - 5K-Maratón: usar best_efforts de Strava (mejor tramo GPS continuo
+    //     de esa distancia, lo mismo que "Mejores tiempos" en la app).
+    //   - Ultras (50K+): Strava no emite best_efforts ahí, usar distancia
+    //     total + filtro de classifiedType (incluye "trail").
+    //   - Fallback si no hay best_efforts en la respuesta: distancia total
+    //     + classifiedType, igual que antes.
     const prDistanceM = matchPRDistance(distanceM);
-    if (
+    const isUltra = prDistanceM !== null && prDistanceM >= 50000;
+    const bestEfforts = activity.best_efforts;
+
+    if (!isUltra && bestEfforts && bestEfforts.length > 0) {
+      for (const effort of bestEfforts) {
+        const effortDistanceM = matchBestEffortName(effort.name);
+        if (!effortDistanceM) continue;
+        await ctx.runMutation(internal.stravaExport.checkAndUpdatePR, {
+          userId: profile.profileId as any,
+          distanceM: effortDistanceM,
+          timeSeconds: effort.elapsed_time,
+          raceId: matchedRaceId as any,
+          achievedAt: new Date(effort.start_date_local).toISOString(),
+          source: "strava",
+        });
+      }
+    } else if (
       prDistanceM &&
       (classifiedType === "race" ||
         classifiedType === "long_run" ||
@@ -185,11 +216,3 @@ export const handleEvent = action({
     return { ok: true, action: aspectType, activityId: stravaActivityId };
   },
 });
-
-function mapStravaTypeToOurs(stravaType: string): "race" | "long_run" | "tempo" | "interval" | "easy" | "recovery" | "trail" {
-  if (stravaType === "Race") return "race";
-  if (stravaType === "TrailRun") return "trail";
-  if (stravaType === "VirtualRun") return "easy";
-  if (stravaType === "Run") return "long_run";
-  return "easy";
-}

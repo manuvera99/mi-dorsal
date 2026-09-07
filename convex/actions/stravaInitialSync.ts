@@ -19,6 +19,8 @@ import {
   ensureFreshToken,
   encodeTokens,
   listAthleteActivities,
+  getActivity,
+  sleep,
   type StravaTokens,
   type StravaActivitySummary,
 } from "../../lib/strava/client";
@@ -26,6 +28,8 @@ import {
   normalizeStravaCsvRow,
   findBestRaceMatch,
   matchPRDistance,
+  matchBestEffortName,
+  classifyActivity,
   type NormalizedActivity,
   type StravaCsvRow,
   type RaceMatchCandidate,
@@ -34,6 +38,14 @@ import {
 const PAGE_SIZE = 100;
 const MAX_PAGES_PER_CHUNK = 5; // 500 actividades por invocación
 const CHUNK_DELAY_MS = 1500;
+// Solo actividades de al menos esta distancia pueden contener un
+// best_effort de 5K (el más corto que trackeamos como PR de ruta) — no
+// tiene sentido pedir el detalle (1 request extra c/u) de un trote de 3km.
+const MIN_DISTANCE_M_FOR_DETAIL = 4750;
+// Delay entre peticiones de detalle dentro del mismo chunk, para no
+// consumir de golpe el rate limit de Strava (100 req/15min en Standard Tier)
+// cuando un chunk tiene muchas actividades largas.
+const DETAIL_FETCH_DELAY_MS = 400;
 
 // ---------------------------------------------------------------------------
 // Entry point
@@ -132,9 +144,31 @@ async function runSyncChunk(ctx: any, args: SyncArgs) {
     distanceKm: r.distanceKm,
   }));
 
-  // 6) Ingerir cada actividad
+  // 6) Ingerir cada actividad. Las que alcanzan el umbral de distancia
+  // piden el detalle (best_efforts) antes — es lo que usa Strava para
+  // calcular sus "Mejores tiempos", no la distancia total de la actividad.
   for (const activity of activities) {
-    await ingestOneActivity(ctx, profileId, activity, raceCandidates);
+    let bestEfforts: StravaActivitySummary["best_efforts"];
+    if (activity.distance >= MIN_DISTANCE_M_FOR_DETAIL) {
+      try {
+        const detail = await getActivity(activity.id, tokens, async (newTokens) => {
+          const encoded = encodeTokens(newTokens);
+          await ctx.runMutation(internal.stravaOauth.updateTokens, {
+            profileId,
+            accessTokenEncrypted: encoded.accessTokenEncrypted,
+            refreshTokenEncrypted: encoded.refreshTokenEncrypted,
+            expiresAt: encoded.expiresAt,
+          });
+        });
+        bestEfforts = detail.data.best_efforts;
+        await sleep(DETAIL_FETCH_DELAY_MS);
+      } catch (e: any) {
+        console.warn(
+          `[stravaInitialSync] no se pudo obtener detalle de actividad ${activity.id}: ${e?.message}`,
+        );
+      }
+    }
+    await ingestOneActivity(ctx, profileId, activity, raceCandidates, bestEfforts);
   }
 
   // 7) Actualizar progreso
@@ -185,16 +219,23 @@ async function ingestOneActivity(
   profileId: string,
   activity: StravaActivitySummary,
   raceCandidates: RaceMatchCandidate[],
+  bestEfforts?: StravaActivitySummary["best_efforts"],
 ) {
   // Mapear a nuestro formato normalizado
-  const stravaType = mapStravaTypeToOurs(activity.sport_type ?? activity.type);
   const startedAt = new Date(activity.start_date_local).getTime();
   const distanceM = activity.distance;
   const durationSec = activity.moving_time;
 
-  // Clasificar (reusamos la lógica de normalize.ts)
-  const classifiedType = mapStravaTypeToOurs(
-    activity.sport_type ?? activity.type,
+  // Clasificar con la heurística real (distancia/pace/desnivel/cadencia),
+  // NO con el mapeo plano por sport_type que había aquí antes (marcaba
+  // cualquier "Run" como long_run sin mirar duración ni distancia — un
+  // sprint de 300m de 1 minuto salía como "tirada larga").
+  const classifiedType = classifyActivity(
+    (activity.sport_type ?? activity.type) as any,
+    distanceM,
+    durationSec,
+    activity.total_elevation_gain,
+    activity.average_cadence,
   );
 
   // Normalizar para cross-reference
@@ -246,10 +287,41 @@ async function ingestOneActivity(
     rawPayload: JSON.stringify(activity),
   });
 
-  // PR check. Incluye "trail" porque los ultras (50K+) casi siempre llevan
-  // desnivel y se clasifican como trail, no como race/long_run/tempo.
+  // PR check.
+  //
+  // Vía preferente (5K-Maratón): best_efforts de Strava. Es el mismo dato
+  // que la app de Strava usa para "Mejores tiempos" — el mejor tramo GPS
+  // continuo de esa distancia exacta, calculado por Strava aunque la
+  // actividad completa sea más larga o más corta. No se filtra por
+  // classifiedType: si Strava dice que hay un 10K real dentro del track,
+  // es un 10K real, sea la actividad completa "easy", "long_run" o lo que sea.
+  //
+  // Ultras (50K+): Strava NO emite best_efforts para estas distancias, así
+  // que siempre se usa la distancia total de la actividad + filtro de
+  // classifiedType (incluye "trail" porque los ultras casi siempre llevan
+  // desnivel).
+  //
+  // Fallback 5K-Maratón: si no se pudo obtener el detalle (fetch falló, o
+  // la actividad no llegó al umbral mínimo de distancia), se cae a
+  // distancia total + classifiedType — peor que best_efforts, pero mejor
+  // que no detectar nada.
   const prDistanceM = matchPRDistance(distanceM);
-  if (
+  const isUltra = prDistanceM !== null && prDistanceM >= 50000;
+
+  if (!isUltra && bestEfforts && bestEfforts.length > 0) {
+    for (const effort of bestEfforts) {
+      const effortDistanceM = matchBestEffortName(effort.name);
+      if (!effortDistanceM) continue;
+      await ctx.runMutation(internal.stravaExport.checkAndUpdatePR, {
+        userId: profileId as any,
+        distanceM: effortDistanceM,
+        timeSeconds: effort.elapsed_time,
+        raceId: matchedRaceId as any,
+        achievedAt: new Date(effort.start_date_local).toISOString(),
+        source: "strava",
+      });
+    }
+  } else if (
     prDistanceM &&
     (classifiedType === "race" ||
       classifiedType === "long_run" ||
@@ -276,12 +348,4 @@ async function ingestOneActivity(
       userId: profileId as any,
     });
   }
-}
-
-function mapStravaTypeToOurs(stravaType: string): "race" | "long_run" | "tempo" | "interval" | "easy" | "recovery" | "trail" {
-  if (stravaType === "Race") return "race";
-  if (stravaType === "TrailRun") return "trail";
-  if (stravaType === "VirtualRun") return "easy";
-  if (stravaType === "Run") return "long_run";
-  return "easy";
 }

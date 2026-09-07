@@ -277,13 +277,39 @@ export async function stravaGet<T>(
   return { data, rateLimit };
 }
 
-function sleep(ms: number): Promise<void> {
+export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // ---------------------------------------------------------------------------
 // Wrappers tipados de los endpoints que usamos
 // ---------------------------------------------------------------------------
+
+/**
+ * "Mejor esfuerzo" dentro de una actividad — el tramo continuo más rápido
+ * para una distancia estándar (5K, 10K, etc.), calculado por Strava a
+ * partir del track GPS. Es EXACTAMENTE lo que la app de Strava muestra en
+ * "Mejores tiempos" del atleta: el mínimo de best_efforts de esa distancia
+ * a través de todas sus actividades — no existe un endpoint que devuelva
+ * esa tabla agregada directamente, hay que construirla nosotros mismos
+ * pidiendo el detalle de cada actividad relevante.
+ *
+ * Campo NO documentado en el spec oficial de Strava (developers.strava.com)
+ * pero confirmado real — lo modela stravalib (SDK de referencia de la
+ * comunidad) como parte de DetailedActivity. Solo viene en la respuesta de
+ * GET /activities/{id} (detalle), NUNCA en GET /athlete/activities (listado).
+ */
+export interface StravaBestEffort {
+  id: number;
+  name: string; // ej. "5k", "10k", "15k", "Half-Marathon", "1/2 mile", "10 mile"
+  distance: number; // metros
+  moving_time: number;
+  elapsed_time: number;
+  start_date: string;
+  start_date_local: string;
+  pr_rank: number | null; // 1/2/3 si es de las 3 mejores del atleta EN ESTA actividad, null si no
+  achievements?: unknown[];
+}
 
 export interface StravaActivitySummary {
   id: number;
@@ -322,6 +348,8 @@ export interface StravaActivitySummary {
   average_cadence?: number;
   description?: string;
   has_heartrate: boolean;
+  /** Solo presente en la respuesta de detalle (getActivity), no en el listado. */
+  best_efforts?: StravaBestEffort[];
 }
 
 export interface StravaActivitiesResponse {

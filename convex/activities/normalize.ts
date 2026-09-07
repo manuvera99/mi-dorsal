@@ -252,6 +252,30 @@ export function matchPRDistance(distanceM: number): number | null {
 }
 
 /**
+ * Mapea el `name` de un best_effort de Strava (ej. "5k", "Half-Marathon")
+ * a una de nuestras PR_DISTANCES_M. Se usa el nombre en vez de re-derivar
+ * por `distance` porque Strava ya sabe exactamente qué segmento calculó —
+ * más fiable que aplicar de nuevo una tolerancia porcentual sobre metros.
+ * Strava solo emite best_efforts para las distancias fijas que reconoce
+ * (400m, 1/2 mile, 1k, 1 mile, 2 mile, 5k, 10k, 15k, 10 mile, 20k,
+ * Half-Marathon, 30k, Marathon) — de esa lista, solo 5K/10K/15K/Media/
+ * Maratón coinciden con las que trackeamos aquí. Strava NO emite
+ * best_efforts para ultras (50K+), así que esas siguen detectándose por
+ * distancia total de la actividad vía matchPRDistance.
+ */
+const BEST_EFFORT_NAME_TO_DISTANCE_M: Record<string, number> = {
+  "5k": 5000,
+  "10k": 10000,
+  "15k": 15000,
+  "half-marathon": 21097,
+  "marathon": 42195,
+};
+
+export function matchBestEffortName(name: string): number | null {
+  return BEST_EFFORT_NAME_TO_DISTANCE_M[name.trim().toLowerCase()] ?? null;
+}
+
+/**
  * Clasifica una actividad en uno de nuestros 7 tipos.
  *
  * Heurística (orden de prioridad):

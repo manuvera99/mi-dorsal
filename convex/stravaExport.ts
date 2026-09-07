@@ -310,7 +310,7 @@ export const updateUploadStatus = internalMutation({
  *   2) Cliente: `await fetch(generateUploadUrl, ...)` → POST file
  *      → devuelve storageId
  *   3) Cliente: `await convex.mutation(api.stravaExport.attachFileToUpload, {uploadId, storageId})`
- *   4) Cliente: `await convex.action(api.stravaExportIngest.startIngest, {uploadId})`
+ *   4) Cliente: `await convex.action(api["actions/stravaExportIngest"].startIngest, {uploadId})`
  *      → arranca la action de ingest
  *
  * Por simplicidad en este PR inicial, vamos a hacer (1)+(3)+(4) en una

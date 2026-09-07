@@ -21,7 +21,7 @@ import {
   listAthleteActivities,
   type StravaTokens,
   type StravaActivitySummary,
-} from "@/lib/strava/client";
+} from "../../lib/strava/client";
 import {
   normalizeStravaCsvRow,
   findBestRaceMatch,
@@ -147,9 +147,11 @@ async function runSyncChunk(ctx: any, args: SyncArgs) {
 
   // 8) Si la página vino llena y aún no hemos pasado el límite, agendar siguiente
   if (activities.length === PAGE_SIZE && page < MAX_PAGES_PER_CHUNK * 100) {
+    // Este archivo vive en convex/actions/stravaInitialSync.ts, así que su
+    // namespace real es "actions/stravaInitialSync" (con prefijo de carpeta).
     await ctx.scheduler.runAfter(
       CHUNK_DELAY_MS,
-      internal.stravaInitialSync.continueSync,
+      (internal as any)["actions/stravaInitialSync"].continueSync,
       { profileId, page: page + 1, totalProcessed: newTotal },
     );
   } else {

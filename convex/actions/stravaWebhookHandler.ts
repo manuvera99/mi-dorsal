@@ -9,7 +9,7 @@
 "use node";
 
 import { v } from "convex/values";
-import { internalAction } from "../_generated/server";
+import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import {
   decodeTokens,
@@ -17,9 +17,13 @@ import {
   ensureFreshToken,
   getActivity,
   type StravaTokens,
-} from "@/lib/strava/client";
+} from "../../lib/strava/client";
 
-export const handleEvent = internalAction({
+// Pública (no internalAction) porque la llama app/api/webhooks/strava/route.ts
+// desde fuera de Convex vía ConvexHttpClient — solo funciones "public" son
+// invocables así. No expone datos sensibles: solo procesa el evento del
+// webhook de Strava (ya validado por firma HMAC antes de llegar aquí).
+export const handleEvent = action({
   args: {
     stravaAthleteId: v.number(),
     stravaActivityId: v.number(),

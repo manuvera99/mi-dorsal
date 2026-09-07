@@ -260,9 +260,11 @@ async function runIngest(ctx: any, args: IngestArgs) {
 
   // 10) Si quedan más, agendar el siguiente chunk
   if (chunkEnd < allRows.length) {
+    // Este archivo vive en convex/actions/stravaExportIngest.ts, así que su
+    // namespace real es "actions/stravaExportIngest" (con prefijo de carpeta).
     await ctx.scheduler.runAfter(
       SCHEDULE_NEXT_CHUNK_AFTER,
-      internal.stravaExportIngest.continueIngest,
+      (internal as any)["actions/stravaExportIngest"].continueIngest,
       { uploadId, offset: chunkEnd },
     );
   } else {

@@ -94,9 +94,11 @@ export async function GET(request: NextRequest) {
     });
 
     // 5) Disparar sync inicial en background (no esperamos)
-    convex.action(api.stravaInitialSync.startInitialSync, {
+    // La action vive en convex/actions/stravaInitialSync.ts, por lo que su
+    // path en el namespace es "actions/stravaInitialSync" (con prefijo).
+    convex.action((api as any)["actions/stravaInitialSync"].startInitialSync, {
       profileId: profile._id,
-    }).catch((e) => {
+    }).catch((e: any) => {
       console.error("[strava/callback] initial sync failed:", e);
     });
   } catch (e: any) {

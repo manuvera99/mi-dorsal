@@ -116,8 +116,10 @@ export async function POST(request: NextRequest) {
 
     // 8) Disparar la action de ingest (en background)
     //    No esperamos a que termine: el cliente hará polling del estado.
-    convex.action(api.stravaExportIngest.startIngest, { uploadId })
-      .catch((e) => {
+    // La action vive en convex/actions/stravaExportIngest.ts, por lo que su
+    // path en el namespace es "actions/stravaExportIngest" (con prefijo).
+    convex.action((api as any)["actions/stravaExportIngest"].startIngest, { uploadId })
+      .catch((e: any) => {
         console.error(`[strava-export/upload] startIngest failed for ${uploadId}:`, e);
       });
 

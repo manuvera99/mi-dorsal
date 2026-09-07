@@ -20,6 +20,14 @@ import { internal } from "../_generated/api";
 
 const STRAVA_WEBHOOK_BASE = "https://www.strava.com/api/v3/push_subscriptions";
 
+// Strava no firma los eventos con HMAC (no hay ningún "webhook secret" real,
+// pese a lo que sugería la documentación interna del proyecto). La única
+// validación disponible es este verify_token: Strava nos lo devuelve tal
+// cual en el query param `hub.verify_token` del GET de validación inicial
+// (app/api/webhooks/strava/route.ts), y ahí comprobamos que coincide.
+// Debe ser idéntico en ambos sitios.
+const VERIFY_TOKEN = "mi-dorsal-strava-webhook";
+
 interface PushSubscription {
   id: number;
   application_id: number;
@@ -53,7 +61,7 @@ async function createSubscription(
       client_id: clientId,
       client_secret: clientSecret,
       callback_url: callbackUrl,
-      verify_token: "mi-dorsal-strava-webhook", // Strava ignora este campo en la creación
+      verify_token: VERIFY_TOKEN,
     }),
   });
   if (!res.ok) {

@@ -41,16 +41,11 @@ Con Standard Tier:
 
 ## 3. Configurar webhook callback URL
 
-Una vez la app esté creada, Strava te permite suscribirte a webhooks push.
+El cron `renew-strava-webhook` (cada 12h) crea/renueva la suscripción automáticamente vía `POST /push_subscriptions` — no hace falta crearla a mano en el panel de Strava.
 
-1. En el panel de la app, sección "Webhook Subscriptions"
-2. **Callback URL**: `https://www.mi-dorsal.com/api/webhooks/strava`
-3. Click "Create Subscription"
-4. Strava te devuelve un **Webhook Secret** → guárdalo, será `STRAVA_WEBHOOK_SECRET`
+> ⚠️ **Corrección (verificado 2026-09-07)**: la API real de Strava NO devuelve ningún "Webhook Secret" al crear la suscripción — el POST solo devuelve `{ id }`. No existe `STRAVA_WEBHOOK_SECRET`. La única validación disponible es el `verify_token` que la propia app elige al crear la suscripción (hardcodeado como `VERIFY_TOKEN` en `convex/actions/stravaWebhookSubscription.ts` y `app/api/webhooks/strava/route.ts` — debe coincidir en ambos), y que Strava devuelve en `hub.verify_token` durante el GET de validación inicial.
 
-> 💡 El cron de Convex (`renew-strava-webhook`, cada 12h) renueva automáticamente la suscripción si Strava la desactiva. Pero tienes que crear la primera manualmente.
-
-> 💡 El `STRAVA_WEBHOOK_CALLBACK_URL` es el que usará la action de renovación si necesitas re-suscribir. Configúralo como env var para que el cron funcione.
+> 💡 El `STRAVA_WEBHOOK_CALLBACK_URL` es el que usará la action de renovación para re-suscribir. Configúralo como env var (en Vercel Y en Convex — son runtimes separados) para que el cron funcione.
 
 ## 4. Generar `STRAVA_TOKEN_KEY` (cifrado AES-256-GCM)
 
@@ -67,23 +62,23 @@ Copia la versión base64 (recomendada) y guárdala como `STRAVA_TOKEN_KEY`.
 
 ## 5. Variables de entorno a añadir
 
-En Vercel (`Settings → Environment Variables → Add` para `production`):
+**Importante**: hay que configurarlas en DOS sitios, no solo en Vercel. Las actions de sync/webhook/renovación corren en el runtime de Convex, no en Next.js, así que Convex necesita su propia copia de estas variables (`npx convex env set NOMBRE --prod`, o `npx convex env list --prod` para verificar qué hay). Vercel y Convex no comparten env vars automáticamente.
+
+En Vercel (`Settings → Environment Variables → Add` para `production`) **y** en Convex (`npx convex env set ... --prod`):
 
 | Variable | Valor | Notas |
 |---|---|---|
 | `STRAVA_CLIENT_ID` | (de Strava) | El Client ID de la app |
 | `STRAVA_CLIENT_SECRET` | (de Strava) | El Client Secret |
-| `STRAVA_WEBHOOK_SECRET` | (de Strava) | El secret que te dio al suscribir el webhook |
 | `STRAVA_WEBHOOK_CALLBACK_URL` | `https://www.mi-dorsal.com/api/webhooks/strava` | Para que el cron de renovación funcione |
 | `STRAVA_TOKEN_KEY` | (generada en paso 4) | Clave de cifrado AES-256-GCM |
-| `NEXT_PUBLIC_APP_URL` | (ya debe estar) `https://www.mi-dorsal.com` | Usado para construir el redirect_uri OAuth |
+| `NEXT_PUBLIC_APP_URL` | (ya debe estar) `https://www.mi-dorsal.com` | Usado para construir el redirect_uri OAuth (solo Vercel/Next.js) |
 
 En `.env.local` para dev:
 
 ```bash
 STRAVA_CLIENT_ID=123456
 STRAVA_CLIENT_SECRET=abc123def456...
-STRAVA_WEBHOOK_SECRET=xyz789...
 STRAVA_WEBHOOK_CALLBACK_URL=https://mi-dorsal.vercel.app/api/webhooks/strava
 STRAVA_TOKEN_KEY=<clave base64 generada>
 NEXT_PUBLIC_APP_URL=http://localhost:3000  # o tu URL de dev

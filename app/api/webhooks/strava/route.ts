@@ -9,15 +9,27 @@
 // Strava también envía un evento de "subscription devalidation" cada 24h
 // aunque no haya actividad. Si no renovamos, perdemos la subscripción.
 //
-// Validación de firma:
-//   Strava manda header "HUB-Signature" con HMAC-SHA256(secret, body).
-//   STRAVA_WEBHOOK_SECRET es la clave que Strava nos da al suscribirnos.
+// Seguridad (comportamiento REAL de la API de Strava, verificado 2026-09-07):
+//   Strava NO firma los eventos POST con HMAC — no existe ningún
+//   "webhook secret" que Strava devuelva al crear la suscripción (el POST
+//   a /push_subscriptions solo devuelve `{ id }`). La única validación que
+//   ofrece es el `verify_token`: nosotros lo elegimos al crear la
+//   suscripción (ver convex/actions/stravaWebhookSubscription.ts,
+//   VERIFY_TOKEN) y Strava nos lo devuelve en el query param
+//   `hub.verify_token` del GET de validación inicial — si no coincide, no
+//   es una petición legítima de Strava confirmando esta suscripción. Los
+//   eventos POST posteriores no llevan firma verificable; la única
+//   protección ahí es que la URL del callback no es pública.
 // =============================================================================
 
 import { NextRequest, NextResponse } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
-import { createHmac, timingSafeEqual } from "crypto";
+
+// Debe coincidir exactamente con VERIFY_TOKEN en
+// convex/actions/stravaWebhookSubscription.ts (mismo valor, dos sitios
+// porque uno corre en Convex y el otro en Next.js).
+const VERIFY_TOKEN = "mi-dorsal-strava-webhook";
 
 export const runtime = "nodejs";
 // Strava envía GET con un challenge al suscribirse por primera vez
@@ -25,20 +37,6 @@ export const dynamic = "force-dynamic";
 
 function stripBom(s: string): string {
   return s.replace(/^\uFEFF/, "");
-}
-
-function verifySignature(body: string, signature: string | null, secret: string): boolean {
-  if (!signature) return false;
-  const expected = createHmac("sha256", secret).update(body).digest("hex");
-  if (expected.length !== signature.length) return false;
-  try {
-    return timingSafeEqual(
-      Buffer.from(expected, "utf8"),
-      Buffer.from(signature, "utf8"),
-    );
-  } catch {
-    return false;
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -52,8 +50,10 @@ export async function GET(request: NextRequest) {
   const challenge = url.searchParams.get("hub.challenge");
 
   if (mode === "subscribe" && challenge) {
-    // Strava pide que respondamos con el challenge para confirmar la subscripción
-    // (no validamos el verify_token porque Strava genera el challenge, no lo esperamos)
+    if (token !== VERIFY_TOKEN) {
+      console.warn("[strava/webhook] verify_token no coincide, petición rechazada");
+      return NextResponse.json({ error: "invalid_verify_token" }, { status: 403 });
+    }
     return NextResponse.json({ "hub.challenge": challenge });
   }
 
@@ -66,20 +66,6 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
-  const signature = request.headers.get("hub-signature");
-  const secret = process.env.STRAVA_WEBHOOK_SECRET;
-
-  // Si tenemos secret configurado, validamos la firma
-  if (secret) {
-    if (!verifySignature(body, signature, secret)) {
-      console.warn("[strava/webhook] firma inválida");
-      return NextResponse.json({ error: "invalid_signature" }, { status: 401 });
-    }
-  } else {
-    console.warn(
-      "[strava/webhook] STRAVA_WEBHOOK_SECRET no definida — aceptando sin validar (NO USAR EN PROD)",
-    );
-  }
 
   let event: {
     aspect_type?: string; // "create" | "update" | "delete"
@@ -112,14 +98,16 @@ export async function POST(request: NextRequest) {
 
       // Disparar la action que procesa el evento
       // No esperamos a que termine (Strava espera 200 rápido)
+      // La action vive en convex/actions/stravaWebhookHandler.ts, por lo que su
+      // path en el namespace es "actions/stravaWebhookHandler" (con prefijo).
       convex
-        .action(api.stravaWebhookHandler.handleEvent, {
+        .action((api as any)["actions/stravaWebhookHandler"].handleEvent, {
           stravaAthleteId: event.owner_id,
           stravaActivityId: event.object_id,
           aspectType: event.aspect_type,
           eventTime: event.event_time ?? Math.floor(Date.now() / 1000),
         })
-        .catch((e) => {
+        .catch((e: any) => {
           console.error("[strava/webhook] handleEvent failed:", e);
         });
     } catch (e: any) {

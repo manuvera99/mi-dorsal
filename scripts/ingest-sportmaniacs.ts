@@ -338,8 +338,19 @@ async function main() {
       continue;
     }
     const slug = buildSlug(r.name, r.date, r.id);
-    const officialUrl = `https://sportmaniacs.com/es/races/${r.slug}`;
+    // La URL pública de una carrera en Sportmaniacs usa el singular /race/{slug}
+    // (no /races/, que es la home del listado). Confirmado en:
+    //   - scripts/ingest-sportmaniacs-curated.ts (5 carreras hardcodeadas)
+    //   - scripts/output/sportmaniacs-races.json (muestra del API)
+    const officialUrl = `https://sportmaniacs.com/es/race/${r.slug}`;
+    // sourceUrl = misma URL que officialUrl para Sportmaniacs: la fuente ES Sportmaniacs,
+    // así que la "URL en la fuente" coincide con la URL pública de la carrera.
+    const sourceUrl = officialUrl;
     const photoUrl = r.photos?.md ?? r.photos?.sm ?? r.photos?.xs;
+    // La API devuelve lat/lng como strings vacíos cuando no hay geo. Parseamos con cuidado.
+    const lat = parseFloat(r.latitude);
+    const lng = parseFloat(r.longitude);
+    const hasGeo = Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0);
 
     try {
       const res: any = await client.mutation(api.races.systemUpsert, {
@@ -350,9 +361,12 @@ async function main() {
         raceType,
         startDate: r.date,
         officialUrl,
+        sourceUrl,
         organizer: "Sportmaniacs",
         organizerUrl: officialUrl,
         imageUrl: photoUrl,
+        latitude: hasGeo ? lat : undefined,
+        longitude: hasGeo ? lng : undefined,
         isPublished: true,
         isFeatured: false,
         scraperAdapter: "sportmaniacs",

@@ -360,6 +360,7 @@ export const adminUpdate = mutation({
       rulesUrl: v.optional(v.string()),
       registrationUrl: v.optional(v.string()),
       officialUrl: v.optional(v.string()),
+      sourceUrl: v.optional(v.string()),
       // Contacto
       contactEmail: v.optional(v.string()),
       contactPhone: v.optional(v.string()),
@@ -596,6 +597,7 @@ export const systemUpsert = mutation({
     startDate: v.optional(v.string()),
     locality: v.optional(v.string()),
     officialUrl: v.optional(v.string()),
+    sourceUrl: v.optional(v.string()),
     // Datos básicos
     province: v.optional(provinceValidator),
     distanceKm: v.optional(v.number()),

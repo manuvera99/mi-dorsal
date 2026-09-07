@@ -83,7 +83,7 @@ export function Header({ mockMode = false }: { mockMode?: boolean }) {
         <Link href="/" className="flex items-center gap-2" aria-label="mi-dorsal — inicio">
           {/* Isotipo (dorsal rojo con speed lines) — public/brand-assets/isotipo-mono-black.png */}
           <img
-            src="/favicon-32x32.png"
+            src="/favicon.svg"
             alt=""
             width={36}
             height={36}

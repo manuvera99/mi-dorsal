@@ -542,6 +542,32 @@ export const systemListAll = query({
         services: r.services,
         organizer: r.organizer,
         contactEmail: r.contactEmail,
+        // Ampliado 2026-09-07: status mas completo
+        isPublished: r.isPublished,
+        isFeatured: r.isFeatured,
+        scraperAdapter: r.scraperAdapter,
+        startTime: r.startTime,
+        address: r.address,
+        venue: r.venue,
+        organizerUrl: r.organizerUrl,
+        contactPhone: r.contactPhone,
+        dorsalPickupLocation: r.dorsalPickupLocation,
+        dorsalPickupHours: r.dorsalPickupHours,
+        socialInstagram: r.socialInstagram,
+        socialFacebook: r.socialFacebook,
+        socialTwitter: r.socialTwitter,
+        socialYoutube: r.socialYoutube,
+        imageUrl: r.imageUrl,
+        description: r.description,
+        registrationOpenDate: r.registrationOpenDate,
+        registrationCloseDate: r.registrationCloseDate,
+        maxParticipants: r.maxParticipants,
+        timeLimitMinutes: r.timeLimitMinutes,
+        courseType: r.courseType,
+        gpxUrl: r.gpxUrl,
+        mapImageUrl: r.mapImageUrl,
+        profileImageUrl: r.profileImageUrl,
+        regulationUrl: r.regulationUrl,
       }));
   },
 });
@@ -908,6 +934,207 @@ export const adminDelete = mutation({
     await requireAdmin(ctx);
     await ctx.db.delete(id);
     return id;
+  },
+});
+
+/**
+ * Admin: elimina VARIAS carreras en batch.
+ * Usado por el panel de duplicados.
+ */
+export const adminDeleteMany = mutation({
+  args: { ids: v.array(v.id("races")) },
+  handler: async (ctx, { ids }) => {
+    await requireAdmin(ctx);
+    if (ids.length === 0) return { deleted: 0 };
+    let deleted = 0;
+    for (const id of ids) {
+      const r = await ctx.db.get(id);
+      if (!r) continue;
+      await ctx.db.delete(id);
+      deleted++;
+    }
+    return { deleted };
+  },
+});
+
+/**
+ * Admin: busca carreras candidatas a duplicado, agrupadas por motivo.
+ *
+ * Tipos de detección (ordenados por confianza):
+ *   - "exact":  mismo source + mismo nombre normalizado + misma fecha (re-ingest)
+ *   - "structural": misma fecha + misma provincia + misma distancia (±0.1km)
+ *                + locality compatible (entre fuentes distintas)
+ *   - "fuzzy":   misma fecha + misma provincia + nombre con similitud > umbral
+ *                (entre fuentes distintas o dentro de la misma)
+ *
+ * Devuelve hasta `maxGroups` grupos, cada uno con TODOS los campos de las
+ * carreras (sin datos sensibles). El admin elige qué borrar/qué conservar.
+ */
+export const adminFindDuplicates = query({
+  args: {
+    maxGroups: v.optional(v.number()),
+    similarityThreshold: v.optional(v.number()),
+  },
+  handler: async (ctx, { maxGroups = 50, similarityThreshold = 0.75 }) => {
+    await requireAdmin(ctx);
+
+    const all = await ctx.db.query("races").collect();
+
+    // === Normalización ===
+    const stripOrdinals = (s: string) =>
+      s.replace(/\b\d{1,3}[ºª°]\b/g, " ")
+        .replace(/\b(X{0,3})(IX|IV|V?I{1,3}|X{1,2})\b/g, " ");
+
+    const stripYear = (s: string) =>
+      s.replace(/\b(19|20)\d{2}\b/g, " ")
+        .replace(/\b(edici[oó]n|ed\.?)\b/gi, " ");
+
+    const normalizeName = (s: string) =>
+      stripYear(stripOrdinals(s))
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim()
+        .replace(/\s+/g, " ");
+
+    const tokenize = (s: string): Set<string> =>
+      new Set(normalizeName(s).split(" ").filter((t) => t.length > 1));
+
+    const jaccard = (a: Set<string>, b: Set<string>): number => {
+      if (a.size === 0 || b.size === 0) return 0;
+      let inter = 0;
+      for (const t of a) if (b.has(t)) inter++;
+      const union = a.size + b.size - inter;
+      return union === 0 ? 0 : inter / union;
+    };
+
+    // === Dedupe de grupos (un mismo par puede aparecer en varios detectores) ===
+    type Group = {
+      key: string;
+      reason: string;
+      reasonType: "exact" | "structural" | "fuzzy";
+      races: Doc<"races">[];
+    };
+    const groups = new Map<string, Group>();
+
+    const addGroup = (races: Doc<"races">[], reason: string, reasonType: Group["reasonType"]) => {
+      if (races.length < 2) return;
+      // Dedupe por set de IDs ordenado
+      const ids = races.map((r) => r._id).sort();
+      const key = ids.join("|");
+      const existing = groups.get(key);
+      if (existing) {
+        // Si ya existe por otro detector, quédate con el de mayor confianza
+        const order = { exact: 0, structural: 1, fuzzy: 2 } as const;
+        if (order[reasonType] < order[existing.reasonType]) {
+          groups.set(key, { key, reason, reasonType, races });
+        }
+        return;
+      }
+      groups.set(key, { key, reason, reasonType, races });
+    };
+
+    // === Detector 1: same-source + exact name + same date ===
+    const byExact = new Map<string, Doc<"races">[]>();
+    for (const r of all) {
+      if (!r.startDate) continue;
+      const norm = normalizeName(r.name);
+      if (!norm) continue;
+      const k = `${r.scraperAdapter ?? "manual"}|${norm}|${r.startDate}`;
+      if (!byExact.has(k)) byExact.set(k, []);
+      byExact.get(k)!.push(r);
+    }
+    for (const [, list] of byExact) {
+      if (list.length >= 2) {
+        const source = list[0].scraperAdapter ?? "manual";
+        addGroup(
+          list,
+          `Mismo nombre exacto + fecha (fuente: ${source})`,
+          "exact"
+        );
+      }
+    }
+
+    // === Detector 2: structural cross-source (date+province+distance+locality) ===
+    // Bucket por (date, province, distanceBucket)
+    const byStructural = new Map<string, Doc<"races">[]>();
+    for (const r of all) {
+      if (!r.startDate || !r.province) continue;
+      const distBucket = Math.round(r.distanceKm * 2) / 2; // 0.5 km
+      const k = `${r.startDate}|${r.province}|${distBucket}`;
+      if (!byStructural.has(k)) byStructural.set(k, []);
+      byStructural.get(k)!.push(r);
+    }
+    const normLocality = (s: string | undefined) =>
+      (s ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    const localitiesCompatible = (a: string | undefined, b: string | undefined) => {
+      const na = normLocality(a);
+      const nb = normLocality(b);
+      if (!na || !nb) return true; // si una falta, no descartar
+      return na === nb || na.includes(nb) || nb.includes(na);
+    };
+    for (const [, list] of byStructural) {
+      if (list.length < 2) continue;
+      // Dedupe de fuente: si todas son del mismo source, el detector 1 ya las cogió
+      const sources = new Set(list.map((r) => r.scraperAdapter ?? "manual"));
+      if (sources.size < 2) continue;
+      // Pairwise con filtro de locality y distance exacta
+      for (let i = 0; i < list.length; i++) {
+        for (let j = i + 1; j < list.length; j++) {
+          const a = list[i];
+          const b = list[j];
+          if (!localitiesCompatible(a.locality, b.locality)) continue;
+          if (Math.abs(a.distanceKm - b.distanceKm) > 0.1) continue;
+          addGroup(
+            [a, b],
+            `Misma fecha + provincia + distancia (${a.distanceKm} km, ${a.locality ?? "?"})`,
+            "structural"
+          );
+        }
+      }
+    }
+
+    // === Detector 3: fuzzy (date+province + name similarity > threshold) ===
+    // Bucket por (date, province)
+    const byFuzzyBucket = new Map<string, Doc<"races">[]>();
+    for (const r of all) {
+      if (!r.startDate) continue;
+      const prov = r.province ?? r.locality ?? "?";
+      const k = `${r.startDate}|${prov}`;
+      if (!byFuzzyBucket.has(k)) byFuzzyBucket.set(k, []);
+      byFuzzyBucket.get(k)!.push(r);
+    }
+    for (const [, list] of byFuzzyBucket) {
+      if (list.length < 2) continue;
+      // Pre-computar tokens
+      const tokensList = list.map((r) => ({ r, t: tokenize(r.name) }));
+      for (let i = 0; i < list.length; i++) {
+        for (let j = i + 1; j < list.length; j++) {
+          const a = tokensList[i];
+          const b = tokensList[j];
+          const sim = jaccard(a.t, b.t);
+          if (sim >= similarityThreshold) {
+            addGroup(
+              [a.r, b.r],
+              `Nombres similares (${(sim * 100).toFixed(0)}% Jaccard)`,
+              "fuzzy"
+            );
+          }
+        }
+      }
+    }
+
+    // Ordenar: exact > structural > fuzzy; dentro de cada tipo, por fecha asc
+    const order = { exact: 0, structural: 1, fuzzy: 2 } as const;
+    const sorted = Array.from(groups.values()).sort((a, b) => {
+      if (order[a.reasonType] !== order[b.reasonType]) return order[a.reasonType] - order[b.reasonType];
+      const da = a.races[0].startDate ?? "9999";
+      const db = b.races[0].startDate ?? "9999";
+      return da.localeCompare(db);
+    });
+
+    return sorted.slice(0, maxGroups);
   },
 });
 

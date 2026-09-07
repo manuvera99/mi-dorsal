@@ -182,109 +182,59 @@ export async function deepExtractRace(url: string): Promise<ExtractedRaceDeep | 
   const systemPrompt = `Eres un asistente experto en extraer información de carreras populares desde su web oficial.
 A partir del contenido de la web, extrae TODOS los datos posibles y devuélvelos como JSON.
 
-CAMPOS A EXTRAER (usa null si NO encuentras el dato; NUNCA inventes):
+CAMPOS A EXTRAER (usa null si NO encuentras el dato; NUNCA inventes datos que no estén en la web):
 
 {
-  "name": string | null,                 // Nombre completo de la carrera
-  "startTime": string | null,            // Hora de salida principal, formato "HH:MM" (24h)
-  "address": string | null,              // Dirección exacta de salida (calle, número, ciudad)
-  "venue": string | null,                // Lugar/punto de salida ("Plaza del Ayuntamiento", "Polideportivo municipal", etc.)
-  "longDescription": string | null,      // Descripción completa de la carrera (1-3 párrafos, max 2000 chars). En español.
-
-  "raceFormats": [                      // Modalidades (si la carrera tiene varias distancias, ej: 5K + 10K + 21K)
-    {
-      "name": string,                    // "5K", "10K", "Maratón", "Trail 25K", "Marcha nórdica"
-      "distanceKm": number,              // 5, 10, 21.0975, 42.195, etc.
-      "elevationGainM": number | null,   // Desnivel + en metros
-      "startTime": string | null,        // "HH:MM" si tiene hora propia
-      "priceEur": number | null,         // Precio actual en euros
-      "maxParticipants": number | null   // Cupo si lo hay
-    }
+  "name": string | null,
+  "startTime": string | null,
+  "address": string | null,
+  "venue": string | null,
+  "longDescription": string | null,
+  "raceFormats": [
+    { "name": string, "distanceKm": number, "elevationGainM": number | null, "startTime": string | null, "priceEur": number | null, "maxParticipants": number | null }
   ],
-
-  "aidStations": [                       // Avituallamientos en ruta con detalle
-    {
-      "km": number,                      // km desde la salida (0 = salida, total = meta)
-      "name": string | null,             // "Av. km 5 - Plaza Mayor"
-      "hasWater": boolean | null,
-      "hasIsotonic": boolean | null,
-      "hasFood": boolean | null,         // Sólido (fruta, barritas, geles)
-      "hasMedical": boolean | null
-    }
+  "aidStations": [
+    { "km": number, "name": string | null, "hasWater": boolean | null, "hasIsotonic": boolean | null, "hasFood": boolean | null, "hasMedical": boolean | null }
   ],
-
-  "priceTiers": [                        // Tramos de precio si suben por fecha
-    {
-      "fromDate": string,                // "YYYY-MM-DD"
-      "toDate": string | null,           // "YYYY-MM-DD" o null si abierto
-      "priceEur": number,
-      "label": string | null             // "1ª tanda", "Última semana"
-    }
+  "priceTiers": [
+    { "fromDate": string, "toDate": string | null, "priceEur": number, "label": string | null }
   ],
-
-  "dorsalPickupLocation": string | null, // Dónde se recoge el dorsal
-  "dorsalPickupHours": string | null,    // Horario ("Vie 14-20h, Sáb 10-13h")
-
-  "regulationUrl": string | null,        // URL del PDF de reglamento
-  "mapUrl": string | null,               // URL del mapa en alta res (imagen)
-  "mapEmbedUrl": string | null,          // URL iframe de Google Maps / wikiloc
-  "altimetryImageUrl": string | null,    // URL de la imagen del perfil de elevación
-  "gpxUrl": string | null,               // URL de descarga del track GPX (si hay)
-  "mapImageUrl": string | null,         // Imagen del recorrido (alternativa a mapUrl)
-  "profileImageUrl": string | null,      // Imagen del perfil (alternativa a altimetryImageUrl)
-
-  "altimetryData": [                     // Tabla de altitud per-km si está visible (raro)
-    { "km": number, "altitudeM": number }
-  ],
-
-  "galleryUrls": [string],               // URLs de fotos del evento (cartel + galería si hay)
-
+  "dorsalPickupLocation": string | null,
+  "dorsalPickupHours": string | null,
+  "regulationUrl": string | null,
+  "mapUrl": string | null,
+  "mapEmbedUrl": string | null,
+  "altimetryImageUrl": string | null,
+  "gpxUrl": string | null,
+  "mapImageUrl": string | null,
+  "profileImageUrl": string | null,
+  "altimetryData": [{ "km": number, "altitudeM": number }],
+  "galleryUrls": [string],
   "contactEmail": string | null,
   "contactPhone": string | null,
   "organizer": string | null,
   "organizerUrl": string | null,
-  "socialInstagram": string | null,      // URL completa, no handle
+  "socialInstagram": string | null,
   "socialFacebook": string | null,
   "socialTwitter": string | null,
   "socialYoutube": string | null,
-
-  "registrationOpenDate": string | null, // "YYYY-MM-DD"
+  "registrationOpenDate": string | null,
   "registrationCloseDate": string | null,
   "maxParticipants": number | null,
   "soldOut": boolean | null,
-
-  "services": {                          // true si el servicio existe
-    "aidStations": number | null,        // número
-    "showers": boolean | null,
-    "changingRooms": boolean | null,
-    "bagDrop": boolean | null,
-    "parking": boolean | null,
-    "medical": boolean | null,
-    "physiotherapy": boolean | null,
-    "timingChip": boolean | null,
-    "photoService": boolean | null,
-    "videoService": boolean | null,
-    "swagBag": boolean | null,
-    "tShirt": boolean | null,
-    "medal": boolean | null,
-    "refreshments": boolean | null
+  "services": {
+    "aidStations": number | null, "showers": boolean | null, "changingRooms": boolean | null, "bagDrop": boolean | null, "parking": boolean | null, "medical": boolean | null, "physiotherapy": boolean | null, "timingChip": boolean | null, "photoService": boolean | null, "videoService": boolean | null, "swagBag": boolean | null, "tShirt": boolean | null, "medal": boolean | null, "refreshments": boolean | null
   } | null,
-
   "courseType": "loop" | "point_to_point" | "out_and_back" | null,
   "timeLimitMinutes": number | null,
-  "cutoffs": [                           // Tiempos máximos por km
-    { "km": number, "timeLimit": string } // "HH:MM" hora límite
-  ],
-
-  "prizes": string | null,               // Descripción premios (texto)
+  "cutoffs": [{ "km": number, "timeLimit": string }],
+  "prizes": string | null,
   "trophies": boolean | null,
-
-  "categories": [                        // Categorías de edad/género
+  "categories": [
     { "name": string, "gender": "M" | "F" | "mixto" | null, "ageMin": number | null, "ageMax": number | null }
   ],
-
-  "confidence": "high" | "medium" | "low",  // Tu confianza global
-  "notes": string | null                 // Notas (ej: "Web en Flash, no scrapeable" o "Solo info de 2025, próxima edición TBD")
+  "confidence": "high" | "medium" | "low",
+  "notes": string | null
 }
 
 REGLAS:
@@ -292,10 +242,48 @@ REGLAS:
 - URLs completas con https://. Si solo ves "/img/mapa.jpg", pon "URL_COMPLETA_AQUÍ".
 - Fechas en YYYY-MM-DD. Horas en HH:MM 24h.
 - Si la web tiene un único precio actual sin tramos, mete UN objeto en priceTiers con fromDate=registrationOpenDate y toDate=null.
-- "confidence": high si la web tiene info clara; medium si faltan datos; low si la web es ambigua o es de un año pasado.
-- "notes": breve, max 200 chars, en español, sobre problemas/limitaciones.
 
-IDIOMA: todos los textos (longDescription, notes) en español.`;
+===== MODO SÍNTESIS (CRÍTICO) =====
+La web de una carrera popular española puede ser:
+  (A) Web oficial completa con reglamento, mapa, altimetría, precios por tramos, etc.
+  (B) Landing page de Sportmaniacs/Runedia con un párrafo de descripción y botón de inscripción.
+  (C) Página de Facebook/noticia de la Federación con info básica.
+
+OBJETIVO: que la ficha en mi-dorsal SIEMPRE tenga contenido útil, incluso en los casos (B) y (C).
+
+Para el campo "longDescription" — SIEMPRE escribe un párrafo en español, 80-400 chars, sintetizando lo que SÍ sepas:
+  - Caso (A): 1-3 párrafos con todo el detalle de la web.
+  - Caso (B/C): 1 párrafo corto que combine nombre, distancia, fecha, localidad y organizador
+    en una frase natural. Ej: "Carrera popular de 10K organizada por el Club Atletismo X en
+    Valencia. Salida el 5 de octubre a las 09:00 desde la Plaza del Ayuntamiento. Inscripciones
+    a través de Sportmaniacs." — incluso si esto es casi todo lo que dice la web, ES MEJOR que
+    null. NO inventes info que no esté (modalidades extra, premios, etc.).
+  - Si la página está casi vacía (solo el nombre): devuelve igualmente un longDescription
+    de UNA frase con "[Nombre] — [distancia] en [localidad], [fecha]. Datos vía [source]."
+
+Para "services" — pon a true CUALQUIER servicio que la web mencione explícitamente aunque sea
+de pasada (ej: "habrá avituallamiento en meta" → refreshments: true; "parking gratuito" →
+parking: true). Solo null si NO se menciona.
+
+Para "categories" — si la web menciona "Senior M/F", "Sub-23", "Máster 35-44", "Veteranos" etc.,
+rellena al menos las obvias. Si la web no menciona ninguna, deja null.
+
+Para "galleryUrls" — si no hay galería visible, pon null (mejor null que una URL rota del logo
+de la cabecera). El imageUrl del campo raíz (description corta) NO va aquí.
+
+Para "organizer" — si la página es de Sportmaniacs/Runedia y no menciona organizador explícito,
+escribe "vía [source]" (ej: "vía Sportmaniacs"). Si la web oficial SÍ nombra organizador, ese.
+
+Para "confidence":
+  - high: web oficial con info completa y clara.
+  - medium: web oficial con info parcial, o plataforma de inscripción con detalles.
+  - low: landing page muy escueta, solo nombre+fecha+localidad.
+
+Para "notes": breve, max 200 chars, en español, sobre problemas/limitaciones
+(ej: "Web en Flash, no scrapeable" o "Solo info de 2025, próxima edición TBD" o
+"Landing de Sportmaniacs, sin datos de organizador").
+
+IDIOMA: todos los textos (longDescription, notes, organizer) en español.`;
 
   const userPrompt = `URL: ${url}
 
@@ -424,20 +412,6 @@ function htmlToText(html: string): string {
 const URL_RE = /^https?:\/\/.+/;
 const TIME_RE = /^\d{1,2}:\d{2}$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const PROVINCES = [
-  "alicante", "valencia", "castellon", "murcia", "albacete",
-  "ciudad real", "cuenca", "guadalajara", "toledo",
-  "almeria", "granada", "jaen", "malaga", "cordoba", "sevilla", "huelva", "cadiz",
-  "huesca", "zaragoza", "teruel",
-  "barcelona", "girona", "tarragona", "lleida",
-  "mallorca", "menorca", "ibiza",
-  "las palmas", "santa cruz de tenerife",
-  "madrid", "vizcaya", "gipuzkoa", "alava", "navarra", "asturias", "cantabria",
-  "a coruna", "lugo", "ourense", "pontevedra",
-  "la rioja", "caceres", "badajoz",
-  "leon", "zamora", "salamanca", "valladolid", "palencia", "burgos", "soria", "avila", "segovia",
-  "ceuta", "melilla",
-];
 
 function sanitize(r: any): ExtractedRaceDeep {
   const out: ExtractedRaceDeep = {
@@ -476,7 +450,6 @@ function sanitize(r: any): ExtractedRaceDeep {
     "organizerUrl", "socialInstagram", "socialFacebook", "socialTwitter", "socialYoutube",
   ] as const) {
     if (r?.[k] && URL_RE.test(r[k])) {
-      // Skip the LLM's literal "URL_COMPLETA_AQUÍ" placeholder
       if (!r[k].includes("URL_COMPLETA")) {
         (out as any)[k] = r[k];
       }
@@ -592,4 +565,70 @@ function sanitize(r: any): ExtractedRaceDeep {
   }
 
   return out;
+}
+
+// =============================================================================
+// buildExtractionPatch
+// =============================================================================
+// Convierte el resultado del LLM en un patch listo para `db.patch` en Convex.
+// Single source of truth — usado por:
+//   - scripts/deep-extract-all.ts (bulk por CLI)
+//   - app/admin/races/[id]/actions.ts (botón "Extraer y aplicar" en admin)
+// =============================================================================
+
+/** Lista de campos escalares (string) que se copian si vienen no vacíos. */
+const PATCH_SCALAR_FIELDS = [
+  "name", "startTime", "address", "venue", "longDescription",
+  "organizer", "organizerUrl", "contactEmail", "contactPhone",
+  "dorsalPickupLocation", "dorsalPickupHours",
+  "regulationUrl", "mapUrl", "mapEmbedUrl", "altimetryImageUrl",
+  "gpxUrl", "mapImageUrl", "profileImageUrl",
+  "registrationOpenDate", "registrationCloseDate",
+  "socialInstagram", "socialFacebook", "socialTwitter", "socialYoutube",
+  "prizes",
+] as const;
+
+export function buildExtractionPatch(
+  data: ExtractedRaceDeep,
+  sourceUrl: string
+): Record<string, unknown> {
+  const patch: Record<string, unknown> = {
+    extractedFromUrl: sourceUrl,
+    extractedAt: Date.now(),
+  };
+
+  for (const key of PATCH_SCALAR_FIELDS) {
+    const v = (data as any)[key];
+    if (v !== null && v !== undefined && v !== "") patch[key] = v;
+  }
+
+  if (typeof data.maxParticipants === "number" && data.maxParticipants > 0) {
+    patch.maxParticipants = data.maxParticipants;
+  }
+  if (typeof data.timeLimitMinutes === "number" && data.timeLimitMinutes > 0) {
+    patch.timeLimitMinutes = data.timeLimitMinutes;
+  }
+  if (typeof data.soldOut === "boolean") patch.soldOut = data.soldOut;
+  if (typeof data.trophies === "boolean") patch.trophies = data.trophies;
+  if (data.courseType) patch.courseType = data.courseType;
+  if (data.confidence) patch.extractionConfidence = data.confidence;
+
+  if (data.raceFormats?.length) patch.raceFormats = data.raceFormats;
+  if (data.aidStations?.length) patch.aidStations = data.aidStations;
+  if (data.priceTiers?.length) patch.priceTiers = data.priceTiers;
+  if (data.cutoffs?.length) patch.cutoffs = data.cutoffs;
+  if (data.categories?.length) patch.categories = data.categories;
+  if (data.galleryUrls?.length) patch.galleryUrls = data.galleryUrls;
+  if (data.altimetryData?.length) patch.altimetryData = data.altimetryData;
+  if (data.services && Object.keys(data.services).length > 0) {
+    patch.services = data.services;
+  }
+
+  return patch;
+}
+
+/** Helper para logging consistente en los dos callers. */
+export function countAppliedFields(patch: Record<string, unknown>): number {
+  // Restar los 2 campos de metadata (extractedFromUrl + extractedAt)
+  return Object.keys(patch).length - 2;
 }

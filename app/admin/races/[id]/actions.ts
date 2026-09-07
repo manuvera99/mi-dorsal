@@ -4,7 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
 
-import { deepExtractRace, type ExtractedRaceDeep } from "@/lib/ai/extract-race-deep";
+import { deepExtractRace, buildExtractionPatch, countAppliedFields, type ExtractedRaceDeep } from "@/lib/ai/extract-race-deep";
 import { cleanUrl, diagnoseUrl } from "@/lib/ai/clean-url";
 
 export type DeepExtractResult =
@@ -70,38 +70,7 @@ export async function deepExtractAndApplyAction(
     return { error: "IA falló: " + (e?.message ?? e) };
   }
   if (!data) return { error: "IA no devolvió datos" };
-  const patch: Record<string, unknown> = {
-    extractedFromUrl: cleaned,
-    extractedAt: Date.now(),
-  };
-  const copyField = (k: string) => {
-    const v = (data as any)[k];
-    if (v !== null && v !== undefined && v !== "") patch[k] = v;
-  };
-  for (const k of [
-    "name", "startTime", "address", "venue", "longDescription",
-    "organizer", "organizerUrl", "contactEmail", "contactPhone",
-    "dorsalPickupLocation", "dorsalPickupHours",
-    "regulationUrl", "mapUrl", "mapEmbedUrl", "altimetryImageUrl",
-    "gpxUrl", "mapImageUrl", "profileImageUrl",
-    "registrationOpenDate", "registrationCloseDate",
-    "socialInstagram", "socialFacebook", "socialTwitter", "socialYoutube",
-    "prizes",
-  ]) copyField(k);
-  if (typeof data.maxParticipants === "number" && data.maxParticipants > 0) patch.maxParticipants = data.maxParticipants;
-  if (typeof data.timeLimitMinutes === "number" && data.timeLimitMinutes > 0) patch.timeLimitMinutes = data.timeLimitMinutes;
-  if (typeof data.soldOut === "boolean") patch.soldOut = data.soldOut;
-  if (typeof data.trophies === "boolean") patch.trophies = data.trophies;
-  if (data.courseType) patch.courseType = data.courseType;
-  if (data.raceFormats?.length) patch.raceFormats = data.raceFormats;
-  if (data.aidStations?.length) patch.aidStations = data.aidStations;
-  if (data.priceTiers?.length) patch.priceTiers = data.priceTiers;
-  if (data.cutoffs?.length) patch.cutoffs = data.cutoffs;
-  if (data.categories?.length) patch.categories = data.categories;
-  if (data.galleryUrls?.length) patch.galleryUrls = data.galleryUrls;
-  if (data.altimetryData?.length) patch.altimetryData = data.altimetryData;
-  if (data.services && Object.keys(data.services).length > 0) patch.services = data.services;
-  if (data.confidence) patch.extractionConfidence = data.confidence;
+  const patch = buildExtractionPatch(data, cleaned);
   try {
     await client.mutation(api.races.adminUpdate, { id: raceId as any, patch });
   } catch (e: any) {
@@ -109,7 +78,7 @@ export async function deepExtractAndApplyAction(
   }
   return {
     ok: true,
-    fieldsApplied: Object.keys(patch).length - 2,
+    fieldsApplied: countAppliedFields(patch),
     confidence: data.confidence ?? null,
     url: cleaned,
   };

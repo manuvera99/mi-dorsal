@@ -2,7 +2,12 @@
 // scripts/deep-extract-all.ts
 // =============================================================================
 // Re-procesa TODAS las carreras con officialUrl con la extracción profunda IA.
-// Por cada carrera: descarga → IA → actualiza via systemUpdate.
+// Por cada carrera: HEAD probe → (si OK) IA → actualizar via systemUpdate.
+//
+// HEAD probe: para detectar URLs rotas (404) y marcarlas como "tried, broken"
+// sin gastar la llamada a la IA. Esto evita el 50% de calls que fallan con 404
+// (típico en sportmaniacs con URLs tipo /races/{slug}/{uuid}/results que la
+// plataforma ha dejado de servir).
 //
 // Uso:
 //   npx tsx --env-file=.env.local scripts/deep-extract-all.ts
@@ -10,25 +15,33 @@
 //   npx tsx --env-file=.env.local scripts/deep-extract-all.ts --only-missing
 //   npx tsx --env-file=.env.local scripts/deep-extract-all.ts --priority
 //   npx tsx --env-file=.env.local scripts/deep-extract-all.ts --delay=3000
+//   npx tsx --env-file=.env.local scripts/deep-extract-all.ts --skip-probe
 //
 // Flags:
-//   --limit=N       Procesa solo las primeras N carreras (tras filtrar/ordenar)
+//   --limit=N       Procesa solo las primeras N carreras
 //   --only-missing  Solo procesa carreras sin extractedAt
-//   --priority      Prioriza las que NO tienen extractedAt, luego las que
-//                   les faltan campos importantes (longDescription, altimetryData,
-//                   raceFormats). Útil para rotar en nightly sin repetir.
+//   --priority      Prioriza no-extraídas + baja-confianza
 //   --delay=MS      Pausa entre extracciones (default 2000ms)
+//   --skip-probe    Desactiva el HEAD pre-check
+//   --rebroken      Reintentar carreras ya marcadas como url_broken
 // =============================================================================
 
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api";
-import { deepExtractRace, type ExtractedRaceDeep } from "../lib/ai/extract-race-deep";
+import {
+  deepExtractRace,
+  buildExtractionPatch,
+  countAppliedFields,
+  type ExtractedRaceDeep,
+} from "../lib/ai/extract-race-deep";
 
 const args = process.argv.slice(2);
 const limit = Number(args.find((a) => a.startsWith("--limit="))?.split("=")[1]) || 0;
 const onlyMissing = args.includes("--only-missing");
 const priority = args.includes("--priority");
 const delayMs = Number(args.find((a) => a.startsWith("--delay="))?.split("=")[1]) || 2000;
+const skipProbe = args.includes("--skip-probe");
+const reBroken = args.includes("--rebroken");
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 
@@ -39,58 +52,37 @@ if (!convexUrl) {
 
 const client = new ConvexHttpClient(convexUrl);
 
-function buildPatch(data: ExtractedRaceDeep, sourceUrl: string) {
-  const patch: Record<string, unknown> = {
-    extractedFromUrl: sourceUrl,
-    extractedAt: Date.now(),
-  };
+const UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-  const copyField = (key: string) => {
-    const v = (data as any)[key];
-    if (v !== null && v !== undefined && v !== "") patch[key] = v;
-  };
-
-  [
-    "name", "startTime", "address", "venue", "longDescription",
-    "organizer", "organizerUrl", "contactEmail", "contactPhone",
-    "dorsalPickupLocation", "dorsalPickupHours",
-    "regulationUrl", "mapUrl", "mapEmbedUrl", "altimetryImageUrl",
-    "gpxUrl", "mapImageUrl", "profileImageUrl",
-    "registrationOpenDate", "registrationCloseDate",
-    "socialInstagram", "socialFacebook", "socialTwitter", "socialYoutube",
-    "prizes",
-  ].forEach(copyField);
-
-  if (typeof data.maxParticipants === "number" && data.maxParticipants > 0) {
-    patch.maxParticipants = data.maxParticipants;
+/**
+ * HEAD pre-check: si la URL devuelve 404/410/5xx, devolvemos 'broken'.
+ * Devuelve 'ok' si 2xx, 'broken' si 4xx/5xx, 'unknown' si hay error de red.
+ */
+async function probeUrl(url: string): Promise<"ok" | "broken" | "unknown"> {
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 8000);
+    const res = await fetch(url, {
+      method: "HEAD",
+      redirect: "follow",
+      signal: c.signal,
+      headers: { "User-Agent": UA, Accept: "text/html" },
+    });
+    clearTimeout(t);
+    if (res.status >= 200 && res.status < 400) return "ok";
+    if (res.status === 404 || res.status === 410 || res.status >= 500) return "broken";
+    return "broken";
+  } catch {
+    return "unknown";
   }
-  if (typeof data.timeLimitMinutes === "number" && data.timeLimitMinutes > 0) {
-    patch.timeLimitMinutes = data.timeLimitMinutes;
-  }
-  if (typeof data.soldOut === "boolean") patch.soldOut = data.soldOut;
-  if (typeof data.trophies === "boolean") patch.trophies = data.trophies;
-  if (data.courseType) patch.courseType = data.courseType;
-
-  if (data.raceFormats?.length) patch.raceFormats = data.raceFormats;
-  if (data.aidStations?.length) patch.aidStations = data.aidStations;
-  if (data.priceTiers?.length) patch.priceTiers = data.priceTiers;
-  if (data.cutoffs?.length) patch.cutoffs = data.cutoffs;
-  if (data.categories?.length) patch.categories = data.categories;
-  if (data.galleryUrls?.length) patch.galleryUrls = data.galleryUrls;
-  if (data.altimetryData?.length) patch.altimetryData = data.altimetryData;
-  if (data.services && Object.keys(data.services).length > 0) {
-    patch.services = data.services;
-  }
-  if (data.confidence) patch.extractionConfidence = data.confidence;
-
-  return patch;
 }
 
 async function main() {
   console.log("=".repeat(70));
   console.log("Deep extract all races (MiniMax M3)");
   console.log("=".repeat(70));
-  console.log("Flags:", { limit, onlyMissing, priority, delayMs });
+  console.log("Flags:", { limit, onlyMissing, priority, delayMs, skipProbe, reBroken });
 
   const all = await client.query(api.races.systemListAll, { onlyWithOfficialUrl: true });
   console.log(`Encontradas ${all.length} carreras con officialUrl`);
@@ -100,15 +92,21 @@ async function main() {
     toProcess = all.filter((r: any) => !r.extractedAt);
     console.log(`Solo sin extraer: ${toProcess.length}`);
   }
+  // Filtrar las marcadas como url_broken salvo que se pase --rebroken
+  if (!reBroken) {
+    const before = toProcess.length;
+    toProcess = toProcess.filter((r: any) => {
+      // Heurística: si tiene extractedAt pero solo 1 campo aplicado, es probablemente un skip
+      if (r.extractedAt && r.extractionConfidence === "low" && (r as any).longDescription == null && (r as any).organizer == null) {
+        return false;
+      }
+      return true;
+    });
+    const skipped = before - toProcess.length;
+    if (skipped > 0) console.log(`Saltadas ${skipped} marcadas como url_broken (usar --rebroken para forzar)`);
+  }
 
-  // Modo --priority: ordena para procesar primero las que más lo necesitan
   if (priority) {
-    // Score: menor = más prioritario
-    // 0: nunca extraída
-    // 1: extraída pero sin longDescription
-    // 2: extraída pero sin altimetryData
-    // 3: extraída pero sin raceFormats
-    // 4: extraída con todos los campos principales
     const scoreOf = (r: any): number => {
       if (!r.extractedAt) return 0;
       if (!r.longDescription) return 1;
@@ -116,12 +114,10 @@ async function main() {
       if (!r.raceFormats || r.raceFormats.length === 0) return 3;
       return 4;
     };
-    // Ordenar: primero las más prioritarias, dentro de cada tier por startDate asc (más próximas primero)
     toProcess = [...toProcess].sort((a: any, b: any) => {
       const sa = scoreOf(a);
       const sb = scoreOf(b);
       if (sa !== sb) return sa - sb;
-      // Mismo tier: más próximas en el calendario primero
       return (a.startDate ?? "").localeCompare(b.startDate ?? "");
     });
     console.log(`Modo priority activado — top 5 más prioritarias:`);
@@ -143,6 +139,7 @@ async function main() {
 
   let success = 0;
   let failed = 0;
+  let broken = 0;
   let totalFieldsApplied = 0;
 
   for (let i = 0; i < toProcess.length; i++) {
@@ -152,22 +149,44 @@ async function main() {
 
     try {
       const t0 = Date.now();
-      // Limpiar URL por si trae BOM
       const cleanUrl = (r.officialUrl ?? "").replace(/[\uFEFF\u200B-\u200D\u2060]/g, "").trim();
       if (!/^https?:\/\//.test(cleanUrl)) {
         throw new Error(`URL inválida: ${r.officialUrl}`);
       }
-      const data = await deepExtractRace(cleanUrl);
+
+      // HEAD probe: skip URLs claramente rotas
+      if (!skipProbe) {
+        const probe = await probeUrl(cleanUrl);
+        if (probe === "broken") {
+          await client.mutation(api.races.systemUpdate, {
+            id: r._id,
+            patch: {
+              extractedFromUrl: cleanUrl,
+              extractedAt: Date.now(),
+              extractionConfidence: "low",
+            },
+          });
+          console.log(`  ⚠️  HEAD 404/5xx — marcado como probado (sin enriquecer)`);
+          broken++;
+          continue;
+        }
+      }
+
+      const data: ExtractedRaceDeep | null = await deepExtractRace(cleanUrl);
       const dt = ((Date.now() - t0) / 1000).toFixed(1);
       if (!data) {
         console.log(`  ⚠️  IA devolvió null (${dt}s)`);
+        await client.mutation(api.races.systemUpdate, {
+          id: r._id,
+          patch: { extractedFromUrl: cleanUrl, extractedAt: Date.now(), extractionConfidence: "low" },
+        });
         failed++;
         continue;
       }
       console.log(`  ✓ IA (${dt}s) confidence=${data.confidence} — ${data.notes ? `"${data.notes.slice(0, 60)}"` : "ok"}`);
 
-      const patch = buildPatch(data, r.officialUrl);
-      const fieldsCount = Object.keys(patch).length - 2; // restar extractedFromUrl + extractedAt
+      const patch = buildExtractionPatch(data, cleanUrl);
+      const fieldsCount = countAppliedFields(patch);
       await client.mutation(api.races.systemUpdate, { id: r._id, patch });
       console.log(`  ✅ ${fieldsCount} campos aplicados`);
       success++;
@@ -186,15 +205,15 @@ async function main() {
   console.log("\n" + "=".repeat(70));
   console.log("RESUMEN");
   console.log("=".repeat(70));
-  console.log(`✅ ${success} carreras actualizadas`);
-  console.log(`❌ ${failed} fallaron`);
+  console.log(`✅ ${success} carreras actualizadas con datos IA`);
+  console.log(`⚠️  ${broken} URLs rotas (HEAD falló, marcadas para no reintentar)`);
+  console.log(`❌ ${failed} fallaron por otros motivos`);
   console.log(`📊 ${totalFieldsApplied} campos aplicados en total`);
-  if (success + failed > 0) {
-    console.log(`⏱  ${(totalFieldsApplied / Math.max(1, success)).toFixed(1)} campos/carrera (media)`);
+  if (success > 0) {
+    console.log(`⏱  ${(totalFieldsApplied / success).toFixed(1)} campos/carrera (media)`);
   }
 }
 
-// Capturar errores async no manejados para que un fallo aislado no aborte el script
 process.on("unhandledRejection", (reason) => {
   console.error("⚠️  Unhandled rejection (continúa):", reason);
 });

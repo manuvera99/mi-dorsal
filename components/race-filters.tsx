@@ -29,6 +29,12 @@ export interface CarrerasFilters {
   month?: number;
   organizer?: string;
   distanceCategories?: DistanceCategory[];
+  /**
+   * Si es `true`, el catálogo incluye también carreras pasadas.
+   * Por defecto (`false` / `undefined`) solo se muestran carreras con
+   * `startDate >= hoy` (fecha local del cliente).
+   */
+  includePast?: boolean;
 }
 
 interface FiltersProps {

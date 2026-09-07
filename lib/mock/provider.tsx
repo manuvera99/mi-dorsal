@@ -46,6 +46,11 @@ export const mockApi = {
   races: {
     list: async (args: any = {}) => {
       let filtered = ALL_MOCK_RACES.filter((r) => r.isPublished);
+      if (args.fromDate) {
+        filtered = filtered.filter(
+          (r) => typeof r.startDate === "string" && r.startDate >= args.fromDate,
+        );
+      }
       if (args.province) filtered = filtered.filter((r) => r.province === args.province);
       if (args.raceType) filtered = filtered.filter((r) => r.raceType === args.raceType);
       if (args.month) {
@@ -113,9 +118,18 @@ export const mockApi = {
       avgs.totalRatings = ratings.length;
       return avgs;
     },
-    topRaces: async ({ limit = 10 }: { limit?: number } = {}) => {
+    topRaces: async ({
+      limit = 10,
+      fromDate,
+    }: { limit?: number; fromDate?: string } = {}) => {
+      const sourceRaces =
+        fromDate
+          ? MOCK_RACES.filter(
+              (r) => typeof r.startDate === "string" && r.startDate >= fromDate,
+            )
+          : MOCK_RACES;
       const racesWithRatings = await Promise.all(
-        MOCK_RACES.map(async (race) => {
+        sourceRaces.map(async (race) => {
           const summary = await mockApi.ratings.summary({ raceId: race._id });
           if (summary.totalRatings < 3) return null;
           return { ...race, ...summary };

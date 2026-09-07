@@ -84,18 +84,31 @@ export const summary = query({
 
 /**
  * Top 10 carreras por media global (mínimo 3 ratings).
+ *
+ * Si se pasa `fromDate` (YYYY-MM-DD, fecha local del cliente), se filtran
+ * las carreras con startDate < fromDate para que el carrusel "Las más
+ * votadas" no muestre carreras ya celebradas.
  */
 export const topRaces = query({
-  args: { limit: v.optional(v.number()) },
-  handler: async (ctx, { limit }) => {
+  args: {
+    limit: v.optional(v.number()),
+    fromDate: v.optional(v.string()), // "YYYY-MM-DD"
+  },
+  handler: async (ctx, { limit, fromDate }) => {
     const races = await ctx.db
       .query("races")
       .withIndex("by_published_date")
       .filter((q) => q.eq(q.field("isPublished"), true))
       .collect();
 
+    const filteredRaces = fromDate
+      ? races.filter(
+          (r) => typeof r.startDate === "string" && r.startDate >= fromDate,
+        )
+      : races;
+
     const result = await Promise.all(
-      races.map(async (race) => {
+      filteredRaces.map(async (race) => {
         const ratings = await ctx.db
           .query("raceRatings")
           .withIndex("by_race", (q) => q.eq("raceId", race._id))

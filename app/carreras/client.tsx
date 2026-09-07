@@ -15,7 +15,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery } from "convex/react";
-import { Search, MapPin, List, Map, Calendar, X, ArrowUpDown, Sparkles } from "lucide-react";
+import { Search, MapPin, List, Map, Calendar, X, ArrowUpDown, Sparkles, Clock } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { mockApi, isMockMode } from "@/lib/mock/provider";
 import { RaceCard } from "@/components/race-card";
@@ -32,20 +32,36 @@ import type { DistanceCategory } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { SuggestRaceDialog } from "@/components/feedback/suggest-race-dialog";
 
+/**
+ * Fecha local de hoy en formato YYYY-MM-DD. Se usa como `fromDate` por
+ * defecto en las queries para que el catálogo arranque en "carreras
+ * futuras". Se calcula en el cliente (no en el servidor) para evitar
+ * líos de timezone UTC en eventos que cruzan medianoche.
+ */
+function localTodayISO(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function MockCarreras() {
   const [filters, setFilters] = useCarrerasFilters();
+  const todayLocal = useMemo(() => localTodayISO(), []);
+  const fromDate = filters.includePast ? undefined : todayLocal;
   const [races, setRaces] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [top, setTop] = useState<any[]>([]);
 
   useEffect(() => {
     setLoading(true);
-    void mockApi.races.list(filters).then((r) => {
+    void mockApi.races.list({ ...filters, fromDate }).then((r) => {
       setRaces(r);
       setLoading(false);
     });
-    void mockApi.ratings.topRaces({ limit: 10 }).then(setTop);
-  }, [JSON.stringify(filters)]);
+    void mockApi.ratings.topRaces({ limit: 10, fromDate }).then(setTop);
+  }, [JSON.stringify(filters), fromDate]);
 
   return (
     <CarrerasShell
@@ -60,6 +76,8 @@ function MockCarreras() {
 
 function RealCarreras() {
   const [filters, setFilters] = useCarrerasFilters();
+  const todayLocal = useMemo(() => localTodayISO(), []);
+  const fromDate = filters.includePast ? undefined : todayLocal;
   const convexRaces = useQuery(api.races.list, {
     province: filters.province as any,
     raceType: filters.raceType as any,
@@ -67,8 +85,9 @@ function RealCarreras() {
     search: filters.search,
     organizer: filters.organizer,
     distanceCategories: filters.distanceCategories as any,
+    fromDate,
   });
-  const top = useQuery(api.ratings.topRaces, { limit: 10 });
+  const top = useQuery(api.ratings.topRaces, { limit: 10, fromDate });
   const loading = convexRaces === undefined;
   return (
     <CarrerasShell
@@ -110,7 +129,13 @@ interface CarrerasShellProps {
   onChange: (f: CarrerasFilters) => void;
 }
 
-function CarrerasShell({ races, top, loading, filters, onChange }: CarrerasShellProps) {
+function CarrerasShell({
+  races,
+  top,
+  loading,
+  filters,
+  onChange,
+}: CarrerasShellProps) {
   const [userCoords, setUserCoords] = useState<Coords | null>(null);
   const [maxDistance, setMaxDistance] = useState<number>(200);
   const [filterEnabled, setFilterEnabled] = useState<boolean>(false);
@@ -258,14 +283,42 @@ function CarrerasShell({ races, top, loading, filters, onChange }: CarrerasShell
       {/* 5. HEADER DE RESULTADOS + SORT + VIEW MODE */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
         <div>
-          <p className="text-sm font-semibold text-runner-dark">
-            {loading
-              ? "Buscando carreras…"
-              : racesAfterDistance.length === 0
-              ? "Sin resultados con esos filtros"
-              : `${racesAfterDistance.length} ${
-                  racesAfterDistance.length === 1 ? "carrera encontrada" : "carreras encontradas"
-                }`}
+          <p className="text-sm font-semibold text-runner-dark flex items-center gap-2 flex-wrap">
+            <span>
+              {loading
+                ? "Buscando carreras…"
+                : racesAfterDistance.length === 0
+                ? "Sin resultados con esos filtros"
+                : `${racesAfterDistance.length} ${
+                    racesAfterDistance.length === 1 ? "carrera" : "carreras"
+                  } ${filters.includePast ? "encontradas" : "futuras"}`}
+            </span>
+            {!loading && (
+              <label
+                className={cn(
+                  "inline-flex items-center gap-1.5 text-xs font-medium cursor-pointer select-none",
+                  "px-2 py-0.5 rounded-full border transition-colors",
+                  filters.includePast
+                    ? "bg-runner-primary/10 border-runner-primary/30 text-runner-primary hover:bg-runner-primary/15"
+                    : "bg-white border-gray-300 text-gray-600 hover:border-runner-primary hover:text-runner-primary",
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={filters.includePast === true}
+                  onChange={(e) =>
+                    onChange({
+                      ...filters,
+                      includePast: e.target.checked || undefined,
+                    })
+                  }
+                  className="h-3.5 w-3.5 rounded border-gray-300 text-runner-primary focus:ring-1 focus:ring-runner-primary cursor-pointer"
+                  aria-label="Mostrar también carreras pasadas"
+                />
+                <Clock className="h-3 w-3" aria-hidden="true" />
+                {filters.includePast ? "Incluyendo pasadas" : "Incluir pasadas"}
+              </label>
+            )}
           </p>
           {filterEnabled && (
             <p className="text-xs text-gray-500 mt-0.5">
@@ -385,6 +438,8 @@ function CarrerasShell({ races, top, loading, filters, onChange }: CarrerasShell
           hasFilter={activeFilterCount > 0}
           hasDistance={filterEnabled}
           maxDistance={maxDistance}
+          includePast={filters.includePast === true}
+          onShowPast={() => onChange({ ...filters, includePast: true })}
           onClear={() => onChange({})}
         />
       ) : (
@@ -435,10 +490,19 @@ interface EmptyStateProps {
   hasFilter: boolean;
   hasDistance: boolean;
   maxDistance: number;
+  includePast: boolean;
+  onShowPast: () => void;
   onClear: () => void;
 }
 
-function EmptyState({ hasFilter, hasDistance, maxDistance, onClear }: EmptyStateProps) {
+function EmptyState({
+  hasFilter,
+  hasDistance,
+  maxDistance,
+  includePast,
+  onShowPast,
+  onClear,
+}: EmptyStateProps) {
   return (
     <div className="rounded-2xl border-2 border-dashed border-gray-300 bg-runner-warm p-8 md:p-10 text-center">
       <Search className="h-12 w-12 mx-auto mb-3 text-gray-300" aria-hidden="true" />
@@ -471,7 +535,7 @@ function EmptyState({ hasFilter, hasDistance, maxDistance, onClear }: EmptyState
           </p>
         </>
       )}
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mt-2">
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mt-2 flex-wrap">
         {hasFilter && (
           <button
             type="button"
@@ -480,6 +544,16 @@ function EmptyState({ hasFilter, hasDistance, maxDistance, onClear }: EmptyState
           >
             <X className="h-4 w-4" aria-hidden="true" />
             Limpiar todos los filtros
+          </button>
+        )}
+        {!includePast && (
+          <button
+            type="button"
+            onClick={onShowPast}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-runner-primary hover:underline"
+          >
+            <Clock className="h-4 w-4" aria-hidden="true" />
+            Mostrar carreras pasadas
           </button>
         )}
         <SuggestRaceDialog

@@ -51,6 +51,10 @@ function distanceToCategories(distanceKm: number): string[] {
  *                        Una carrera cae en una categoría si su distanceKm está
  *                        en el rango de esa categoría. Múltiples categorías
  *                        = OR.
+ *  - fromDate     : "YYYY-MM-DD". Si se pasa, solo se devuelven carreras con
+ *                    startDate >= fromDate. Lo envía el cliente con la fecha
+ *                    local del usuario para evitar líos de timezone con UTC.
+ *                    Carreras sin startDate se excluyen cuando hay fromDate.
  *  - limit        : cortar a N
  */
 export const list = query({
@@ -61,6 +65,7 @@ export const list = query({
     search: v.optional(v.string()),
     organizer: v.optional(v.string()),
     distanceCategories: v.optional(v.array(distanceCategoryValidator)),
+    fromDate: v.optional(v.string()), // "YYYY-MM-DD"
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -73,6 +78,13 @@ export const list = query({
 
     // Filtros adicionales en memoria (suficiente para ~100s de carreras)
     let filtered = all;
+    if (args.fromDate) {
+      // Solo carreras con fecha conocida y >= fromDate (fecha local del cliente).
+      // Carreras sin startDate se quedan fuera del catálogo "futuro".
+      filtered = filtered.filter(
+        (r) => typeof r.startDate === "string" && r.startDate >= args.fromDate!,
+      );
+    }
     if (args.province) {
       filtered = filtered.filter((r) => r.province === args.province);
     }

@@ -10,6 +10,9 @@
 
 import type * as _helpers from "../_helpers.js";
 import type * as actions_stravaExportIngest from "../actions/stravaExportIngest.js";
+import type * as actions_stravaInitialSync from "../actions/stravaInitialSync.js";
+import type * as actions_stravaWebhookHandler from "../actions/stravaWebhookHandler.js";
+import type * as actions_stravaWebhookSubscription from "../actions/stravaWebhookSubscription.js";
 import type * as activities_normalize from "../activities/normalize.js";
 import type * as adminTools from "../adminTools.js";
 import type * as blog from "../blog.js";
@@ -38,6 +41,9 @@ import type * as scraper from "../scraper.js";
 import type * as stats from "../stats.js";
 import type * as stravaExport from "../stravaExport.js";
 import type * as stravaExportIngestHelpers from "../stravaExportIngestHelpers.js";
+import type * as stravaInitialSyncHelpers from "../stravaInitialSyncHelpers.js";
+import type * as stravaOauth from "../stravaOauth.js";
+import type * as stravaWebhookHandlerInternal from "../stravaWebhookHandlerInternal.js";
 import type * as users from "../users.js";
 import type * as votes from "../votes.js";
 
@@ -50,6 +56,9 @@ import type {
 declare const fullApi: ApiFromModules<{
   _helpers: typeof _helpers;
   "actions/stravaExportIngest": typeof actions_stravaExportIngest;
+  "actions/stravaInitialSync": typeof actions_stravaInitialSync;
+  "actions/stravaWebhookHandler": typeof actions_stravaWebhookHandler;
+  "actions/stravaWebhookSubscription": typeof actions_stravaWebhookSubscription;
   "activities/normalize": typeof activities_normalize;
   adminTools: typeof adminTools;
   blog: typeof blog;
@@ -78,6 +87,9 @@ declare const fullApi: ApiFromModules<{
   stats: typeof stats;
   stravaExport: typeof stravaExport;
   stravaExportIngestHelpers: typeof stravaExportIngestHelpers;
+  stravaInitialSyncHelpers: typeof stravaInitialSyncHelpers;
+  stravaOauth: typeof stravaOauth;
+  stravaWebhookHandlerInternal: typeof stravaWebhookHandlerInternal;
   users: typeof users;
   votes: typeof votes;
 }>;

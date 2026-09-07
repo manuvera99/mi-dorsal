@@ -16,7 +16,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { validateState } from "@/lib/strava/state";
 import { exchangeCodeForTokens, encodeTokens } from "@/lib/strava/client";
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "@/convex/_generated/api";
+import { api, internal } from "@/convex/_generated/api";
 
 export const runtime = "nodejs";
 
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
     const convex = new ConvexHttpClient(convexUrl);
 
     // Buscar el profile del userId de Clerk
-    const profile = await convex.query(api.stravaOauth.getProfileByClerkId, {
+    const profile = await convex.query(internal.stravaOauth.getProfileByClerkId, {
       clerkUserId: userId,
     });
     if (!profile) {
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
 
     // Guardar tokens cifrados
     const encoded = encodeTokens(tokens);
-    await convex.mutation(api.stravaOauth.saveTokens, {
+    await convex.mutation(internal.stravaOauth.saveTokens, {
       profileId: profile._id,
       accessTokenEncrypted: encoded.accessTokenEncrypted,
       refreshTokenEncrypted: encoded.refreshTokenEncrypted,

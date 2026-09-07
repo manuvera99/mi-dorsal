@@ -63,9 +63,10 @@ export const updateTokens = internalMutation({
 
 /**
  * Busca un profile por clerkUserId. Usado por el callback OAuth (que solo
- * tiene el userId de Clerk del state).
+ * tiene el userId de Clerk del state). Internal porque solo se llama desde
+ * el API route, no desde el cliente.
  */
-export const getProfileByClerkId = query({
+export const getProfileByClerkId = internalQuery({
   args: { clerkUserId: v.string() },
   handler: async (ctx, { clerkUserId }) => {
     return await ctx.db
@@ -78,8 +79,11 @@ export const getProfileByClerkId = query({
 /**
  * Guarda los tokens cifrados tras el callback OAuth. Idempotente: si ya
  * había una conexión, actualiza los tokens.
+ *
+ * INTERNAL: la identidad del usuario ya está validada por el state firmado
+ * en el API route que llama a esta mutation. No necesita check de Clerk.
  */
-export const saveTokens = mutation({
+export const saveTokens = internalMutation({
   args: {
     profileId: v.id("profiles"),
     accessTokenEncrypted: v.string(),
@@ -88,15 +92,9 @@ export const saveTokens = mutation({
     athleteId: v.number(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
-
-    // Verificar que el profileId coincide con el user autenticado
+    // Verificar que el profile existe (defensivo)
     const profile = await ctx.db.get(args.profileId);
     if (!profile) throw new Error("Profile not found");
-    if (profile.clerkUserId !== identity.subject) {
-      throw new Error("Forbidden: profileId no coincide con el usuario");
-    }
 
     await ctx.db.patch(args.profileId, {
       stravaUserId: args.athleteId,
@@ -114,18 +112,16 @@ export const saveTokens = mutation({
 /**
  * Desconecta y borra todas las actividades ingestadas vía OAuth.
  * Las actividades del upload (strava-export) NO se tocan.
+ *
+ * INTERNAL: la identidad del usuario está validada por Clerk en el API
+ * route (que llama a esta mutation). El check defensivo de clerkUserId
+ * lo hace el API route antes de llamar aquí.
  */
-export const disconnectAndPurge = mutation({
+export const disconnectAndPurge = internalMutation({
   args: { profileId: v.id("profiles") },
   handler: async (ctx, { profileId }) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
-
     const profile = await ctx.db.get(profileId);
     if (!profile) throw new Error("Profile not found");
-    if (profile.clerkUserId !== identity.subject) {
-      throw new Error("Forbidden");
-    }
 
     // 1) Borrar actividades con provider="strava" (OAuth)
     const activities = await ctx.db

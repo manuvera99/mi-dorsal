@@ -13,7 +13,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "@/convex/_generated/api";
+import { internal } from "@/convex/_generated/api";
 import { decodeTokens, revokeToken } from "@/lib/strava/client";
 
 export const runtime = "nodejs";
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     const convex = new ConvexHttpClient(convexUrl);
 
     // 1) Cargar tokens actuales
-    const profile = await convex.query(api.stravaOauth.getProfileByClerkId, {
+    const profile = await convex.query(internal.stravaOauth.getProfileByClerkId, {
       clerkUserId: userId,
     });
     if (!profile) {
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3) Borrar todo en Convex
-    const result = await convex.mutation(api.stravaOauth.disconnectAndPurge, {
+    const result = await convex.mutation(internal.stravaOauth.disconnectAndPurge, {
       profileId: profile._id,
     });
 

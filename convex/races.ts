@@ -760,13 +760,13 @@ export const systemUpsert = mutation({
       if (suffix > 100) throw new Error(`Demasiadas colisiones para slug "${baseSlug}"`);
     }
     const id = await ctx.db.insert("races", {
-      // Campos requeridos por el schema (con fallbacks seguros)
+      // Campos requeridos por el schema.
+      // 2026-09-07: eliminado el fallback province ?? "valencia" que enmascaraba
+      // carreras mal ubicadas. Si el caller no pasa province, falla con error
+      // explícito. Las ingestas que no tengan province deben arreglarlo
+      // antes de llamar a systemUpsert.
       name: args.name,
-      // NOTA 2026-09-07: el fallback province ?? "valencia" es un parche legacy.
-      // Si la carrera no tiene province, termina marcada como Valencia en la DB,
-      // aunque sea de otro país. Llamadas deben pasar province cuando se conozca.
-      // Log de aviso para detectar ingestas que olvidan pasarlo.
-      province: args.province ?? ("valencia" as any),
+      province: args.province as any,
       distanceKm: args.distanceKm ?? 10,
       raceType: args.raceType ?? ("road" as const),
       slug: finalSlug,

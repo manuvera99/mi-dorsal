@@ -552,6 +552,7 @@ export const systemListAll = query({
         venue: r.venue,
         organizerUrl: r.organizerUrl,
         contactPhone: r.contactPhone,
+        sourceUrl: r.sourceUrl,
         dorsalPickupLocation: r.dorsalPickupLocation,
         dorsalPickupHours: r.dorsalPickupHours,
         socialInstagram: r.socialInstagram,

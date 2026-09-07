@@ -103,13 +103,14 @@ async function main() {
 
   console.log(`\n[APPLY] Aplicando fix a ${broken.length} carreras...`);
   let ok = 0, fail = 0;
-  for (const r of broken) {
+  for (let i = 0; i < broken.length; i++) {
+    const r = broken[i];
     const newOfficial = fixUrl(r.officialUrl);
     const newOrganizer = fixUrl(r.organizerUrl);
     // sourceUrl: usar la URL pública arreglada (para Sportmaniacs, fuente = web oficial)
     const newSource = newOfficial ?? newOrganizer;
     try {
-      await client.mutation(api.races.adminUpdate, {
+      await client.mutation(api.races.systemUpdate, {
         id: r._id,
         patch: {
           ...(newOfficial ? { officialUrl: newOfficial } : {}),
@@ -118,15 +119,16 @@ async function main() {
         },
       });
       ok++;
-      process.stdout.write(".");
     } catch (e: any) {
       fail++;
-      process.stdout.write("x");
       console.error(`\n  Error en "${r.name}": ${e?.message ?? e}`);
     }
-    if (ok % 25 === 0) process.stdout.write(` [${ok}/${broken.length}]`);
+    // Progreso cada 50
+    if ((i + 1) % 50 === 0 || i === broken.length - 1) {
+      console.error(`[progreso] ${i + 1}/${broken.length}  ok=${ok}  fail=${fail}`);
+    }
   }
-  console.log(`\n\n✅ ${ok} carreras arregladas, ${fail} fallaron`);
+  console.log(`\n✅ ${ok} carreras arregladas, ${fail} fallaron`);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

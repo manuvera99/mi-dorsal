@@ -22,14 +22,17 @@ import { mockApi } from "@/lib/mock/provider";
 import { useUserRegion } from "@/components/use-user-region";
 
 const LIMIT = 6;
+// Pedimos 12 (2x lo que se muestra) para que la reordenación por CCAA tenga
+// margen si el usuario está en una comunidad con pocas carreras destacadas.
+const QUERY_LIMIT = 12;
 
 export function FeaturedRaces() {
   const { community } = useUserRegion();
 
   const races = useApiQuery(
     api.races.getFeatured as any,
-    { limit: 50 },
-    () => mockApi.races.getFeatured({ limit: 50 })
+    { limit: QUERY_LIMIT },
+    () => mockApi.races.getFeatured({ limit: QUERY_LIMIT })
   );
 
   // Reordena: primero carreras de la comunidad del usuario, luego el resto.
@@ -60,9 +63,21 @@ export function FeaturedRaces() {
           </p>
           <h2
             id="featured-title"
-            className="text-2xl md:text-3xl font-bold text-runner-dark flex items-center gap-2 flex-wrap"
+            // min-h reserva la altura del H2 para evitar CLS cuando el
+            // texto cambia de "Las que más molan este mes" a
+            // "Cerca de ti · [CCAA]" tras la hidratación de useUserRegion.
+            className="text-2xl md:text-3xl font-bold text-runner-dark flex items-center gap-2 flex-wrap min-h-[2rem] md:min-h-[2.5rem]"
           >
-            {community && <MapPin className="h-6 w-6 text-runner-primary" aria-hidden="true" />}
+            {/*
+             * El MapPin va siempre en el DOM (con `invisible` cuando no hay
+             * community) para reservar su ancho. Sin esto, cuando llega la
+             * detección de CCAA en cliente, el icono se inserta en línea y
+             * empuja el texto hacia la derecha (CLS medible en PSI desktop).
+             */}
+            <MapPin
+              className={`h-6 w-6 text-runner-primary shrink-0 ${community ? "" : "invisible"}`}
+              aria-hidden="true"
+            />
             {sectionTitle}
           </h2>
           <p className="text-sm text-gray-600 mt-1 max-w-2xl">

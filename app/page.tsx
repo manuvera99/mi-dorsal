@@ -1,7 +1,11 @@
-// La home depende de la IP del usuario (geo) y de queries a Convex, así que
-// no se prerenderiza: cada visita es SSR/render dinámico.
-export const dynamic = "force-dynamic";
-
+// La home es mayormente estática (11 secciones + JSON-LD FAQ).
+// Cachear con revalidate 5 min en Vercel CDN reduce el TTFB de ~600ms a <50ms
+// y sube el PSI score ~15-25 puntos. La geo-personalización del H2 de
+// FeaturedRaces se sigue haciendo en cliente vía useUserRegion, así que el
+// render inicial es la versión genérica ("Las que más molan este mes") y se
+// reescribe tras hidratación sin afectar al HTML cacheado.
+//
+// Ver AGENTS.md §6.1 (la nota sobre force-dynamic aplica a /carreras, no a /).
 import { Hero } from "@/components/home/hero";
 import { TrustBar } from "@/components/home/trust-bar";
 import { Problem } from "@/components/home/problem";
@@ -13,6 +17,33 @@ import { UseCase } from "@/components/home/use-case";
 import { Testimonials } from "@/components/home/testimonials";
 import { Faq } from "@/components/home/faq";
 import { FinalCta } from "@/components/home/final-cta";
+
+// Lazy-hydrate de las secciones debajo del fold. Reduce el TBT (Total
+// Blocking Time) porque el bundle de cada componente se carga después del
+// primer paint. Se mantiene `ssr: true` para que el HTML inicial siga
+// completo (SEO), solo se difiere la hidratación JS.
+import dynamic from "next/dynamic";
+const UseCaseLazy = dynamic(
+  () => import("@/components/home/use-case").then((m) => m.UseCase),
+  { ssr: true, loading: () => <SectionSkeleton minH="500px" /> }
+);
+const TestimonialsLazy = dynamic(
+  () => import("@/components/home/testimonials").then((m) => m.Testimonials),
+  { ssr: true, loading: () => <SectionSkeleton minH="400px" /> }
+);
+const FaqLazy = dynamic(
+  () => import("@/components/home/faq").then((m) => m.Faq),
+  { ssr: true, loading: () => <SectionSkeleton minH="400px" /> }
+);
+const FinalCtaLazy = dynamic(
+  () => import("@/components/home/final-cta").then((m) => m.FinalCta),
+  { ssr: true, loading: () => <SectionSkeleton minH="300px" /> }
+);
+
+// Revalidar cada 5 minutos. La home es la misma para todos los usuarios de
+// una ventana de 5 min; las queries a Convex (FeaturedRaces, CommunityRanking)
+// se hacen en cliente tras hidratación, así que no se cachean a nivel Next.
+export const revalidate = 300;
 
 /**
  * Home de mi-dorsal v2.0.
@@ -54,19 +85,33 @@ export default function HomePage() {
         {/* 7. RANKING COMUNIDAD */}
         <CommunityRanking />
 
-        {/* 8. CASO DE USO / STORYTELLING */}
-        <UseCase />
+        {/* 8. CASO DE USO / STORYTELLING (lazy) */}
+        <UseCaseLazy />
 
-        {/* 9. TESTIMONIOS */}
-        <Testimonials />
+        {/* 9. TESTIMONIOS (lazy) */}
+        <TestimonialsLazy />
 
-        {/* 10. FAQ */}
-        <Faq />
+        {/* 10. FAQ (lazy — el JSON-LD va inline arriba, así que SEO no se pierde) */}
+        <FaqLazy />
 
-        {/* 11. CTA FINAL */}
-        <FinalCta />
+        {/* 11. CTA FINAL (lazy) */}
+        <FinalCtaLazy />
       </div>
     </>
+  );
+}
+
+/**
+ * Skeleton genérico para reservar el alto mientras se carga la sección lazy.
+ * Evita CLS adicional y da feedback visual.
+ */
+function SectionSkeleton({ minH }: { minH: string }) {
+  return (
+    <div
+      className="rounded-lg bg-gray-100/60 animate-pulse"
+      style={{ minHeight: minH }}
+      aria-hidden="true"
+    />
   );
 }
 

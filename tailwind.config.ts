@@ -18,7 +18,10 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        // Usamos la variable CSS que inyecta next/font (definida en
+        // app/layout.tsx). El fallback system-ui evita FOUT si el bundle
+        // de Inter aún no ha llegado.
+        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "monospace"],
       },
       animation: {

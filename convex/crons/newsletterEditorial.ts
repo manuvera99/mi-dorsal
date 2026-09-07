@@ -53,7 +53,7 @@ export const newsletterEditorial = internalAction({
     const IS_MOCK = !process.env.RESEND_API_KEY;
 
     const subject = `Nueva historia de dorsal: ${post.title}`;
-    const from = process.env.RESEND_FROM_EMAIL ?? "mi-dorsal <hola@mi-dorsal.com>";
+    const from = process.env.RESEND_FROM_EMAIL ?? "mi-dorsal <hola@mi-dorsal.es>";
 
     let delivered = 0;
     let failed = 0;

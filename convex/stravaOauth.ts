@@ -11,6 +11,7 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { requireUser, getOptionalUser } from "./_helpers";
+import { internal } from "./_generated/api";
 
 // ---------------------------------------------------------------------------
 // Helper interno: refresca el token si está a <5min de expirar
@@ -172,5 +173,45 @@ export const getMyStravaOauthStatus = query({
       lastSyncAt: user.stravaLastSyncAt ?? null,
       tokenExpiresAt: user.stravaTokenExpiresAt ?? null,
     };
+  },
+});
+
+/**
+ * Dispara manualmente un sync inicial de Strava para el usuario actual.
+ * Útil si el usuario quiere forzar la actualización sin tener que
+ * desconectar y reconectar.
+ *
+ * Limitamos a 1 cada 5 minutos para evitar rate limits y abuso.
+ */
+export const triggerSyncNow = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireUser(ctx);
+
+    if (!user.stravaAccessToken) {
+      throw new Error("No tienes Strava conectado");
+    }
+
+    // Rate limit: no permitir sync más de 1 vez cada 5 minutos
+    const COOLDOWN_MS = 5 * 60 * 1000;
+    if (
+      user.stravaLastSyncAt &&
+      Date.now() - user.stravaLastSyncAt < COOLDOWN_MS
+    ) {
+      const waitMs = COOLDOWN_MS - (Date.now() - user.stravaLastSyncAt);
+      const waitMin = Math.ceil(waitMs / 60000);
+      throw new Error(
+        `Espera ${waitMin} min antes de sincronizar otra vez`,
+      );
+    }
+
+    // Programar la action de sync para que se ejecute inmediatamente
+    // (las mutations no pueden llamar a actions directamente; hay que
+    // pasarlas por el scheduler)
+    await ctx.scheduler.runAfter(0, internal.stravaInitialSync.startInitialSync, {
+      profileId: user._id,
+    });
+
+    return { ok: true, message: "Sync iniciado en background" };
   },
 });

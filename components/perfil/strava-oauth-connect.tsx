@@ -15,6 +15,7 @@ import { StravaIcon } from "./icons";
 
 export function StravaOauthConnect() {
   const status = useQuery(api.stravaOauth.getMyStravaOauthStatus, {});
+  const triggerSync = useMutation(api.stravaOauth.triggerSyncNow);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,20 +56,14 @@ export function StravaOauthConnect() {
   };
 
   const handleSyncNow = async () => {
-    // TODO: implementar mutation que dispare initialSync manualmente
     setIsSyncing(true);
     setError(null);
     try {
-      // Por ahora redirige a /api/connect/strava/start con un parámetro que
-      // indique "solo refresh". En la práctica, el initialSync se dispara
-      // desde el callback tras la conexión inicial; para sync manual
-      // posterior, podríamos añadir una mutation específica.
-      // Por simplicidad en este PR, este botón es placeholder.
-      alert(
-        "Sincronización manual en construcción. Strava envía las actividades nuevas automáticamente vía webhook.",
-      );
+      await triggerSync({});
+      // El sync es en background. Damos feedback al usuario.
+      setError(null);
     } catch (e: any) {
-      setError(e?.message ?? "Error");
+      setError(e?.message ?? "Error al sincronizar");
     } finally {
       setIsSyncing(false);
     }

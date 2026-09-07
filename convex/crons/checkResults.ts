@@ -229,6 +229,37 @@ export const checkResults = internalAction({
             positionCategory: result.positionCategory,
             predictedTimeSeconds: notifData.myRace.predictedTimeSeconds,
           });
+
+          // 4) Persistir el PR si el nuevo tiempo bate el récord anterior.
+          // Se hace DESPUÉS del email para que el email haya leído el PR
+          // "viejo" como referencia. La próxima vez, este PR nuevo será
+          // el current y ya no se mostrará como badge.
+          try {
+            const distanceM = Math.round(notifData.race.distanceKm * 1000);
+            const prResult = await ctx.runMutation(
+              internal.personalRecords.updateIfBetter,
+              {
+                userId: notifData.profile._id,
+                distanceM,
+                timeSeconds: result.timeSeconds,
+                raceId: notifData.race._id,
+                achievedAt: notifData.race.startDate,
+              },
+            );
+            if (prResult.updated) {
+              console.log(
+                `[check-results] ✓ Nuevo PR para ${notifData.profile.email} ` +
+                  `en ${distanceM}m: ${prResult.previousTimeSeconds}s → ${result.timeSeconds}s`,
+              );
+            }
+          } catch (e) {
+            // No bloqueamos el flujo principal si falla el PR update.
+            // El email ya se envió. Log para investigar después.
+            console.error(
+              `[check-results] PR update failed for myRaceId=${item.myRaceId}:`,
+              e,
+            );
+          }
         }
       } catch (err) {
         errorCount++;

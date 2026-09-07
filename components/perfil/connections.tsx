@@ -6,6 +6,7 @@
 // Concentra las opciones de Strava (y en el futuro Garmin, Apple Health, etc.)
 // en una sola card. Muestra:
 //   - Resumen del estado (subidas OAuth, export, totales)
+//   - Botón de OAuth con Strava
 //   - Drop-zone para subir el export
 //   - Card de "Garmin" deshabilitado con explicación
 // =============================================================================
@@ -22,11 +23,25 @@ import {
   Clock,
 } from "./icons";
 import { StravaExportUploader } from "./strava-export-uploader";
+import { StravaOauthConnect } from "./strava-oauth-connect";
 
 export function ConnectionsSection() {
   const summary = useQuery(api.stravaExport.getMyStravaSummary, {});
+  const oauthStatus = useQuery(api.stravaOauth.getMyStravaOauthStatus, {});
   const [activeUploadId, setActiveUploadId] = useState<string | null>(null);
   const [showInstructions, setShowInstructions] = useState(false);
+
+  // Detectar query params de redirect del callback OAuth
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("strava") === "connected") {
+      // Limpiar el query param
+      window.history.replaceState({}, "", "/perfil");
+    } else if (params.get("strava") === "denied" || params.get("strava") === "error") {
+      window.history.replaceState({}, "", "/perfil");
+    }
+  }, []);
 
   // Cuando el upload termina (done o failed), limpiamos el activeUploadId
   // tras 5 segundos para mostrar el resumen
@@ -52,31 +67,29 @@ export function ConnectionsSection() {
               <p className="text-xs text-gray-500">
                 {summary?.total
                   ? `${summary.total} actividades · ${summary.racesMatched} carreras detectadas`
-                  : "Aún no has subido tu export"}
+                  : "Aún no has conectado Strava"}
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setShowInstructions(true)}
-            className="text-xs text-runner-primary hover:underline flex items-center gap-1"
-          >
-            <Upload className="h-3.5 w-3.5" />
-            Subir export
-          </button>
+          {!oauthStatus?.connected && (
+            <button
+              onClick={() => setShowInstructions(true)}
+              className="text-xs text-runner-primary hover:underline flex items-center gap-1"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              Subir export
+            </button>
+          )}
         </div>
 
         {/* Resumen histórico */}
         {summary && (summary.lastExportAt || summary.fromOAuth > 0) && (
           <div className="text-xs text-gray-500 mb-3 flex flex-wrap gap-3">
             {summary.fromExport > 0 && (
-              <span>
-                {summary.fromExport} desde el export
-              </span>
+              <span>{summary.fromExport} desde el export</span>
             )}
             {summary.fromOAuth > 0 && (
-              <span>
-                {summary.fromOAuth} desde OAuth
-              </span>
+              <span>{summary.fromOAuth} desde OAuth</span>
             )}
             {summary.lastExportAt && (
               <span className="flex items-center gap-1">
@@ -87,13 +100,31 @@ export function ConnectionsSection() {
           </div>
         )}
 
+        {/* OAuth */}
+        <div className="mb-4">
+          <StravaOauthConnect />
+        </div>
+
+        {/* Divider entre OAuth y export */}
+        {!oauthStatus?.connected && summary?.fromExport === 0 && (
+          <div className="flex items-center gap-2 mb-3">
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="text-xs text-gray-400 uppercase tracking-wide">
+              o sube el export
+            </span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
+        )}
+
         {/* Uploader (solo si no hay upload activo, o si lo hay, muestra su estado) */}
-        <StravaExportUploader
-          activeUploadId={activeUploadId}
-          onUploadComplete={setActiveUploadId}
-          onClearActive={() => setActiveUploadId(null)}
-          onDeleted={() => setActiveUploadId(null)}
-        />
+        {!oauthStatus?.connected && (
+          <StravaExportUploader
+            activeUploadId={activeUploadId}
+            onUploadComplete={setActiveUploadId}
+            onClearActive={() => setActiveUploadId(null)}
+            onDeleted={() => setActiveUploadId(null)}
+          />
+        )}
       </div>
 
       {/* Garmin */}

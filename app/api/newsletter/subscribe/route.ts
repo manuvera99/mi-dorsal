@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
         const { Resend } = await import("resend");
         const resend = new Resend(stripBom(process.env.RESEND_API_KEY));
         await resend.emails.send({
-          from: stripBom(process.env.RESEND_FROM_EMAIL ?? "hola@mi-dorsal.es"),
+          from: stripBom(process.env.RESEND_FROM_EMAIL ?? "mi-dorsal <hola@mi-dorsal.com>"),
           to: email,
           subject: "El hilo que te une a tu dorsal",
           html: renderWelcomeEmail({ unsubscribeUrl }),

@@ -49,6 +49,11 @@ export default defineSchema({
       tag: v.string(),
       score: v.number(),
     }))),
+    // Onboarding (primer login)
+    onboardingWelcomeSeen: v.optional(v.boolean()),
+    onboardingWelcomeEmailSentAt: v.optional(v.number()),
+    onboardingFirstRaceSavedAt: v.optional(v.number()),
+    onboardingFirstPrAddedAt: v.optional(v.number()),
     // Garmin (Ola 2)
     garminUserId: v.optional(v.string()),
     garminAccessToken: v.optional(v.string()),
@@ -816,5 +821,73 @@ export default defineSchema({
   })
     .index("by_status", ["status"])
     .index("by_name_date", ["name", "date"])
+    .index("by_user", ["userId"]),
+
+  // ---------------------------------------------------------------------------
+  // 17. RACE_SUGGESTIONS — carreras que un usuario logueado nos sugiere
+  // ---------------------------------------------------------------------------
+  // Cuando un usuario busca en /carreras y no encuentra su carrera, puede
+  // pegar la URL de la web oficial. Esto crea una entrada "pending" que el
+  // admin ve en /admin/race-suggestions y puede convertir en carrera real
+  // abriendo /admin/races/from-url con la URL pre-rellena.
+  // ---------------------------------------------------------------------------
+  raceSuggestions: defineTable({
+    userId: v.id("profiles"),
+    url: v.string(),
+    note: v.optional(v.string()),
+    suggestedName: v.optional(v.string()),
+    suggestedDate: v.optional(v.string()),
+    suggestedLocality: v.optional(v.string()),
+    suggestedProvince: v.optional(v.string()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected"),
+      v.literal("created"),
+    ),
+    adminNote: v.optional(v.string()),
+    reviewedBy: v.optional(v.id("profiles")),
+    reviewedAt: v.optional(v.number()),
+    createdRaceId: v.optional(v.id("races")),
+    createdAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_user", ["userId"])
+    .index("by_status_created", ["status", "createdAt"]),
+
+  // ---------------------------------------------------------------------------
+  // 18. FEEDBACK_REPORTS — feedback y bug reports enviados por usuarios
+  // ---------------------------------------------------------------------------
+  // Formulario público donde cualquier usuario puede reportar un bug,
+  // sugerir una mejora o dejar feedback. userId es opcional (anónimos
+  // también pueden reportar). pageUrl es donde estaba cuando reportó.
+  // status: new → in_progress → done/wontfix.
+  // ---------------------------------------------------------------------------
+  feedbackReports: defineTable({
+    userId: v.optional(v.id("profiles")),
+    type: v.union(
+      v.literal("bug"),
+      v.literal("idea"),
+      v.literal("feedback"),
+    ),
+    title: v.string(),
+    description: v.string(),
+    pageUrl: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
+    status: v.union(
+      v.literal("new"),
+      v.literal("in_progress"),
+      v.literal("done"),
+      v.literal("wontfix"),
+    ),
+    adminNote: v.optional(v.string()),
+    reviewedBy: v.optional(v.id("profiles")),
+    reviewedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_status_created", ["status", "createdAt"])
+    .index("by_type", ["type"])
     .index("by_user", ["userId"]),
 });

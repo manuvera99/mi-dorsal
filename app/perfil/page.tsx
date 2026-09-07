@@ -12,6 +12,7 @@ import { RunnerTypeCard } from "@/components/perfil/runner-type-card";
 import { ActivityStatsCard } from "@/components/perfil/activity-stats";
 import { ActivityFeed } from "@/components/perfil/activity-feed";
 import { PrFormModal } from "@/components/perfil/pr-form-modal";
+import { EditProfileModal, ageFromBirthDate } from "@/components/perfil/edit-profile-modal";
 
 function MockPerfil() {
   const [profile, setProfile] = useState<any>(null);
@@ -35,6 +36,9 @@ export default function PerfilPage() {
 }
 
 function PerfilContent({ profile, prs }: { profile: any; prs: any[] }) {
+  const [editing, setEditing] = useState(false);
+  const age = ageFromBirthDate(profile?.birthDate);
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       {/* Header */}
@@ -46,33 +50,51 @@ function PerfilContent({ profile, prs }: { profile: any; prs: any[] }) {
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <h1 className="text-2xl font-bold truncate">{profile?.displayName ?? "Cargando…"}</h1>
+                <h1 className="text-2xl font-bold truncate">
+                  {profile?.displayName ?? "Cargando…"}
+                  {age != null && (
+                    <span className="text-base font-normal text-gray-500 ml-2">
+                      {age} años
+                    </span>
+                  )}
+                </h1>
                 {profile?.club && (
                   <p className="text-sm text-gray-600">📍 {profile.club}</p>
                 )}
                 {profile?.bio && (
                   <p className="text-sm text-gray-700 mt-2">{profile.bio}</p>
                 )}
-                {!profile?.bio && !profile?.club && (
+                {!profile?.bio && !profile?.club && !age && (
                   <p className="text-sm text-gray-500 mt-2 italic">
-                    Sin club ni bio todavía.
+                    Sin club, bio ni fecha de nacimiento todavía.
                   </p>
                 )}
               </div>
-              {!isMockMode() && (
-                <a
-                  href="/sign-in?redirect_url=%2Fperfil"
-                  className="text-xs text-runner-primary hover:underline flex items-center gap-1 flex-shrink-0"
-                  title="Editar nombre, club y bio desde tu cuenta"
-                >
-                  <User className="h-3.5 w-3.5" />
-                  Editar
-                </a>
-              )}
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="text-xs text-runner-primary hover:underline flex items-center gap-1 flex-shrink-0"
+                title="Editar nombre, club, fecha de nacimiento y bio"
+              >
+                <User className="h-3.5 w-3.5" />
+                Editar
+              </button>
             </div>
           </div>
         </div>
       </div>
+
+      {editing && profile && (
+        <EditProfileModal
+          profile={{
+            displayName: profile.displayName,
+            club: profile.club,
+            birthDate: profile.birthDate,
+            bio: profile.bio,
+          }}
+          onClose={() => setEditing(false)}
+        />
+      )}
 
       {/* PRs — primero: la acción principal del corredor popular */}
       {isMockMode() ? <PrsSectionReadOnly prs={prs} /> : <PrsSection prs={prs} />}

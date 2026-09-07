@@ -1638,6 +1638,7 @@ export const MOCK_PROFILE = {
   avatarUrl: undefined,
   bio: "Corredor amateur del Levante. Mi objetivo: MMP en Albacete y Valencia 2026.",
   club: "Bull Runners",
+  birthDate: "1991-05-12",
   emailResultsEnabled: true,
   emailRemindersEnabled: true,
   emailWeeklyDigestEnabled: true,

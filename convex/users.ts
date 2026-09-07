@@ -17,10 +17,18 @@ export const upsertMyProfile = mutation({
     avatarUrl: v.optional(v.string()),
     bio: v.optional(v.string()),
     club: v.optional(v.string()),
+    // YYYY-MM-DD o null/"" para borrar. Validado en el handler para evitar
+    // basura en la DB (strings arbitrarios, fechas inválidas, etc.).
+    birthDate: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
+
+    // Normalizamos birthDate: "" o null → undefined (no se setea).
+    // Formato YYYY-MM-DD, valido y ≤ hoy. Si no, se ignora silenciosamente
+    // (es preferible a un throw en una mutation de upsert del onboarding).
+    const birthDate = normalizeBirthDate(args.birthDate);
 
     const existing = await ctx.db
       .query("profiles")
@@ -33,6 +41,9 @@ export const upsertMyProfile = mutation({
         ...(args.avatarUrl !== undefined && { avatarUrl: args.avatarUrl }),
         ...(args.bio !== undefined && { bio: args.bio }),
         ...(args.club !== undefined && { club: args.club }),
+        // birthDate se aplica siempre que el caller lo haya enviado (incluido
+        // el caso "" → undefined para borrar). Si no lo envió, no se toca.
+        ...(args.birthDate !== undefined && { birthDate }),
       });
       return existing._id;
     } else {
@@ -40,6 +51,7 @@ export const upsertMyProfile = mutation({
         clerkUserId: identity.subject,
         displayName: args.displayName ?? identity.name ?? identity.email,
         avatarUrl: args.avatarUrl ?? identity.pictureUrl,
+        ...(birthDate !== undefined && { birthDate }),
         emailResultsEnabled: true,
         emailRemindersEnabled: true,
         emailWeeklyDigestEnabled: true,
@@ -278,3 +290,31 @@ export const markFirstPrAdded = mutation({
     });
   },
 });
+
+// =============================================================================
+// HELPERS PRIVADOS
+// =============================================================================
+
+/**
+ * Normaliza el input de birthDate del usuario:
+ * - `null` o `""` o `undefined` → `undefined` (se interpreta como "borrar" o "no tocar").
+ * - String con formato YYYY-MM-DD y fecha válida ≤ hoy → mismo string.
+ * - Cualquier otro caso → `undefined` (input inválido se ignora silenciosamente).
+ *
+ * El control de "no tocar" lo hace el caller mirando `args.birthDate !== undefined`,
+ * así que este helper solo decide QUÉ valor se persiste (no si se persiste).
+ */
+function normalizeBirthDate(input: string | null | undefined): string | undefined {
+  if (input == null) return undefined;
+  const trimmed = input.trim();
+  if (trimmed === "") return undefined;
+  // Validación: YYYY-MM-DD estricto (no aceptamos "1991-5-1" ni "1991/05/01").
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return undefined;
+  // Validación: la fecha debe parsear y no estar en el futuro.
+  const parsed = new Date(`${trimmed}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return undefined;
+  const now = new Date();
+  const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  if (parsed.getTime() > todayUtc.getTime()) return undefined;
+  return trimmed;
+}

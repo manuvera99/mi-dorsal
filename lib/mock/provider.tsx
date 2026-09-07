@@ -143,6 +143,43 @@ export const mockApi = {
   },
   users: {
     getMyProfile: async () => MOCK_PROFILE,
+    /**
+     * Mock de `api.users.upsertMyProfile` (Convex). Mismas reglas que el
+     * backend real: birthDate se valida como YYYY-MM-DD ≤ hoy; strings vacíos
+     * se interpretan como "borrar". Mutamos MOCK_PROFILE in-place para que
+     * `getMyProfile` (que devuelve la referencia) refleje el cambio en el
+     * siguiente render del cliente.
+     */
+    updateMyProfile: async (patch: {
+      displayName?: string;
+      avatarUrl?: string;
+      bio?: string;
+      club?: string;
+      birthDate?: string | null;
+    }) => {
+      // Cast a `any` solo en este mock: MOCK_PROFILE está tipado como literal
+      // con `birthDate: "1991-05-12"` (requerido), así que TS se queja al
+      // reasignar o borrar esa propiedad. En el backend real, `birthDate`
+      // es opcional y el patch es natural. Re-tiparlo en data.ts sería
+      // invasivo para un mock.
+      const p = MOCK_PROFILE as any;
+      if (patch.displayName !== undefined) p.displayName = patch.displayName;
+      if (patch.avatarUrl !== undefined) p.avatarUrl = patch.avatarUrl;
+      if (patch.bio !== undefined) p.bio = patch.bio;
+      if (patch.club !== undefined) p.club = patch.club;
+      if (patch.birthDate !== undefined) {
+        const v = patch.birthDate;
+        if (v == null || v === "") {
+          delete p.birthDate;
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+          const parsed = new Date(`${v}T00:00:00Z`);
+          if (!Number.isNaN(parsed.getTime())) {
+            p.birthDate = v;
+          }
+        }
+      }
+      return { ...p };
+    },
   },
   myRaces: {
     listMine: async ({ status }: { status?: string } = {}) => {

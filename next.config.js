@@ -17,6 +17,10 @@ const nextConfig = {
   },
   experimental: {
     reactCompiler: false,
+    // Next.js 15.5 incluye el "DevTools" (segment explorer) en el bundle
+    // de producción por defecto (~217 KB extra, lastra el TTI). Lo
+    // desactivamos: es una feature solo útil en development.
+    devtoolSegmentExplorer: false,
   },
   // Compresión: Vercel ya lo hace, pero por si se despliega en otro lado
   compress: true,

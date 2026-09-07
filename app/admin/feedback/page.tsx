@@ -220,6 +220,13 @@ function RealFeedback() {
                         </div>
                         <p className="font-semibold text-sm text-runner-dark line-clamp-2">{r.title}</p>
                         <p className="text-xs text-gray-500 mt-1 line-clamp-2">{r.description}</p>
+                        {r.race && (
+                          <p className="text-xs mt-1">
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 font-semibold">
+                              🏁 {r.race.name}
+                            </span>
+                          </p>
+                        )}
                         <p className="text-xs text-gray-400 mt-1">
                           {r.user?.displayName || r.user?.email || r.contactEmail || "Anónimo"} ·{" "}
                           {new Date(r.createdAt).toLocaleDateString("es-ES", {
@@ -299,6 +306,27 @@ function RealFeedback() {
                     <UserIcon className="h-3 w-3" aria-hidden="true" />
                     Anónimo (sin email)
                   </p>
+                )}
+                {detail.race && (
+                  <div className="p-2 bg-amber-50 border border-amber-200 rounded-md">
+                    <p className="text-xs text-amber-800 font-semibold mb-1">🏁 Carrera asociada</p>
+                    <div className="flex items-center gap-2 flex-wrap text-xs">
+                      <a
+                        href={`/carreras/${detail.race.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-runner-dark hover:text-runner-primary font-semibold"
+                      >
+                        {detail.race.name}
+                      </a>
+                      <a
+                        href={`/admin/races/${detail.race._id}`}
+                        className="text-runner-primary hover:underline"
+                      >
+                        editar →
+                      </a>
+                    </div>
+                  </div>
                 )}
                 {detail.pageUrl && (
                   <p className="flex items-center gap-1.5">

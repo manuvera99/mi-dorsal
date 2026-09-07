@@ -13,6 +13,7 @@ import {
   AidStationsSection, PriceTiersSection, DorsalPickupSection, GallerySection,
 } from "@/components/race-detail-sections";
 import { AddToCalendarWidget } from "@/components/add-to-calendar-widget";
+import { ReportRaceErrorDialog } from "@/components/feedback/report-race-error-dialog";
 import {
   MapPin, Calendar, Mountain, ExternalLink, FileText, Plus, Check,
   Globe, Mail, Phone, Clock, Users, Tag, Trophy, DollarSign, Share2,
@@ -614,6 +615,14 @@ function RaceDetailContent({ race, summary }: { race: any; summary: any }) {
 
             {/* ============ FORMULARIO DE VALORACIÓN ============ */}
             <RatingSliders raceId={race._id as any} />
+
+            {/* ============ REPORTAR ERROR EN ESTA CARRERA ============ */}
+            <div className="mt-2 pt-4 border-t border-gray-100 flex justify-center">
+              <ReportRaceErrorDialog
+                raceId={race._id as any}
+                raceName={race.name}
+              />
+            </div>
           </div>
 
           {/* ============== SIDEBAR STICKY ============== */}

@@ -36,6 +36,7 @@ export const submit = mutation({
     description: v.string(),
     pageUrl: v.optional(v.string()),
     contactEmail: v.optional(v.string()),
+    raceId: v.optional(v.id("races")),
   },
   handler: async (ctx, args) => {
     // userId es opcional: si está logueado lo asociamos, si no, anónimo.
@@ -58,6 +59,12 @@ export const submit = mutation({
       throw new Error("Email de contacto no válido");
     }
 
+    // Validar que la carrera existe si viene raceId
+    if (args.raceId) {
+      const race = await ctx.db.get(args.raceId);
+      if (!race) throw new Error("Carrera no encontrada");
+    }
+
     const now = Date.now();
     const id = await ctx.db.insert("feedbackReports", {
       userId: user?._id,
@@ -66,6 +73,7 @@ export const submit = mutation({
       description,
       pageUrl: args.pageUrl?.trim() || undefined,
       contactEmail: args.contactEmail?.trim().toLowerCase() || undefined,
+      raceId: args.raceId,
       status: "new",
       createdAt: now,
       updatedAt: now,
@@ -124,6 +132,7 @@ export const adminList = query({
     const enriched = await Promise.all(
       list.map(async (r) => {
         const user = r.userId ? await ctx.db.get(r.userId) : null;
+        const race = r.raceId ? await ctx.db.get(r.raceId) : null;
         return {
           ...r,
           user: user
@@ -136,6 +145,9 @@ export const adminList = query({
                 displayName: (user as any).displayName ?? null,
                 email: (user as any).email ?? null,
               }
+            : null,
+          race: race
+            ? { _id: race._id, name: race.name, slug: race.slug }
             : null,
         };
       })
@@ -154,6 +166,7 @@ export const adminGet = query({
     const report = await ctx.db.get(id);
     if (!report) return null;
     const user = report.userId ? await ctx.db.get(report.userId) : null;
+    const race = report.raceId ? await ctx.db.get(report.raceId) : null;
     return {
       ...report,
       user: user
@@ -162,6 +175,9 @@ export const adminGet = query({
             displayName: user.displayName ?? null,
             email: user.email ?? null,
           }
+        : null,
+      race: race
+        ? { _id: race._id, name: race.name, slug: race.slug }
         : null,
     };
   },
@@ -273,10 +289,11 @@ export const notifyAdmin = internalMutation({
     const report = await ctx.db.get(reportId);
     if (!report) return;
     const user = report.userId ? await ctx.db.get(report.userId) : null;
+    const race = report.raceId ? await ctx.db.get(report.raceId) : null;
 
     const typeInfo = TYPE_LABELS[report.type];
     const userLabel = user
-      ? user.displayName?.trim() || user.email || `Usuario ${user._id.slice(0, 8)}`
+      ? (user as any).displayName?.trim() || (user as any).email || `Usuario ${user._id.slice(0, 8)}`
       : "Anónimo";
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.mi-dorsal.com";
@@ -287,11 +304,15 @@ export const notifyAdmin = internalMutation({
       : "";
 
     const userBlock = user
-      ? `<p style="margin:0 0 4px;font-size:13px;color:#666;">Enviado por: <strong>${escapeHtml(userLabel)}</strong>${user.email ? ` (${escapeHtml(user.email)})` : ""}</p>`
+      ? `<p style="margin:0 0 4px;font-size:13px;color:#666;">Enviado por: <strong>${escapeHtml(userLabel)}</strong>${(user as any).email ? ` (${escapeHtml((user as any).email)})` : ""}</p>`
       : `<p style="margin:0 0 4px;font-size:13px;color:#666;">Enviado por: <em>anónimo</em></p>${contactBlock}`;
 
     const pageBlock = report.pageUrl
       ? `<p style="margin:8px 0;font-size:12px;color:#666;">Página: <a href="${escapeAttr(report.pageUrl)}" style="color:#0891b2;">${escapeHtml(report.pageUrl)}</a></p>`
+      : "";
+
+    const raceBlock = race
+      ? `<p style="margin:8px 0;padding:10px 12px;background:#fef3c7;border-left:3px solid #f59e0b;border-radius:4px;font-size:13px;">🏁 <strong>Carrera:</strong> <a href="${escapeAttr(`${baseUrl}/carreras/${race.slug}`)}" style="color:#0a0a0a;font-weight:600;">${escapeHtml(race.name)}</a> · <a href="${escapeAttr(`${baseUrl}/admin/races/${race._id}`)}" style="color:#dc2626;">editar en admin →</a></p>`
       : "";
 
     const html = `
@@ -303,6 +324,7 @@ export const notifyAdmin = internalMutation({
     </div>
     <div style="padding:20px;">
       ${userBlock}
+      ${raceBlock}
       ${pageBlock}
       <div style="margin-top:16px;padding:14px;background:#f5f5f4;border-radius:6px;border-left:3px solid ${typeInfo.color};">
         <p style="margin:0;white-space:pre-wrap;font-size:14px;line-height:1.5;">${escapeHtml(report.description)}</p>
@@ -314,8 +336,8 @@ export const notifyAdmin = internalMutation({
 
     const text = `${typeInfo.emoji} ${typeInfo.label}: ${report.title}
 
-${userLabel}${user?.email ? ` (${user.email})` : ""}
-${report.contactEmail ? `Contacto: ${report.contactEmail}\n` : ""}${report.pageUrl ? `Página: ${report.pageUrl}\n` : ""}
+${userLabel}${(user as any)?.email ? ` (${(user as any).email})` : ""}
+${report.contactEmail ? `Contacto: ${report.contactEmail}\n` : ""}${race ? `Carrera: ${race.name} (${baseUrl}/carreras/${race.slug})\n` : ""}${report.pageUrl ? `Página: ${report.pageUrl}\n` : ""}
 ${report.description}
 
 Revisar en: ${adminUrl}`;

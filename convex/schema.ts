@@ -21,6 +21,10 @@ export default defineSchema({
     avatarUrl: v.optional(v.string()),
     bio: v.optional(v.string()),
     club: v.optional(v.string()),
+    // Fecha de nacimiento (YYYY-MM-DD). Opcional y privado:
+    // solo el propio usuario la ve exacta (en el input de edición);
+    // en el resto de la app se muestra la edad calculada.
+    birthDate: v.optional(v.string()),
     // Email real (Sprint 0): lo sincronizamos desde Clerk vía webhook o JWT.
     // Hasta entonces puede ser undefined, y los crons saltarán al usuario.
     email: v.optional(v.string()),
@@ -757,6 +761,16 @@ export default defineSchema({
     isOfficialResult: v.optional(v.boolean()),
     isPrivate: v.optional(v.boolean()),
     rawPayload: v.optional(v.string()),
+    // Tipo de deporte original de Strava (Run, TrailRun, Ride, Padel, Hike,
+    // WeightTraining, etc.) — SIN normalizar. `type` (arriba) es NUESTRA
+    // clasificación de intensidad de carrera (race/tempo/easy/...), pero
+    // Strava también ingiere ciclismo, pádel, esquí, pesas, etc. bajo el
+    // mismo endpoint. Sin este campo no hay forma barata de excluir "no es
+    // running" de queries de feed/stats — solo parseando rawPayload cada vez.
+    // Opcional porque las actividades ingeridas ANTES de este campo (2026-09-07)
+    // no lo tienen; para esas, el fallback es asumir "Run" (ya pasaron por
+    // classifyActivity, que asume Run/Unknown si no reconoce el tipo).
+    stravaSportType: v.optional(v.string()),
     syncedAt: v.number(),
   })
     .index("by_user_started", ["userId", "startedAt"])
@@ -877,6 +891,9 @@ export default defineSchema({
     description: v.string(),
     pageUrl: v.optional(v.string()),
     contactEmail: v.optional(v.string()),
+    // Si el reporte viene desde una ficha de carrera concreta, lo asociamos
+    // para que el admin pueda navegar desde /admin/feedback al contexto.
+    raceId: v.optional(v.id("races")),
     status: v.union(
       v.literal("new"),
       v.literal("in_progress"),
@@ -892,5 +909,6 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_status_created", ["status", "createdAt"])
     .index("by_type", ["type"])
-    .index("by_user", ["userId"]),
+    .index("by_user", ["userId"])
+    .index("by_race", ["raceId"]),
 });

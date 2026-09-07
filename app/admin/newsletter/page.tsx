@@ -137,7 +137,7 @@ export default function AdminNewsletterPage() {
       </div>
 
       {/* Tabla */}
-      <div className="bg-white rounded-lg border overflow-hidden">
+      <div className="bg-white rounded-lg border overflow-x-auto">
         {subs === undefined ? (
           <div className="p-12 text-center text-gray-400">
             <Loader2 className="h-6 w-6 animate-spin mx-auto" />
@@ -147,15 +147,15 @@ export default function AdminNewsletterPage() {
             No hay suscriptores con esos filtros.
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[900px] text-sm">
             <thead className="bg-gray-50 text-gray-600 text-left text-xs uppercase">
               <tr>
                 <th className="px-4 py-3">Email</th>
                 <th className="px-4 py-3">Estado</th>
                 <th className="px-4 py-3">Fuente</th>
                 <th className="px-4 py-3">Preferencias</th>
-                <th className="px-4 py-3">Suscrito</th>
-                <th className="px-4 py-3">Último envío</th>
+                <th className="px-4 py-3 whitespace-nowrap">Suscrito</th>
+                <th className="px-4 py-3 whitespace-nowrap">Último envío</th>
                 <th className="px-4 py-3 text-right">Acciones</th>
               </tr>
             </thead>

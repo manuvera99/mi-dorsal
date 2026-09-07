@@ -56,7 +56,7 @@ function RealUsersList() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border overflow-hidden">
+      <div className="bg-white rounded-lg border overflow-x-auto">
         {profiles === undefined || profiles === null ? (
           <div className="p-12 text-center text-gray-400">
             <Loader2 className="h-6 w-6 animate-spin mx-auto" />
@@ -64,14 +64,14 @@ function RealUsersList() {
         ) : profiles.length === 0 ? (
           <div className="p-12 text-center text-gray-500">No hay usuarios</div>
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[820px] text-sm">
             <thead className="bg-gray-50 text-gray-600 text-left text-xs uppercase">
               <tr>
                 <th className="px-4 py-3">Usuario</th>
                 <th className="px-4 py-3">Clerk ID</th>
                 <th className="px-4 py-3">Rol</th>
                 <th className="px-4 py-3">Club</th>
-                <th className="px-4 py-3">Alta</th>
+                <th className="px-4 py-3 whitespace-nowrap">Alta</th>
                 <th className="px-4 py-3 text-right">Acciones</th>
               </tr>
             </thead>

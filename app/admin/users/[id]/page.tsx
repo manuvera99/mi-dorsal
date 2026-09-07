@@ -91,7 +91,7 @@ export default function UserDetailPage() {
         {prs.length === 0 ? (
           <Empty msg="Sin PRs registrados" />
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[480px] text-sm">
             <thead className="text-xs text-gray-500 uppercase">
               <tr><th className="text-left py-1">Distancia</th><th className="text-left">Tiempo</th><th className="text-left">Fecha</th></tr>
             </thead>
@@ -99,8 +99,8 @@ export default function UserDetailPage() {
               {prs.map((p) => (
                 <tr key={p._id} className="border-t">
                   <td className="py-2">{p.distanceLabel}</td>
-                  <td className="font-mono">{formatTime(p.timeSeconds)}</td>
-                  <td className="text-gray-500 text-xs">{p.achievedAt ?? "—"}</td>
+                  <td className="font-mono whitespace-nowrap">{formatTime(p.timeSeconds)}</td>
+                  <td className="text-gray-500 text-xs whitespace-nowrap">{p.achievedAt ?? "—"}</td>
                 </tr>
               ))}
             </tbody>

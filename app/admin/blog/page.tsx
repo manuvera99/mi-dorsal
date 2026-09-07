@@ -120,7 +120,7 @@ export default function AdminBlogPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border overflow-hidden">
+      <div className="bg-white rounded-lg border overflow-x-auto">
         {posts === undefined ? (
           <div className="p-12 text-center text-gray-400">
             <Loader2 className="h-6 w-6 animate-spin mx-auto" />
@@ -134,12 +134,12 @@ export default function AdminBlogPage() {
             .
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[820px] text-sm">
             <thead className="bg-gray-50 text-gray-600 text-left text-xs uppercase">
               <tr>
                 <th className="px-4 py-3">Título</th>
                 <th className="px-4 py-3">Categoría</th>
-                <th className="px-4 py-3">Publicado</th>
+                <th className="px-4 py-3 whitespace-nowrap">Publicado</th>
                 <th className="px-4 py-3">Newsletter</th>
                 <th className="px-4 py-3">Vistas</th>
                 <th className="px-4 py-3 text-right">Acciones</th>

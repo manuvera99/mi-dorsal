@@ -130,7 +130,7 @@ function RealRacesList() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border overflow-hidden">
+      <div className="bg-white rounded-lg border overflow-x-auto">
         {races === undefined || races === null ? (
           <div className="p-12 text-center text-gray-400">
             <Loader2 className="h-6 w-6 animate-spin mx-auto" />
@@ -142,18 +142,18 @@ function RealRacesList() {
           return filtered.length === 0 ? (
             <div className="p-12 text-center text-gray-500">No hay carreras con esos filtros</div>
           ) : (
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[1100px] text-sm">
             <thead className="bg-gray-50 text-gray-600 text-left text-xs uppercase">
               <tr>
                 <th className="px-4 py-3">Carrera</th>
                 <th className="px-4 py-3">Fuente</th>
                 <th className="px-4 py-3">Lugar</th>
-                <th className="px-4 py-3">Fecha</th>
-                <th className="px-4 py-3">Distancia</th>
+                <th className="px-4 py-3 whitespace-nowrap">Fecha</th>
+                <th className="px-4 py-3 whitespace-nowrap">Distancia</th>
                 <th className="px-4 py-3">Tipo</th>
                 <th className="px-4 py-3 text-center">Pub.</th>
                 <th className="px-4 py-3 text-center">Dest.</th>
-                <th className="px-4 py-3 text-right">Acciones</th>
+                <th className="px-4 py-3 text-right whitespace-nowrap">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -184,7 +184,7 @@ function RealRacesList() {
                       )}
                       <div className="text-xs text-gray-400 capitalize">{r.province}</div>
                     </td>
-                    <td className="px-4 py-3 text-gray-600">
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                       {r.startDate ? (
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" /> {r.startDate}
@@ -193,7 +193,7 @@ function RealRacesList() {
                         "—"
                       )}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                       {r.distanceKm ? `${r.distanceKm} km` : "—"}
                     </td>
                     <td className="px-4 py-3 text-gray-600">{formatRaceType(r.raceType)}</td>
@@ -215,7 +215,7 @@ function RealRacesList() {
                         title={r.isFeatured ? "Destacada" : "Normal"}
                       />
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
                       <button
                         onClick={() => handleInlineExtract(r._id, r.name)}
                         disabled={extracting[r._id]}

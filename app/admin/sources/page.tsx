@@ -241,12 +241,12 @@ function DetailsList({ sources }: { sources: any[] }) {
   return (
     <div className="mt-8">
       <h2 className="text-lg font-bold mb-3">Historial de sincronizaciones</h2>
-      <div className="bg-white border rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white border rounded-lg overflow-x-auto">
+        <table className="w-full min-w-[760px] text-sm">
           <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
             <tr>
               <th className="px-4 py-2 text-left">Fuente</th>
-              <th className="px-4 py-2 text-left">Último sync</th>
+              <th className="px-4 py-2 text-left whitespace-nowrap">Último sync</th>
               <th className="px-4 py-2 text-left">Duración</th>
               <th className="px-4 py-2 text-left">Carreras</th>
               <th className="px-4 py-2 text-left">Estado</th>

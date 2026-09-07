@@ -220,8 +220,23 @@ export function mpsToPaceSecPerKm(mps: number | undefined): number | undefined {
 /**
  * Distancias estándar para PRs. Si la actividad está cerca de una de estas
  * Y es tipo "race" (o "Race" en Strava), es candidata a PR.
+ *
+ * Incluye ruta (5K-maratón) y ultra (50K-100 millas). El hueco más pequeño
+ * entre dos distancias consecutivas es maratón→50K (18.5%), así que un 5%
+ * de tolerancia a cada lado nunca solapa dos distancias entre sí — no se
+ * puede confundir un maratón lento con un 50K rápido, por ejemplo.
  */
-const PR_DISTANCES_M = [5000, 10000, 15000, 21097, 42195] as const;
+const PR_DISTANCES_M = [
+  5000, // 5K
+  10000, // 10K
+  15000, // 15K
+  21097, // Media maratón
+  42195, // Maratón
+  50000, // 50K
+  80467, // 50 millas (~80.47 km)
+  100000, // 100K
+  160934, // 100 millas (~160.93 km)
+] as const;
 const PR_DISTANCE_TOLERANCE_PCT = 0.05; // 5% de tolerancia
 
 /** ¿Esta distancia matchea con un PR estándar? */

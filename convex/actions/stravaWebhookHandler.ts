@@ -159,11 +159,15 @@ export const handleEvent = action({
       rawPayload: JSON.stringify(activity),
     });
 
-    // PR check
+    // PR check. Incluye "trail" porque los ultras (50K+) casi siempre llevan
+    // desnivel y se clasifican como trail, no como race/long_run/tempo.
     const prDistanceM = matchPRDistance(distanceM);
     if (
       prDistanceM &&
-      (classifiedType === "race" || classifiedType === "long_run" || classifiedType === "tempo")
+      (classifiedType === "race" ||
+        classifiedType === "long_run" ||
+        classifiedType === "tempo" ||
+        classifiedType === "trail")
     ) {
       await ctx.runMutation(internal.stravaExport.checkAndUpdatePR, {
         userId: profile.profileId as any,

@@ -29,10 +29,16 @@ export const listMine = query({
  * Dispara automáticamente el trigger de onboarding `users.markFirstPrAdded`
  * (idempotente) cuando se inserta un PR nuevo. Devuelve un objeto con:
  *   - id:          id del PR insertado (o el current si no se insertó nada)
+ *   - saved:       true si se ha insertado un registro nuevo (primera marca
+ *                  en esta distancia, o mejora de la existente). false si el
+ *                  tiempo enviado es igual o peor que el PR actual — no se
+ *                  tocó la base de datos.
  *   - isFirstPr:   true si este fue el primer PR del usuario (no había current
  *                  en NINGUNA distancia, no solo esta)
- *   - wasImproved: true si el nuevo tiempo mejoró un PR existente en esta
- *                  distancia (false si era el primer PR en esta distancia)
+ *   - wasImproved: true si `saved` es true Y ya había un PR previo en esta
+ *                  distancia (es decir, se ha batido un récord existente,
+ *                  no es la primera marca en esta distancia). Con `saved`
+ *                  ya no es ambiguo con "no se guardó".
  */
 export const upsert = mutation({
   args: {
@@ -59,7 +65,7 @@ export const upsert = mutation({
     if (current) {
       // Si el nuevo tiempo es peor, no hacer nada
       if (args.timeSeconds >= current.timeSeconds) {
-        return { id: current._id, isFirstPr: false, wasImproved: false };
+        return { id: current._id, saved: false, isFirstPr: false, wasImproved: false };
       }
       // Marcar el antiguo como histórico
       await ctx.db.patch(current._id, { isCurrent: false });
@@ -87,7 +93,7 @@ export const upsert = mutation({
     // Trigger de onboarding (idempotente — solo setea si no estaba)
     await ctx.runMutation(api.users.markFirstPrAdded, {});
 
-    return { id, isFirstPr, wasImproved: current != null };
+    return { id, saved: true, isFirstPr, wasImproved: current != null };
   },
 });
 

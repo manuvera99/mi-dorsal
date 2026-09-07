@@ -200,13 +200,16 @@ async function runIngest(ctx: any, args: IngestArgs) {
 
     if (matchedRaceId) matchedInChunk++;
 
-    // PR check (solo si es candidato a PR)
+    // PR check (solo si es candidato a PR). Incluye "trail" porque los
+    // ultras (50K+) casi siempre llevan desnivel y se clasifican como trail,
+    // no como race/long_run/tempo.
     const prDistanceM = matchPRDistance(activity.distanceM);
     if (
       prDistanceM &&
       (activity.classifiedType === "race" ||
         activity.classifiedType === "long_run" ||
-        activity.classifiedType === "tempo")
+        activity.classifiedType === "tempo" ||
+        activity.classifiedType === "trail")
     ) {
       const prResult = await ctx.runMutation(
         internal.stravaExport.checkAndUpdatePR,

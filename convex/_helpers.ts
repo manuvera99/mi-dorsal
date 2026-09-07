@@ -215,14 +215,28 @@ export function formatTime(seconds: number): string {
   return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
 }
 
+/**
+ * Etiqueta legible de una distancia. Las bandas de tolerancia (±5%) deben
+ * coincidir con PR_DISTANCES_M en convex/activities/normalize.ts — mismo
+ * criterio, duplicado aquí porque normalize.ts es intencionalmente "puro"
+ * (sin importar nada de fuera) y este helper lo usan mutations de Convex.
+ */
 export function getDistanceLabel(distanceM: number): string {
   if (distanceM === 5000) return "5K";
   if (distanceM === 10000) return "10K";
   if (distanceM === 15000) return "15K";
   if (distanceM === 21097 || (distanceM > 20000 && distanceM < 22000))
     return "Media maratón";
-  if (distanceM === 42195 || (distanceM > 41000 && distanceM < 43000))
+  if (distanceM === 42195 || (distanceM > 40085 && distanceM < 44305))
     return "Maratón";
+  if (distanceM === 50000 || (distanceM > 47500 && distanceM < 52500))
+    return "50K";
+  if (distanceM === 80467 || (distanceM > 76444 && distanceM < 84490))
+    return "50 millas";
+  if (distanceM === 100000 || (distanceM > 95000 && distanceM < 105000))
+    return "100K";
+  if (distanceM === 160934 || (distanceM > 152887 && distanceM < 168981))
+    return "100 millas";
   return `${(distanceM / 1000).toFixed(1)}K`;
 }
 

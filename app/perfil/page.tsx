@@ -6,6 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { mockApi, isMockMode } from "@/lib/mock/provider";
 import { formatTime } from "@/lib/utils";
 import { User, Trophy, TrendingUp, Plus } from "lucide-react";
+import { ConnectionsSection } from "@/components/perfil/connections";
 
 function MockPerfil() {
   const [profile, setProfile] = useState<any>(null);
@@ -49,6 +50,9 @@ function PerfilContent({ profile, prs }: { profile: any; prs: any[] }) {
           </div>
         </div>
       </div>
+
+      {/* Conexiones (Strava export, etc.) — solo en modo real */}
+      {!isMockMode() && <ConnectionsSection />}
 
       {/* PRs */}
       <div className="card mb-6">

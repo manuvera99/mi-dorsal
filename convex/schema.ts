@@ -30,6 +30,25 @@ export default defineSchema({
     stravaAccessToken: v.optional(v.string()),
     stravaRefreshToken: v.optional(v.string()),
     stravaTokenExpiresAt: v.optional(v.number()),
+    stravaScope: v.optional(v.string()),
+    stravaConnectedAt: v.optional(v.number()),
+    stravaLastSyncAt: v.optional(v.number()),
+    stravaWebhookSubscriptionId: v.optional(v.number()),
+    // Strava export (Ola 0)
+    stravaExportLastUploadAt: v.optional(v.number()),
+    stravaExportLastActivityCount: v.optional(v.number()),
+    stravaExportLastRaceCount: v.optional(v.number()),
+    stravaExportLastPRCount: v.optional(v.number()),
+    stravaAthleteCity: v.optional(v.string()),
+    stravaAthleteWeightKg: v.optional(v.number()),
+    stravaAthleteMaxHr: v.optional(v.number()),
+    stravaAthleteRestHr: v.optional(v.number()),
+    // Runner type (Ola 2)
+    runnerTypeComputedAt: v.optional(v.number()),
+    runnerTypeTags: v.optional(v.array(v.object({
+      tag: v.string(),
+      score: v.number(),
+    }))),
     // Garmin (Ola 2)
     garminUserId: v.optional(v.string()),
     garminAccessToken: v.optional(v.string()),
@@ -359,6 +378,7 @@ export default defineSchema({
     source: v.union(
       v.literal("manual"),
       v.literal("strava"),
+      v.literal("strava-export"),
       v.literal("garmin"),
       v.literal("race_result"),
     ),
@@ -684,4 +704,117 @@ export default defineSchema({
     .index("by_status_locale", ["status", "locale"])
     .index("by_status_editorial", ["status", "preferences.editorialEnabled"])
     .index("by_profile", ["profileId"]),
+
+  // ---------------------------------------------------------------------------
+  // 14. ACTIVITIES — actividades ingestadas desde Strava, Garmin, etc.
+  // ---------------------------------------------------------------------------
+  // El provider indica la fuente:
+  //   - "strava"        → OAuth con Strava (Ola 1)
+  //   - "strava-export" → ZIP subido por el usuario (Ola 0)
+  //   - "garmin"        → futuro
+  // source distingue OAuth vs export para que el RGPD sea independiente.
+  // (provider, providerActivityId) es único por usuario (índice unique implícito
+  // en la combinación con userId, gestionado por upsert con check previo).
+  // ---------------------------------------------------------------------------
+  activities: defineTable({
+    userId: v.id("profiles"),
+    provider: v.union(
+      v.literal("strava"),
+      v.literal("strava-export"),
+      v.literal("garmin"),
+    ),
+    source: v.union(v.literal("oauth"), v.literal("export")),
+    providerActivityId: v.string(),
+    type: v.union(
+      v.literal("race"),
+      v.literal("long_run"),
+      v.literal("tempo"),
+      v.literal("interval"),
+      v.literal("easy"),
+      v.literal("recovery"),
+      v.literal("trail"),
+    ),
+    name: v.optional(v.string()),
+    startedAt: v.number(),
+    durationSec: v.number(),
+    distanceM: v.number(),
+    avgPaceSecPerKm: v.optional(v.number()),
+    avgHeartRate: v.optional(v.number()),
+    maxHeartRate: v.optional(v.number()),
+    avgCadence: v.optional(v.number()),
+    elevationGainM: v.optional(v.number()),
+    elevationLossM: v.optional(v.number()),
+    description: v.optional(v.string()),
+    matchedRaceId: v.optional(v.id("races")),
+    isOfficialResult: v.optional(v.boolean()),
+    isPrivate: v.optional(v.boolean()),
+    rawPayload: v.optional(v.string()),
+    syncedAt: v.number(),
+  })
+    .index("by_user_started", ["userId", "startedAt"])
+    .index("by_user_type", ["userId", "type"])
+    .index("by_matched_race", ["matchedRaceId"])
+    .index("by_provider_activity", ["provider", "providerActivityId"]),
+
+  // ---------------------------------------------------------------------------
+  // 15. UPLOADS — historial de subidas de export (Strava, Garmin)
+  // ---------------------------------------------------------------------------
+  // Trackea cada ZIP que el usuario sube, con su estado de procesamiento.
+  // El ZIP se borra de Convex File Storage tras la ingesta (exitosa o fallida).
+  // ---------------------------------------------------------------------------
+  uploads: defineTable({
+    userId: v.id("profiles"),
+    source: v.literal("strava-export"),
+    fileStorageId: v.optional(v.id("_storage")),
+    fileName: v.string(),
+    fileSizeBytes: v.number(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("done"),
+      v.literal("failed"),
+    ),
+    totalActivities: v.optional(v.number()),
+    processedActivities: v.optional(v.number()),
+    matchedRaces: v.optional(v.number()),
+    newPRs: v.optional(v.number()),
+    candidatesAdded: v.optional(v.number()),
+    profileFieldsUpdated: v.optional(v.number()),
+    error: v.optional(v.string()),
+    startedAt: v.number(),
+    finishedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_status", ["status"])
+    .index("by_user_started", ["userId", "startedAt"]),
+
+  // ---------------------------------------------------------------------------
+  // 16. RACE_CANDIDATES — carreras detectadas en uploads que no matchean
+  // ---------------------------------------------------------------------------
+  // Cuando un usuario sube un export y una actividad de Strava no matchea con
+  // ninguna carrera de nuestro catálogo, la guardamos aquí. Si varios usuarios
+  // la reportan, la subimos a "pending_review" para que un admin la revise
+  // y la añada al catálogo si procede.
+  // ---------------------------------------------------------------------------
+  raceCandidates: defineTable({
+    name: v.string(),
+    date: v.number(),
+    locality: v.optional(v.string()),
+    distanceM: v.optional(v.number()),
+    userId: v.id("profiles"),
+    occurrenceCount: v.number(),
+    status: v.union(
+      v.literal("candidate"),
+      v.literal("pending_review"),
+      v.literal("linked_to_race"),
+      v.literal("added_to_catalog"),
+      v.literal("rejected"),
+    ),
+    firstSeenAt: v.number(),
+    lastSeenAt: v.number(),
+    linkedRaceId: v.optional(v.id("races")),
+  })
+    .index("by_status", ["status"])
+    .index("by_name_date", ["name", "date"])
+    .index("by_user", ["userId"]),
 });

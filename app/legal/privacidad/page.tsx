@@ -11,7 +11,7 @@ export default function PrivacidadPage() {
   return (
     <article className="mx-auto max-w-3xl px-4 py-12 prose prose-gray">
       <h1>Política de privacidad</h1>
-      <p className="text-sm text-gray-500">Última actualización: 4 de septiembre de 2026</p>
+      <p className="text-sm text-gray-500">Última actualización: 7 de septiembre de 2026</p>
 
       <h2>1. Responsable del tratamiento</h2>
       <p>
@@ -39,6 +39,10 @@ export default function PrivacidadPage() {
           <strong>De actividad deportiva:</strong> marcas personales (PRs), carreras planeadas y
           resultados, si decides añadirlos.
         </li>
+        <li>
+          <strong>De Strava (si decides conectarte o subir tu export):</strong> ver sección 4 bis
+          más abajo.
+        </li>
       </ul>
 
       <h2>3. Finalidad y base legal</h2>
@@ -61,7 +65,60 @@ export default function PrivacidadPage() {
         </li>
       </ul>
 
-      <h2>4. Encargados de tratamiento</h2>
+      <h2>4. Conexión con Strava: OAuth y subida de export</h2>
+      <p>
+        Si lo deseas, puedes enriquecer tu perfil con datos de tu actividad en Strava. Ofrecemos
+        dos formas, independientes entre sí y con consentimientos separados:
+      </p>
+
+      <h3>4.1 Subida del export de Strava (descarga GDPR)</h3>
+      <p>
+        Desde tu perfil, puedes subirnos el archivo ZIP que tú mismo te descargas de Strava
+        (Strava &gt; Settings &gt; "Download all your data"). Este archivo contiene todas tus
+        actividades históricas.
+      </p>
+      <ul>
+        <li>
+          <strong>Qué recogemos del ZIP:</strong> nombre y descripción de cada actividad, fecha y
+          hora de inicio, duración, distancia, ritmo, frecuencia cardíaca media y máxima, cadencia,
+          desnivel, tipo de actividad. Si el archivo incluye <code>profile.csv</code>, también
+          recogemos tu ciudad, peso, FC máxima y FC en reposo (solo si esos campos están vacíos
+          en tu perfil de mi-dorsal; nunca sobreescribimos datos que ya tengas).
+        </li>
+        <li>
+          <strong>Qué NO recogemos:</strong> fotos de actividades, comentarios de otros usuarios,
+          kudos, ni datos sociales.
+        </li>
+        <li>
+          <strong>Qué pasa con el ZIP tras la ingesta:</strong> <strong>se borra inmediatamente</strong> de
+          nuestro almacenamiento. Solo conservamos las actividades extraídas, no el archivo original.
+        </li>
+        <li>
+          <strong>Base legal:</strong> consentimiento explícito al subir el archivo (acción positiva
+          tuya) + ejecución del servicio que has solicitado.
+        </li>
+        <li>
+          <strong>Transferencias internacionales:</strong> los datos extraídos del ZIP se almacenan
+          en Convex (proveedor con sede en EE.UU., cláusulas contractuales tipo de la UE). El
+          archivo no se comparte con terceros.
+        </li>
+        <li>
+          <strong>Derecho al olvido:</strong> desde tu perfil, pulsa "Borrar mis datos" en la sección
+          de Strava. Esto elimina todas las actividades que importamos de tu export. No tenemos que
+          notificar a Strava de nada porque nunca recibimos credenciales tuyas.
+        </li>
+      </ul>
+
+      <h3>4.2 Conexión OAuth con Strava (próximamente)</h3>
+      <p>
+        En el futuro podrás conectar tu cuenta de Strava directamente para sincronizar actividades
+        nuevas automáticamente. En ese caso, además de los datos de actividad descritos arriba,
+        recogeremos <strong>tokens de acceso cifrados</strong> (credenciales temporales que nos
+        permiten hablar con la API de Strava en tu nombre). Podrás revocar la conexión en cualquier
+        momento desde tu perfil o desde la configuración de Strava.
+      </p>
+
+      <h2>5. Encargados de tratamiento</h2>
       <p>Compartimos datos con los siguientes proveedores de servicios:</p>
       <ul>
         <li>
@@ -94,7 +151,7 @@ export default function PrivacidadPage() {
         </li>
       </ul>
 
-      <h2>5. Conservación de datos</h2>
+      <h2>6. Conservación de datos</h2>
       <p>
         Conservamos tus datos de cuenta mientras no solicites la baja. Puedes solicitar la
         eliminación de tu cuenta y todos los datos asociados en cualquier momento escribiéndonos
@@ -102,7 +159,7 @@ export default function PrivacidadPage() {
         anonimizados para analítica agregada pueden conservarse hasta 24 meses.
       </p>
 
-      <h2>6. Tus derechos</h2>
+      <h2>7. Tus derechos</h2>
       <p>Tienes derecho a:</p>
       <ul>
         <li><strong>Acceder</strong> a tus datos personales.</li>
@@ -119,14 +176,14 @@ export default function PrivacidadPage() {
         (<a href="https://www.aepd.es" target="_blank" rel="noopener noreferrer">www.aepd.es</a>).
       </p>
 
-      <h2>7. Seguridad</h2>
+      <h2>8. Seguridad</h2>
       <p>
         Aplicamos medidas técnicas y organizativas para proteger tus datos: HTTPS en toda la web,
         encriptación de contraseñas (gestionadas por Clerk), acceso limitado por roles, y
         auditoría periódica de nuestros proveedores.
       </p>
 
-      <h2>8. Cambios en esta política</h2>
+      <h2>9. Cambios en esta política</h2>
       <p>
         Podemos actualizar esta política para reflejar cambios legales o del servicio. Te
         avisaremos por email y/o mediante un aviso visible en la web si los cambios son

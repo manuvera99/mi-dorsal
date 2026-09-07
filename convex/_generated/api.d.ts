@@ -9,6 +9,8 @@
  */
 
 import type * as _helpers from "../_helpers.js";
+import type * as actions_stravaExportIngest from "../actions/stravaExportIngest.js";
+import type * as activities_normalize from "../activities/normalize.js";
 import type * as adminTools from "../adminTools.js";
 import type * as blog from "../blog.js";
 import type * as cronJobs from "../cronJobs.js";
@@ -23,9 +25,8 @@ import type * as dataSources from "../dataSources.js";
 import type * as devOnly_markFeatured from "../devOnly/markFeatured.js";
 import type * as devOnly_promoteToAdmin from "../devOnly/promoteToAdmin.js";
 import type * as emailDispatch from "../emailDispatch.js";
-import type * as emailNotifications from "../emailNotifications.js";
+import type * as emails_sendEmail from "../emails/sendEmail.js";
 import type * as emails_templates_resultFound from "../emails/templates/resultFound.js";
-import type * as http from "../http.js";
 import type * as myRaces from "../myRaces.js";
 import type * as newsletter from "../newsletter.js";
 import type * as pdfScraper from "../pdfScraper.js";
@@ -35,6 +36,8 @@ import type * as races from "../races.js";
 import type * as ratings from "../ratings.js";
 import type * as scraper from "../scraper.js";
 import type * as stats from "../stats.js";
+import type * as stravaExport from "../stravaExport.js";
+import type * as stravaExportIngestHelpers from "../stravaExportIngestHelpers.js";
 import type * as users from "../users.js";
 import type * as votes from "../votes.js";
 
@@ -46,6 +49,8 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   _helpers: typeof _helpers;
+  "actions/stravaExportIngest": typeof actions_stravaExportIngest;
+  "activities/normalize": typeof activities_normalize;
   adminTools: typeof adminTools;
   blog: typeof blog;
   cronJobs: typeof cronJobs;
@@ -60,9 +65,8 @@ declare const fullApi: ApiFromModules<{
   "devOnly/markFeatured": typeof devOnly_markFeatured;
   "devOnly/promoteToAdmin": typeof devOnly_promoteToAdmin;
   emailDispatch: typeof emailDispatch;
-  emailNotifications: typeof emailNotifications;
+  "emails/sendEmail": typeof emails_sendEmail;
   "emails/templates/resultFound": typeof emails_templates_resultFound;
-  http: typeof http;
   myRaces: typeof myRaces;
   newsletter: typeof newsletter;
   pdfScraper: typeof pdfScraper;
@@ -72,6 +76,8 @@ declare const fullApi: ApiFromModules<{
   ratings: typeof ratings;
   scraper: typeof scraper;
   stats: typeof stats;
+  stravaExport: typeof stravaExport;
+  stravaExportIngestHelpers: typeof stravaExportIngestHelpers;
   users: typeof users;
   votes: typeof votes;
 }>;

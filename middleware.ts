@@ -46,16 +46,6 @@ export default clerkMiddleware(async (auth, req) => {
     response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
     response.headers.set("Cache-Control", "private, no-store");
   }
-  // Home (force-dynamic): cachear 5 min en el CDN de Vercel.
-  // Vercel comprime con brotli y sirve del edge en cache hit (<50ms TTFB).
-  // s-maxage=300 (5 min), stale-while-revalidate=60 (sirve stale hasta 60s
-  // mientras regenera). El browser puede cachear 60s (max-age=60).
-  if (req.nextUrl.pathname === "/" && req.method === "GET") {
-    response.headers.set(
-      "Cache-Control",
-      "public, max-age=60, s-maxage=300, stale-while-revalidate=60"
-    );
-  }
   response.headers.set(
     "Strict-Transport-Security",
     "max-age=31536000; includeSubDomains; preload"

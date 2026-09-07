@@ -1,15 +1,17 @@
-// La home se sirve como HTML dinámico (force-dynamic) en vez de ISR.
-// Razón: Vercel comprime con brotli los HTML dinámicos automáticamente
-// (9-12 KB transfer en lugar de 88 KB uncompressed). El HTML es el mismo
-// para todos los usuarios (sin datos por request), así que Vercel lo
-// cachea 5 min en el CDN con el Cache-Control del middleware, dando
-// tiempos de respuesta <50ms en cache hit.
+// La home es mayormente estática (11 secciones + JSON-LD FAQ).
+// Cachear con revalidate 5 min en Vercel CDN reduce el TTFB de ~600ms a <50ms
+// y sube el PSI score ~15-25 puntos. La geo-personalización del H2 de
+// FeaturedRaces se sigue haciendo en cliente vía useUserRegion, así que el
+// render inicial es la versión genérica ("Las que más molan este mes") y se
+// reescribe tras hidratación sin afectar al HTML cacheado.
 //
-// Trade-off: cold cache TTFB sube ~150-200ms (server-render), pero el
-// LCP y FCP bajan mucho por la compresión. PSI mobile 81 -> >95 esperado.
+// Ver AGENTS.md §6.1 (la nota sobre force-dynamic aplica a /carreras, no a /).
 //
-// Las queries a Convex (FeaturedRaces, CommunityRanking) se hacen en
-// cliente tras hidratación, así que no afectan al server-render.
+// Sobre el HTML inicial: Vercel comprime con brotli los HTML dinámicos
+// (/carreras) y los assets estáticos (CSS, JS, fuentes), pero NO comprime
+// el HTML estático de ISR (revalidate). La home se transfiere sin comprimir
+// (~130 KB). Para reducir el impacto en PSI mobile, las 6 secciones
+// below-the-fold se cargan con `ssr: false` vía lazy-sections.tsx.
 import { Hero } from "@/components/home/hero";
 import { TrustBar } from "@/components/home/trust-bar";
 import { Problem } from "@/components/home/problem";
@@ -23,10 +25,11 @@ import {
   FaqLazy,
   FinalCtaLazy,
 } from "@/components/home/lazy-sections";
-import { WelcomeOverlay } from "@/components/onboarding/welcome-overlay";
 
-// Server-render cada request. Vercel cachea con Cache-Control del middleware.
-export const dynamic = "force-dynamic";
+// Revalidar cada 5 minutos. La home es la misma para todos los usuarios de
+// una ventana de 5 min; las queries a Convex (FeaturedRaces, CommunityRanking)
+// se hacen en cliente tras hidratación, así que no se cachean a nivel Next.
+export const revalidate = 300;
 
 /**
  * Home de mi-dorsal v2.0.
@@ -80,14 +83,6 @@ export default function HomePage() {
         {/* 11. CTA FINAL (lazy: ssr:false) */}
         <FinalCtaLazy />
       </div>
-
-      {/* 12. ONBOARDING WELCOME OVERLAY (client island) */}
-      {/* Modal esquivable que aparece la primera vez que un usuario
-          logueado aterriza en la home. Solo lee Clerk+Convex en cliente,
-          no afecta al ISR de la home (revalidate=300). Si el usuario
-          ya cerró el welcome o no está logueado, el componente no
-          renderiza nada. Ver components/onboarding/welcome-overlay.tsx */}
-      <WelcomeOverlay />
     </>
   );
 }

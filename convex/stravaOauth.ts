@@ -18,16 +18,23 @@ import { internal } from "./_generated/api";
 // ---------------------------------------------------------------------------
 
 /**
- * Carga los tokens del usuario y los descifra. Si están a punto de expirar,
+ * Carga los tokens de un perfil y los descifra. Si están a punto de expirar,
  * se le pasa un callback de refresh (implementado en la action).
  *
  * ESTA QUERY SOLO DEVUELVE LOS TOKENS CIFRADOS. El descifrado y refresh
  * se hace en la action que llama.
+ *
+ * Internal: recibe `profileId` explícito en vez de usar requireUser(ctx),
+ * porque la llama stravaInitialSync (una action en background, sin sesión
+ * de Clerk adjunta) — requireUser ahí siempre lanzaría "Unauthorized:
+ * no user identity" aunque el profileId ya se validó antes de agendar
+ * el sync (en triggerSyncNow o en el callback OAuth).
  */
 export const getMyTokensEncrypted = internalQuery({
-  args: {},
-  handler: async (ctx) => {
-    const user = await requireUser(ctx);
+  args: { profileId: v.id("profiles") },
+  handler: async (ctx, { profileId }) => {
+    const user = await ctx.db.get(profileId);
+    if (!user) throw new Error(`Profile ${profileId} no encontrado`);
     if (!user.stravaAccessToken) return null;
     return {
       profileId: user._id,

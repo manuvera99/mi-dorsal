@@ -60,7 +60,7 @@ async function runSyncChunk(ctx: any, args: SyncArgs) {
   const { profileId, page, totalProcessed } = args;
 
   // 1) Cargar profile
-  const profile = await ctx.runQuery(internal.stravaOauth.getMyTokensEncrypted, {});
+  const profile = await ctx.runQuery(internal.stravaOauth.getMyTokensEncrypted, { profileId });
   if (!profile) {
     throw new Error("Profile sin tokens");
   }

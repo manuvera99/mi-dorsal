@@ -10,7 +10,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { isMockMode } from "@/lib/mock/provider";
@@ -86,13 +86,16 @@ function RealFeedback() {
   const [adminNote, setAdminNote] = useState("");
   const [savingNote, setSavingNote] = useState(false);
 
-  // Sincronizar nota local con la del detail
-  if (detail && adminNote === "" && detail.adminNote) {
-    setAdminNote(detail.adminNote);
-  }
-  if (selectedId === null) {
-    setAdminNote("");
-  }
+  // Sincronizar nota local con la del detail (solo cuando cambia el selectedId
+  // o el detail se carga por primera vez). Si lo hiciéramos en el render body
+  // se produce el React error #301 (bucle infinito de setState).
+  useEffect(() => {
+    if (selectedId === null) {
+      setAdminNote("");
+    } else if (detail?.adminNote) {
+      setAdminNote(detail.adminNote);
+    }
+  }, [selectedId, detail?._id, detail?.adminNote]);
 
   const handleStatusChange = async (newStatus: FeedbackStatus) => {
     if (!selectedId) return;

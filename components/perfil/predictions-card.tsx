@@ -35,6 +35,7 @@ const PREDICTION_DISTANCES: Array<{ label: string; meters: number }> = [
 ];
 
 export function PredictionsCard({ prs }: PredictionsCardProps) {
+  const lowConfidence = prs.length === 1;
   if (prs.length === 0) return null;
 
   // Encontrar el PR más rápido (menor timeSeconds) — es el que mejor
@@ -103,6 +104,9 @@ export function PredictionsCard({ prs }: PredictionsCardProps) {
           // Si la distancia objetivo ES la del PR best, mostramos el PR real
           // (no la predicción) para que el usuario vea su tiempo.
           const isCurrentBest = p.meters === bestPR.distanceM;
+          // Con un solo PR, la predicción de maratón es muy optimista.
+          // La mostramos en gris y tachada para no engañar al usuario.
+          const isLowConfidenceMarathon = lowConfidence && p.label === "Maratón" && !isCurrentBest;
           return (
             <div
               key={p.label}
@@ -110,8 +114,11 @@ export function PredictionsCard({ prs }: PredictionsCardProps) {
                 "rounded-lg p-3 border " +
                 (isCurrentBest
                   ? "border-runner-primary bg-runner-primary/5"
-                  : "border-stone-200 bg-white")
+                  : isLowConfidenceMarathon
+                    ? "border-stone-200 bg-stone-50 opacity-60"
+                    : "border-stone-200 bg-white")
               }
+              title={isLowConfidenceMarathon ? "Predicción poco fiable con un solo PR. Añade más marcas." : undefined}
             >
               <div className="text-[10px] uppercase tracking-widest text-stone-500 font-semibold mb-1">
                 {p.label}
@@ -120,8 +127,13 @@ export function PredictionsCard({ prs }: PredictionsCardProps) {
                     (tu PR)
                   </span>
                 )}
+                {isLowConfidenceMarathon && (
+                  <span className="ml-1 text-stone-400 normal-case tracking-normal text-[9px]">
+                    (poco fiable)
+                  </span>
+                )}
               </div>
-              <div className="text-xl md:text-2xl font-bold text-runner-dark font-mono">
+              <div className={"text-xl md:text-2xl font-bold text-runner-dark font-mono " + (isLowConfidenceMarathon ? "line-through text-stone-400" : "")}>
                 {formatTime(isCurrentBest ? bestPR.timeSeconds : p.seconds)}
               </div>
             </div>

@@ -41,6 +41,16 @@ const TAG_DESCRIPTIONS: Record<string, string> = {
   corredor_popular: "Corres muchas carreras al año",
 };
 
+// Tags genéricos que, si son el top, ocultamos o reordenamos.
+// Estos no aportan información específica sobre el tipo de corredor.
+const GENERIC_TAGS = new Set([
+  "consistente",
+  "volumen_alto",
+  "principiante",
+  "recuperador",
+  "corredor_popular",
+]);
+
 export function RunnerTypeCard() {
   const runnerType = useQuery(api.activities.queries.getMyRunnerType, {});
   const stats = useQuery(api.activities.queries.getMyActivityStats, {});
@@ -51,17 +61,58 @@ export function RunnerTypeCard() {
   }
 
   if (stats.totalActivities === 0) {
-    return null; // Sin actividades, no mostramos nada
+    // Empty state: usuario sin actividades. Le explicamos para qué sirve.
+    return (
+      <div className="card mb-6">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-runner-primary" />
+            <h2 className="text-lg font-semibold">Tu tipo de corredor</h2>
+          </div>
+        </div>
+        <div className="text-center py-6 px-2">
+          <div
+            aria-hidden="true"
+            className="inline-flex items-center justify-center mb-3 h-12 w-12 rounded-full bg-runner-warm text-runner-primary"
+          >
+            <Sparkles className="h-6 w-6" />
+          </div>
+          <h3 className="font-semibold text-stone-900 mb-1">
+            Te lo calculamos cuando subas actividades
+          </h3>
+          <p className="text-sm text-stone-600 max-w-md mx-auto mb-4 leading-relaxed">
+            Detectamos si eres sprinter, fondista, trailero, mixto…
+            con reglas transparentes, no con un modelo opaco.
+          </p>
+          <a
+            href="#conexiones"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-runner-primary hover:underline"
+          >
+            Conectar Strava o subir export →
+          </a>
+        </div>
+      </div>
+    );
   }
 
-  const tags = runnerType.tags.slice(0, 3); // top 3
+  // Priorizar tags específicos (sprinter, fondista, trail_puro, etc.) sobre
+  // genéricos (consistente, volumen_alto, corredor_popular, etc.).
+  // Si el top tag es genérico, lo desplazamos hacia abajo y ponemos uno
+  // específico primero. Si TODOS son genéricos, los mostramos igual.
+  const sortedTags = [...runnerType.tags].sort((a, b) => {
+    const aGeneric = GENERIC_TAGS.has(a.tag);
+    const bGeneric = GENERIC_TAGS.has(b.tag);
+    if (aGeneric === bGeneric) return b.score - a.score;
+    return aGeneric ? 1 : -1; // específicos primero
+  });
+  const tags = sortedTags.slice(0, 3);
 
   return (
     <div className="card mb-6">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-runner-primary" />
-          <h2 className="text-lg font-semibold">Tu hilo runner</h2>
+          <h2 className="text-lg font-semibold">Tu tipo de corredor</h2>
         </div>
         {tags.length > 0 && (
           <button
@@ -141,7 +192,7 @@ function AuditModal({
         aria-modal="true"
       >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Auditoría de tu tipo de corredor</h2>
+          <h2 className="text-lg font-semibold">Cómo calculamos tu tipo de corredor</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"

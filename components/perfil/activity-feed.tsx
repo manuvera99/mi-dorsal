@@ -76,7 +76,39 @@ export function ActivityFeed() {
   if (activities === undefined) {
     return <div className="h-32 bg-gray-100 rounded-lg animate-pulse" />;
   }
-  if (totalCount === 0) return null;
+
+  // Empty state: usuario sin actividades. Le enseñamos cómo empezar.
+  if (totalCount === 0) {
+    return (
+      <div className="card mb-6">
+        <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
+          <Calendar className="h-5 w-5 text-runner-primary" />
+          Tu actividad
+        </h2>
+        <div className="text-center py-6 px-2">
+          <div
+            aria-hidden="true"
+            className="inline-flex items-center justify-center mb-3 h-12 w-12 rounded-full bg-runner-warm text-runner-primary"
+          >
+            <ActivityIcon className="h-6 w-6" />
+          </div>
+          <h3 className="font-semibold text-stone-900 mb-1">
+            Aún no has subido actividades
+          </h3>
+          <p className="text-sm text-stone-600 max-w-md mx-auto mb-4 leading-relaxed">
+            Conecta Strava o sube tu export y verás aquí tus entrenamientos,
+            tu progreso y tus carreras detectadas automáticamente.
+          </p>
+          <a
+            href="#conexiones"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-runner-primary hover:underline"
+          >
+            Cómo empezar →
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card mb-6">

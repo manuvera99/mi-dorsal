@@ -40,32 +40,42 @@ function PerfilContent({ profile, prs }: { profile: any; prs: any[] }) {
       {/* Header */}
       <div className="card mb-6">
         <div className="flex items-start gap-4">
-          <div className="h-16 w-16 rounded-full bg-runner-primary text-white flex items-center justify-center text-2xl font-bold">
+          <div className="h-16 w-16 rounded-full bg-runner-primary text-white flex items-center justify-center text-2xl font-bold flex-shrink-0">
             {(profile?.displayName ?? "M").charAt(0).toUpperCase()}
           </div>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold">{profile?.displayName ?? "Cargando…"}</h1>
-            {profile?.club && (
-              <p className="text-sm text-gray-600">📍 {profile.club}</p>
-            )}
-            {profile?.bio && (
-              <p className="text-sm text-gray-700 mt-2">{profile.bio}</p>
-            )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h1 className="text-2xl font-bold truncate">{profile?.displayName ?? "Cargando…"}</h1>
+                {profile?.club && (
+                  <p className="text-sm text-gray-600">📍 {profile.club}</p>
+                )}
+                {profile?.bio && (
+                  <p className="text-sm text-gray-700 mt-2">{profile.bio}</p>
+                )}
+                {!profile?.bio && !profile?.club && (
+                  <p className="text-sm text-gray-500 mt-2 italic">
+                    Sin club ni bio todavía.
+                  </p>
+                )}
+              </div>
+              {!isMockMode() && (
+                <a
+                  href="/sign-in?redirect_url=%2Fperfil"
+                  className="text-xs text-runner-primary hover:underline flex items-center gap-1 flex-shrink-0"
+                  title="Editar nombre, club y bio desde tu cuenta"
+                >
+                  <User className="h-3.5 w-3.5" />
+                  Editar
+                </a>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Conexiones (Strava export, etc.) — solo en modo real */}
-      {!isMockMode() && <ConnectionsSection />}
-
-      {/* Tu hilo runner (heurísticas) — solo en modo real */}
-      {!isMockMode() && <RunnerTypeCard />}
-
-      {/* Stats de actividad */}
-      {!isMockMode() && <ActivityStatsCard />}
-
-      {/* Feed de actividades */}
-      {!isMockMode() && <ActivityFeed />}
+      {/* PRs — primero: la acción principal del corredor popular */}
+      {isMockMode() ? <PrsSectionReadOnly prs={prs} /> : <PrsSection prs={prs} />}
 
       {/* Predicciones VDOT inline — solo si hay al menos 1 PR.
           Es la "celebración" del momento 3 del onboarding: cuando el
@@ -83,33 +93,17 @@ function PerfilContent({ profile, prs }: { profile: any; prs: any[] }) {
         </div>
       )}
 
-      {/* PRs */}
-      {isMockMode() ? <PrsSectionReadOnly prs={prs} /> : <PrsSection prs={prs} />}
+      {/* Stats de actividad — se ocultan si 0 actividades (mostramos empty state en feed) */}
+      {!isMockMode() && <ActivityStatsCard />}
 
-      {/* Stats summary */}
-      <div className="card">
-        <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
-          <TrendingUp className="h-5 w-5 text-runner-primary" /> Mi temporada 2026
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>
-            <div className="text-3xl font-bold text-runner-primary">3</div>
-            <div className="text-xs text-gray-500 uppercase tracking-wide">Carreras</div>
-          </div>
-          <div>
-            <div className="text-3xl font-bold text-runner-primary">57.2</div>
-            <div className="text-xs text-gray-500 uppercase tracking-wide">km oficiales</div>
-          </div>
-          <div>
-            <div className="text-3xl font-bold text-runner-accent">3:00:00</div>
-            <div className="text-xs text-gray-500 uppercase tracking-wide">Tiempo total</div>
-          </div>
-          <div>
-            <div className="text-3xl font-bold text-yellow-500">5</div>
-            <div className="text-xs text-gray-500 uppercase tracking-wide">Valoraciones hechas</div>
-          </div>
-        </div>
-      </div>
+      {/* Feed de actividades — con empty state para usuarios sin Strava */}
+      {!isMockMode() && <ActivityFeed />}
+
+      {/* Tu hilo runner (heurísticas) — renombrado a "Tu tipo de corredor" en el card */}
+      {!isMockMode() && <RunnerTypeCard />}
+
+      {/* Conexiones (Strava export, etc.) — al final, donde están los ajustes */}
+      {!isMockMode() && <ConnectionsSection />}
     </div>
   );
 }
@@ -165,7 +159,7 @@ function PrsSection({ prs }: { prs: any[] }) {
             <div key={pr._id} className="relative border border-gray-200 rounded-md p-3 group">
               <button
                 onClick={() => handleRemovePr(pr._id, pr.distanceLabel)}
-                className="absolute top-2 right-2 text-gray-300 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-2 right-2 text-gray-300 hover:text-red-600 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                 aria-label={`Eliminar marca de ${pr.distanceLabel}`}
               >
                 <Trash2 className="h-3.5 w-3.5" />

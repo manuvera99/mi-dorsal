@@ -119,52 +119,54 @@ export function PrFormModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="pr-distance" className="block text-sm font-medium text-gray-700 mb-1">
-              Distancia
-            </label>
-            <select
-              id="pr-distance"
-              value={distanceM}
-              onChange={(e) => setDistanceM(Number(e.target.value))}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-            >
-              {PR_DISTANCES.map((d) => (
-                <option key={d.distanceM} value={d.distanceM}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <fieldset disabled={saving} className="space-y-4 m-0 p-0 border-0">
+            <div>
+              <label htmlFor="pr-distance" className="block text-sm font-medium text-gray-700 mb-1">
+                Distancia
+              </label>
+              <select
+                id="pr-distance"
+                value={distanceM}
+                onChange={(e) => setDistanceM(Number(e.target.value))}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {PR_DISTANCES.map((d) => (
+                  <option key={d.distanceM} value={d.distanceM}>
+                    {d.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div>
-            <label htmlFor="pr-time" className="block text-sm font-medium text-gray-700 mb-1">
-              Tu tiempo
-            </label>
-            <input
-              id="pr-time"
-              type="text"
-              inputMode="numeric"
-              placeholder="MM:SS o HH:MM:SS (ej. 22:34)"
-              value={timeInput}
-              onChange={(e) => setTimeInput(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm font-mono"
-              required
-            />
-          </div>
+            <div>
+              <label htmlFor="pr-time" className="block text-sm font-medium text-gray-700 mb-1">
+                Tu tiempo
+              </label>
+              <input
+                id="pr-time"
+                type="text"
+                inputMode="numeric"
+                placeholder="MM:SS o HH:MM:SS (ej. 22:34)"
+                value={timeInput}
+                onChange={(e) => setTimeInput(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm font-mono disabled:opacity-60 disabled:cursor-not-allowed"
+                required
+              />
+            </div>
 
-          <div>
-            <label htmlFor="pr-date" className="block text-sm font-medium text-gray-700 mb-1">
-              Fecha (opcional)
-            </label>
-            <input
-              id="pr-date"
-              type="date"
-              value={achievedAt}
-              onChange={(e) => setAchievedAt(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-            />
-          </div>
+            <div>
+              <label htmlFor="pr-date" className="block text-sm font-medium text-gray-700 mb-1">
+                Fecha (opcional)
+              </label>
+              <input
+                id="pr-date"
+                type="date"
+                value={achievedAt}
+                onChange={(e) => setAchievedAt(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+              />
+            </div>
+          </fieldset>
 
           {error && (
             <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-md p-2">

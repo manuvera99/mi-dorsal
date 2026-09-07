@@ -54,7 +54,7 @@ export function ConnectionsSection() {
   }, [activeUploadId]);
 
   return (
-    <div className="card mb-6">
+    <div id="conexiones" className="card mb-6 scroll-mt-20">
       <h2 className="text-lg font-semibold mb-4">Conexiones</h2>
 
       {/* Strava */}

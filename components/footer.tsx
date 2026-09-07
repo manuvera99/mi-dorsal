@@ -46,6 +46,11 @@ export function Footer() {
             <h3 className="font-semibold mb-3">Contacto</h3>
             <ul className="space-y-2 text-gray-600">
               <li>
+                <Link href="/feedback" className="hover:text-runner-primary inline-flex items-center gap-1">
+                  Feedback / ¿Algo no va?
+                </Link>
+              </li>
+              <li>
                 <a href="mailto:hola@mi-dorsal.es" className="hover:text-runner-primary">
                   hola@mi-dorsal.es
                 </a>

@@ -30,6 +30,7 @@ import { useCarrerasFilters, type CarrerasFilters } from "@/components/race-filt
 import { haversineDistanceKm, type Coords } from "@/lib/geo/distance";
 import type { DistanceCategory } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { SuggestRaceDialog } from "@/components/feedback/suggest-race-dialog";
 
 function MockCarreras() {
   const [filters, setFilters] = useCarrerasFilters();
@@ -470,16 +471,21 @@ function EmptyState({ hasFilter, hasDistance, maxDistance, onClear }: EmptyState
           </p>
         </>
       )}
-      {hasFilter && (
-        <button
-          type="button"
-          onClick={onClear}
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-runner-primary hover:underline"
-        >
-          <X className="h-4 w-4" aria-hidden="true" />
-          Limpiar todos los filtros
-        </button>
-      )}
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mt-2">
+        {hasFilter && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-runner-primary hover:underline"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+            Limpiar todos los filtros
+          </button>
+        )}
+        <SuggestRaceDialog
+          triggerLabel={hasFilter ? "¿No la ves? Sugiérela →" : "Sugerir una carrera"}
+        />
+      </div>
     </div>
   );
 }

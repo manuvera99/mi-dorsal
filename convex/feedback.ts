@@ -321,7 +321,7 @@ ${report.description}
 Revisar en: ${adminUrl}`;
 
     await ctx.scheduler.runAfter(0, (internal.emails as any).sendEmail, {
-      to: process.env.ADMIN_NOTIFICATION_EMAIL || "hola@mi-dorsal.es",
+      to: process.env.ADMIN_NOTIFICATION_EMAIL || "hola@mi-dorsal.com",
       subject: `${typeInfo.emoji} ${typeInfo.label}: ${report.title}`,
       html,
       text,

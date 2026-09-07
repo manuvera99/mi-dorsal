@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useTransition, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { isMockMode } from "@/lib/mock/provider";
@@ -26,29 +26,31 @@ type Extracted = {
 };
 
 export default function FromUrlPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-8">
+          <Loader2 className="h-6 w-6 animate-spin mx-auto text-gray-400" />
+        </div>
+      }
+    >
+      <FromUrlPageInner />
+    </Suspense>
+  );
+}
+
+function FromUrlPageInner() {
   const router = useRouter();
   const useMock = isMockMode();
   const create = useMock ? null : useMutation(api.races.create);
-  const [url, setUrl] = useState("");
+  const searchParams = useSearchParams();
+  const prefillUrl = searchParams?.get("url") ?? "";
+  const [url, setUrl] = useState(prefillUrl);
   const [extracting, startExtract] = useTransition();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [extracted, setExtracted] = useState<Extracted | null>(null);
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
-
-  if (useMock) {
-    return (
-      <div className="p-8 max-w-3xl">
-        <Link href="/admin/races" className="text-sm text-gray-500 hover:underline flex items-center gap-1 mb-4">
-          <ArrowLeft className="h-3 w-3" /> Volver
-        </Link>
-        <h1 className="text-3xl font-bold mb-2">Crear desde URL</h1>
-        <div className="bg-white border rounded-lg p-8 text-center text-gray-500">
-          Modo mock — esta función requiere OPENAI_API_KEY configurado.
-        </div>
-      </div>
-    );
-  }
 
   const handleExtract = () => {
     setError(null);
@@ -63,6 +65,29 @@ export default function FromUrlPage() {
       setSourceUrl(res.url);
     });
   };
+
+  // Si la URL viene pre-rellenada por query param, auto-arrancamos la extracción
+  // para que el admin solo tenga que revisar y guardar.
+  useEffect(() => {
+    if (prefillUrl && !extracting && !extracted) {
+      handleExtract();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillUrl]);
+
+  if (useMock) {
+    return (
+      <div className="p-8 max-w-3xl">
+        <Link href="/admin/races" className="text-sm text-gray-500 hover:underline flex items-center gap-1 mb-4">
+          <ArrowLeft className="h-3 w-3" /> Volver
+        </Link>
+        <h1 className="text-3xl font-bold mb-2">Crear desde URL</h1>
+        <div className="bg-white border rounded-lg p-8 text-center text-gray-500">
+          Modo mock — esta función requiere OPENAI_API_KEY configurado.
+        </div>
+      </div>
+    );
+  }
 
   const set = (k: keyof Extracted, v: any) => setExtracted((e) => e ? { ...e, [k]: v } : e);
 
@@ -107,6 +132,19 @@ export default function FromUrlPage() {
         Pega una URL (web del organizador, cronometrador, etc.) y la IA extrae los datos automáticamente.
         Revisa antes de guardar.
       </p>
+
+      {prefillUrl && (
+        <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4 text-sm text-amber-900">
+          <p>
+            <strong>Viniste de una sugerencia de usuario.</strong> La URL ya está pegada. Cuando
+            guardes la carrera, vuelve a{" "}
+            <Link href="/admin/race-suggestions" className="underline font-semibold">
+              /admin/race-suggestions
+            </Link>{" "}
+            y márcala como "creada" para mantener la trazabilidad.
+          </p>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-md p-3 mb-4 flex items-start gap-2">

@@ -287,7 +287,7 @@ ${suggestion.suggestedName ? `Nombre: ${suggestion.suggestedName}\n` : ""}${sugg
 Revisar en: ${adminUrl}`;
 
     await ctx.scheduler.runAfter(0, (internal.emails as any).sendEmail, {
-      to: process.env.ADMIN_NOTIFICATION_EMAIL || "hola@mi-dorsal.es",
+      to: process.env.ADMIN_NOTIFICATION_EMAIL || "hola@mi-dorsal.com",
       subject: `🏃 Nueva sugerencia de carrera: ${suggestion.suggestedName || suggestion.url}`,
       html,
       text,

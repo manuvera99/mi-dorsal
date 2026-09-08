@@ -61,8 +61,10 @@ export const submit = mutation({
     }
 
     const now = Date.now();
+    // Spread condicional para evitar meter userId: undefined en un campo
+    // opcional — Convex trata `undefined` como no-enviar (mejor que null).
     const id = await ctx.db.insert("clubSuggestions", {
-      userId: user?._id as any, // opcional; si no hay user, queda sin asociar
+      ...(user?._id ? { userId: user._id } : {}),
       clubName,
       ccaa,
       note,
@@ -71,10 +73,18 @@ export const submit = mutation({
       createdAt: now,
     });
 
-    // Notificar al admin (idempotente, igual que feedback).
-    await ctx.scheduler.runAfter(0, internal.clubSuggestions.notifyAdmin, {
-      suggestionId: id,
-    } as any);
+    // Notificar al admin. Si el scheduler falla por algún motivo (ej. el
+    // internal action no existe), NO bloqueamos el insert: la fila ya está
+    // persistida y el admin la verá en /admin/club-suggestions aunque no
+    // llegue el email. Logueamos para detectar el caso.
+    try {
+      await ctx.scheduler.runAfter(0, internal.clubSuggestions.notifyAdmin, {
+        suggestionId: id,
+      } as any);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error("[clubSuggestions] notifyAdmin scheduler failed:", e);
+    }
 
     return { id };
   },

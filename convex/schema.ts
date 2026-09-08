@@ -971,7 +971,10 @@ export default defineSchema({
   //   - rejected: no procede (no es club de atletismo, etc.)
   // ---------------------------------------------------------------------------
   clubSuggestions: defineTable({
-    userId: v.id("profiles"),
+    // Opcional: el flujo real está en /perfil (logueado), pero dejamos la
+    // puerta abierta a reportes anónimos para no romper si en el futuro
+    // alguien reporta desde /carreras o /feedback.
+    userId: v.optional(v.id("profiles")),
     clubName: v.string(),
     ccaa: v.optional(v.string()),
     note: v.optional(v.string()),

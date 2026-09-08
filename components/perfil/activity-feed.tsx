@@ -15,6 +15,7 @@ import { api } from "@/convex/_generated/api";
 import { formatDuration, formatDistanceKm } from "@/lib/utils";
 import { PolylineMapWrapper } from "./polyline-map-wrapper";
 import { SplitsChart } from "./splits-chart";
+import { StravaIcon } from "./icons";
 import {
   Calendar,
   Mountain,
@@ -267,6 +268,24 @@ export function ActivityFeed() {
                     </div>
                   </div>
 
+                  {/* Link a Strava. Solo si la actividad tiene un Strava ID
+                      real (OAuth o export). El `e.stopPropagation()` evita
+                      que se dispare el expand/collapse del row. */}
+                  {(a.provider === "strava" || a.provider === "strava-export") &&
+                    a.providerActivityId && (
+                      <a
+                        href={`https://www.strava.com/activities/${a.providerActivityId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-shrink-0 p-1.5 rounded-md text-orange-500 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                        title="Ver actividad en Strava"
+                        aria-label="Ver actividad en Strava"
+                      >
+                        <StravaIcon className="h-4 w-4" />
+                      </a>
+                    )}
+
                   {hasDetail && (
                     <div className="flex-shrink-0 text-stone-400">
                       {expanded ? (
@@ -307,6 +326,22 @@ export function ActivityFeed() {
                         {a.locationCountry ? `, ${a.locationCountry}` : ""}
                       </div>
                     )}
+
+                    {/* Link prominente a Strava en la vista expandida.
+                        Más visible que el icono del row, para cuando el
+                        usuario ya está mirando el detalle. */}
+                    {(a.provider === "strava" || a.provider === "strava-export") &&
+                      a.providerActivityId && (
+                        <a
+                          href={`https://www.strava.com/activities/${a.providerActivityId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2 py-2 rounded-md bg-orange-50 border border-orange-200 text-orange-700 text-xs font-semibold hover:bg-orange-100 transition-colors"
+                        >
+                          <StravaIcon className="h-3.5 w-3.5" />
+                          Ver actividad completa en Strava
+                        </a>
+                      )}
                   </div>
                 )}
               </div>

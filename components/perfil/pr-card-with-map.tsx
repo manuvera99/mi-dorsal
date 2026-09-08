@@ -21,7 +21,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { PolylineMapWrapper } from "./polyline-map-wrapper";
 import { formatTime, formatDate } from "@/lib/utils";
-import { Trophy, Trash2 } from "lucide-react";
+import { Trophy, Trash2, Flag } from "lucide-react";
 
 interface PrCardWithMapProps {
   pr: {
@@ -31,6 +31,9 @@ interface PrCardWithMapProps {
     timeSeconds: number;
     achievedAt?: string;
     sourceActivityId?: string;
+    /** Si está set, indica que el PR se logró dentro de una actividad de
+     *  esta distancia mayor (ej. "10K" cuando es un PR de 5K dentro de 10K). */
+    sourceActivityDistanceLabel?: string;
     source?: string;
   };
   onRemove?: (id: string, distanceLabel: string) => void;
@@ -106,8 +109,22 @@ export function PrCardWithMap({ pr, onRemove }: PrCardWithMapProps) {
         </div>
 
         {pr.achievedAt && (
-          <div className="text-xs text-gray-500 mt-0.5 mb-2">
+          <div className="text-xs text-gray-500 mt-0.5">
             {formatDate(pr.achievedAt)}
+          </div>
+        )}
+
+        {/* Badge "Lograda en 10K" cuando el PR viene de una actividad
+            más larga. Storytelling importante: el corredor popular no
+            siempre sabe que su 5K vino de una 10K, y este badge lo aclara
+            de un vistazo. */}
+        {pr.sourceActivityDistanceLabel && (
+          <div
+            className="text-[10px] mt-1 mb-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200 text-amber-800 font-medium"
+            title={`Tu marca de ${pr.distanceLabel} se logró dentro de esta actividad mayor`}
+          >
+            <Flag className="h-2.5 w-2.5" />
+            Lograda en {pr.sourceActivityDistanceLabel}
           </div>
         )}
 

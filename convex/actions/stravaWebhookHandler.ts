@@ -11,6 +11,7 @@
 import { v } from "convex/values";
 import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
+import { getDistanceLabel } from "../_helpers";
 import {
   decodeTokens,
   encodeTokens,
@@ -248,6 +249,13 @@ export const handleEvent = action({
       for (const effort of bestEfforts) {
         const effortDistanceM = matchBestEffortName(effort.name);
         if (!effortDistanceM) continue;
+        let sourceLabel: string | undefined;
+        if (activity.distance > effortDistanceM * 1.1) {
+          const standard = getDistanceLabel(activity.distance);
+          sourceLabel = standard.includes(".")
+            ? `${(activity.distance / 1000).toFixed(1)}K`
+            : standard;
+        }
         await ctx.runMutation(internal.stravaExport.checkAndUpdatePR, {
           userId: profile.profileId as any,
           distanceM: effortDistanceM,
@@ -255,6 +263,8 @@ export const handleEvent = action({
           raceId: matchedRaceId as any,
           achievedAt: new Date(effort.start_date_local).toISOString(),
           activityId: activityId as any,
+          sourceActivityDistanceLabel: sourceLabel,
+          sourceActivityIsRace: classifiedType === "race",
           source: "strava",
         });
       }
@@ -272,6 +282,7 @@ export const handleEvent = action({
         raceId: matchedRaceId as any,
         achievedAt: new Date(startedAt).toISOString(),
         activityId: activityId as any,
+        sourceActivityIsRace: classifiedType === "race",
         source: "strava",
       });
     }

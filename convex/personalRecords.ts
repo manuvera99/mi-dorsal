@@ -85,6 +85,69 @@ export const getMyDistanceHistory = query({
 });
 
 /**
+ * Devuelve el best_effort de Strava que corresponde a este PR dentro de
+ * su actividad fuente, o null si no hay actividad fuente / el detail
+ * no tiene best_efforts / no hay match por distancia.
+ *
+ * Útil para mostrar en el detalle del PR el contexto del esfuerzo
+ * (splits, latlng de inicio/fin, pr_rank) cuando el PR se logró dentro
+ * de una actividad más larga. P.ej. un 5K PR dentro de una carrera
+ * de 10K devuelve el best_effort "5k" de esa actividad.
+ *
+ * No muta nada: el best_effort viene del `rawStravaDetail.best_efforts[]`
+ * que Strava devuelve y que guardamos en el ingest.
+ */
+export const getBestEffortForPr = query({
+  args: { prId: v.id("personalRecords") },
+  handler: async (ctx, { prId }) => {
+    const user = await getOptionalUser(ctx);
+    if (!user) return null;
+    const pr = await ctx.db.get(prId);
+    if (!pr || pr.userId !== user._id) return null;
+    if (!pr.sourceActivityId) return null;
+    const activity = await ctx.db.get(pr.sourceActivityId);
+    if (!activity || activity.userId !== user._id) return null;
+    const detail = activity.rawStravaDetail as
+      | { best_efforts?: Array<{ name: string; distance: number; moving_time: number; elapsed_time: number; pr_rank?: number | null; start_latlng?: [number, number] | null; end_latlng?: [number, number] | null; start_date_local?: string }> }
+      | undefined;
+    const efforts = detail?.best_efforts;
+    if (!efforts || efforts.length === 0) return null;
+    // Strava nombra los best_efforts como "5k", "10k", "Half-Marathon", etc.
+    // Buscamos por nombre que case con nuestra distancia (1% tolerancia).
+    const target = pr.distanceM;
+    const found = efforts.find(
+      (e) => Math.abs(e.distance - target) / target < 0.01,
+    );
+    if (!found) return null;
+    return {
+      effort: found,
+      // Splits subset: si la actividad tiene splits_metric y el esfuerzo
+      // viene de una actividad más larga, devolvemos solo los splits que
+      // caen dentro del esfuerzo (los primeros N hasta sumar la distancia).
+      splits: (() => {
+        const all = activity.splitsMetric as
+          | Array<{ split: number; distance: number; moving_time: number; elevation_difference: number; average_speed: number; average_heartrate?: number; average_cadence?: number }>
+          | undefined;
+        if (!all) return null;
+        if (!activity.distanceM || activity.distanceM <= target * 1.05) {
+          // La actividad coincide con el esfuerzo: todos los splits.
+          return all;
+        }
+        // Subset: primeros splits hasta alcanzar la distancia del esfuerzo.
+        const subset: typeof all = [];
+        let acc = 0;
+        for (const s of all) {
+          if (acc >= target) break;
+          subset.push(s);
+          acc += s.distance;
+        }
+        return subset;
+      })(),
+    };
+  },
+});
+
+/**
  * Upsert de un PR. Marca el antiguo como `isCurrent=false` y el nuevo como true.
  *
  * Dispara automáticamente el trigger de onboarding `users.markFirstPrAdded`
@@ -218,6 +281,61 @@ export const unlinkFromActivity = mutation({
     if (pr.userId !== user._id) throw new Error("Forbidden");
     await ctx.db.patch(prId, { sourceActivityId: undefined });
     return { ok: true };
+  },
+});
+
+/**
+ * Backfill: para todos los PRs del usuario que tienen sourceActivityId
+ * pero no sourceActivityDistanceLabel, calcula el label mirando la
+ * actividad fuente. Si la actividad es más larga que el PR, guarda el
+ * label (ej. "10K" para un PR de 5K dentro de 10K).
+ *
+ * También rellena sourceActivityIsRace si la actividad es de tipo "race".
+ *
+ * Admin: salta el check de auth. Llamar con `profileId` desde dashboard.
+ */
+export const backfillPrSourceActivityContext = mutation({
+  args: { profileId: v.id("profiles"), force: v.optional(v.boolean()) },
+  handler: async (ctx, { profileId, force }) => {
+    const prs = await ctx.db
+      .query("personalRecords")
+      .withIndex("by_user", (q) => q.eq("userId", profileId))
+      .collect();
+    let updated = 0;
+    for (const pr of prs) {
+      if (!pr.sourceActivityId) continue;
+      if (
+        !force &&
+        pr.sourceActivityDistanceLabel &&
+        pr.sourceActivityIsRace !== undefined
+      ) {
+        continue;
+      }
+      const activity = await ctx.db.get(pr.sourceActivityId);
+      if (!activity) continue;
+      const patch: Record<string, unknown> = {};
+      if (
+        force ||
+        !pr.sourceActivityDistanceLabel ||
+        activity.distanceM > pr.distanceM * 1.1
+      ) {
+        if (activity.distanceM > pr.distanceM * 1.1) {
+          const standard = getDistanceLabel(activity.distanceM);
+          patch.sourceActivityDistanceLabel = standard.includes(".")
+            ? `${(activity.distanceM / 1000).toFixed(1)}K`
+            : standard;
+        } else {
+          // La actividad es la misma distancia que el PR: no necesitamos label.
+          patch.sourceActivityDistanceLabel = undefined;
+        }
+      }
+      if (force || pr.sourceActivityIsRace === undefined) {
+        patch.sourceActivityIsRace = activity.type === "race";
+      }
+      await ctx.db.patch(pr._id, patch);
+      updated++;
+    }
+    return { scanned: prs.length, updated };
   },
 });
 

@@ -309,6 +309,11 @@ export interface StravaBestEffort {
   start_date_local: string;
   pr_rank: number | null; // 1/2/3 si es de las 3 mejores del atleta EN ESTA actividad, null si no
   achievements?: unknown[];
+  /** Coordenadas del inicio/fin del segmento. No hay polyline propia —
+   *  para dibujar el segmento en un mapa usamos la polyline de la
+   *  actividad + estos puntos como marcadores. */
+  start_latlng?: [number, number] | null;
+  end_latlng?: [number, number] | null;
 }
 
 /**

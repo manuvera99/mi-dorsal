@@ -396,6 +396,13 @@ export default defineSchema({
      *  mostrar la ruta del PR, splits y gear. Null para PRs manuales o
      *  heredados antes de este cambio. */
     sourceActivityId: v.optional(v.id("activities")),
+    /** Distancia de la actividad fuente, si es mayor que la del PR.
+     *  P.ej. "10K" cuando un 5K PR se logró en una carrera de 10K.
+     *  Se usa para mostrar el contexto "Lograda en: X" en la card
+     *  y el detalle del PR. */
+    sourceActivityDistanceLabel: v.optional(v.string()),
+    /** ¿La actividad fuente fue una carrera (type="race")? */
+    sourceActivityIsRace: v.optional(v.boolean()),
     source: v.union(
       v.literal("manual"),
       v.literal("strava"),

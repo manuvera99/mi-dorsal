@@ -35,6 +35,7 @@ import {
   TrendingDown,
   Calendar,
   Unlink,
+  Flag,
 } from "lucide-react";
 
 function StravaIcon({ className }: { className?: string }) {
@@ -86,6 +87,13 @@ export function PrDetailClient({ prId }: { prId: string }) {
   const history = useQuery(
     api.personalRecords.getMyDistanceHistory,
     pr ? ({ distanceM: pr.distanceM } as any) : ("skip" as any),
+  );
+  // Best effort matching la distancia del PR dentro de la actividad.
+  // Null si no hay actividad, o si la actividad no tiene best_efforts
+  // con la distancia del PR (caso raro: PR manual, ultra, etc.).
+  const bestEffortData = useQuery(
+    api.personalRecords.getBestEffortForPr,
+    pr ? ({ prId: pr._id } as any) : ("skip" as any),
   );
 
   // Estados de carga y error
@@ -165,6 +173,16 @@ export function PrDetailClient({ prId }: { prId: string }) {
           )}
         </div>
 
+        {/* Si el PR se logró dentro de una actividad mayor, lo decimos
+            explícitamente. El user popular no siempre sabe distinguir. */}
+        {pr.sourceActivityDistanceLabel && (
+          <div className="mb-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
+            <Flag className="h-3 w-3" />
+            Tu {pr.distanceLabel} se logró dentro de una {pr.sourceActivityDistanceLabel}
+            {pr.sourceActivityIsRace ? " (carrera)" : ""}
+          </div>
+        )}
+
         {/* Pace medio + desnivel (si hay activity) */}
         {activity && (
           <div className="flex items-center gap-3 text-sm text-stone-600 flex-wrap">
@@ -229,33 +247,48 @@ export function PrDetailClient({ prId }: { prId: string }) {
         </div>
       )}
 
-      {/* Splits por km */}
-      {activity?.splitsMetric && activity.splitsMetric.length > 0 && (
-        <div className="card mb-4">
-          <h2 className="text-sm font-semibold text-stone-700 mb-3 flex items-center gap-1.5">
-            <ActivityIcon className="h-4 w-4 text-runner-primary" />
-            Splits por km
-          </h2>
-          <SplitsChart splits={activity.splitsMetric} barMaxHeight={36} />
-        </div>
-      )}
+      {/* Splits por km. Si el PR viene de una actividad mayor (best_effort),
+          usamos solo los splits que caen dentro del esfuerzo — p.ej. para
+          un 5K dentro de 10K mostramos los 5 primeros splits, no los 10. */}
+      {(() => {
+        // Prioridad: subset del best_effort > splits de la actividad.
+        const splitsToShow =
+          bestEffortData?.splits && bestEffortData.splits.length > 0
+            ? bestEffortData.splits
+            : activity?.splitsMetric;
+        if (!splitsToShow || splitsToShow.length === 0) return null;
+        return (
+          <div className="card mb-4">
+            <h2 className="text-sm font-semibold text-stone-700 mb-3 flex items-center gap-1.5">
+              <ActivityIcon className="h-4 w-4 text-runner-primary" />
+              Splits por km
+            </h2>
+            <SplitsChart splits={splitsToShow} barMaxHeight={36} />
+          </div>
+        );
+      })()}
 
-      {/* Stats grid */}
+      {/* Stats grid. Cuando hay best_effort (PR dentro de una actividad
+          mayor), usamos distancia/tiempo del esfuerzo en vez de la
+          actividad completa, para que el "5K" del PR no muestre 10K. */}
       {activity && (
         <div className="card mb-4">
           <h2 className="text-sm font-semibold text-stone-700 mb-3">Stats</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
             <StatTile
               label="Distancia"
-              value={`${(activity.distanceM / 1000).toFixed(2)} km`}
+              value={`${((bestEffortData?.effort.distance ?? activity.distanceM) / 1000).toFixed(2)} km`}
             />
             <StatTile
               label="Tiempo"
-              value={formatTime(activity.durationSec)}
+              value={formatTime(bestEffortData?.effort.moving_time ?? activity.durationSec)}
             />
             <StatTile
               label="Pace medio"
-              value={activity.avgPaceSecPerKm ? formatPace(activity.avgPaceSecPerKm) : "—"}
+              value={formatPace(
+                (bestEffortData?.effort.moving_time ?? activity.durationSec) /
+                  ((bestEffortData?.effort.distance ?? activity.distanceM) / 1000),
+              )}
               sub="/km"
             />
             <StatTile

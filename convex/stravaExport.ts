@@ -209,6 +209,13 @@ export const checkAndUpdatePR = internalMutation({
      *  en la card del PR). Opcional: los callsites que no lo tengan (p.ej.
      *  resultados de carrera scrapeados) simplemente no lo pasan. */
     activityId: v.optional(v.id("activities")),
+    /** Distancia de la actividad fuente (si es mayor que la del PR, ej.
+     *  "10K" cuando un 5K PR se logró dentro de una carrera de 10K).
+     *  Se muestra en la card y el detalle del PR. */
+    sourceActivityDistanceLabel: v.optional(v.string()),
+    /** ¿La actividad fuente fue una carrera? Para el badge "Lograda en
+     *  carrera X". */
+    sourceActivityIsRace: v.optional(v.boolean()),
     source: v.union(
       v.literal("strava"),
       v.literal("strava-export"),
@@ -245,6 +252,8 @@ export const checkAndUpdatePR = internalMutation({
       achievedAt: args.achievedAt,
       raceId: args.raceId,
       sourceActivityId: args.activityId,
+      sourceActivityDistanceLabel: args.sourceActivityDistanceLabel,
+      sourceActivityIsRace: args.sourceActivityIsRace,
       source: args.source,
       isCurrent: true,
     });

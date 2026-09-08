@@ -14,6 +14,7 @@
 import { v } from "convex/values";
 import { action, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
+import { getDistanceLabel } from "../_helpers";
 import {
   decodeTokens,
   ensureFreshToken,
@@ -406,6 +407,17 @@ async function ingestOneActivity(
     for (const effort of activity.best_efforts) {
       const effortDistanceM = matchBestEffortName(effort.name);
       if (!effortDistanceM) continue;
+      // Si el esfuerzo (5K) viene de una actividad más larga (10K),
+      // guardamos el label de la actividad para mostrar "Lograda en 10K"
+      // en la card y el detalle. Si la actividad coincide con el esfuerzo
+      // (5K PR de una carrera de 5K), no pasamos label (sería redundante).
+      let sourceLabel: string | undefined;
+      if (activity.distance > effortDistanceM * 1.1) {
+        const standard = getDistanceLabel(activity.distance);
+        sourceLabel = standard.includes(".")
+          ? `${(activity.distance / 1000).toFixed(1)}K`
+          : standard;
+      }
       await ctx.runMutation(internal.stravaExport.checkAndUpdatePR, {
         userId: profileId as any,
         distanceM: effortDistanceM,
@@ -413,6 +425,8 @@ async function ingestOneActivity(
         raceId: matchedRaceId as any,
         achievedAt: new Date(effort.start_date_local).toISOString(),
         activityId: activityId as any,
+        sourceActivityDistanceLabel: sourceLabel,
+        sourceActivityIsRace: classifiedType === "race",
         source: "strava",
       });
     }
@@ -430,6 +444,7 @@ async function ingestOneActivity(
       raceId: matchedRaceId as any,
       achievedAt: new Date(startedAt).toISOString(),
       activityId: activityId as any,
+      sourceActivityIsRace: classifiedType === "race",
       source: "strava",
     });
   }

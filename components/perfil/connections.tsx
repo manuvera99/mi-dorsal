@@ -21,6 +21,7 @@ import {
   X,
   ExternalLink,
   Clock,
+  Info,
 } from "./icons";
 import { StravaExportUploader } from "./strava-export-uploader";
 import { StravaOauthConnect } from "./strava-oauth-connect";
@@ -30,6 +31,7 @@ export function ConnectionsSection() {
   const oauthStatus = useQuery(api.stravaOauth.getMyStravaOauthStatus, {});
   const [activeUploadId, setActiveUploadId] = useState<string | null>(null);
   const [showInstructions, setShowInstructions] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
 
   // Detectar query params de redirect del callback OAuth
   useEffect(() => {
@@ -63,7 +65,18 @@ export function ConnectionsSection() {
           <div className="flex items-center gap-3">
             <StravaIcon className="h-6 w-6 text-[#FC4C02]" />
             <div>
-              <h3 className="font-medium">Strava</h3>
+              <h3 className="font-medium flex items-center gap-2">
+                Strava
+                <button
+                  type="button"
+                  onClick={() => setShowInfo(true)}
+                  className="text-gray-400 hover:text-gray-600"
+                  aria-label="Info sobre Strava en mi-dorsal"
+                  title="Info sobre cómo se sincroniza Strava en mi-dorsal"
+                >
+                  <Info className="h-4 w-4" />
+                </button>
+              </h3>
               <p className="text-xs text-gray-500">
                 {summary?.total
                   ? `${summary.total} actividades · ${summary.racesMatched} carreras detectadas`
@@ -154,6 +167,15 @@ export function ConnectionsSection() {
       {showInstructions && (
         <InstructionsModal onClose={() => setShowInstructions(false)} />
       )}
+
+      {/* Modal de info general sobre Strava en mi-dorsal */}
+      {showInfo && (
+        <InfoModal
+          onClose={() => setShowInfo(false)}
+          summary={summary}
+          oauthConnected={!!oauthStatus?.connected}
+        />
+      )}
     </div>
   );
 }
@@ -233,6 +255,207 @@ function InstructionsModal({ onClose }: { onClose: () => void }) {
           onClick={onClose}
           className="mt-6 w-full btn-primary"
         >
+          Entendido
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Modal de info: cómo se sincroniza Strava en mi-dorsal
+// ---------------------------------------------------------------------------
+
+interface InfoModalProps {
+  onClose: () => void;
+  summary:
+    | {
+        fromExport: number;
+        fromOAuth: number;
+        total: number;
+        racesMatched: number;
+        lastExportAt: number | null;
+        lastExportActivityCount: number | null;
+        lastExportRaceCount: number | null;
+        lastExportPRCount: number | null;
+        oauthConnected: boolean;
+        oauthConnectedAt: number | null;
+        lastOAuthSyncAt: number | null;
+        oldestActivityAt: number | null;
+        newestActivityAt: number | null;
+      }
+    | null
+    | undefined;
+  oauthConnected: boolean;
+}
+
+function InfoModal({ onClose, summary, oauthConnected }: InfoModalProps) {
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Strava en mi-dorsal</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+            aria-label="Cerrar"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <p className="text-sm text-gray-700 mb-4">
+          Tienes <strong>dos formas</strong> de traerte tus actividades a
+          mi-dorsal. Puedes usar una, las dos, o cambiar entre ellas cuando
+          quieras.
+        </p>
+
+        {/* OAuth */}
+        <section className="mb-5">
+          <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-[#FC4C02]" />
+            Conexión OAuth (recomendada)
+          </h3>
+          <ul className="text-xs text-gray-700 space-y-1.5 list-disc list-inside">
+            <li>
+              Autorizas a mi-dorsal a leer tus actividades. No publicamos
+              nada en tu nombre ni modificamos tu Strava.
+            </li>
+            <li>
+              <strong>Se actualiza automáticamente</strong>: cuando subes una
+              actividad a Strava, llega a mi-dorsal en pocos minutos
+              (Strava nos avisa por webhook).
+            </li>
+            <li>
+              <strong>Sincronización inicial</strong>: al conectar,
+              descargamos los últimos 90 días por defecto. Si quieres más
+              histórico, sube también un export (ver abajo).
+            </li>
+            <li>
+              <strong>Caducidad del token</strong>: cada ~6 horas el token
+              se renueva solo. No tienes que hacer nada.
+            </li>
+          </ul>
+          {oauthConnected && (
+            <div className="text-xs text-gray-500 mt-2 space-y-0.5">
+              {summary?.oauthConnectedAt && (
+                <div>
+                  Conectado {timeAgo(summary.oauthConnectedAt)}
+                </div>
+              )}
+              {summary?.lastOAuthSyncAt && (
+                <div>
+                  Última sincronización: {timeAgo(summary.lastOAuthSyncAt)}
+                </div>
+              )}
+              {summary?.fromOAuth !== undefined && (
+                <div>
+                  {summary.fromOAuth} actividades ingestadas por esta vía
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* Export */}
+        <section className="mb-5">
+          <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-blue-500" />
+            Subir export de Strava
+          </h3>
+          <ul className="text-xs text-gray-700 space-y-1.5 list-disc list-inside">
+            <li>
+              Descarga el ZIP desde{" "}
+              <a
+                href="https://www.strava.com/dashboard"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-runner-primary hover:underline"
+              >
+                strava.com/dashboard
+              </a>{" "}
+              → Settings → "Download all your data".
+            </li>
+            <li>
+              <strong>NO se actualiza solo</strong>: cada vez que quieras
+              traer actividades nuevas, sube otro ZIP.
+            </li>
+            <li>
+              <strong>Ventaja</strong>: trae TODO tu histórico de Strava
+              desde que te creaste la cuenta, no solo los últimos 90 días.
+            </li>
+            <li>
+              El ZIP se procesa y se borra inmediatamente. Solo guardamos las
+              actividades, no el archivo.
+            </li>
+          </ul>
+          {summary?.lastExportAt && (
+            <div className="text-xs text-gray-500 mt-2">
+              Última subida: {timeAgo(summary.lastExportAt)}
+              {summary.lastExportActivityCount != null && (
+                <> · {summary.lastExportActivityCount} actividades en ese lote</>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* Resumen global */}
+        {summary && (
+          <section className="mb-5 bg-gray-50 border border-gray-200 rounded-md p-3 text-xs text-gray-700">
+            <h4 className="font-semibold mb-1">Tu resumen</h4>
+            <ul className="space-y-0.5">
+              <li>
+                Total: <strong>{summary.total} actividades</strong> (
+                {summary.racesMatched} carreras detectadas)
+              </li>
+              {summary.oldestActivityAt && (
+                <li>
+                  Actividad más antigua:{" "}
+                  {new Date(summary.oldestActivityAt).toLocaleDateString("es-ES", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </li>
+              )}
+              {summary.newestActivityAt && (
+                <li>
+                  Actividad más reciente:{" "}
+                  {new Date(summary.newestActivityAt).toLocaleDateString("es-ES", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </li>
+              )}
+            </ul>
+          </section>
+        )}
+
+        {/* Privacidad */}
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-xs text-blue-800">
+          Tus datos solo se usan para calcular tu tipo de corredor, detectar
+          carreras, mandarte el resultado oficial por email, y el análisis
+          con IA. Nunca los vendemos ni los compartimos.{" "}
+          <a
+            href="/legal/privacidad"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline"
+          >
+            Política de privacidad completa
+          </a>
+        </div>
+
+        <button onClick={onClose} className="mt-6 w-full btn-primary">
           Entendido
         </button>
       </div>

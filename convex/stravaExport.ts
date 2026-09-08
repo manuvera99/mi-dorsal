@@ -168,7 +168,13 @@ export const upsertActivityInternal = internalMutation({
         deviceName: args.deviceName,
         splitsMetric: args.splitsMetric,
         detectedIntervals:
-          args.detectedIntervals ?? detectIntervalsFromSplits(args.splitsMetric),
+          args.detectedIntervals ??
+          detectIntervalsFromSplits({
+            splits: args.splitsMetric,
+            totalElevationGainM: args.elevationGainM,
+            activityName: args.name,
+            sportType: args.stravaSportType,
+          }),
         locationCity: args.locationCity,
         locationCountry: args.locationCountry,
         // Campos extra (2026-09-08)
@@ -209,7 +215,13 @@ export const upsertActivityInternal = internalMutation({
     const id = await ctx.db.insert("activities", {
       ...args,
       detectedIntervals:
-        args.detectedIntervals ?? detectIntervalsFromSplits(args.splitsMetric),
+        args.detectedIntervals ??
+        detectIntervalsFromSplits({
+          splits: args.splitsMetric,
+          totalElevationGainM: args.elevationGainM,
+          activityName: args.name,
+          sportType: args.stravaSportType,
+        }),
       syncedAt: Date.now(),
     });
     return { id, created: true };
@@ -546,6 +558,20 @@ export const getMyStravaSummary = query({
         .map((a) => a.matchedRaceId as string),
     ).size;
 
+    // Rango temporal cubierto: actividad más antigua y más reciente
+    // (entre todas, no por provider, para que el usuario vea de qué
+    // ventana histórica dispone).
+    let oldestActivityAt: number | null = null;
+    let newestActivityAt: number | null = null;
+    for (const a of allActivities) {
+      if (oldestActivityAt === null || a.startedAt < oldestActivityAt) {
+        oldestActivityAt = a.startedAt;
+      }
+      if (newestActivityAt === null || a.startedAt > newestActivityAt) {
+        newestActivityAt = a.startedAt;
+      }
+    }
+
     return {
       fromExport,
       fromOAuth,
@@ -555,6 +581,13 @@ export const getMyStravaSummary = query({
       lastExportActivityCount: user.stravaExportLastActivityCount ?? null,
       lastExportRaceCount: user.stravaExportLastRaceCount ?? null,
       lastExportPRCount: user.stravaExportLastPRCount ?? null,
+      // Conexión OAuth
+      oauthConnected: !!user.stravaAccessToken,
+      oauthConnectedAt: user.stravaConnectedAt ?? null,
+      lastOAuthSyncAt: user.stravaLastSyncAt ?? null,
+      // Rango de actividades
+      oldestActivityAt,
+      newestActivityAt,
     };
   },
 });

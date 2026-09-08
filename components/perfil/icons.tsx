@@ -34,4 +34,4 @@ export function GarminIcon({ className }: { className?: string }) {
   );
 }
 
-export { Upload, X, ExternalLink, Clock } from "lucide-react";
+export { Upload, X, ExternalLink, Clock, Info } from "lucide-react";

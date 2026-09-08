@@ -1,16 +1,24 @@
 // =============================================================================
 // mi-dorsal — Cron: recalc-stats
 // =============================================================================
-// Cada 5 min: recalcula los contadores denormalizados del admin dashboard.
+// Recalcula los contadores denormalizados del admin dashboard (tabla statsCache).
 //
-// ANTES: adminGetStats() y getPublicStats() hacían .collect() de 7 tablas
-// (races, profiles, raceVotes, raceRatings, myRaces, personalRecords,
-// notificationLog) en cada carga. Con plan free (1 GB/mes de Database I/O)
-// eso quemaba 96% del límite en 4 días.
+// HISTORIAL DE FRECUENCIA (auditoría 8 sep 2026):
+// - 5 min (original): quemaba 96% del límite de 1 GB/mes en 4 días.
+// - 30 min (después de 5 sep): ~17 MB/día, ~510 MB/mes.
+// - 1/día 03:05 UTC (actual): ~360 KB/día, ~11 MB/mes. −98% vs 30 min.
 //
-// AHORA: estas queries leen 1 fila de ~200 bytes de la tabla statsCache.
-// El cron reescribe esa fila cada 5 min con los totales actualizados.
-// Coste: ~50-200 KB de I/O cada 5 min (~15 MB/mes, despreciable).
+// Por qué 03:05 UTC: la GitHub Action daily-ingest corre a las 02:00 UTC
+// y sube ~431 carreras a Convex. A las 03:05 (1h después) el cron recalcula
+// las stats para que el admin dashboard vea los datos frescos al día
+// siguiente. Si necesitas stats más frescas, llama manualmente a
+// `recalculateStats` (mutation pública) o a la action `triggerRecalcNow`
+// desde el dashboard / un endpoint admin.
+//
+// Si en el futuro hay ingest de carreras desde el propio Convex (sin pasar
+// por la GitHub Action), la action `ingest-to-convex` puede llamar a
+// `recalculateStats` directamente para mantener la coherencia sin esperar
+// al cron.
 // =============================================================================
 
 import { internalAction } from "../_generated/server";

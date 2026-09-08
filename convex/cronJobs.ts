@@ -42,17 +42,16 @@ crons.cron(
   internal.crons.yearReview.yearReview,
 );
 
-// Recalcular stats del admin cada 6h
-// (antes 5 min quemaba ~6 GB/mes de Database bandwidth en plan free;
-// 30 min lo dejaba en ~1 GB/mes, dentro del límite. Subido a 6h:
-// el dashboard admin no necesita 30 min de freshness, y 6h alinea
-// la frecuencia con el auto-sync de Strava (también 24h threshold).
-// 4 runs/día = ~4 KB/día = despreciable. Si en el futuro hay 50+
-// usuarios activos, evaluar cache en cliente en lugar de subir
-// frecuencia del cron.)
-crons.interval(
+// Recalcular stats del admin 1 vez al día a las 03:05 UTC.
+// (8 sep 2026: era cada 6h, leía ~1.4 MB/día de las 7 tablas grandes
+// en .collect() (Promise.all). Reducido a 1/día → ~360 KB/día, −75%.
+// Se ejecuta 1h después de la GitHub Action daily-ingest (02:00 UTC)
+// para que las stats reflejen las carreras recién ingestadas al día
+// siguiente. Si necesitas stats más frescas, llama manualmente a
+// api.stats.recalculateStats.)
+crons.cron(
   "recalc-stats",
-  { hours: 6 },
+  "5 3 * * *", // 03:05 UTC diario
   (internal as any)["crons/recalcStats"].recalcStats,
 );
 

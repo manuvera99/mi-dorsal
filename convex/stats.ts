@@ -174,3 +174,106 @@ export type StatsPayload = {
   totalNotifications: number;
   racesByProvince: Record<string, number>;
 };
+
+/**
+ * Mutation PÚBLICA para trigger on-demand del recálculo de stats.
+ *
+ * Por qué existe:
+ * - El cron `recalc-stats` corre 1/día a las 03:05 UTC (auditoría 8 sep
+ *   2026 bajó de cada 6h a 1/día para ahorrar ~75% bandwidth).
+ * - Si el admin acaba de ingestar carreras y quiere ver el dashboard
+ *   actualizado sin esperar al cron, llama a esta mutation desde el
+ *   panel admin (botón "Refrescar stats") o desde la terminal con:
+ *     npx convex run --prod stats:recalculateStats '{}'
+ *
+ * Coste por llamada: ~360 KB de DB I/O (7 tablas .collect() en
+ * Promise.all). El admin solo lo llama manualmente, no se puede abusar.
+ *
+ * También puede ser llamada desde el script `ingest-to-convex` para
+ * mantener la coherencia sin esperar al cron tras una subida grande.
+ */
+import { mutation as publicMutation, action as publicAction } from "./_generated/server";
+
+export const recalculateStats = publicMutation({
+  args: {},
+  handler: async (ctx) => {
+    // Misma lógica que el internalMutation. Lo duplicamos (en vez de
+    // exportar y re-exportar) para no exponer el internalMutation a la
+    // API pública — son 30 líneas de código, vale la pena el duplicado.
+    const [
+      races,
+      profiles,
+      votes,
+      ratings,
+      myRaces,
+      prs,
+      notifications,
+    ] = await Promise.all([
+      ctx.db.query("races").collect(),
+      ctx.db.query("profiles").collect(),
+      ctx.db.query("raceVotes").collect(),
+      ctx.db.query("raceRatings").collect(),
+      ctx.db.query("myRaces").collect(),
+      ctx.db.query("personalRecords").collect(),
+      ctx.db.query("notificationLog").collect(),
+    ]);
+
+    let published = 0;
+    let featured = 0;
+    const byProvince: Record<string, number> = {};
+    for (const r of races) {
+      if (r.isPublished) published++;
+      if (r.isFeatured) featured++;
+      if (r.province) {
+        byProvince[r.province] = (byProvince[r.province] ?? 0) + 1;
+      }
+    }
+
+    let admins = 0;
+    for (const p of profiles) {
+      if (p.role === "admin") admins++;
+    }
+
+    const payload = {
+      key: "global",
+      computedAt: Date.now(),
+      totalRaces: races.length,
+      publishedRaces: published,
+      featuredRaces: featured,
+      totalUsers: profiles.length,
+      adminUsers: admins,
+      totalVotes: votes.length,
+      totalRatings: ratings.length,
+      totalMyRaces: myRaces.length,
+      totalPRs: prs.length,
+      totalNotifications: notifications.length,
+      racesByProvince: byProvince,
+    };
+
+    const existing = await ctx.db
+      .query("statsCache")
+      .withIndex("by_key", (q) => q.eq("key", "global"))
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, payload);
+    } else {
+      await ctx.db.insert("statsCache", payload);
+    }
+
+    return payload;
+  },
+});
+
+/**
+ * Action PÚBLICA que envuelve recalculateStats. Útil para llamarla desde
+ * un endpoint HTTP admin (vía ConvexHttpClient) o desde el panel admin.
+ */
+export const triggerRecalcNow = publicAction({
+  args: {},
+  handler: async (ctx): Promise<StatsPayload> => {
+    // Cast a string para evitar el circular type del API (Convex 1.18).
+    const result = await ctx.runMutation("stats:recalculateStats" as any, {});
+    return result as StatsPayload;
+  },
+});

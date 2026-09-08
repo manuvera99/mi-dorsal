@@ -5,8 +5,17 @@
  * sincronización tiene más de `STALE_THRESHOLD_MS`.
  *
  * Pensado para correr una vez al montar la página /perfil. Si el
- * usuario abre la app y la última sync es de hace más de 6h, nos
+ * usuario abre la app y la última sync es de hace más de 24h, nos
  * aseguramos de tener datos frescos sin que tenga que pulsar nada.
+ *
+ * ¿Por qué 24h en vez de 6h?
+ *   El webhook de Strava (suscripción activa, id 371643) es la fuente
+ *   primaria: las actividades nuevas llegan en <2 min. El auto-sync es
+ *   un fallback de "ponerse al día" para los casos edge (webhook caído,
+ *   conexión de Strava sin actividad durante días, etc.). 24h es
+ *   suficiente porque, en el peor caso, el usuario ve sus actividades
+ *   con 1 día de retraso — aceptable para un fallback. Antes era 6h
+ *   lo que disparaba 4 syncs/día innecesarios.
  *
  * Si ya está sincronizando (por la auto-sync de otro tab, o porque
  * Strava acaba de notificar vía webhook), evitamos disparar otra.
@@ -21,11 +30,12 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
-/** Una sync de hace más de 6h se considera "vieja". */
-const STALE_THRESHOLD_MS = 6 * 60 * 60 * 1000;
+/** Una sync de hace más de 24h se considera "vieja". */
+const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
-/** No re-disparar auto-sync más de una vez cada 5 min. */
-const COOLDOWN_MS = 5 * 60 * 1000;
+/** No re-disparar auto-sync más de una vez cada 30 min (defensivo
+ *  contra abrir/cerrar la app en bucle). */
+const COOLDOWN_MS = 30 * 60 * 1000;
 
 export function useAutoSync() {
   const status = useQuery(api.stravaOauth.getMyStravaOauthStatus, {});

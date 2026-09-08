@@ -72,11 +72,37 @@ function nullsToUndefined<T extends Record<string, unknown>>(obj: T): T {
 // ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
+//
+// IMPORTANTE (2026-09-08): esta action es INCREMENTAL por defecto.
+//   - Si el profile ya tiene `stravaLastSyncAt`, solo descarga actividades
+//     posteriores a (lastSyncAt - 7d) usando el parámetro `after` de Strava.
+//   - Solo si `forceFullSync = true` (lo usa el botón "Resincronizar todo")
+//     o si NO hay lastSyncAt previo, pagina desde la página 1 sin filtro.
+//
+// Esto reduce el I/O de un full sync (16 MB y ~1500 function calls para
+// 575 actividades) a típicamente <1 MB y ~5-10 function calls en el caso
+// normal de "sincronizar 1-3 actividades nuevas".
+// ---------------------------------------------------------------------------
 
 export const startInitialSync = action({
-  args: { profileId: v.id("profiles") },
-  handler: async (ctx, { profileId }) => {
-    return await runSyncChunk(ctx, { profileId, page: 1, totalProcessed: 0 });
+  args: {
+    profileId: v.id("profiles"),
+    /**
+     * Si true, ignora `lastSyncAt` y pagina desde el principio (re-trae
+     * TODO el histórico, idempotente porque upsertActivityInternal hace
+     * patch). Usado por el botón "Resincronizar todo" cuando el usuario
+     * cambia de dispositivo o quiere re-fetchar el detalle (map, splits).
+     */
+    forceFullSync: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { profileId, forceFullSync }) => {
+    return await runSyncChunk(ctx, {
+      profileId,
+      page: 1,
+      totalProcessed: 0,
+      forceFullSync: forceFullSync ?? false,
+      afterSeconds: null,
+    });
   },
 });
 
@@ -88,10 +114,18 @@ interface SyncArgs {
   profileId: string;
   page: number;
   totalProcessed: number;
+  forceFullSync: boolean;
+  /**
+   * Timestamp Unix en SEGUNDOS a partir del cual Strava devuelve
+   * actividades. Solo se usa en modo incremental. Se calcula al inicio del
+   * sync (page 1) y se pasa igual en las páginas siguientes para que
+   * Strava devuelva un set consistente.
+   */
+  afterSeconds: number | null;
 }
 
 async function runSyncChunk(ctx: any, args: SyncArgs) {
-  const { profileId, page, totalProcessed } = args;
+  const { profileId, page, totalProcessed, forceFullSync, afterSeconds } = args;
 
   // 1) Cargar profile
   const profile = await ctx.runQuery(internal.stravaOauth.getMyTokensEncrypted, { profileId });
@@ -118,12 +152,35 @@ async function runSyncChunk(ctx: any, args: SyncArgs) {
     });
   });
 
+  // 3b) Resolver `after` en la primera página. Si no es full sync y
+  // tenemos un lastSyncAt previo, pedimos solo actividades posteriores a
+  // (lastSyncAt - 7d) para cubrir el caso de una actividad con reloj
+  // desincronizado o que el usuario hizo justo antes de la última sync.
+  let effectiveAfter = afterSeconds;
+  if (page === 1 && !forceFullSync) {
+    if (effectiveAfter == null && profile.lastSyncAt) {
+      // Buffer de 7 días hacia atrás para no perder边界 en el caso
+      // de actividades con reloj desincronizado o actividades que
+      // Strava indexa con segundos de retraso.
+      const bufferMs = 7 * 24 * 60 * 60 * 1000;
+      effectiveAfter = Math.floor((profile.lastSyncAt - bufferMs) / 1000);
+      console.log(
+        `[stravaInitialSync] sync incremental: after=${new Date(effectiveAfter * 1000).toISOString()}`,
+      );
+    } else if (effectiveAfter == null) {
+      console.log(
+        "[stravaInitialSync] sin lastSyncAt previo: sync completo (full)",
+      );
+    }
+  }
+
   // 4) Listar actividades de esta página
   let pageResult;
   try {
     pageResult = await listAthleteActivities(tokens, {
       page,
       perPage: PAGE_SIZE,
+      after: effectiveAfter ?? undefined,
     });
   } catch (e: any) {
     console.error(`[stravaInitialSync] page ${page} failed: ${e?.message}`);
@@ -212,7 +269,13 @@ async function runSyncChunk(ctx: any, args: SyncArgs) {
     await ctx.scheduler.runAfter(
       CHUNK_DELAY_MS,
       (internal as any)["actions/stravaInitialSync"].continueSync,
-      { profileId, page: page + 1, totalProcessed: newTotal },
+      {
+        profileId,
+        page: page + 1,
+        totalProcessed: newTotal,
+        forceFullSync,
+        afterSeconds: effectiveAfter,
+      },
     );
   } else {
     // Terminamos
@@ -230,6 +293,8 @@ export const continueSync = internalAction({
     profileId: v.id("profiles"),
     page: v.number(),
     totalProcessed: v.number(),
+    forceFullSync: v.boolean(),
+    afterSeconds: v.union(v.number(), v.null()),
   },
   handler: async (ctx, args) => {
     return await runSyncChunk(ctx, args);

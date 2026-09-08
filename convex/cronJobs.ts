@@ -42,15 +42,17 @@ crons.cron(
   internal.crons.yearReview.yearReview,
 );
 
-// Recalcular stats del admin cada 30 min
+// Recalcular stats del admin cada 6h
 // (antes 5 min quemaba ~6 GB/mes de Database bandwidth en plan free;
-// 30 min lo deja en ~1 GB/mes, dentro del límite. Para una app con
-// 1 admin y pocos beta testers, 30 min de delay en el dashboard es
-// invisible. Si en el futuro hay 50+ usuarios activos, subir a Pro o
-// cambiar a 1h + cache en cliente.)
+// 30 min lo dejaba en ~1 GB/mes, dentro del límite. Subido a 6h:
+// el dashboard admin no necesita 30 min de freshness, y 6h alinea
+// la frecuencia con el auto-sync de Strava (también 24h threshold).
+// 4 runs/día = ~4 KB/día = despreciable. Si en el futuro hay 50+
+// usuarios activos, evaluar cache en cliente en lugar de subir
+// frecuencia del cron.)
 crons.interval(
   "recalc-stats",
-  { minutes: 30 },
+  { hours: 6 },
   (internal as any)["crons/recalcStats"].recalcStats,
 );
 

@@ -42,6 +42,10 @@ export const getMyTokensEncrypted = internalQuery({
       refreshTokenEncrypted: user.stravaRefreshToken ?? "",
       expiresAt: user.stravaTokenExpiresAt ?? 0,
       athleteId: user.stravaUserId ?? 0,
+      // Para sync incremental: si existe una sync previa, el worker de
+      // stravaInitialSync usa `after = (lastSyncAt - buffer)` para NO
+      // re-bajar y re-patchear todas las actividades cada vez.
+      lastSyncAt: user.stravaLastSyncAt ?? null,
     };
   },
 });
@@ -217,6 +221,9 @@ export const triggerSyncNow = mutation({
     // pasarlas por el scheduler).
     // La action vive en convex/actions/stravaInitialSync.ts, por lo que
     // su path en el namespace es "actions/stravaInitialSync" (con prefijo).
+    // `forceFullSync` NO se pasa: la action es INCREMENTAL por defecto y
+    // solo descarga actividades posteriores a la última sync, evitando
+    // re-bajar y re-patchear las 500+ actividades que ya tenemos.
     await ctx.scheduler.runAfter(
       0,
       (internal as any)["actions/stravaInitialSync"].startInitialSync,
@@ -257,10 +264,12 @@ export const triggerFullSync = mutation({
     // Resetear lastSyncAt para que el UI muestre "sincronizando…".
     await ctx.db.patch(user._id, { stravaLastSyncAt: Date.now() });
     // Disparar la action de sync (idempotente, paginada).
+    // `forceFullSync: true` para que ignore lastSyncAt y re-fetche TODO
+    // el histórico. El usuario pidió explícitamente "resincronizar todo".
     await ctx.scheduler.runAfter(
       0,
       (internal as any)["actions/stravaInitialSync"].startInitialSync,
-      { profileId: user._id },
+      { profileId: user._id, forceFullSync: true },
     );
     return { ok: true, message: "Full resync iniciado en background" };
   },

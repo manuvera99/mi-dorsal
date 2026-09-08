@@ -17,6 +17,7 @@ import type * as actions_stravaWebhookSubscription from "../actions/stravaWebhoo
 import type * as activities_normalize from "../activities/normalize.js";
 import type * as activities_queries from "../activities/queries.js";
 import type * as adminTools from "../adminTools.js";
+import type * as aiUsage from "../aiUsage.js";
 import type * as blog from "../blog.js";
 import type * as clubSuggestions from "../clubSuggestions.js";
 import type * as clubsCatalog from "../clubsCatalog.js";
@@ -30,6 +31,8 @@ import type * as crons_resultNotFound from "../crons/resultNotFound.js";
 import type * as crons_weeklyDigest from "../crons/weeklyDigest.js";
 import type * as crons_yearReview from "../crons/yearReview.js";
 import type * as dataSources from "../dataSources.js";
+import type * as detectIntervalsBackfill from "../detectIntervalsBackfill.js";
+import type * as detectIntervalsBackfillHelpers from "../detectIntervalsBackfillHelpers.js";
 import type * as devOnly_markFeatured from "../devOnly/markFeatured.js";
 import type * as devOnly_promoteToAdmin from "../devOnly/promoteToAdmin.js";
 import type * as emailDispatch from "../emailDispatch.js";
@@ -52,6 +55,7 @@ import type * as stravaExportIngestHelpers from "../stravaExportIngestHelpers.js
 import type * as stravaInitialSyncHelpers from "../stravaInitialSyncHelpers.js";
 import type * as stravaOauth from "../stravaOauth.js";
 import type * as stravaWebhookHandlerInternal from "../stravaWebhookHandlerInternal.js";
+import type * as subscriptions from "../subscriptions.js";
 import type * as users from "../users.js";
 import type * as votes from "../votes.js";
 
@@ -71,6 +75,7 @@ declare const fullApi: ApiFromModules<{
   "activities/normalize": typeof activities_normalize;
   "activities/queries": typeof activities_queries;
   adminTools: typeof adminTools;
+  aiUsage: typeof aiUsage;
   blog: typeof blog;
   clubSuggestions: typeof clubSuggestions;
   clubsCatalog: typeof clubsCatalog;
@@ -84,6 +89,8 @@ declare const fullApi: ApiFromModules<{
   "crons/weeklyDigest": typeof crons_weeklyDigest;
   "crons/yearReview": typeof crons_yearReview;
   dataSources: typeof dataSources;
+  detectIntervalsBackfill: typeof detectIntervalsBackfill;
+  detectIntervalsBackfillHelpers: typeof detectIntervalsBackfillHelpers;
   "devOnly/markFeatured": typeof devOnly_markFeatured;
   "devOnly/promoteToAdmin": typeof devOnly_promoteToAdmin;
   emailDispatch: typeof emailDispatch;
@@ -106,6 +113,7 @@ declare const fullApi: ApiFromModules<{
   stravaInitialSyncHelpers: typeof stravaInitialSyncHelpers;
   stravaOauth: typeof stravaOauth;
   stravaWebhookHandlerInternal: typeof stravaWebhookHandlerInternal;
+  subscriptions: typeof subscriptions;
   users: typeof users;
   votes: typeof votes;
 }>;

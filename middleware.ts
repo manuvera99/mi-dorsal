@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 const isProtectedRoute = createRouteMatcher([
   "/calendario(.*)",
   "/perfil(.*)",
+  "/cuenta(.*)",
 ]);
 
 /**
@@ -23,6 +24,7 @@ const isPrivateRoute = createRouteMatcher([
   "/admin(.*)",
   "/calendario(.*)",
   "/perfil(.*)",
+  "/cuenta(.*)",
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/api(.*)",

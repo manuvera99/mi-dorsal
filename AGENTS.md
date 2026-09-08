@@ -326,6 +326,7 @@ mi-dorsal/
 - [ ] **Registrar marca `mi-dorsal` en OEPM** (clases 9, 41, 42) — ~150 €, 8-12 meses resolución — ver `docs/BRAND_PROTECTION_CHECKLIST.md`.
 - [ ] **Logo simplificado** para favicon 16/32/180/192/512 px (gap detectado en `docs/BRAND_ANALYSIS.md` §3.2).
 - [ ] **OG image custom 1200×630** con dorsal estilizado y tagline (mejora CTR en WhatsApp/Twitter/LinkedIn).
+- [x] **Esqueleto de Clerk Billing listo** (8 sep 2026) — schema `subscriptions` + webhook Svix + páginas `/premium` y `/cuenta/suscripcion` + componentes `<Paywall>` y `<PremiumBadge>`. Activar cuando llegue Q3-Q4 2026 siguiendo `docs/BILLING_SETUP.md`. Ver §16.
 
 ---
 
@@ -751,4 +752,121 @@ Detecta carreras candidatas a duplicado combinando 3 criterios (ordenados por co
 
 ---
 
-**Última actualización**: 7 de septiembre de 2026. Sesión de enrichment masivo: refactor de `buildExtractionPatch` a `lib/ai/extract-race-deep.ts` (elimina duplicación script+admin), prompt IA con "modo síntesis" para páginas escasas, HEAD pre-check en `deep-extract-all.ts` para no quemar IA en URLs rotas (sportmaniacs devuelve 404 a todas sus URLs `/results/...`), ampliación de `systemListAll` con 23 campos extra para que `check-bulk-status` reporte progreso real, refactor de `check-bulk-status.ts` con 18 métricas, script `list-top-candidates.ts` para identificar las 30 carreras top a enriquecer a mano. **Catálogo: 2761 carreras, 2746 con `officialUrl`**. v1 del deep-extract con código viejo: 629 extraídas (22.9%, +258 desde el inicio de sesión). v2 relanzado con código nuevo (HEAD probe + synthesis prompt): ETA ~3.8h, log `scripts/output/deep-extract-2026-09-07-v2.log`. Geocode también en background: 549/2746 con lat/lng (de 416 iniciales). Cron self-reminder `monitor-deep-extract` cada 15 min apunta al log v2. Bug pre-existente conocido: ~80% de carreras con `officialUrl` de sportmaniacs devuelve HEAD 404 — pendiente backfillear URLs reales. Sesión anterior: 5 sep 2026 (sistema editorial blog/newsletter).
+## 16. Monetización: esqueleto de Clerk Billing (sesión del 8 sep 2026)
+
+Esta sección documenta el estado del sistema de pagos. Está **listo pero no activado** — la app funciona 100% en plan Free; cuando llegue el momento de monetizar (Q3-Q4 2026, ver `docs/MONETIZATION_PLAN.md`), solo hay que seguir `docs/BILLING_SETUP.md` para activarlo.
+
+### 16.1 — Decisión de arquitectura
+
+**Se usa Clerk Billing (no Stripe directo).** Razones:
+- Clerk ya gestiona la auth; Billing se integra nativamente con el mismo user.
+- Cero código de checkout — Clerk se ocupa del iframe, Apple/Google Pay, cambio de plan, cancelación, cumplimiento fiscal.
+- Coste extra: 0,7% sobre ingresos (vs 1,5% + 0,25€ de Stripe directo). Para €1000-5000/mes objetivo: 5-35€/mes, asumibles.
+- Trade-off: menos control sobre checkout custom. Si lo necesitamos, se puede migrar a Stripe directo (ver §16.8).
+
+**Clerk Billing usa Stripe por debajo** — Manu no necesita cuenta Stripe propia para empezar. Clerk la aprovisiona en el dashboard de Clerk con un clic. Solo hay que crear los productos (Free + Premium) y copiar el webhook signing secret.
+
+### 16.2 — Componentes del esqueleto
+
+| Archivo | Rol |
+|---|---|
+| `convex/schema.ts` (tabla `subscriptions`) | Mirror local del estado de subscripción. Source of truth para queries Convex y feature gating. |
+| `convex/subscriptions.ts` | Queries (`getMySubscription`, `getMyPremiumStatus`, `getSubscriptionStats`) + action pública (`handleClerkBillingEvent`) + internal mutations (`upsertFromClerkEvent`, `downgradeToFree`). |
+| `app/api/webhooks/clerk-billing/route.ts` | Webhook handler con verificación Svix. Recibe `subscription.*` events de Clerk y los refleja en Convex. |
+| `components/billing/use-has-premium.ts` | Hook reactivo que consulta Convex. Re-renderiza al instante cuando el webhook actualiza la fila. |
+| `components/billing/paywall.tsx` | `<Paywall feature="...">` envuelve features premium. Variantes: inline / card / subtle. |
+| `components/billing/premium-badge.tsx` | `<PremiumBadge />` indicador visual. |
+| `components/billing/pricing-table.tsx` | Wrapper sobre `<PricingTable />` de Clerk. |
+| `app/cuenta/page.tsx` + `app/cuenta/suscripcion/page.tsx` | Gestión de la suscripción para usuarios logueados. Protegida por middleware. |
+| `app/premium/page.tsx` | Landing pública de venta (SEO, anónimos). |
+| `docs/BILLING_SETUP.md` | Tutorial paso a paso para activar. |
+
+### 16.3 — Modelo de datos (tabla `subscriptions`)
+
+- `clerkUserId` (string, index) — FK lógica a `profiles.clerkUserId`.
+- `clerkSubscriptionId` (string, index único por Clerk) — 1 fila por suscripción.
+- `planId` ("free_user" | "premium_monthly" | "premium_yearly") — SKU concreto de Clerk.
+- `tier` ("free" | "premium") — nivel LÓGICO, sobre el que se hace feature gating.
+- `status` ("active" | "trialing" | "past_due" | "canceled" | ...) — estado de Clerk.
+- `currentPeriodStart` / `currentPeriodEnd` (number, unix ms) — fechas de facturación.
+- `cancelAtPeriodEnd` (bool) — usuario marcó para cancelar pero sigue con acceso.
+- `customerId`, `customerEmail`, `amountCents`, `currency` — auditoría.
+
+**Importante**: NO escribir en `subscriptions` desde el cliente. Solo la internal mutation `upsertFromClerkEvent` (llamada desde el webhook tras verificar firma Svix).
+
+### 16.4 — Feature gating
+
+**Cliente (UI reactiva)**:
+```tsx
+import { useHasPremium, Paywall, PremiumBadge } from "@/components/billing";
+
+const { hasAccess, tier, status, currentPeriodEnd } = useHasPremium();
+
+if (!hasAccess) {
+  return <Paywall feature="predicciones ilimitadas" />;
+}
+```
+
+**Backend (mutations Convex)**:
+```ts
+import { hasPremiumAccess } from "@/convex/subscriptions";
+
+// Dentro de una mutation
+const identity = await ctx.auth.getUserIdentity();
+if (!identity || !(await hasPremiumAccess(ctx, identity.subject))) {
+  throw new Error("Premium required");
+}
+```
+
+**Por tier**: derivar tier del `planId` es robusto a nombres nuevos. La función `deriveTierFromPlanId` (en `convex/subscriptions.ts`) hace `planId.toLowerCase().includes("premium")`. Cuando se añadan tiers nuevos (team, lifetime), solo hay que cambiar ese switch.
+
+### 16.5 — Estados que dan acceso premium
+
+| Estado Clerk | ¿Da acceso? | Razón |
+|---|---|---|
+| `active` | ✅ Sí | Al día con los cobros. |
+| `trialing` | ✅ Sí | En trial gratuito. |
+| `past_due` | ✅ Sí | Cobro falló, reintentando. No castigar al usuario por un fallo transitorio. |
+| `canceled` (con currentPeriodEnd futuro) | ✅ Sí | El usuario canceló, pero el periodo pagado aún no venció. |
+| `canceled` (con currentPeriodEnd vencido) | ❌ No | El periodo venció, vuelve a Free. |
+| `incomplete` / `incomplete_expired` / `unpaid` / `paused` | ❌ No | Estados terminales sin acceso. |
+
+Centralizado en `ACCESS_GRANTING_STATES` (en `convex/subscriptions.ts`). Si Clerk añade estados nuevos, actualizar la lista.
+
+### 16.6 — Mientras está desactivado (situación actual)
+
+- `CLERK_WEBHOOK_SIGNING_SECRET` está **vacío** en Vercel y en `.env.local`.
+- El webhook handler rechaza con 503 al recibir cualquier petición (no se procesa nada).
+- `<PricingTable />` se renderiza pero sin planes configurados en el dashboard de Clerk → muestra "No plans available" (inocuo).
+- `getMyPremiumStatus` devuelve `hasAccess: false` para todos → la app funciona 100% como Free.
+- **No hay coste**, no hay claves que rotar, no hay datos sensibles expuestos.
+
+### 16.7 — Para activar (cuando llegue el momento)
+
+1. Crear cuenta / entrar en https://dashboard.clerk.com
+2. Activar **Billing** en el dashboard (un clic, Clerk pide los datos fiscales)
+3. Crear producto **Free** (precio 0, plan_id: `free_user`)
+4. Crear producto **Premium** (precio 4,99 €/mes y/o 39 €/año, plan_id: `premium_*`)
+5. Webhooks → Add endpoint → URL `https://<dominio>/api/webhooks/clerk-billing` → eventos `subscription.*`
+6. Copiar el **Signing Secret** (whsec_...) a `CLERK_WEBHOOK_SIGNING_SECRET` en Vercel
+7. Redeploy (Vercel detecta la nueva env var y redeploy solo)
+8. Probar con el botón "Send test event" del dashboard de Clerk
+9. Verificar en Convex dashboard que la tabla `subscriptions` se actualiza
+10. Anunciar en redes / newsletter con link a `/premium`
+
+**Detalle completo paso a paso**: `docs/BILLING_SETUP.md`.
+
+### 16.8 — Si en el futuro migramos a Stripe directo
+
+Cuesta 1-2 semanas de trabajo:
+- Borrar `CLERK_WEBHOOK_SIGNING_SECRET`, añadir `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`.
+- Sustituir `<PricingTable />` por `loadStripe` + `<EmbeddedCheckoutProvider>`.
+- Crear endpoint `/api/stripe/checkout` que crea Checkout Session y devuelve la URL.
+- Crear endpoint `/api/stripe/webhook` (en lugar de `/api/webhooks/clerk-billing`) que verifica firma de Stripe y llama a la misma `upsertFromClerkEvent` (que renombraríamos a `upsertFromStripeEvent`).
+- Añadir tablas de Stripe (`stripe_customers`, `stripe_invoices`) para facturas e historial.
+
+**La estructura actual (Convex + webhook + tabla mirror + feature gating) sigue siendo válida** — solo cambian las fuentes (Clerk → Stripe) y los componentes de checkout. Esa es la razón de haber construido la tabla `subscriptions` agnóstica al proveedor de pagos.
+
+---
+
+**Última actualización**: 8 de septiembre de 2026. Sesión de integración de pasarela de pagos: esqueleto de Clerk Billing (Stripe bajo el capó) listo pero no activado. Tabla `subscriptions` en Convex + webhook handler Svix-verified en `/api/webhooks/clerk-billing` + componentes `<Paywall>`/`<PremiumBadge>` + páginas `/premium` (landing pública) y `/cuenta/suscripcion` (gestión) + doc `docs/BILLING_SETUP.md` con el runbook de activación. Cero coste mientras no se active. Activación en Q3-Q4 2026 según `docs/MONETIZATION_PLAN.md`. Sesión anterior: 7 sep 2026 (enrichment masivo de carreras con IA).

@@ -309,3 +309,68 @@ export const updateIfBetter = internalMutation({
     return { updated: true, id, previousTimeSeconds };
   },
 });
+
+// ---------------------------------------------------------------------------
+// Admin / dev tools
+// ---------------------------------------------------------------------------
+//
+// Estas mutations son herramientas destructivas para reset / testing.
+// Reciben `profileId` explícito y saltan el check de auth (requieren que
+// quien las llama sea un dev con acceso al dashboard de Convex o al CLI
+// `npx convex run`). NO están expuestas en la UI.
+
+/**
+ * Borra TODOS los PRs del usuario indicado. Destructivo, sin confirm.
+ * Pensado para: hacer un reset completo antes de re-sincronizar Strava
+ * y verificar que el flow de extracción de PRs funciona desde cero.
+ *
+ * Llamada típica desde el dashboard de Convex → Functions →
+ * `personalRecords:purgeAllMyPRs` con args `{ "profileId": "..." }` (el
+ * profileId se ve en la tabla `profiles`).
+ *
+ * Orden sugerido: ejecutar esta → desconectar Strava (la mutation
+ * `disconnectAndPurge` de stravaOauth borra las actividades OAuth) →
+ * volver a conectar → el initial sync repuebla activities y PRs.
+ */
+export const purgeAllMyPRs = mutation({
+  args: { profileId: v.id("profiles") },
+  handler: async (ctx, { profileId }) => {
+    const all = await ctx.db
+      .query("personalRecords")
+      .withIndex("by_user", (q) => q.eq("userId", profileId))
+      .collect();
+    for (const pr of all) {
+      await ctx.db.delete(pr._id);
+    }
+    return { deleted: all.length };
+  },
+});
+
+/**
+ * Para PRs del usuario cuyo `sourceActivityId` apunta a una actividad que
+ * ya no existe, limpia el `sourceActivityId` (deja el PR pero desvinculado
+ * de Strava). Útil tras un disconnectAndPurge — los PRs quedan huérfanos
+ * con un id de actividad que ya no existe, y la query `getActivityFull`
+ * devuelve null. Esto limpia esa referencia.
+ *
+ * Si quieres resetear los PRs también, usa `purgeAllMyPRs` en su lugar.
+ */
+export const unlinkOrphanedPRs = mutation({
+  args: { profileId: v.id("profiles") },
+  handler: async (ctx, { profileId }) => {
+    const all = await ctx.db
+      .query("personalRecords")
+      .withIndex("by_user", (q) => q.eq("userId", profileId))
+      .collect();
+    let unlinked = 0;
+    for (const pr of all) {
+      if (!pr.sourceActivityId) continue;
+      const a = await ctx.db.get(pr.sourceActivityId);
+      if (!a) {
+        await ctx.db.patch(pr._id, { sourceActivityId: undefined });
+        unlinked++;
+      }
+    }
+    return { scanned: all.length, unlinked };
+  },
+});

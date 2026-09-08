@@ -45,7 +45,7 @@ export async function POST(request: Request) {
   const client = new ConvexHttpClient(convexUrl);
   try {
     const out = await client.action(
-      "detectIntervalsBackfill:runBackfill" as any,
+      "actions/detectIntervalsBackfill:runBackfill" as any,
       {
         userId: body.userId,
         force: body.force ?? false,

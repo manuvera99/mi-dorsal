@@ -71,10 +71,9 @@ export function ConnectionsSection() {
                   type="button"
                   onClick={() => setShowInfo(true)}
                   className="text-gray-400 hover:text-gray-600"
-                  aria-label="Info sobre Strava en mi-dorsal"
-                  title="Info sobre cómo se sincroniza Strava en mi-dorsal"
+                  aria-label="Info sobre cómo se sincroniza Strava en mi-dorsal"
                 >
-                  <Info className="h-4 w-4" />
+                  <Info className="h-4 w-4" aria-hidden="true" />
                 </button>
               </h3>
               <p className="text-xs text-gray-500">

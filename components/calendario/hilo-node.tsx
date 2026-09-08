@@ -42,20 +42,44 @@ interface HiloNodeProps {
 }
 
 /**
- * Encuentra el PR del usuario que coincide con la distancia de la carrera.
- * Match EXACTO en metros (race.distanceKm * 1000 === pr.distanceM).
- * Si no hay match exacto, devuelve null y la card no muestra el bloque.
+ * Encuentra el PR del usuario que coincide con la distancia de la carrera,
+ * con una tolerancia de ±200 m.
  *
- * El usuario pidió match exacto ("si tiene PR en esa distancia se la
- * muestra ahi") en vez de Riegel/tolerancia.
+ * Por qué tolerancia y no match exacto en metros:
+ *  - Una carrera puede declararse como "21 km" (21000 m) pero la
+ *    distancia real medida por GPS / organizador puede ser 21097 m
+ *    (media maratón oficial). En el sistema imperial, "5K" puede
+ *    medirse como 5025 m. Con match exacto, un PR oficial de 21097 m
+ *    no se mostraría NUNCA en una card de carrera "21 km planos".
+ *  - ±200 m cubre las variaciones reales entre "21K" (21000) y
+ *    "Media maratón oficial" (21097) sin llegar a confundir 5K con
+ *    10K (5000 m de diferencia) o 10K con media maratón (10000+ m).
+ *  - Si hay varios PR dentro de la tolerancia, preferimos el más
+ *    cercano (menor diff absoluto).
+ *
+ * Si no hay PR dentro de la tolerancia, devuelve null y la card no
+ * muestra la fila "Tu PR en X km". La calculadora sí se muestra
+ * siempre (independiente del PR).
  */
+const PR_DISTANCE_TOLERANCE_M = 200;
+
 function findMatchingPR(
   raceDistanceKm: number,
   prs: UserPR[] | undefined,
 ): UserPR | null {
   if (!prs || prs.length === 0) return null;
   const targetM = Math.round(raceDistanceKm * 1000);
-  return prs.find((pr) => pr.distanceM === targetM) ?? null;
+  let best: UserPR | null = null;
+  let bestDiff = Number.POSITIVE_INFINITY;
+  for (const pr of prs) {
+    const diff = Math.abs(pr.distanceM - targetM);
+    if (diff > PR_DISTANCE_TOLERANCE_M) continue;
+    if (diff < bestDiff) {
+      best = pr;
+      bestDiff = diff;
+    }
+  }
+  return best;
 }
 
 const STATUS: Record<

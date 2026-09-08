@@ -9,6 +9,11 @@
 //
 // Llama a `api.clubSuggestions.submit` (o al mock en dev) y muestra un
 // estado de éxito antes de cerrar.
+//
+// Decisión de UX: el backdrop NO cierra el dialog al hacer click fuera
+// (rompía el flujo: un click accidental cerraba el dialog antes de que la
+// mutation terminara, dando sensación de "se cierra sin hacer nada"). Solo
+// X y Cancelar cierran.
 // =============================================================================
 
 import { useEffect, useState } from "react";
@@ -95,35 +100,49 @@ export function ReportMissingClubDialog({
     }
 
     setSending(true);
+    const payload = {
+      clubName: trimmedName,
+      ccaa: ccaa || undefined,
+      note: trimmedNote || undefined,
+      contactEmail: trimmedEmail || undefined,
+    };
+    // Log diagnóstico: si el usuario reporta otro bug, podemos ver en la
+    // consola del navegador exactamente qué payload se mandó y qué devolvió.
+    // eslint-disable-next-line no-console
+    console.info("[report-missing-club] submitting", payload);
     try {
-      const payload = {
-        clubName: trimmedName,
-        ccaa: ccaa || undefined,
-        note: trimmedNote || undefined,
-        contactEmail: trimmedEmail || undefined,
-      };
       if (useMock) {
         await mockApi.clubSuggestions.submit(payload);
       } else {
-        await submitConvex(payload);
+        const result = await submitConvex(payload);
+        // eslint-disable-next-line no-console
+        console.info("[report-missing-club] submitted OK", result);
       }
       setSent(true);
       // Cierra a los 1.5s para que el usuario vea la confirmación.
       setTimeout(() => onClose(), 1500);
     } catch (e: any) {
-      setError(e?.message ?? "Error al enviar la sugerencia");
+      // eslint-disable-next-line no-console
+      console.error("[report-missing-club] submit failed", e);
+      // Convex a veces devuelve solo "Server Error" sin detalle. Mostramos
+      // un mensaje útil para que el usuario sepa qué pasó.
+      const raw = e?.message ?? String(e);
+      setError(
+        raw && raw !== "Server Error"
+          ? `No se pudo enviar: ${raw}`
+          : "No se pudo enviar la sugerencia. Inténtalo de nuevo en unos segundos.",
+      );
       setSending(false);
     }
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
+    // Backdrop SIN onClick: el dialog solo se cierra con X o Cancelar. Evita
+    // que un click accidental cierre el dialog antes de que la mutation
+    // termine, dando sensación de "se cierra sin hacer nada".
+    <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
       <div
         className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label="Reportar club no encontrado"

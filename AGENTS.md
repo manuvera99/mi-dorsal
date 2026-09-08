@@ -920,6 +920,35 @@ El script es **idempotente**: si lo ejecutas 2 veces, solo reemplaza los PRs/myR
 
 **Diferencia con `devOnly/seedTestUser.ts`**: el seed crea un profile con `clerkUserId` fake (no tiene cuenta en Clerk, no puede hacer login). El enrichment opera sobre un user real de Clerk que acaba de pasar por signup + onboarding.
 
+### 17.1.2 — Limpiar un usuario de prueba (script de cleanup)
+
+`devOnly/cleanTestUserByClerkId.ts` borra un user (profile + PRs + myRaces + diplomas en storage) por `clerkUserId`. Pensado para limpiar el seed fake que se haya colado en prod, o para borrar un test user real cuando ya no lo necesites.
+
+**CÓMO EJECUTAR:**
+
+```bash
+# 1. DRY RUN primero (default si no se pasa dryRun) — solo informa, NO borra
+npx convex run --prod devOnly/cleanTestUserByClerkId:cleanTestUserByClerkId \
+  '{"clerkUserId":"user_test_normal_seed_001"}'
+
+# 2. Si el dry run muestra lo esperado, ejecutar de verdad
+npx convex run --prod devOnly/cleanTestUserByClerkId:cleanTestUserByClerkId \
+  '{"clerkUserId":"user_test_normal_seed_001","dryRun":false}'
+```
+
+**QUÉ BORRA (en este orden):**
+1. PRs del user (`personalRecords`).
+2. MyRaces del user (`myRaces`).
+3. Archivos de diploma en Convex File Storage (best-effort: si falla, loguea y sigue).
+4. El profile en sí.
+
+**QUÉ NO TOCA (por seguridad):**
+- Actividades de Strava (`activities`) — son muchas filas, si quieres borrarlas hazlo a mano.
+- Votes, ratings, notifications, raceSuggestions, etc. — no las tocamos para no liarla.
+- El user en Clerk — bórralo aparte desde el dashboard de Clerk si te registraste con un email real.
+
+**Por qué `dryRun` es true por default:** para evitar accidentes. Si ejecutas el comando sin `dryRun`, te mostrará el informe pero NO borrará nada. Tienes que pasar `"dryRun":false` explícitamente.
+
 ### 17.2 — Rate limit del entrenador IA
 
 Para evitar que alguien abuse de la action `coachAnalysis` (cada llamada cuesta ~€0.0007 con gpt-4o-mini, gratis con MiniMax M3, pero el LLM tiene límites de rate y no queremos saturarlo):
@@ -972,6 +1001,26 @@ El hook `useHasPremium()` (`components/billing/use-has-premium.ts`) ya expone es
 - Si en el futuro hay un tier intermedio "premium_basic" (3/mes), cambiar el `if (hasActiveSubscription) return -1` por una comprobación del `planId` o del tier.
 - El bypass por rol se comprueba ANTES de mirar la suscripción, así que un admin con `subscriptions.tier === "free"` (raro pero posible) sigue teniendo acceso. Es la semántica correcta: el rol manda.
 
----
+### 17.5 — Lifecycle del profile: el signup de Clerk NO crea fila en Convex
 
-**Última actualización**: 8 de septiembre de 2026. Sesión de integración de pasarela de pagos: esqueleto de Clerk Billing (Stripe bajo el capó) listo pero no activado. Tabla `subscriptions` en Convex + webhook handler Svix-verified en `/api/webhooks/clerk-billing` + componentes `<Paywall>`/`<PremiumBadge>` + páginas `/premium` (landing pública) y `/cuenta/suscripcion` (gestión) + doc `docs/BILLING_SETUP.md` con el runbook de activación. Cero coste mientras no se active. Activación en Q3-Q4 2026 según `docs/MONETIZATION_PLAN.md`. Sesión anterior: 7 sep 2026 (enrichment masivo de carreras con IA). Misma sesión (continuación): bypass admin/test en `hasPremiumAccess` y `getMyPremiumStatus` + rate limit del entrenador IA (free=1/mes, pro=∞, admin/test=∞) con reset mensual vía cron + UI con contador "X de Y al mes" en `CoachAnalysisCard` y CTA suave a `/cuenta/suscripcion` cuando se agota.
+**Lección crítica (sesión 8 sep 2026):** cuando un usuario se registra con magic link en Clerk y completa el onboarding, **Clerk crea el user en su sistema pero NO se crea la fila correspondiente en `profiles` de Convex**. La mutation `upsertMyProfile` solo se dispara cuando el usuario hace algo explícito en la app (abrir el form de edición, guardar un PR, etc.). Si el usuario nuevo entra directamente a `/perfil` sin haber hecho nada más, las queries de actividades (`getMyActivityStats`, `getMyRunnerType`, etc.) que llaman a `getOptionalUser(ctx)` devuelven `null`, y los componentes que esperan un objeto explotan con `TypeError: Cannot read properties of null (reading 'totalActivities')`.
+
+**Síntoma exacto que vio Manu** (8 sep 2026, tras signup con `admin@mi-dorsal.com`):
+```
+TypeError: Cannot read properties of null (reading 'totalActivities')
+    at K (https://www.mi-dorsal.com/_next/static/chunks/app/perfil/page-1815ee64fa667165.js:1:39034)
+```
+
+**Fix en dos capas** (commit `e9a1595`):
+
+1. **Defensa en queries** (`convex/activities/queries.ts`): `getMyActivityStats` y `getMyRunnerType` devuelven un objeto con campos neutros (todos a 0, `avgCadenceSpm: null`, `byType: {}`) cuando no hay profile, en lugar de `null`. Así la UI nunca explota por un profile ausente, ni siquiera en el caso edge del primer login.
+
+2. **Causa raíz en el cliente** (`app/perfil/page.tsx`): `RealPerfil` tiene un `useEffect` que detecta cuando `useQuery(api.users.getMyProfile)` devuelve `null` y dispara `upsertMyProfile({})` automáticamente. La mutation es idempotente y Clerk ya inyecta el `clerkUserId` en el JWT, así que no necesita argumentos. En el siguiente tick React, el profile existe y los componentes se actualizan reactivamente.
+
+**Por qué `useEffect` y no `middleware` o el webhook de Clerk**: Clerk tiene un webhook de `user.created` que podríamos usar, pero requiere configurar el endpoint, validar la firma Svix y manejar reintentos. El `useEffect` es 10 líneas, auto-curativo, sin estado intermedio que mantener. Si el user nunca entra a `/perfil` no se crea el profile, pero eso es OK porque sin activity de la app no necesitamos el profile.
+
+**Aplicar a**: cualquier nuevo flujo que dependa de un profile existente. Si en el futuro añades un feature que asuma "el profile siempre existe en Convex", o bien disparas `upsertMyProfile` desde el primer punto de contacto con la app, o bien devuelves objeto neutro en la query como en este fix. La opción del `useEffect` es la más barata y la más difícil de olvidar.
+
+**Lección relacionada (memoria del agente, 8 sep 2026)**: el typecheck de `npx convex dev` es menos estricto que el de `npx convex deploy` / `next build`. Si un `internalAction` o `internalMutation` rompe con TS2589/TS2615 (tipo circular en mapped type de Convex 1.18), el workaround definitivo es **declarar el return type del handler explícitamente** (`handler: async (ctx): Promise<{...}> => {...}`). Los casts a `any` no bastan. Ver el código de `convex/crons/resetCoachUsage.ts` para el ejemplo aplicado.
+
+**Última actualización**: 8 de septiembre de 2026. Sesión de integración de pasarela de pagos: esqueleto de Clerk Billing (Stripe bajo el capó) listo pero no activado. Tabla `subscriptions` en Convex + webhook handler Svix-verified en `/api/webhooks/clerk-billing` + componentes `<Paywall>`/`<PremiumBadge>` + páginas `/premium` (landing pública) y `/cuenta/suscripcion` (gestión) + doc `docs/BILLING_SETUP.md` con el runbook de activación. Cero coste mientras no se active. Activación en Q3-Q4 2026 según `docs/MONETIZATION_PLAN.md`. Sesión anterior: 7 sep 2026 (enrichment masivo de carreras con IA). Misma sesión (continuación): bypass admin/test en `hasPremiumAccess` y `getMyPremiumStatus` + rate limit del entrenador IA (free=1/mes, pro=∞, admin/test=∞) con reset mensual vía cron + UI con contador "X de Y al mes" en `CoachAnalysisCard` y CTA suave a `/cuenta/suscripcion` cuando se agota. Misma sesión (más tarde): scripts de devOnly para crear/limpiar usuarios de prueba (`seedTestUser`, `enrichTestUserByEmail`, `cleanTestUserByClerkId`) + fix del bug "TypeError: Cannot read properties of null (reading 'totalActivities')" en `/perfil` con dos capas: queries devuelven objeto neutro cuando no hay profile + `useEffect` en `RealPerfil` que dispara `upsertMyProfile` automáticamente al detectar `null` en `getMyProfile`. Documentado en §17.5.

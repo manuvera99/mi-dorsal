@@ -1,0 +1,1373 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>mi-dorsal — el mapa de la app</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --card: #ffffff;
+    --ink: #14171e;
+    --ink-soft: #3a4256;
+    --muted: #7c7a72;
+    --line: #e7e3d7;
+    --line-soft: #efece2;
+    --primary: #dc2626;
+    --primary-soft: #fef2f2;
+    --accent: #c97b3f;
+    --accent-soft: #fdf3ea;
+    --green: #2f6f5e;
+    --green-soft: #e9f1ee;
+    --indigo: #4f46e5;
+    --indigo-soft: #eef2ff;
+    --amber: #b45309;
+    --amber-soft: #fef3c7;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  .wrap { max-width: 64rem; margin: 0 auto; padding: 0 1.5rem; }
+  @media (min-width: 768px) { .wrap { padding: 0 2rem; } }
+
+  /* ---- Hero ---- */
+  .hero {
+    padding: 5rem 0 3rem;
+    background: radial-gradient(ellipse at 10% 0%, rgba(220,38,38,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 90% 30%, rgba(201,123,63,0.05) 0%, transparent 50%);
+  }
+  .hero h1 {
+    font-family: 'DM Serif Display', serif;
+    font-weight: 400;
+    font-size: clamp(2.2rem, 5vw, 3.4rem);
+    letter-spacing: -0.01em;
+    line-height: 1.05;
+    margin: 0 0 1rem;
+    color: var(--ink);
+  }
+  .hero h1 em { font-style: italic; color: var(--primary); }
+  .hero p.lead {
+    font-size: 1.1rem;
+    color: var(--ink-soft);
+    max-width: 50rem;
+    margin: 0 0 2rem;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 0.78rem;
+    color: var(--muted);
+    background: rgba(255,255,255,0.6);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    margin-top: 2rem;
+  }
+  @media (min-width: 600px) { .stats { grid-template-columns: repeat(5, 1fr); } }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 0.9rem 1rem;
+  }
+  .stat .n {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.6rem;
+    color: var(--ink);
+    line-height: 1;
+  }
+  .stat .l {
+    font-size: 0.75rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 0.3rem;
+  }
+
+  /* ---- TOC ---- */
+  .toc {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 1.5rem 1.75rem;
+    margin: 0 0 3rem;
+  }
+  .toc h3 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin: 0 0 1rem;
+    font-weight: 500;
+  }
+  .toc ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    columns: 2;
+    column-gap: 2rem;
+  }
+  @media (max-width: 700px) { .toc ol { columns: 1; } }
+  .toc li { padding: 0.25rem 0; break-inside: avoid; }
+  .toc a {
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 0.95rem;
+    border-bottom: 1px dashed transparent;
+    transition: all 0.15s;
+  }
+  .toc a:hover { color: var(--primary); border-bottom-color: var(--primary); }
+  .toc .num { color: var(--primary); font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; margin-right: 0.5rem; }
+
+  /* ---- Section ---- */
+  section { padding: 3rem 0; }
+  section + section { border-top: 1px solid var(--line-soft); }
+  .sec-head { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 0.5rem; }
+  .sec-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--primary);
+    font-weight: 500;
+  }
+  h2 {
+    font-family: 'DM Serif Display', serif;
+    font-weight: 400;
+    font-size: clamp(1.7rem, 3.5vw, 2.3rem);
+    letter-spacing: -0.005em;
+    margin: 0 0 0.5rem;
+    line-height: 1.15;
+  }
+  .sec-sub {
+    color: var(--muted);
+    font-size: 1rem;
+    margin: 0 0 2rem;
+    max-width: 50rem;
+  }
+  h3 {
+    font-family: 'DM Serif Display', serif;
+    font-weight: 400;
+    font-size: 1.35rem;
+    margin: 2rem 0 0.75rem;
+    color: var(--ink);
+  }
+  h4 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin: 1.5rem 0 0.5rem;
+  }
+  p { margin: 0 0 0.9rem; color: var(--ink-soft); }
+  code, .mono { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; }
+  code { background: var(--line-soft); padding: 0.1rem 0.35rem; border-radius: 4px; color: var(--ink); }
+  pre {
+    background: #1a1d24;
+    color: #e6e6e6;
+    padding: 1rem 1.1rem;
+    border-radius: 12px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.55;
+  }
+  pre .c { color: #7d8590; }
+  pre .k { color: #ff7b72; }
+  pre .s { color: #a5d6ff; }
+  pre .n { color: #79c0ff; }
+
+  /* ---- Cards / grid ---- */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 1.25rem 1.4rem;
+  }
+  .card h3 { margin: 0 0 0.4rem; font-size: 1.1rem; }
+  .card p { margin: 0; font-size: 0.92rem; }
+  .grid { display: grid; gap: 1rem; }
+  .grid-2 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .grid-3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .grid-4 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+
+  /* ---- Tables ---- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    font-size: 0.9rem;
+  }
+  thead th {
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    padding: 0.85rem 1rem;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+  }
+  tbody td {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--line-soft);
+    vertical-align: top;
+    color: var(--ink-soft);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody td.mono { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: var(--ink); }
+  tbody td:first-child { font-weight: 500; color: var(--ink); }
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+  }
+  .b-red { background: var(--primary-soft); color: var(--primary); }
+  .b-green { background: var(--green-soft); color: var(--green); }
+  .b-amber { background: var(--amber-soft); color: var(--amber); }
+  .b-indigo { background: var(--indigo-soft); color: var(--indigo); }
+  .b-accent { background: var(--accent-soft); color: var(--accent); }
+  .b-gray { background: var(--line-soft); color: var(--muted); }
+
+  /* ---- DB schema map ---- */
+  .db-group {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 1rem 1.25rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .db-group-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--primary);
+    margin: 0 0 0.6rem;
+    font-weight: 500;
+  }
+  .db-group-title .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+  .db-tables { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .db-t {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.35rem 0.7rem;
+    color: var(--ink);
+  }
+  .db-t .meta { color: var(--muted); font-size: 0.7rem; margin-left: 0.3rem; }
+  .db-t .pk { color: var(--primary); font-weight: 500; }
+
+  /* ---- Mermaid ---- */
+  .mermaid {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin: 1.25rem 0;
+    overflow-x: auto;
+  }
+  .mermaid-caption {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.82rem;
+    margin-top: 0.5rem;
+    font-style: italic;
+  }
+
+  /* ---- Email flow ---- */
+  .email-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 0.75rem;
+  }
+  .email-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 1rem 1.1rem;
+    border-left: 3px solid var(--primary);
+  }
+  .email-card h4 {
+    margin: 0 0 0.3rem;
+    font-size: 0.95rem;
+    color: var(--ink);
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 600;
+  }
+  .email-card .trigger {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--primary);
+    margin: 0.2rem 0;
+  }
+  .email-card p { font-size: 0.85rem; margin: 0.3rem 0 0; color: var(--ink-soft); }
+
+  /* ---- Cron table ---- */
+  .cron-pill {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    background: var(--indigo-soft);
+    color: var(--indigo);
+  }
+
+  /* ---- File tree ---- */
+  .tree {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    overflow-x: auto;
+  }
+  .tree .folder { color: var(--primary); font-weight: 500; }
+  .tree .file { color: var(--ink); }
+  .tree .desc { color: var(--muted); font-size: 0.78rem; }
+  .tree .row { display: flex; gap: 0.6rem; align-items: baseline; }
+  .tree .row .p { color: var(--muted); min-width: 14px; }
+
+  /* ---- Footer ---- */
+  footer {
+    margin-top: 4rem;
+    padding: 2.5rem 0;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.85rem;
+    text-align: center;
+  }
+  footer .pill { margin: 0 0.3rem; }
+
+  /* ---- Sticky nav ---- */
+  .topnav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(247,245,240,0.85);
+    backdrop-filter: saturate(150%) blur(12px);
+    -webkit-backdrop-filter: saturate(150%) blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topnav-inner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.7rem 1.5rem;
+    max-width: 72rem;
+    margin: 0 auto;
+  }
+  @media (min-width: 768px) { .topnav-inner { padding: 0.7rem 2rem; } }
+  .topnav .logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.1rem;
+    color: var(--ink);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .topnav .logo em { color: var(--primary); font-style: normal; }
+  .topnav nav {
+    display: flex;
+    gap: 1.2rem;
+    overflow-x: auto;
+    font-size: 0.85rem;
+  }
+  .topnav nav a {
+    color: var(--ink-soft);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .topnav nav a:hover { color: var(--primary); }
+  @media (max-width: 700px) { .topnav nav { display: none; } }
+
+  /* ---- Misc ---- */
+  .callout {
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+    font-size: 0.92rem;
+    color: var(--ink-soft);
+    margin: 1rem 0;
+  }
+  .callout strong { color: var(--accent); }
+  .pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  @media (max-width: 700px) { .pair { grid-template-columns: 1fr; } }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin: 0.5rem 0 1.5rem;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
+  .legend .sw { width: 12px; height: 12px; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header class="topnav">
+  <div class="topnav-inner">
+    <a href="#top" class="logo">mi<em>-</em>dorsal</a>
+    <nav>
+      <a href="#arq">Arquitectura</a>
+      <a href="#stack">Stack</a>
+      <a href="#db">Base de datos</a>
+      <a href="#flujos">Flujos</a>
+      <a href="#crons">Crons</a>
+      <a href="#emails">Emails</a>
+      <a href="#apis">APIs</a>
+      <a href="#scrapers">Scrapers</a>
+      <a href="#admin">Admin</a>
+      <a href="#auth">Auth</a>
+      <a href="#deploy">Deploy</a>
+      <a href="#files">Archivos</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+<!-- ====================== HERO ====================== -->
+<section class="hero">
+  <div class="wrap">
+    <span class="pill"><span class="dot"></span> versión a 7 sep 2026 — MVP en producción</span>
+    <h1>El mapa de la app.<br><em>Todo lo que pasa</em> entre que el corredor abre la web y recibe su diploma.</h1>
+    <p class="lead">Arquitectura, flujos, base de datos, crons, emails, scrapers y panel admin. Una sola página para entender la app entera y para que cualquier agente que entre al repo sepa dónde está cada cosa sin tener que leer 30 archivos.</p>
+    <div class="stats">
+      <div class="stat"><div class="n">16</div><div class="l">Tablas Convex</div></div>
+      <div class="stat"><div class="n">7</div><div class="l">Crons</div></div>
+      <div class="stat"><div class="n">8</div><div class="l">Tipos de email</div></div>
+      <div class="stat"><div class="n">6</div><div class="l">Fuentes de carreras</div></div>
+      <div class="stat"><div class="n">9</div><div class="l">API routes</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap">
+
+<!-- ====================== TOC ====================== -->
+<nav class="toc" aria-label="Tabla de contenidos">
+  <h3>Tabla de contenidos</h3>
+  <ol>
+    <li><span class="num">01</span> <a href="#arq">Arquitectura de alto nivel</a></li>
+    <li><span class="num">02</span> <a href="#stack">Stack técnico</a></li>
+    <li><span class="num">03</span> <a href="#db">Base de datos (16 tablas)</a></li>
+    <li><span class="num">04</span> <a href="#flujos">Flujos de usuario</a></li>
+    <li><span class="num">05</span> <a href="#crons">Crons de Convex</a></li>
+    <li><span class="num">06</span> <a href="#emails">Sistema de emails</a></li>
+    <li><span class="num">07</span> <a href="#apis">API routes</a></li>
+    <li><span class="num">08</span> <a href="#scrapers">Scrapers y fuentes</a></li>
+    <li><span class="num">09</span> <a href="#admin">Panel admin</a></li>
+    <li><span class="num">10</span> <a href="#auth">Auth y seguridad</a></li>
+    <li><span class="num">11</span> <a href="#deploy">Despliegue y entorno</a></li>
+    <li><span class="num">12</span> <a href="#files">Índice de archivos clave</a></li>
+  </ol>
+</nav>
+
+<!-- ====================== 01 ARQUITECTURA ====================== -->
+<section id="arq">
+  <div class="sec-head"><span class="sec-num">01</span></div>
+  <h2>Arquitectura de alto nivel</h2>
+  <p class="sec-sub">Tres capas: el navegador del usuario se apoya en Vercel para el frontend, Convex para la lógica reactiva y la persistencia, y un puñado de servicios externos para auth (Clerk), email (Resend) e ingesta de carreras (scrapers locales + GitHub Actions).</p>
+
+  <div class="mermaid">
+flowchart LR
+  subgraph CLIENT [Navegador del usuario]
+    U[Usuario popular<br/>5K → maratón]
+  end
+
+  subgraph EDGE [Vercel · fra1]
+    V[Next.js 15 App Router<br/>SSR + React 19 + Tailwind]
+    MW[clerkMiddleware<br/>+ gzip de la home]
+  end
+
+  subgraph BACKEND [Convex Cloud]
+    C[Convex Functions<br/>queries · mutations · actions]
+    CS[Convex File Storage<br/>Zips Strava, diplomas, blog covers]
+    CR[Crons internos<br/>7 jobs]
+    SCH[Schema reactivo<br/>16 tablas]
+  end
+
+  subgraph EXTERNAL [Servicios externos]
+    CL[Clerk<br/>Magic link auth]
+    R[Resend<br/>Transaccional + editorial]
+    SCR[Scrapers Node<br/>scripts/ingest-*.ts]
+    GHA[GitHub Actions<br/>daily-ingest.yml]
+    PDF[/api/pdf/parse<br/>helper PDF local/]
+  end
+
+  subgraph SOURCES [Fuentes de carreras]
+    EXT1[RFEA]
+    EXT2[FEDME]
+    EXT3[ITRA]
+    EXT4[Sportmaniacs]
+    EXT5[Runedia]
+    EXT6[Chiplevante · Correbirras]
+  end
+
+  U <-->|HTTPS| V
+  V <-->|JWT verificación| CL
+  V <-->|useQuery / useMutation| C
+  C -.->|cache reactivo| V
+  C <-->|lee/escribe| SCH
+  C <-->|archivos| CS
+  C -->|action| R
+  R -->|SMTP| U
+  CR -->|dispara| C
+
+  SCR -->|HTTP| SOURCES
+  GHA -->|cron diario| SCR
+  SCR -->|insert/update races| C
+  C -->|POST /api/pdf/parse| PDF
+  PDF -->|text extraído| C
+  </div>
+  <p class="mermaid-caption">El navegador nunca habla con la BBDD directamente. Todo pasa por Next.js (para SSR/render) o por Convex (para datos reactivos). Los scrapers son procesos Node separados que solo escriben en Convex.</p>
+
+  <h4>Leyenda</h4>
+  <div class="legend">
+    <span><span class="sw" style="background:#fee2e2"></span> Frontend (Vercel)</span>
+    <span><span class="sw" style="background:#e0e7ff"></span> Backend (Convex)</span>
+    <span><span class="sw" style="background:#d1fae5"></span> Auth (Clerk)</span>
+    <span><span class="sw" style="background:#fed7aa"></span> Email (Resend)</span>
+    <span><span class="sw" style="background:#f3f4f6"></span> Scrapers / externas</span>
+  </div>
+</section>
+
+<!-- ====================== 02 STACK ====================== -->
+<section id="stack">
+  <div class="sec-head"><span class="sec-num">02</span></div>
+  <h2>Stack técnico</h2>
+  <p class="sec-sub">Lo que hay en <code>package.json</code> y por qué. Sin sorpresas: las decisiones se documentan en <code>AGENTS.md</code> §6.4.</p>
+
+  <div class="grid grid-3">
+    <div class="card">
+      <h3>Next.js 15</h3>
+      <p>App Router + RSC. Páginas con query a Convex llevan <code>export const dynamic = "force-dynamic"</code> (ver AGENTS.md §6.1).</p>
+    </div>
+    <div class="card">
+      <h3>React 19</h3>
+      <p>Server Components para SEO de home/carreras, Client Components para interactivos (filtros, calendario).</p>
+    </div>
+    <div class="card">
+      <h3>Convex 1.18</h3>
+      <p>DB + funciones reactivas + crons + file storage. Un solo backend, sin servidor Node propio. Auto-deploy con <code>npx convex deploy</code>.</p>
+    </div>
+    <div class="card">
+      <h3>Clerk</h3>
+      <p>Magic link auth. JWT firmado en cookie. El profile de Convex se enlaza por <code>clerkUserId</code> en <code>profiles</code>.</p>
+    </div>
+    <div class="card">
+      <h3>Resend</h3>
+      <p>Email transaccional (recordatorios, resultados) y editorial (newsletter mensual). Dominio verificado: <code>mi-dorsal.com</code>. <code>.es</code> pendiente.</p>
+    </div>
+    <div class="card">
+      <h3>Tailwind 3.4</h3>
+      <p>Utility-first. Paleta actual: <code>--runner-primary: #dc2626</code>, <code>--runner-warm: #fafaf9</code>. Migración a "Verano en el Levante" pendiente.</p>
+    </div>
+    <div class="card">
+      <h3>TypeScript 5.7</h3>
+      <p>Estricto salvo en bordes con Convex (<code>api.X.Y as any</code> en crons por inferencia profunda del schema).</p>
+    </div>
+    <div class="card">
+      <h3>Vercel</h3>
+      <p>Hosting en región <code>fra1</code> (Frankfurt). Headers de seguridad en <code>vercel.json</code>. Compresión gzip manual en middleware.</p>
+    </div>
+    <div class="card">
+      <h3>React-PDF + Cheerio + JSZip</h3>
+      <p>PDF del diploma, parseo HTML de resultados, descompresión del ZIP de Strava export.</p>
+    </div>
+    <div class="card">
+      <h3>Leaflet + react-leaflet</h3>
+      <p>Modo mapa en <code>/carreras</code>. OpenStreetMap, sin API key.</p>
+    </div>
+    <div class="card">
+      <h3>Playwright</h3>
+      <p>Scraper de RFEA y otras fuentes que requieren navegador real (JS, cookies).</p>
+    </div>
+    <div class="card">
+      <h3>Vercel Analytics</h3>
+      <p>Métricas de uso. Sin cookies de terceros, sin Google Analytics.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== 03 DB ====================== -->
+<section id="db">
+  <div class="sec-head"><span class="sec-num">03</span></div>
+  <h2>Base de datos — 16 tablas en Convex</h2>
+  <p class="sec-sub">Definidas en <code>convex/schema.ts</code>. Agrupadas por responsabilidad. Los PK subrayados son <code>_id</code> de Convex; los <code class="b-indigo">índices</code> marcados son los más consultados.</p>
+
+  <div class="db-group">
+    <div class="db-group-title"><span class="dot"></span> 1 · Identidad</div>
+    <div class="db-tables">
+      <span class="db-t"><span class="pk">profiles</span><span class="meta">clerkUserId · role</span></span>
+    </div>
+  </div>
+
+  <div class="db-group">
+    <div class="db-group-title"><span class="dot"></span> 2 · Catálogo de carreras</div>
+    <div class="db-tables">
+      <span class="db-t"><span class="pk">races</span><span class="meta">+50 campos, 6 índices, search index</span></span>
+      <span class="db-t"><span class="pk">dataSources</span><span class="meta">RFEA · FEDME · ITRA · …</span></span>
+      <span class="db-t"><span class="pk">syncHistory</span><span class="meta">log de sincronizaciones</span></span>
+    </div>
+  </div>
+
+  <div class="db-group">
+    <div class="db-group-title"><span class="dot"></span> 3 · Engagement de la comunidad</div>
+    <div class="db-tables">
+      <span class="db-t"><span class="pk">raceRatings</span><span class="meta">votación 8D (Correbirras-style)</span></span>
+      <span class="db-t"><span class="pk">raceVotes</span><span class="meta">👍/👎 por usuario</span></span>
+    </div>
+  </div>
+
+  <div class="db-group">
+    <div class="db-group-title"><span class="dot"></span> 4 · Tracking personal (el "hilo")</div>
+    <div class="db-tables">
+      <span class="db-t"><span class="pk">myRaces</span><span class="meta">calendario personal + status</span></span>
+      <span class="db-t"><span class="pk">personalRecords</span><span class="meta">PRs por distancia</span></span>
+      <span class="db-t"><span class="pk">predictions</span><span class="meta">log Daniels VDOT</span></span>
+      <span class="db-t"><span class="pk">raceResultsCache</span><span class="meta">resultados por dorsal</span></span>
+      <span class="db-t"><span class="pk">raceCandidates</span><span class="meta">carreras detectadas sin match</span></span>
+    </div>
+  </div>
+
+  <div class="db-group">
+    <div class="db-group-title"><span class="dot"></span> 5 · Contenido editorial</div>
+    <div class="db-tables">
+      <span class="db-t"><span class="pk">blogPosts</span><span class="meta">markdown, 4 categorías, search index</span></span>
+    </div>
+  </div>
+
+  <div class="db-group">
+    <div class="db-group-title"><span class="dot"></span> 6 · Newsletter (RGPD)</div>
+    <div class="db-tables">
+      <span class="db-t"><span class="pk">newsletterSubscribers</span><span class="meta">pending · active · unsubscribed · bounced</span></span>
+    </div>
+  </div>
+
+  <div class="db-group">
+    <div class="db-group-title"><span class="dot"></span> 7 · Integraciones de actividad</div>
+    <div class="db-tables">
+      <span class="db-t"><span class="pk">activities</span><span class="meta">Strava · Strava-export · Garmin</span></span>
+      <span class="db-t"><span class="pk">uploads</span><span class="meta">historial de ZIPs Strava</span></span>
+    </div>
+  </div>
+
+  <div class="db-group">
+    <div class="db-group-title"><span class="dot"></span> 8 · Sistema</div>
+    <div class="db-tables">
+      <span class="db-t"><span class="pk">statsCache</span><span class="meta">contadores denormalizados (cron 30m)</span></span>
+      <span class="db-t"><span class="pk">notificationLog</span><span class="meta">idempotencia de emails enviados</span></span>
+    </div>
+  </div>
+
+  <div class="callout">
+    <strong>Detalle de <code>myRaces</code></strong> — es la tabla más importante. Una fila por carrera apuntada por cada usuario. Campos clave: <code>dorsalNumber</code>, <code>status</code> (planned/done/dns/dnf), <code>predictedTimeSeconds</code>, <code>actualTimeSeconds</code>, <code>actualPosition</code>, <code>resultScrapedAt</code>. Es la fuente de verdad del "hilo" del corredor.
+  </div>
+
+  <div class="callout">
+    <strong>Detalle de <code>notificationLog</code></strong> — garantiza idempotencia. Antes de enviar un email, el cron mira aquí: <code>by_user_type(userId, type)</code> filtrado por <code>relatedMyRaceId</code>. Si ya existe, no reenvía. Es por eso que los recordatorios 7d/1d no se mandan dos veces.
+  </div>
+</section>
+
+<!-- ====================== 04 FLUJOS ====================== -->
+<section id="flujos">
+  <div class="sec-head"><span class="sec-num">04</span></div>
+  <h2>Flujos de usuario</h2>
+  <p class="sec-sub">Los 5 recorridos críticos. Cada uno es una cadena de requests y mutaciones entre el cliente, Convex y los servicios externos.</p>
+
+  <h3>Flujo 1 · Onboarding y creación de perfil</h3>
+  <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor U as Usuario
+    participant V as Next.js (Vercel)
+    participant CL as Clerk
+    participant C as Convex
+    U->>V: Visita / (o /carreras)
+    V->>CL: clerkMiddleware valida cookie
+    CL-->>V: sin sesión
+    U->>V: Click "Apuntarme"
+    V->>CL: abre sign-in (magic link)
+    CL-->>U: email con link
+    U->>V: click link
+    V->>CL: verifica token
+    V->>C: useEffect → upsertMyProfile
+    C-->>V: profile._id creado
+    V-->>U: cookie sesión · redirect a /calendario
+  </div>
+
+  <h3>Flujo 2 · Descubrir carreras y añadirlas al calendario</h3>
+  <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor U as Usuario
+    participant V as Next.js
+    participant G as /api/geo/region
+    participant C as Convex
+    U->>V: GET /
+    V->>G: detectar CCAA
+    G-->>V: { community: "valencia" }
+    V->>C: api.races.getFeatured (por CCAA)
+    C-->>V: 6 carreras destacadas
+    U->>V: click "Carreras"
+    V->>C: api.carreras.list(filtros)
+    C-->>V: grid paginado
+    U->>V: click "Apuntarme" + dorsal
+    V->>C: api.myRaces.add(raceId, dorsal)
+    C->>C: predictForMyRace (Daniels VDOT)
+    C->>C: personalRecords.updateIfBetter
+    C-->>V: myRace con predictedTimeSeconds
+    V-->>U: confirmación en calendario
+  </div>
+
+  <h3>Flujo 3 · El día de la carrera (recordatorios)</h3>
+  <div class="mermaid">
+sequenceDiagram
+    autonumber
+    participant CR as Cron reminder-pre-race
+    participant C as Convex
+    participant R as Resend
+    actor U as Usuario
+    Note over CR: Diario 9am UTC
+    CR->>C: getRacesNeedingReminder
+    C-->>CR: [myRace → 7d] y [myRace → 1d]
+    loop Para cada myRace
+      CR->>C: notificationLog existe?
+      alt ya enviado
+        CR-->>CR: skip (idempotencia)
+      else no enviado
+        CR->>R: sendReminderEmail (T-7d o T-1d)
+        R-->>U: email con dorsal, predicción, link
+        R-->>CR: messageId
+        CR->>C: notificationLog.write(type=sent)
+      end
+    end
+  </div>
+
+  <h3>Flujo 4 · Detección automática del resultado oficial</h3>
+  <p>Es el flujo más complejo de la app y su principal diferenciador. Cron adaptativo: la misma ejecución decide con qué frecuencia chequear cada carrera según su ventana temporal.</p>
+  <div class="mermaid">
+sequenceDiagram
+    autonumber
+    participant CR as Cron check-results
+    participant C as Convex
+    participant S as Scraper<br/>(concave/scraper.ts)
+    participant R as Resend
+    actor U as Usuario
+    Note over CR: Cada 30 min
+    CR->>C: getRacesToCheck
+    C->>C: getCheckFrequency(raceTime, now)
+    Note right of C: aggressive: -1h a +6h<br/>normal: ±48h<br/>sparse: +48h a +7d
+    C-->>CR: lista con frecuencia
+    loop Para cada myRace planned
+      CR->>S: scrapeResults(resultsUrl, dorsal, adapter)
+      alt no encontrado aún
+        S-->>CR: null
+        CR-->>CR: skip, reintenta en próximo tick
+      else resultado encontrado
+        S-->>CR: RunnerResult {time, position, ...}
+        CR->>C: cacheResult → raceResultsCache
+        CR->>C: updateMyRace → status=done
+        CR->>C: personalRecords.updateIfBetter
+        alt nuevo PR
+          CR->>C: insert personalRecord nuevo
+        end
+        CR->>R: sendResultFoundEmail
+        R-->>U: email con diploma PDF adjunto
+        CR->>C: notificationLog.write
+      end
+    end
+  </div>
+
+  <h3>Flujo 5 · Importar export de Strava (ZIP)</h3>
+  <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor U as Usuario
+    participant V as Next.js
+    participant CS as Convex Storage
+    participant C as Convex
+    participant A as stravaExportIngest
+    U->>V: POST /api/connect/strava-export/upload (multipart)
+    V->>V: validar ZIP (magic bytes, 200MB max)
+    V->>CS: generateUploadUrl
+    CS-->>V: signed URL
+    V->>CS: PUT ZIP
+    CS-->>V: storageId
+    V->>C: stravaExport.createUploadAndStart(storageId)
+    C-->>V: uploadId
+    V->>A: startIngest(uploadId) (fire-and-forget)
+    V-->>U: { ok, uploadId } · polling del estado
+    A->>CS: download ZIP
+    A->>A: JSZip.extract → activities.csv
+    loop Para cada actividad
+      A->>A: normalize (lib/activities/normalize)
+      A->>C: upsert activities (by provider+id)
+      A->>C: match con race por fecha+distancia
+      A->>C: si es PR → personalRecords
+    end
+    A->>C: uploads.markDone(processed, matched, newPRs)
+    A->>CS: delete ZIP
+  </div>
+
+  <h3>Flujo 6 (auxiliar) · Newsletter externa con doble opt-in</h3>
+  <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor V as Visitante
+    participant API as /api/newsletter
+    participant C as Convex
+    participant R as Resend
+    V->>API: POST /subscribe {email, consent: true}
+    API->>C: subscribeDirect
+    alt email nuevo
+      C-->>API: created
+      API->>R: send welcome
+      R-->>V: email bienvenida con link baja
+    else ya active
+      C-->>API: alreadyExisted, reactivated=false
+      API-->>V: mensaje "ya estabas"
+    else reactivado desde unsubscribed
+      C-->>API: reactivated=true
+      API->>R: send welcome (re-bienvenida)
+    end
+  </div>
+  <p class="mermaid-caption">Decisión: el flujo actual es <strong>single opt-in</strong> (el checkbox del frontend es prueba de consentimiento). RGPD LSSI art. 22 se cumple guardando <code>consentAt</code> + <code>consentIpHash</code> + <code>consentUserAgent</code> como auditoría.</p>
+</section>
+
+<!-- ====================== 05 CRONS ====================== -->
+<section id="crons">
+  <div class="sec-head"><span class="sec-num">05</span></div>
+  <h2>Crons de Convex</h2>
+  <p class="sec-sub">Definidos en <code>convex/cronJobs.ts</code>. Se programan en UTC. Convex ejecuta los <code>internalAction</code> en su runtime Node; ninguno depende de Vercel.</p>
+
+  <table>
+    <thead>
+      <tr><th>Cron</th><th>Frecuencia</th><th>Qué hace</th><th>Archivo</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>check-results</td>
+        <td><span class="cron-pill">cada 30 min</span></td>
+        <td>Para cada <code>myRace</code> planned, decide frecuencia adaptativa y scrapea <code>resultsUrl</code> con el adapter correspondiente. Si encuentra resultado: cachea, actualiza <code>myRace</code> (status=done), comprueba PR, envía email con diploma PDF.</td>
+        <td class="mono">convex/crons/checkResults.ts</td>
+      </tr>
+      <tr>
+        <td>reminder-pre-race</td>
+        <td><span class="cron-pill">0 9 * * *</span> · 9am UTC diario</td>
+        <td>Para cada <code>myRace</code> planned, mira si la carrera está en T-7d o T-1d (±6h). Si no se ha enviado el recordatorio (chequea <code>notificationLog</code>), lo manda.</td>
+        <td class="mono">convex/crons/reminderPreRace.ts</td>
+      </tr>
+      <tr>
+        <td>result-not-found</td>
+        <td><span class="cron-pill">0 14 * * *</span> · 14h UTC diario</td>
+        <td>Para carreras que terminaron hace ≥48h y siguen sin <code>resultScrapedAt</code>, envía email "no hemos encontrado tu tiempo" y marca la <code>myRace</code> para que el cron <code>check-results</code> la deje en paz.</td>
+        <td class="mono">convex/crons/resultNotFound.ts</td>
+      </tr>
+      <tr>
+        <td>newsletter-editorial</td>
+        <td><span class="cron-pill">0 10 1 * *</span> · día 1 del mes, 10:00 UTC</td>
+        <td>Coge el siguiente <code>blogPost</code> con <code>newsletterSentAt = null</code> y lo envía a todos los suscriptores <code>active</code> con <code>editorialEnabled=true</code>. Después marca el post como enviado.</td>
+        <td class="mono">convex/crons/newsletterEditorial.ts</td>
+      </tr>
+      <tr>
+        <td>recalc-stats</td>
+        <td><span class="cron-pill">cada 30 min</span></td>
+        <td>Recalcula la fila única de <code>statsCache</code> con contadores denormalizados (totalRaces, totalUsers, racesByProvince…). Antes el admin hacía <code>.collect()</code> de 7 tablas por request y quemaba 1 GB/mes de DB I/O.</td>
+        <td class="mono">convex/crons/recalcStats.ts</td>
+      </tr>
+      <tr>
+        <td>weekly-digest</td>
+        <td><span class="cron-pill">0 9 * * 1</span> · lunes 9am UTC</td>
+        <td><span class="b-amber">PLACEHOLDER</span> — Recoge usuarios activos de últimos 30 días. El envío real está pendiente (Sprint 3).</td>
+        <td class="mono">convex/crons/weeklyDigest.ts</td>
+      </tr>
+      <tr>
+        <td>year-review</td>
+        <td><span class="cron-pill">0 10 1 1 *</span> · 1 enero 10am UTC</td>
+        <td><span class="b-amber">PLACEHOLDER</span> — Year in review del año anterior. Estructura montada, envío pendiente.</td>
+        <td class="mono">convex/crons/yearReview.ts</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <strong>Por qué <code>check-results</code> corre cada 30 min</strong> y no más seguido: la lógica interna (función <code>getCheckFrequency</code>) hace que cada carrera se scrapee con la frecuencia que necesita según su distancia temporal a la salida. 30 min de polling es suficiente y barato.
+  </div>
+</section>
+
+<!-- ====================== 06 EMAILS ====================== -->
+<section id="emails">
+  <div class="sec-head"><span class="sec-num">06</span></div>
+  <h2>Sistema de emails (8 tipos)</h2>
+  <p class="sec-sub">Todos pasan por <code>convex/emailDispatch.ts → dispatchAndLog</code>. Esa función es la única que llama a Resend. Decide mock vs real según <code>RESEND_API_KEY</code> y siempre escribe en <code>notificationLog</code>.</p>
+
+  <div class="email-grid">
+    <div class="email-card">
+      <h4>welcome</h4>
+      <div class="trigger">trigger: al crear profile (Sprint 0)</div>
+      <p>Email de bienvenida. <em>Estado: pendiente cablear, estructura lista.</em></p>
+    </div>
+    <div class="email-card">
+      <h4>reminder_7d</h4>
+      <div class="trigger">trigger: cron reminder-pre-race, 7 días antes</div>
+      <p>Incluye nombre de la carrera, dorsal, predicción de tiempo, link a la ficha y al sitio del organizador.</p>
+    </div>
+    <div class="email-card">
+      <h4>reminder_1d</h4>
+      <div class="trigger">trigger: cron reminder-pre-race, 1 día antes</div>
+      <p>Versión "mañana es el día": dorsal, hora de salida, qué llevar, predicción.</p>
+    </div>
+    <div class="email-card">
+      <h4>result_found</h4>
+      <div class="trigger">trigger: cron check-results, al detectar dorsal</div>
+      <p><strong>El email estrella.</strong> Tiempo oficial, posición, diploma PDF adjunto, link a la clasificación completa, badge de "nuevo PR" si aplica.</p>
+    </div>
+    <div class="email-card">
+      <h4>result_not_found</h4>
+      <div class="trigger">trigger: cron result-not-found, 48h tras carrera</div>
+      <p>Email honesto: "no hemos encontrado tu tiempo en la web del cronometrador, ¿puedes meterlo a mano?" Con link directo al formulario.</p>
+    </div>
+    <div class="email-card">
+      <h4>weekly_digest</h4>
+      <div class="trigger">trigger: cron weekly-digest (lunes 9am UTC)</div>
+      <p><span class="b-amber">PLACEHOLDER</span> — Resumen semanal con carreras del finde, posiciones de la semana, etc.</p>
+    </div>
+    <div class="email-card">
+      <h4>year_review</h4>
+      <div class="trigger">trigger: cron year-review (1 enero)</div>
+      <p><span class="b-amber">PLACEHOLDER</span> — "Tu año en dorsales": KM totales, carreras, mejor tiempo por distancia.</p>
+    </div>
+    <div class="email-card">
+      <h4>newsletter (editorial)</h4>
+      <div class="trigger">trigger: cron newsletter-editorial (día 1 mes)</div>
+      <p>El post del blog "Historias de dorsal" del mes. Solo a suscriptores externos con <code>editorialEnabled=true</code>.</p>
+    </div>
+  </div>
+
+  <h3>Plantilla de email</h3>
+  <p>Los emails transaccionales (<code>result_found</code>, <code>reminder_*</code>, <code>result_not_found</code>) usan plantillas en <code>convex/emails/sendEmail.ts</code> con <code>@react-email/renderer</code>. Los emails de newsletter (<code>newsletter-editorial</code> y welcome de <code>subscribe</code>) son HTML inline generado a mano, sin librería externa, para máximo control del look en clientes de email.</p>
+
+  <h3>Idempotencia</h3>
+  <p>Antes de enviar, el flujo mira <code>notificationLog</code> con índice <code>by_user_type(userId, type)</code> filtrado por <code>relatedMyRaceId</code>. Si existe, no reenvía. Esto evita que el cron mande el mismo email dos veces si hay solapamientos.</p>
+
+  <h3>Mock mode</h3>
+  <p>Si <code>RESEND_API_KEY</code> no está, todos los envíos se loguean en stdout y se marcan como <code>delivered: true</code> igualmente. Es lo que se usa en dev sin credenciales y en los tests.</p>
+</section>
+
+<!-- ====================== 07 APIS ====================== -->
+<section id="apis">
+  <div class="sec-head"><span class="sec-num">07</span></div>
+  <h2>API routes (Next.js)</h2>
+  <p class="sec-sub">Las rutas <code>/api/...</code> son Server Components / Route Handlers. Casi todas son el "puente" entre el cliente (que no debería hablar directo con Convex para algunas cosas) y Convex.</p>
+
+  <table>
+    <thead>
+      <tr><th>Ruta</th><th>Método</th><th>Auth</th><th>Propósito</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="mono">/api/geo/region</td>
+        <td><span class="b-green">GET</span></td>
+        <td>público</td>
+        <td>Edge runtime. Lee <code>x-vercel-ip-country-region</code> + <code>x-vercel-ip-city</code> y devuelve la CCAA. Cache 24h. Override manual con <code>?ccaa=valencia</code>.</td>
+      </tr>
+      <tr>
+        <td class="mono">/api/geo/ip</td>
+        <td><span class="b-red">DEPRECATED</span></td>
+        <td>público</td>
+        <td>Devuelve 410 Gone. NO USAR — usar <code>/api/geo/region</code>.</td>
+      </tr>
+      <tr>
+        <td class="mono">/api/newsletter/subscribe</td>
+        <td><span class="b-indigo">POST</span></td>
+        <td>público (RGPD: requiere <code>consent: true</code>)</td>
+        <td>Single opt-in. Hashea IP, crea o reactiva suscriptor, envía welcome si es nuevo o reactivado.</td>
+      </tr>
+      <tr>
+        <td class="mono">/api/newsletter/confirm</td>
+        <td><span class="b-green">GET</span></td>
+        <td>token one-shot</td>
+        <td>Doble opt-in (legacy). Valida <code>?token=</code>, marca active, redirige a <code>/newsletter?confirmed=1</code>.</td>
+      </tr>
+      <tr>
+        <td class="mono">/api/newsletter/unsubscribe</td>
+        <td><span class="b-green">GET</span></td>
+        <td>token estable</td>
+        <td>One-click unsubscribe. LSSI art. 22.</td>
+      </tr>
+      <tr>
+        <td class="mono">/api/connect/strava-export/upload</td>
+        <td><span class="b-indigo">POST</span> multipart</td>
+        <td>Clerk (usuario)</td>
+        <td>Sube ZIP a Convex File Storage, crea upload, dispara <code>stravaExportIngest.startIngest</code>. 200MB max, valida magic bytes ZIP.</td>
+      </tr>
+      <tr>
+        <td class="mono">/api/scrape/[source]</td>
+        <td><span class="b-indigo">POST</span></td>
+        <td>Clerk + admin</td>
+        <td>Lanza un scraper en background (vía <code>spawn npx tsx</code>). Actualiza <code>syncHistory</code>. Sources: rfea, fedme, itra, sportmaniacs, runedia, correbirras, all.</td>
+      </tr>
+      <tr>
+        <td class="mono">/api/pdf/parse</td>
+        <td><span class="b-indigo">POST</span></td>
+        <td>header <code>X-PDF-Parser-Secret</code></td>
+        <td>Helper que Convex llama cuando un adapter es tipo PDF. Descarga el PDF, lo parsea con <code>pdf-parse</code>, busca el dorsal, devuelve runner. 25MB max.</td>
+      </tr>
+      <tr>
+        <td class="mono">/api/test-analyze</td>
+        <td><span class="b-green">GET</span></td>
+        <td>ninguna (debug)</td>
+        <td>Endpoint temporal para debug del bug de URL con BOM. Llama a <code>analyzeDataSource</code> con <code>?url=...</code>.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ====================== 08 SCRAPERS ====================== -->
+<section id="scrapers">
+  <div class="sec-head"><span class="sec-num">08</span></div>
+  <h2>Scrapers y fuentes de carreras</h2>
+  <p class="sec-sub">Cada <code>dataSource</code> en Convex tiene un scraper en <code>scripts/ingest-*.ts</code>. Los scrapers leen HTML/API de la fuente, normalizan los datos y los insertan en <code>races</code>.</p>
+
+  <h3>Fuentes activas</h3>
+  <table>
+    <thead>
+      <tr><th>Fuente</th><th>Tipo</th><th>Cobertura</th><th>Script</th><th>Notas</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>RFEA</strong></td>
+        <td><span class="b-accent">scraper</span></td>
+        <td>Federación española · pruebas de ruta oficiales</td>
+        <td class="mono">scripts/ingest-rfea.ts</td>
+        <td>Requiere Playwright. Datos muy completos pero estructura cambiante.</td>
+      </tr>
+      <tr>
+        <td><strong>FEDME</strong></td>
+        <td><span class="b-accent">scraper</span></td>
+        <td>Montaña y trail federado</td>
+        <td class="mono">scripts/ingest-fedme.ts</td>
+        <td>Listado público HTML.</td>
+      </tr>
+      <tr>
+        <td><strong>ITRA</strong></td>
+        <td><span class="b-accent">scraper</span></td>
+        <td>International Trail Running Association</td>
+        <td class="mono">scripts/ingest-itra.ts</td>
+        <td>Resultados + listado internacional. Útil para trails europeos.</td>
+      </tr>
+      <tr>
+        <td><strong>Sportmaniacs</strong></td>
+        <td><span class="b-accent">scraper</span></td>
+        <td>Plataforma española de inscripciones. Gran parte del Levante y Cataluña.</td>
+        <td class="mono">scripts/ingest-sportmaniacs.ts</td>
+        <td>API JSON descubierta por Manu. Muy buen rendimiento.</td>
+      </tr>
+      <tr>
+        <td><strong>Runedia</strong></td>
+        <td><span class="b-accent">scraper</span></td>
+        <td>Catálogo amplio, cobertura nacional</td>
+        <td class="mono">scripts/ingest-runedia.ts</td>
+        <td>Datos a veces desactualizados pero buen complemento.</td>
+      </tr>
+      <tr>
+        <td><strong>Chiplevante</strong></td>
+        <td><span class="b-indigo">scraper + adapter</span></td>
+        <td>Cronometrador del Levante (Alicante, Valencia, Murcia)</td>
+        <td class="mono">scripts/ingest-chiplevante.ts</td>
+        <td>Tiene adapter propio en <code>convex/scraper.ts</code> para sacar resultados por dorsal.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Cómo se ejecutan</h3>
+  <div class="pair">
+    <div>
+      <h4>Programado (recomendado)</h4>
+      <p>GitHub Actions <code>.github/workflows/daily-ingest.yml</code> corre los scrapers a diario (madrugada UTC). El output es INSERT/UPDATE en <code>races</code> vía <code>scripts/ingest-to-convex.ts</code>.</p>
+    </div>
+    <div>
+      <h4>Manual desde el panel admin</h4>
+      <p><code>POST /api/scrape/[source]</code> lanza un scraper en background desde la sesión del admin. En Vercel el proceso se mata al terminar la función (warning en el response), por eso lo correcto es GitHub Actions o local.</p>
+    </div>
+  </div>
+
+  <h3>Detección de duplicados cross-source</h3>
+  <p><code>scripts/find-cross-source-duplicates.ts</code> + <code>scripts/merge-mock.ts</code> detectan carreras duplicadas entre fuentes. El campo <code>races.mergedFromIds</code> y <code>additionalDataSourceIds</code> consolidan duplicados sin perder la trazabilidad.</p>
+</section>
+
+<!-- ====================== 09 ADMIN ====================== -->
+<section id="admin">
+  <div class="sec-head"><span class="sec-num">09</span></div>
+  <h2>Panel admin</h2>
+  <p class="sec-sub">Todo bajo <code>/admin/*</code>. Protegido por <code>clerkMiddleware</code> + rol <code>admin</code> en <code>profiles.role</code>. En el MVP solo Manu tiene rol admin (promoción manual desde <code>convex/devOnly/promoteToAdmin.ts</code>).</p>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <h3>/admin</h3>
+      <p>Dashboard principal. Lee de <code>statsCache</code> (no consulta tablas). Métricas: carreras totales, publicadas, destacadas, usuarios, votos, ratings, myRaces, PRs, emails enviados. Carrusel de <code>racesByProvince</code>.</p>
+    </div>
+    <div class="card">
+      <h3>/admin/races</h3>
+      <p>CRUD manual de carreras. Búsqueda, filtros. Sub-rutas: <code>/admin/races/new</code>, <code>/admin/races/[id]</code>, <code>/admin/races/from-url</code> (esta última lanza el flujo de deep-extraction con IA para extraer info desde la web oficial).</p>
+    </div>
+    <div class="card">
+      <h3>/admin/sources</h3>
+      <p>Lista de <code>dataSources</code> con su último sync, estado (active/paused/error), total de carreras, botón "sincronizar ahora" (llama a <code>POST /api/scrape/[source]</code>). <code>/admin/sources/from-url</code> añade una fuente nueva por URL.</p>
+    </div>
+    <div class="card">
+      <h3>/admin/users</h3>
+      <p>Lista de <code>profiles</code>, con su conteo de <code>myRaces</code>, PRs, último login. <code>/admin/users/[id]</code> muestra el detalle: carreras, votaciones, predicciones, emails enviados. Para soporte manual.</p>
+    </div>
+    <div class="card">
+      <h3>/admin/blog</h3>
+      <p>CRUD del blog "Historias de dorsal". Editor markdown, subida de cover image a Convex Storage, gestión de <code>isFeatured</code>, <code>relatedRaceIds</code>. CLI: <code>npm run content:new</code> (esqueleto) y <code>npm run content:publish</code> (publica MD).</p>
+    </div>
+    <div class="card">
+      <h3>/admin/newsletter</h3>
+      <p>Lista de suscriptores con filtros (status, source, locale). Acciones: alta/baja manual, ver historial, exportar CSV. Stats: total active, growth, bounce rate.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== 10 AUTH ====================== -->
+<section id="auth">
+  <div class="sec-head"><span class="sec-num">10</span></div>
+  <h2>Auth y seguridad</h2>
+
+  <h3>Cómo entra el usuario</h3>
+  <p>Magic link de Clerk. Sin password. El usuario mete email, Clerk manda link, el link lleva a <code>/sign-in/...</code> con token, Clerk verifica y crea cookie de sesión firmada. <code>clerkMiddleware</code> (en <code>middleware.ts</code>) lee la cookie en cada request y la pasa a Convex vía JWT.</p>
+
+  <h3>Protección de rutas</h3>
+  <table>
+    <thead><tr><th>Patrón</th><th>Protección</th><th>Por qué</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">/calendario/*, /perfil/*</td><td><span class="b-red">Requiere userId</span></td><td>Contienen datos personales del corredor.</td></tr>
+      <tr><td class="mono">/admin/*</td><td><span class="b-red">Requiere userId + role=admin</span></td><td>Acceso de gestión.</td></tr>
+      <tr><td class="mono">/sign-in/*, /sign-up/*</td><td><span class="b-gray">Noindex</span></td><td>No debe indexarse.</td></tr>
+      <tr><td class="mono">/api/*</td><td><span class="b-gray">Noindex</span></td><td>Por defecto.</td></tr>
+      <tr><td class="mono">/test-geo</td><td><span class="b-gray">Noindex</span></td><td>Página temporal de debug.</td></tr>
+      <tr><td class="mono">/blog, /carreras, /, /ranking, /legal/*</td><td><span class="b-green">Público · indexable</span></td><td>Contenido para SEO.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Headers de seguridad</h3>
+  <p>Configurados en <code>vercel.json</code> + <code>middleware.ts</code>:</p>
+  <pre><code>X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=(self), interest-cohort=()
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload</code></pre>
+
+  <h3>RGPD · qué guardamos de cada suscriptor/newsletter</h3>
+  <ul>
+    <li><strong>Suscriptores newsletter</strong>: <code>email</code>, <code>status</code>, <code>preferences</code>, <code>source</code>, <code>locale</code>. Para auditoría: <code>consentAt</code>, <code>consentIpHash</code> (SHA-256 con salt), <code>consentUserAgent</code>. La IP nunca se guarda en claro.</li>
+    <li><strong>Usuarios registrados</strong>: <code>clerkUserId</code> (no email directamente), <code>displayName</code>, <code>avatarUrl</code>, datos de Strava/Garmin si los conecta (OAuth, tokens encriptados en Convex).</li>
+    <li><strong>Emails enviados</strong>: en <code>notificationLog</code> con <code>resendMessageId</code> para trazabilidad. Política de retención: 12 meses.</li>
+  </ul>
+
+  <h3>Middleware adicional: compresión gzip de la home</h3>
+  <p><code>middleware.ts</code> además de auth hace gzip manual del HTML de la home (Vercel no comprime ISR estático). Resultado: 87 KB → 17 KB. Cache 5 min en memoria del edge.</p>
+</section>
+
+<!-- ====================== 11 DEPLOY ====================== -->
+<section id="deploy">
+  <div class="sec-head"><span class="sec-num">11</span></div>
+  <h2>Despliegue y entorno</h2>
+
+  <h3>Variables de entorno</h3>
+  <table>
+    <thead><tr><th>Variable</th><th>Entorno</th><th>Uso</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">NEXT_PUBLIC_CONVEX_URL</td><td>Vercel + local</td><td>URL pública del backend Convex (la usa el cliente).</td></tr>
+      <tr><td class="mono">CLERK_SECRET_KEY</td><td>Vercel</td><td>Server-side de Clerk.</td></tr>
+      <tr><td class="mono">NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</td><td>Vercel + local</td><td>Cliente-side de Clerk.</td></tr>
+      <tr><td class="mono">CLERK_JWT_ISSUER_DOMAIN</td><td>Vercel + Convex</td><td>Para que Convex verifique el JWT de Clerk en <code>auth.config.ts</code>.</td></tr>
+      <tr><td class="mono">RESEND_API_KEY</td><td>Vercel</td><td>Si está, envío real. Si no, modo mock.</td></tr>
+      <tr><td class="mono">RESEND_FROM_EMAIL</td><td>Vercel</td><td>Default: <code>mi-dorsal &lt;hola@mi-dorsal.com&gt;</code>. Verificar dominios en Resend antes de cambiar (lección de la memoria de agente).</td></tr>
+      <tr><td class="mono">NEXT_PUBLIC_APP_URL</td><td>Vercel + local</td><td>Base URL para emails y redirecciones. Default <code>https://www.mi-dorsal.com</code>.</td></tr>
+      <tr><td class="mono">NEWSLETTER_IP_SALT</td><td>Vercel</td><td>Salt para hashear IPs de suscriptores (RGPD). Default: <code>mi-dorsal-newsletter-2026</code>.</td></tr>
+      <tr><td class="mono">PDF_PARSER_SECRET</td><td>Vercel + Convex</td><td>Header <code>X-PDF-Parser-Secret</code> que Convex envía a <code>/api/pdf/parse</code>.</td></tr>
+      <tr><td class="mono">NEXT_PUBLIC_USE_MOCK</td><td>local</td><td>Si <code>true</code>, activa modo mock para correr sin credenciales.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Procedimiento de deploy</h3>
+  <p>Documentado en <code>AGENTS.md</code> §9.2. Resumen:</p>
+  <ol>
+    <li><code>npx tsc --noEmit</code> → 0 errores.</li>
+    <li><code>npm run build</code> → <code>✓ Compiled successfully</code>. <strong>No skippear.</strong> Vercel detecta inferencias más estrictas que local.</li>
+    <li>Revisar que las rutas tocadas aparecen en la tabla del output de <code>next build</code>.</li>
+    <li>Commit selectivo (<code>git add &lt;archivos específicos&gt;</code>, NUNCA <code>-A</code>). Push a <code>master</code>.</li>
+    <li>Backend Convex: <code>npx convex deploy</code> (sin <code>--prod</code>, ese flag no existe).</li>
+    <li>Frontend Vercel: <code>vercel deploy --prod --yes</code> (con <code>--force</code> si hay sospecha de caché corrupta).</li>
+    <li>Verificar con <code>vercel ls mi-dorsal --yes</code> y leer logs si hay error.</li>
+  </ol>
+
+  <h3>Dominios en producción</h3>
+  <ul>
+    <li><code>www.mi-dorsal.com</code> — canónica (redirect 308 desde <code>mi-dorsal.com</code>).</li>
+    <li><code>mi-dorsal.es</code> — comprada 4 sep 2026, DNS propagando.</li>
+    <li><code>mi-dorsal.vercel.app</code> — backup del auto-assigned de Vercel.</li>
+  </ul>
+</section>
+
+<!-- ====================== 12 FILES ====================== -->
+<section id="files">
+  <div class="sec-head"><span class="sec-num">12</span></div>
+  <h2>Índice de archivos clave (para agentes)</h2>
+  <p class="sec-sub">Si un agente entra al repo sin contexto, estos son los archivos que debería leer primero para entender la app. No es exhaustivo — es lo mínimo viable para no perderse.</p>
+
+  <div class="tree">
+<div class="row"><span class="p">├──</span><span class="folder">app/</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">page.tsx</span> <span class="desc">← Home (force-dynamic). 11 secciones, ver AGENTS.md §3.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">carreras/page.tsx + client.tsx</span> <span class="desc">← Catálogo (force-dynamic). Lógica interactiva en client.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">carreras/[slug]/page.tsx</span> <span class="desc">← Ficha de carrera + Schema.org SportsEvent.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">calendario/page.tsx</span> <span class="desc">← Calendario personal (protegido).</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">perfil/page.tsx</span> <span class="desc">← Perfil + PRs (protegido).</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">ranking/page.tsx</span> <span class="desc">← Top corredores.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">blog/</span> <span class="desc">← "Historias de dorsal" (público).</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">admin/</span> <span class="desc">← Panel admin (protegido). CRUD carreras, users, blog, newsletter, sources.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">newsletter/page.tsx</span> <span class="desc">← Landing pública de suscripción.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">legal/</span> <span class="desc">← Privacidad, aviso legal, cookies.</span></div>
+<div class="row"><span class="p">│   └──</span><span class="folder">api/</span></div>
+<div class="row"><span class="p">│       ├──</span><span class="file">geo/region/route.ts</span> <span class="desc">← Edge. CCAA por IP Vercel.</span></div>
+<div class="row"><span class="p">│       ├──</span><span class="file">newsletter/{subscribe,confirm,unsubscribe}/route.ts</span></div>
+<div class="row"><span class="p">│       ├──</span><span class="file">connect/strava-export/upload/route.ts</span></div>
+<div class="row"><span class="p">│       ├──</span><span class="file">scrape/[source]/route.ts</span></div>
+<div class="row"><span class="p">│       └──</span><span class="file">pdf/parse/route.ts</span></div>
+<div class="row"><span class="p">│</span></div>
+<div class="row"><span class="p">├──</span><span class="folder">components/</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">home/</span> <span class="desc">← 10 componentes de la home. El orden de import en app/page.tsx es el orden visual.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">carreras/</span> <span class="desc">← 5 componentes del catálogo.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">header.tsx</span> <span class="desc">← Header con hamburguesa móvil. NO eliminar el panel mobile (AGENTS.md §6.6).</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">region-switcher.tsx + use-user-region.ts</span> <span class="desc">← Pill de CCAA con portal a document.body.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">race-card.tsx, race-filters.tsx, race-map-wrapper.tsx</span></div>
+<div class="row"><span class="p">│   └──</span><span class="file">blog/, newsletter/</span> <span class="desc">← Componentes del blog y del form de newsletter.</span></div>
+<div class="row"><span class="p">│</span></div>
+<div class="row"><span class="p">├──</span><span class="folder">convex/</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">schema.ts</span> <span class="desc">← 16 tablas. TOC arriba.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">users.ts, races.ts, myRaces.ts, ratings.ts, votes.ts, predictions.ts, personalRecords.ts</span> <span class="desc">← Backend principal.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">stravaExport.ts + stravaExportIngestHelpers.ts + actions/stravaExportIngest.ts</span> <span class="desc">← Flujo de ZIP Strava.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">scraper.ts, pdfScraper.ts, dataSources.ts</span> <span class="desc">← Scrapers de resultados.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">emailDispatch.ts, emails/sendEmail.ts, emails/templates/resultFound.ts</span> <span class="desc">← Sistema de emails.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">newsletter.ts, blog.ts</span> <span class="desc">← Newsletter + blog.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">stats.ts, adminTools.ts, users.ts</span> <span class="desc">← Admin + stats.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">activities/normalize.ts</span> <span class="desc">← Normaliza actividades de Strava.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">auth.config.ts</span> <span class="desc">← Config de Clerk para Convex.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">cronJobs.ts</span> <span class="desc">← Registro de los 7 crons.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="folder">crons/</span> <span class="desc">← 7 archivos, uno por cron. Ver §05.</span></div>
+<div class="row"><span class="p">│   └──</span><span class="folder">devOnly/</span> <span class="desc">← Mutations solo dev (promoteToAdmin, markFeatured). NO subir a prod.</span></div>
+<div class="row"><span class="p">│</span></div>
+<div class="row"><span class="p">├──</span><span class="folder">lib/</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">geo/region.ts</span> <span class="desc">← SSOT CCAA + provincias. 19 CCAA + Ceuta + Melilla.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">geo/distance.ts</span> <span class="desc">← Cálculo de distancias.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">prediction/predict.ts</span> <span class="desc">← Daniels VDOT + Riegel.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">utils.ts</span> <span class="desc">← cn(), formatDate, DISTANCE_CATEGORY_LIST.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">pdf/findRunner.ts</span> <span class="desc">← Buscar dorsal en texto PDF.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">ai/analyze-source.ts, ai/clean-url.ts</span> <span class="desc">← Deep extraction con IA.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">mock/</span> <span class="desc">← Datos mock para dev sin credenciales.</span></div>
+<div class="row"><span class="p">│   └──</span><span class="file">convexStorage.ts</span> <span class="desc">← Helpers para Convex File Storage.</span></div>
+<div class="row"><span class="p">│</span></div>
+<div class="row"><span class="p">├──</span><span class="folder">scripts/</span> <span class="desc">← Scrapers y utilidades CLI. Solo corren en local o GitHub Actions, NUNCA en Vercel.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">ingest-{rfea,fedme,itra,sportmaniacs,runedia,chiplevante}.ts</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">ingest-to-convex.ts</span> <span class="desc">← Punto de entrada común. Lo llama GitHub Actions y /api/scrape/[source].</span></div>
+<div class="row"><span class="p">│   └──</span><span class="folder">content/</span> <span class="desc">← CLI del blog: generate-post, publish-post.</span></div>
+<div class="row"><span class="p">│</span></div>
+<div class="row"><span class="p">├──</span><span class="folder">.github/workflows/</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">daily-ingest.yml</span> <span class="desc">← Corre los scrapers a diario.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">ci.yml</span></div>
+<div class="row"><span class="p">│   └──</span><span class="file">scrape-weekly-DEPRECATED.yml</span> <span class="desc">← Borrar.</span></div>
+<div class="row"><span class="p">│</span></div>
+<div class="row"><span class="p">├──</span><span class="file">middleware.ts</span> <span class="desc">← clerkMiddleware + gzip home + headers seguridad.</span></div>
+<div class="row"><span class="p">├──</span><span class="file">vercel.json</span> <span class="desc">← Headers + crons Vercel (vacío por ahora, todo en Convex).</span></div>
+<div class="row"><span class="p">├──</span><span class="file">next.config.js, tailwind.config.ts, postcss.config.js, tsconfig.json</span></div>
+<div class="row"><span class="p">├──</span><span class="file">convex.json</span> <span class="desc">← Config del proyecto Convex.</span></div>
+<div class="row"><span class="p">├──</span><span class="file">package.json</span> <span class="desc">← Scripts: dev, build, convex, ingest:*, content:*.</span></div>
+<div class="row"><span class="p">└──</span><span class="file">AGENTS.md</span> <span class="desc">← LEER PRIMERO. Reglas, decisiones, anti-patrones.</span></div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>mi-dorsal · mapa generado a 7 sep 2026</p>
+    <p>
+      <span class="pill">16 tablas</span>
+      <span class="pill">7 crons</span>
+      <span class="pill">8 emails</span>
+      <span class="pill">6 fuentes</span>
+      <span class="pill">9 APIs</span>
+    </p>
+    <p style="margin-top: 1rem; font-size: 0.78rem;">Para los agentes: también existe <code>docs/ARCHITECTURE.md</code> como versión texto plano.</p>
+  </div>
+</footer>
+
+</div><!-- /wrap -->
+</main>
+
+<script>
+  // Inicializar Mermaid
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#ffffff',
+      primaryTextColor: '#14171e',
+      primaryBorderColor: '#e7e3d7',
+      lineColor: '#7c7a72',
+      secondaryColor: '#fef2f2',
+      tertiaryColor: '#f7f5f0',
+      fontFamily: 'Outfit, sans-serif',
+      fontSize: '13px',
+    },
+    flowchart: { curve: 'basis', padding: 12 },
+    sequence: { actorMargin: 50, messageMargin: 35, boxMargin: 10, boxTextMargin: 5, noteMargin: 10 },
+  });
+</script>
+</body>
+</html>

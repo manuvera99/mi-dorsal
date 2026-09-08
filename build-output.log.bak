@@ -1,0 +1,90 @@
+
+> mi-dorsal@0.1.0 build
+> next build
+
+   ▲ Next.js 15.5.25
+   - Environments: .env.local, .env.production
+   - Experiments (use with caution):
+     ⨯ reactCompiler
+     ⨯ devtoolSegmentExplorer
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 8.6s
+   Linting and checking validity of types ...
+   Collecting page data ...
+ ⚠ Using edge runtime on a page currently disables static generation for that page
+   Generating static pages (0/40) ...
+   Generating static pages (10/40) 
+   Generating static pages (20/40) 
+   Generating static pages (30/40) 
+ ✓ Generating static pages (40/40)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS  Revalidate  Expire
+┌ ○ /                                    8.43 kB         405 kB          5m      1y
+├ ○ /_not-found                            189 B         328 kB
+├ ○ /admin                               2.39 kB         368 kB
+├ ○ /admin/ai-usage                      4.52 kB         366 kB
+├ ○ /admin/blog                          3.55 kB         370 kB
+├ ƒ /admin/blog/[id]                     3.59 kB         370 kB
+├ ○ /admin/blog/new                      3.28 kB         369 kB
+├ ○ /admin/club-suggestions              3.84 kB         366 kB
+├ ○ /admin/clubs                         4.38 kB         366 kB
+├ ○ /admin/duplicates                    4.64 kB         367 kB
+├ ○ /admin/feedback                      4.04 kB         366 kB
+├ ○ /admin/newsletter                    2.79 kB         365 kB
+├ ○ /admin/race-suggestions              3.98 kB         370 kB
+├ ○ /admin/races                         6.14 kB         379 kB
+├ ƒ /admin/races/[id]                    8.07 kB         381 kB
+├ ○ /admin/races/from-url                5.67 kB         378 kB
+├ ○ /admin/races/new                        4 kB         377 kB
+├ ○ /admin/sources                       4.15 kB         370 kB
+├ ○ /admin/sources/from-url              4.71 kB         371 kB
+├ ○ /admin/users                         1.96 kB         368 kB
+├ ƒ /admin/users/[id]                     4.7 kB         377 kB
+├ ƒ /api/connect/strava-export/upload      189 B         328 kB
+├ ƒ /api/connect/strava/callback           189 B         328 kB
+├ ƒ /api/connect/strava/disconnect         189 B         328 kB
+├ ƒ /api/connect/strava/start              189 B         328 kB
+├ ƒ /api/geo/ip                            189 B         328 kB
+├ ƒ /api/geo/region                        189 B         328 kB
+├ ƒ /api/newsletter/confirm                189 B         328 kB
+├ ƒ /api/newsletter/subscribe              189 B         328 kB
+├ ƒ /api/newsletter/unsubscribe            189 B         328 kB
+├ ƒ /api/pdf/parse                         189 B         328 kB
+├ ƒ /api/scrape/[source]                   189 B         328 kB
+├ ƒ /api/test-analyze                      189 B         328 kB
+├ ƒ /api/webhooks/strava                   189 B         328 kB
+├ ƒ /blog                                3.29 kB         376 kB
+├ ƒ /blog/[slug]                         3.78 kB         370 kB
+├ ƒ /blog/categoria/[cat]                3.29 kB         376 kB
+├ ○ /calendario                          6.11 kB         379 kB
+├ ƒ /carreras                            19.1 kB         455 kB
+├ ƒ /carreras/[slug]                      136 kB         539 kB
+├ ƒ /feedback                            3.69 kB         396 kB
+├ ○ /legal/aviso-legal                     189 B         328 kB
+├ ○ /legal/cookies                         189 B         328 kB
+├ ○ /legal/privacidad                      189 B         328 kB
+├ ○ /manifest.webmanifest                  189 B         328 kB
+├ ƒ /newsletter                          2.98 kB         330 kB
+├ ○ /perfil                              60.8 kB         436 kB
+├ ƒ /perfil/pr/[id]                      6.83 kB         373 kB
+├ ○ /ranking                              1.5 kB         363 kB
+├ ○ /robots.txt                            189 B         328 kB
+├ ƒ /sign-in/[[...sign-in]]              2.56 kB         371 kB
+├ ƒ /sign-up/[[...sign-up]]              2.55 kB         367 kB
+├ ○ /sitemap.xml                           189 B         328 kB          1h      1y
+└ ○ /test-geo                             6.6 kB         334 kB
++ First Load JS shared by all             327 kB
+  ├ chunks/1255-89864344044aacd6.js      65.8 kB
+  ├ chunks/4bd1b696-100b9d70ed4e49c1.js  54.2 kB
+  ├ chunks/ed9f2dc4-e07151f694c5952f.js   205 kB
+  └ other shared chunks (total)           2.8 kB
+
+
+ƒ Middleware                             86.3 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

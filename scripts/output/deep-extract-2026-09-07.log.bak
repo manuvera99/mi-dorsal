@@ -1,0 +1,95 @@
+======================================================================
+Deep extract all races (MiniMax M3)
+======================================================================
+Flags: { limit: 0, onlyMissing: false, priority: true, delayMs: 3000 }
+Encontradas 2746 carreras con officialUrl
+Modo priority activado — top 5 más prioritarias:
+  [0] 2026-01-01 REMOTO (nunca extraída)
+  [0] 2026-01-01 Tashkent New Year Marathon 2026 (nunca extraída)
+  [0] 2026-01-03 SAN SILVESTRE BENICASSIM 2025 (nunca extraída)
+  [0] 2026-01-03 SAN SILVESTRE CHESTANA 2026 (nunca extraída)
+  [0] 2026-01-04 CARRERA DE REYES DE SAN FULGENCIO (nunca extraída)
+
+[1/2746 0%] REMOTO (remoto)
+  ↳ https://sportmaniacs.com/es/races/remoto/67a6b571-3ef4-46d2-940e-4c5cac1f01cd/results
+  ❌ Error: Fetch error 404 al acceder a https://sportmaniacs.com/es/races/remoto/67a6b571-3ef4-46d2-940e-4c5cac1f01cd/results
+  ⏳ Esperando 3000ms…
+
+[2/2746 0%] Tashkent New Year Marathon 2026 (tashkent-new-year-marathon-2026)
+  ↳ https://sportmaniacs.com/es/races/tashkent-new-year-marathon-2026/6950c594-13f8-4f86-8902-4b06ac1f1805/results
+  ❌ Error: Fetch error 404 al acceder a https://sportmaniacs.com/es/races/tashkent-new-year-marathon-2026/6950c594-13f8-4f86-8902-4b06ac1f1805/results
+  ⏳ Esperando 3000ms…
+
+[3/2746 0%] SAN SILVESTRE BENICASSIM 2025 (san-silvestre-benicassim-2025)
+  ↳ https://sportmaniacs.com/es/races/san-silvestre-benicassim-2025/68ea1d46-5dd4-481e-9ff2-44a0ac1f0427/results
+  ❌ Error: Fetch error 404 al acceder a https://sportmaniacs.com/es/races/san-silvestre-benicassim-2025/68ea1d46-5dd4-481e-9ff2-44a0ac1f0427/results
+  ⏳ Esperando 3000ms…
+
+[4/2746 0%] SAN SILVESTRE CHESTANA 2026 (san-silvestre-chestana-2026)
+  ↳ https://sportmaniacs.com/es/races/san-silvestre-chestana-2025/694171a3-f4dc-401e-9b44-e9cfac1f1a24/results
+  ❌ Error: Fetch error 404 al acceder a https://sportmaniacs.com/es/races/san-silvestre-chestana-2025/694171a3-f4dc-401e-9b44-e9cfac1f1a24/results
+  ⏳ Esperando 3000ms…
+
+[5/2746 0%] CARRERA DE REYES DE SAN FULGENCIO (carrera-de-reyes-de-san-fulgencio)
+  ↳ https://www.chiplevante.com/es/prueba/2026REYESSANFULGENCIO-1005-2026
+  ✓ IA (12.5s) confidence=medium — "La web muestra enlaces a reglamento, recorrido, autorización"
+  ✅ 14 campos aplicados
+  ⏳ Esperando 3000ms…
+
+[6/2746 0%] SEMI MARATHON Y 10KM FNIDEQ (semi-marathon-y-10km-fnideq)
+  ↳ https://sportmaniacs.com/es/races/semi-marathon-y-10km-fnideq/5ff9415a-5ec1-4827-b518-3474e312563c/results
+  ❌ Error: Fetch error 404 al acceder a https://sportmaniacs.com/es/races/semi-marathon-y-10km-fnideq/5ff9415a-5ec1-4827-b518-3474e312563c/results
+  ⏳ Esperando 3000ms…
+
+[7/2746 0%] La Navarclina 2026 (la-navarclina-2026)
+  ↳ https://sportmaniacs.com/es/races/la-navarclina-2026/68d70950-f3ac-4d8b-ae20-4f5fac1f2c32/results
+  ❌ Error: Fetch error 404 al acceder a https://sportmaniacs.com/es/races/la-navarclina-2026/68d70950-f3ac-4d8b-ae20-4f5fac1f2c32/results
+  ⏳ Esperando 3000ms…
+
+[8/2746 0%] TRANSCANDAMIA 2026 (transcandamia-2026)
+  ↳ https://sportmaniacs.com/es/races/transcandamia-26/69162907-c350-403d-92ca-4922ac1f18d3/results
+  ❌ Error: Fetch error 404 al acceder a https://sportmaniacs.com/es/races/transcandamia-26/69162907-c350-403d-92ca-4922ac1f18d3/results
+  ⏳ Esperando 3000ms…
+
+[9/2746 0%] CARRERA “EL ROSCÓN” 2026 SANTA CRUZ DE LA ZARZA (TOLEDO) (carrera-el-roscon-2026-santa-cruz-de-la-zarza-toledo)
+  ↳ https://sportmaniacs.com/es/races/carrera-ldquoel-roscnrdquo-2026-santa-cruz-de-la-zarza-toledo/693a89a7-9198-4f1f-a61a-417fac1f1976/results
+  ❌ Error: Fetch error 404 al acceder a https://sportmaniacs.com/es/races/carrera-ldquoel-roscnrdquo-2026-santa-cruz-de-la-zarza-toledo/693a89a7-9198-4f1f-a61a-417fac1f1976/results
+  ⏳ Esperando 3000ms…
+
+[10/2746 0%] Carrera Juguetón 2026 (carrera-jugueton-2026)
+  ↳ https://sportmaniacs.com/es/races/carrera-jugueton-2026/69591f2c-2ccc-4546-bccf-4b91ac1f076c/results
+  ❌ Error: Fetch error 404 al acceder a https://sportmaniacs.com/es/races/carrera-jugueton-2026/69591f2c-2ccc-4546-bccf-4b91ac1f076c/results
+  ⏳ Esperando 3000ms…
+
+[11/2746 0%] COFFE RUN PARTY 2026 (coffe-run-party-2026)
+  ↳ https://sportmaniacs.com/es/races/coffe-run-party-2026/69595cf2-a768-4221-a2dc-459eac1f120a/results
+  ❌ Error: Fetch error 404 al acceder a https://sportmaniacs.com/es/races/coffe-run-party-2026/69595cf2-a768-4221-a2dc-459eac1f120a/results
+  ⏳ Esperando 3000ms…
+
+[12/2746 0%] 5K FUNDADORES EJIDO 6 DE ENERO 2026 (5k-fundadores-ejido-6-de-enero-2026)
+  ↳ https://sportmaniacs.com/es/races/5k-fundadores-ejido-6-de-enero-2026/695961d5-0ad0-418e-98ab-435cac1f076c/results
+  ❌ Error: Fetch error 404 al acceder a https://sportmaniacs.com/es/races/5k-fundadores-ejido-6-de-enero-2026/695961d5-0ad0-418e-98ab-435cac1f076c/results
+  ⏳ Esperando 3000ms…
+
+[13/2746 0%] V CANICROSS VILADRAU (v-canicross-viladrau)
+  ↳ https://sportmaniacs.com/es/races/v-canicross-viladrau/69596868-ad8c-4f6e-81ec-4e13ac1f120a/results
+  ❌ Error: Fetch error 404 al acceder a https://sportmaniacs.com/es/races/v-canicross-viladrau/69596868-ad8c-4f6e-81ec-4e13ac1f120a/results
+  ⏳ Esperando 3000ms…
+
+[14/2746 1%] Carrera trail Alamos 2026 (carrera-trail-alamos-2026)
+  ↳ https://sportmaniacs.com/es/races/carrera-trail-alamos-2026/695995a8-c584-46f5-aceb-494aac1f298e/results
+  ❌ Error: Fetch error 404 al acceder a https://sportmaniacs.com/es/races/carrera-trail-alamos-2026/695995a8-c584-46f5-aceb-494aac1f298e/results
+  ⏳ Esperando 3000ms…
+
+[15/2746 1%] HUILO HUILO OUTDOOR EXPERIENCE 2026 (huilo-huilo-outdoor-experience-2026)
+  ↳ https://sportmaniacs.com/es/races/huilo-huilo-outdoor-experience-2026/694ad368-bd70-4ff2-8dc5-4a21ac1f1e90/results
+  ❌ Error: Fetch error 404 al acceder a https://sportmaniacs.com/es/races/huilo-huilo-outdoor-experience-2026/694ad368-bd70-4ff2-8dc5-4a21ac1f1e90/results
+  ⏳ Esperando 3000ms…
+
+[16/2746 1%] Рождественский полумарафон - 07.01.2026 (07-01-2026)
+  ↳ https://sportmaniacs.com/es/races/----07012026/695d0225-4218-4206-ad70-44aaac1f0120/results
+  ❌ Error: Fetch error 404 al acceder a https://sportmaniacs.com/es/races/----07012026/695d0225-4218-4206-ad70-44aaac1f0120/results
+  ⏳ Esperando 3000ms…
+
+[17/2746 1%] CARRERA VILLALGORDO DEL JUCAR (carrera-villalgordo-del-jucar)
+  ↳ https://www.chiplevante.com/es/prueba/carrera-villalgordo-del-jucar-594-2026

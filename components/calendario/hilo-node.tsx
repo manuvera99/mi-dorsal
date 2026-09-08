@@ -120,7 +120,7 @@ export function HiloNode({ index, myRace, isNext }: HiloNodeProps) {
           respecto al borde inferior de la card anterior. */}
       <div
         className={cn(
-          "absolute left-0 top-0 z-10 flex w-14 sm:w-[72px] flex-col items-center justify-center rounded-2xl px-1.5 py-2 text-white",
+          "absolute left-0 top-0 z-10 flex w-14 sm:w-[72px] flex-col items-center justify-center rounded-2xl px-1.5 py-1.5 text-white",
           s.tab,
           tabShadow,
           status === "planned" &&
@@ -129,26 +129,20 @@ export function HiloNode({ index, myRace, isNext }: HiloNodeProps) {
         )}
         aria-hidden="true"
       >
-        <span className="font-mono text-[10px] font-bold uppercase leading-none tracking-widest opacity-90">
+        <span className="font-mono text-[9px] font-bold uppercase leading-none tracking-widest opacity-90">
           {month}
         </span>
-        <span className="font-mono text-2xl font-bold leading-none tracking-tighter">
+        <span className="font-mono text-xl font-bold leading-none tracking-tighter">
           {day}
         </span>
-        {year && (
-          <span className="mt-0.5 font-mono text-[9px] leading-none opacity-75">
-            {year}
-          </span>
-        )}
       </div>
 
       {/* Punto de estado — anilla blanca alrededor del punto, centrada
-          sobre el hilo. Va a top-[78px] para alinearse con el centro
-          vertical del dorsal (~80px de alto, padding 2 = 8+8 = 16px
-          de padding + 64 de contenido = 80px). */}
+          sobre el hilo. Va a top-[40px] para alinearse con el centro
+          vertical del dorsal compacto (~50px de alto). */}
       <div
         className={cn(
-          "absolute left-[22px] top-[78px] z-20 h-3 w-3 rounded-full ring-4 sm:left-[30px] sm:top-[86px]",
+          "absolute left-[22px] top-[40px] z-20 h-3 w-3 rounded-full ring-4 sm:left-[30px] sm:top-[44px]",
           s.dot,
           s.ring,
         )}
@@ -161,7 +155,7 @@ export function HiloNode({ index, myRace, isNext }: HiloNodeProps) {
           queda flotando en el gap entre cards sin tocar ninguna. */}
       <article
         className={cn(
-          "card relative ml-[80px] mt-16 sm:ml-[96px] sm:mt-20",
+          "card relative ml-[80px] mt-8 sm:ml-[96px] sm:mt-10",
           status === "done" && "bg-stone-50/50",
           status === "planned" &&
             isNext &&

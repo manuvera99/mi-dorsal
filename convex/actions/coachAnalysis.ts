@@ -14,14 +14,17 @@
 
 "use node";
 
-import { v } from "convex/values";
 import { action } from "../_generated/server";
-import { internal } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import { generateCoachAnalysis, type CoachAnalysisInput } from "../../lib/ai/coach-analysis";
 
 export const generateMyAnalysis = action({
   args: {},
-  handler: async (ctx): Promise<{ text: string; generatedAt: number }> => {
+  handler: async (ctx): Promise<{
+    text: string;
+    generatedAt: number;
+    usage: { count: number; limit: number; resetAt: number | null };
+  }> => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Unauthorized: inicia sesión para pedir tu análisis");
@@ -33,6 +36,27 @@ export const generateMyAnalysis = action({
     if (!profile) {
       throw new Error("Perfil no encontrado");
     }
+
+    // -----------------------------------------------------------------
+    // Rate limit (sesión 8 sep 2026):
+    //   - admin / test: ilimitado
+    //   - pro (suscripción premium activa): ilimitado
+    //   - free (user sin suscripción): 1/mes
+    // La mutation interna `incrementCoachUsage` deduce internamente si
+    // hay suscripción premium activa (mira la tabla subscriptions), y
+    // se encarga de comprobar el límite, incrementar el contador del
+    // mes (reseteando si toca) y devolver el estado. Si el usuario ha
+    // agotado su cuota, lanza un error con el mensaje que verá la UI.
+    // -----------------------------------------------------------------
+    const usage = await ctx.runMutation(internal.coachAnalysisHelpers.incrementCoachUsage, {
+      profileId: profile._id,
+    });
+    // Si el rate limit está agotado, incrementCoachUsage lanza un error
+    // con un mensaje user-friendly. En success, `usage` lleva el estado
+    // actual del contador — útil para logs internos (no lo devolvemos
+    // aquí porque releemos con getMyCoachUsage más abajo para tener
+    // la versión "vista cliente" consistente).
+    void usage;
 
     const data = await ctx.runQuery(internal.coachAnalysisHelpers.getAnalysisInputs, {
       profileId: profile._id,
@@ -52,6 +76,15 @@ export const generateMyAnalysis = action({
       generatedAt,
     });
 
-    return { text, generatedAt };
+    // Releer el estado del rate limit para devolverlo a la UI.
+    // (1 query extra, pero le da al componente el count actualizado
+    // sin que tenga que hacer otro useQuery manual.)
+    //
+    // NOTA: getMyCoachUsage es una query pública (no internalQuery)
+    // porque la usa también `useQuery` desde el cliente. Aquí la
+    // llamamos vía `api.*` (no `internal.*`).
+    const finalUsage = await ctx.runQuery(api.coachAnalysisHelpers.getMyCoachUsage, {});
+
+    return { text, generatedAt, usage: finalUsage };
   },
 });

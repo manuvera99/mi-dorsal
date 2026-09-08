@@ -55,6 +55,20 @@ export async function isAdmin(
   return profile?.role === "admin";
 }
 
+/** ¿El usuario actual tiene rol admin o test?
+ *  - admin: bypass total de paywall y rate limits (uso interno).
+ *  - test:  usuario beta-tester marcado a mano por Manu. Mismo bypass
+ *           que admin para poder probar features premium en producción
+ *           sin tener que suscribirse. NO confundir con user normal.
+ *  Usar para feature gating donde se quiere bypass completo, o para
+ *  rate limits donde el límite es 0 (ilimitado). */
+export async function isAdminOrTest(
+  ctx: QueryCtx | MutationCtx,
+): Promise<boolean> {
+  const profile = await getOptionalUser(ctx);
+  return profile?.role === "admin" || profile?.role === "test";
+}
+
 export function assertOwner<T extends { userId: Id<"profiles"> }>(
   resource: T | null,
   userId: Id<"profiles">,

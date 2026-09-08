@@ -98,15 +98,28 @@ const ACCESS_GRANTING_STATES = new Set([
  *  - Devuelve true si la suscripción está en un estado que da acceso Y
  *    el tier es "premium" Y (si está cancelada) el currentPeriodEnd aún
  *    no ha pasado.
+ *  - Devuelve true también si el profile tiene role=admin o role=test
+ *    (bypass total del paywall, sesión 8 sep 2026).
  *  - Devuelve false en cualquier otro caso (sin fila, free, cancelada
  *    con periodo vencido, error transitorio, etc.).
  *
  *  Idempotente y sin side-effects. El coste es 1 query con índice
- *  by_clerk_user_id (sub-ms). */
+ *  by_clerk_user_id (sub-ms) o 1 query a profiles si hay bypass por rol. */
 export async function hasPremiumAccess(
   ctx: QueryCtx | MutationCtx,
   clerkUserId: string,
 ): Promise<boolean> {
+  // Bypass total para admin y test: no necesitan suscripción, acceden
+  // a todo como si fueran premium activo. Se mira en profiles (no en
+  // subscriptions) porque el bypass es por ROL, no por estado de pago.
+  const profile = await ctx.db
+    .query("profiles")
+    .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", clerkUserId))
+    .unique();
+  if (profile && (profile.role === "admin" || profile.role === "test")) {
+    return true;
+  }
+
   const sub = await ctx.db
     .query("subscriptions")
     .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", clerkUserId))
@@ -155,22 +168,56 @@ export const getMySubscription = query({
 });
 
 /** Versión light para el feature gating en componentes. Devuelve solo lo
- *  que la UI necesita: { hasAccess, tier, status, currentPeriodEnd }.
+ *  que la UI necesita: { hasAccess, tier, status, currentPeriodEnd, role, bypassed }.
  *  Optimizada para evitar re-renders innecesarios: si nada cambió, no
- *  devuelve un objeto nuevo. */
+ *  devuelve un objeto nuevo.
+ *
+ *  Bypass (sesión 8 sep 2026): admin y test siempre tienen hasAccess=true
+ *  aunque no tengan fila en subscriptions. El flag `bypassed:true` permite
+ *  a la UI mostrar un mensaje tipo "Acceso total (beta tester)" en vez
+ *  de "Premium". */
 export const getMyPremiumStatus = query({
   args: {},
   handler: async (ctx) => {
     const profile = await getOptionalUser(ctx);
     if (!profile) {
-      return { hasAccess: false, tier: "free" as const, status: null, currentPeriodEnd: null };
+      return {
+        hasAccess: false,
+        tier: "free" as const,
+        status: null,
+        currentPeriodEnd: null,
+        role: null,
+        bypassed: false,
+      };
     }
+
+    // Bypass total: admin o test tienen acceso premium sin necesidad de
+    // fila en subscriptions. Marcamos `bypassed: true` para que la UI
+    // pueda mostrar un mensaje neutro.
+    if (profile.role === "admin" || profile.role === "test") {
+      return {
+        hasAccess: true,
+        tier: "premium" as const,
+        status: "bypassed",
+        currentPeriodEnd: null,
+        role: profile.role,
+        bypassed: true,
+      };
+    }
+
     const sub = await ctx.db
       .query("subscriptions")
       .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", profile.clerkUserId))
       .unique();
     if (!sub) {
-      return { hasAccess: false, tier: "free" as const, status: null, currentPeriodEnd: null };
+      return {
+        hasAccess: false,
+        tier: "free" as const,
+        status: null,
+        currentPeriodEnd: null,
+        role: profile.role ?? null,
+        bypassed: false,
+      };
     }
 
     // Recalcular hasAccess en la query (no delegamos a hasPremiumAccess
@@ -189,6 +236,8 @@ export const getMyPremiumStatus = query({
       tier: sub.tier,
       status: sub.status,
       currentPeriodEnd: sub.currentPeriodEnd ?? null,
+      role: profile.role ?? null,
+      bypassed: false,
     };
   },
 });

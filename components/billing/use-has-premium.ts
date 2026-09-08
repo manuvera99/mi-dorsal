@@ -20,11 +20,17 @@ export type PremiumStatus = {
   /** Tier lógico: "free" | "premium". */
   tier: "free" | "premium";
   /** Estado reportado por Clerk (active, trialing, past_due, canceled, ...).
-   *  Null si nunca ha tenido suscripción. */
+   *  Null si nunca ha tenido suscripción. "bypassed" si es admin/test. */
   status: string | null;
   /** Unix ms del próximo cobro. Null si está cancelado sin periodo pendiente
    *  o si nunca ha pagado. Útil para mostrar "Tu plan se renueva el X". */
   currentPeriodEnd: number | null;
+  /** Rol del profile. "admin" y "test" bypassean todo el paywall.
+   *  Null si no hay profile (no logueado). */
+  role: string | null;
+  /** True si el acceso premium viene de un bypass de rol (admin/test),
+   *  no de una suscripción real. Útil para mostrar copy distinto. */
+  bypassed: boolean;
 };
 
 const DEFAULT_STATUS: PremiumStatus = {
@@ -32,6 +38,8 @@ const DEFAULT_STATUS: PremiumStatus = {
   tier: "free",
   status: null,
   currentPeriodEnd: null,
+  role: null,
+  bypassed: false,
 };
 
 /** Hook principal. Devuelve el estado premium reactivo del usuario actual.

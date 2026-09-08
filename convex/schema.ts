@@ -65,6 +65,14 @@ export default defineSchema({
     // en cada visita — se regenera solo cuando el usuario pulsa el botón.
     coachAnalysisText: v.optional(v.string()),
     coachAnalysisAt: v.optional(v.number()),
+    // Rate limit del entrenador IA (sesión 8 sep 2026):
+    //   - free (role=user, sin suscripción premium): 1/mes
+    //   - user normal con suscripción premium activa: 3/mes
+    //   - pro (premium tier): ilimitado
+    //   - admin o test: ilimitado (bypass total de paywall y rate limit)
+    // Se resetea el día 1 de cada mes vía cron.
+    aiCoachUsageCount: v.optional(v.number()),
+    aiCoachUsageResetAt: v.optional(v.number()),
     // Onboarding (primer login)
     onboardingWelcomeSeen: v.optional(v.boolean()),
     onboardingWelcomeEmailSentAt: v.optional(v.number()),

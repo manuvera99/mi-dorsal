@@ -869,4 +869,88 @@ Cuesta 1-2 semanas de trabajo:
 
 ---
 
-**Última actualización**: 8 de septiembre de 2026. Sesión de integración de pasarela de pagos: esqueleto de Clerk Billing (Stripe bajo el capó) listo pero no activado. Tabla `subscriptions` en Convex + webhook handler Svix-verified en `/api/webhooks/clerk-billing` + componentes `<Paywall>`/`<PremiumBadge>` + páginas `/premium` (landing pública) y `/cuenta/suscripcion` (gestión) + doc `docs/BILLING_SETUP.md` con el runbook de activación. Cero coste mientras no se active. Activación en Q3-Q4 2026 según `docs/MONETIZATION_PLAN.md`. Sesión anterior: 7 sep 2026 (enrichment masivo de carreras con IA).
+## 17. Bypass admin/test + rate limit del entrenador IA (sesión del 8 sep 2026)
+
+Esta sesión cierra el modelo de acceso para el freemium: roles internos (admin, test) bypassean todo el paywall, y el entrenador IA tiene rate limit por tier para evitar abuso.
+
+### 17.1 — Roles con bypass total: `admin` y `test`
+
+El campo `role` en `profiles` admite tres literales:
+
+- `"user"` (default, cualquier usuario registrado).
+- `"admin"` (Manu, único en producción). Bypass total.
+- `"test"` (beta-tester marcado a mano por Manu desde el dashboard de Convex). Bypass total.
+
+**Qué bypassean:**
+- Toda la lógica de `hasPremiumAccess(ctx, clerkUserId)` y `getMyPremiumStatus` en `convex/subscriptions.ts` → devuelven `hasAccess: true` sin mirar la tabla `subscriptions`.
+- El rate limit del entrenador IA → cuentan como ilimitados.
+- Cualquier futuro feature gating (Paywall, export ZIP de diplomas, etc.).
+
+**Implementación:**
+- `convex/_helpers.ts` → `isAdminOrTest(ctx)` (helper de auth).
+- `convex/subscriptions.ts` → bypass en `hasPremiumAccess` (línea de entrada que mira profile.role antes de consultar subscriptions) y bypass en `getMyPremiumStatus` (devuelve `tier: "premium", status: "bypassed", bypassed: true`).
+- `convex/coachAnalysisHelpers.ts` → `coachLimitForProfile()` devuelve `-1` (ilimitado) si `role === "admin" || role === "test"`.
+
+**Para promover un usuario a test** (Manu vía dashboard de Convex):
+```bash
+npx convex data profiles --format json | grep <email>
+npx convex data update profiles/<id> --patch '{"role":"test"}'
+```
+
+O desde el dashboard web: https://dashboard.convex.dev → proyecto `mi-dorsal` → data → profiles → fila del user → edit role a `"test"`.
+
+### 17.2 — Rate limit del entrenador IA
+
+Para evitar que alguien abuse de la action `coachAnalysis` (cada llamada cuesta ~€0.0007 con gpt-4o-mini, gratis con MiniMax M3, pero el LLM tiene límites de rate y no queremos saturarlo):
+
+| Tier | Límite | Implementación |
+|---|---|---|
+| `admin` | ∞ | bypass en `coachLimitForProfile` |
+| `test` | ∞ | bypass en `coachLimitForProfile` |
+| Pro (suscripción premium activa) | ∞ | si `tier === "premium"` y `status` ∈ {active, trialing, past_due} |
+| Free (user sin suscripción) | **1 al mes** | se resetea el día 1 de cada mes UTC |
+
+**Modelo de datos** (schema `profiles`):
+- `aiCoachUsageCount: v.optional(v.number())` — contador del mes en curso.
+- `aiCoachUsageResetAt: v.optional(v.number())` — Unix ms del próximo reset (1 del mes siguiente, 00:00 UTC).
+
+**Cómo funciona el reset:**
+- En la mutation `incrementCoachUsage` (en `convex/coachAnalysisHelpers.ts`), antes de incrementar se mira `aiCoachUsageResetAt`:
+  - Si no existe o es de un mes UTC anterior → se considera "mes nuevo" y se reinicia el contador a 1 (este uso).
+  - Si es del mes UTC actual → se incrementa de `currentCount` a `currentCount + 1`.
+- Además hay un cron `reset-coach-usage` que corre el día 1 de cada mes a las 00:05 UTC (`convex/crons/resetCoachUsage.ts`, registrado en `convex/cronJobs.ts`). Mantiene la BD limpia sin esperar a que el usuario entre a /perfil.
+
+**UI en `CoachAnalysisCard`:**
+- Si `limit === -1` → no se muestra contador.
+- Si `limit > 0` → se muestra `"X de Y al mes"` en la cabecera.
+- Si `count >= limit` (free agotado) → botón deshabilitado, mensaje claro con fecha de reset, **CTA suave** a `/cuenta/suscripcion` (NO paywall bloqueante — Manu decidió que el free puede hacer 1 al mes, no que tenga que pagar).
+- El contador se actualiza en tiempo real vía `useQuery(api.coachAnalysisHelpers.getMyCoachUsage)`.
+
+### 17.3 — Estado que devuelve `getMyPremiumStatus`
+
+Antes: `{ hasAccess, tier, status, currentPeriodEnd }`.
+
+Ahora: se añaden dos campos para que la UI pueda distinguir bypass de pago real:
+
+```typescript
+{
+  hasAccess: boolean,            // true si premium (pago o bypass)
+  tier: "free" | "premium",
+  status: string | null,         // "bypassed" si es admin/test
+  currentPeriodEnd: number | null,
+  role: string | null,           // "user" | "admin" | "test" | null
+  bypassed: boolean,             // true si acceso viene de role, no de pago
+}
+```
+
+El hook `useHasPremium()` (`components/billing/use-has-premium.ts`) ya expone estos campos. La UI puede usar `bypassed` para mostrar copy neutro ("Acceso total (beta tester)") en vez de "Premium".
+
+### 17.4 — Pendientes relacionados
+
+- Cuando se activen pagos reales (Q3-Q4 2026), `coachLimitForProfile` se mantiene igual: si tienen fila `subscriptions` con `tier === "premium"`, son pro/ilimitado. Si no, son free/1-mes.
+- Si en el futuro hay un tier intermedio "premium_basic" (3/mes), cambiar el `if (hasActiveSubscription) return -1` por una comprobación del `planId` o del tier.
+- El bypass por rol se comprueba ANTES de mirar la suscripción, así que un admin con `subscriptions.tier === "free"` (raro pero posible) sigue teniendo acceso. Es la semántica correcta: el rol manda.
+
+---
+
+**Última actualización**: 8 de septiembre de 2026. Sesión de integración de pasarela de pagos: esqueleto de Clerk Billing (Stripe bajo el capó) listo pero no activado. Tabla `subscriptions` en Convex + webhook handler Svix-verified en `/api/webhooks/clerk-billing` + componentes `<Paywall>`/`<PremiumBadge>` + páginas `/premium` (landing pública) y `/cuenta/suscripcion` (gestión) + doc `docs/BILLING_SETUP.md` con el runbook de activación. Cero coste mientras no se active. Activación en Q3-Q4 2026 según `docs/MONETIZATION_PLAN.md`. Sesión anterior: 7 sep 2026 (enrichment masivo de carreras con IA). Misma sesión (continuación): bypass admin/test en `hasPremiumAccess` y `getMyPremiumStatus` + rate limit del entrenador IA (free=1/mes, pro=∞, admin/test=∞) con reset mensual vía cron + UI con contador "X de Y al mes" en `CoachAnalysisCard` y CTA suave a `/cuenta/suscripcion` cuando se agota.

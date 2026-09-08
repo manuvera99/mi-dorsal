@@ -63,6 +63,17 @@ crons.cron(
   internal.crons.newsletterEditorial.newsletterEditorial,
 );
 
+// Reset mensual del rate limit del entrenador IA: día 1 de cada mes a
+// las 00:05 UTC (5 min después del cambio de mes, para que el cron de
+// newsletter-editorial del día 1 a las 10:00 ya encuentre los counters
+// reseteados). Mantiene la BD limpia sin esperar a que el usuario entre
+// a /perfil.
+crons.cron(
+  "reset-coach-usage",
+  "5 0 1 * *", // día 1 de cada mes, 00:05 UTC
+  (internal as any)["crons/resetCoachUsage"].resetCoachUsage,
+);
+
 // Renovar la suscripción a webhooks de Strava cada 12h (Strava las
 // desactiva a las 24h sin eventos).
 crons.cron(

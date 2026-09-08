@@ -262,9 +262,14 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
 
         {/*
           Bloque de "objetivo + calculadora":
-          - Línea 1: PR del usuario en la distancia de la carrera (si existe)
-          - Línea 2: calculadora bidireccional tiempo ↔ pace + botón guardar
-          - Línea 3 (si la carrera ya pasó): tiempo oficial real
+          - Línea 1 (opcional): PR del usuario en la distancia de la carrera.
+            Solo sale si hay match EXACTO en metros (PR 15000m = carrera 15K).
+            Si tu PR es 21097m (media maratón oficial) y la carrera es 21K
+            exactos, no hay match y la fila se oculta.
+          - Línea 2 (siempre que haya distancia > 0): calculadora
+            bidireccional tiempo ↔ pace. El usuario puede marcar objetivo
+            aunque NO tenga PR en esa distancia.
+          - Línea 3 (opcional, si la carrera ya pasó): tiempo oficial real.
 
           Decisión de producto: la predicción automática de Daniels/Riegel
           ya no se muestra. El usuario marca su propio objetivo desde la
@@ -272,9 +277,7 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
           cuando añadió la carrera, o de un guardado anterior), la
           calculadora arranca con él.
         */}
-        {(matchingPR ||
-          myRace.predictedTimeSeconds ||
-          myRace.actualTimeSeconds) && (
+        {(race && race.distanceKm > 0) || myRace.actualTimeSeconds ? (
           <div className="mt-4 border-t border-stone-100 pt-3">
             {matchingPR && (
               <div className="mb-3 flex items-baseline justify-between gap-2 rounded-md bg-stone-50 px-3 py-2">
@@ -318,7 +321,7 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
               </div>
             )}
           </div>
-        )}
+        ) : null}
       </article>
     </div>
   );

@@ -43,6 +43,16 @@ export const patchOne = internalMutation({
     activityId: v.id("activities"),
     detected: v.object({
       isIntervalWorkout: v.boolean(),
+      confidence: v.union(
+        v.literal("high"),
+        v.literal("medium"),
+        v.literal("low"),
+      ),
+      detectionMode: v.union(
+        v.literal("laps"),
+        v.literal("splits"),
+        v.literal("name"),
+      ),
       paceVariabilityCv: v.number(),
       fastDeltaSecPerKm: v.number(),
       slowDeltaSecPerKm: v.number(),

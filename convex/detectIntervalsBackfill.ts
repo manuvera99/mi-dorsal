@@ -19,6 +19,7 @@ import { internal } from "./_generated/api";
 import {
   detectIntervalsFromSplits,
   type SplitMetric,
+  type LapMetric,
 } from "../lib/training/detect-intervals";
 
 const BATCH_SIZE = 200;
@@ -76,6 +77,7 @@ export const runBackfill = action({
         userId: string;
         name: string | undefined;
         splitsMetric: SplitMetric[] | null | undefined;
+        laps: LapMetric[] | null | undefined;
         stravaSportType: string | undefined;
         elevationGainM: number | undefined;
         rawStravaDetail: RawStravaDetail | null | undefined;
@@ -90,6 +92,7 @@ export const runBackfill = action({
           const loop = loopDistanceM(act.rawStravaDetail);
           const result = detectIntervalsFromSplits({
             splits: act.splitsMetric,
+            laps: act.laps,
             totalElevationGainM: act.elevationGainM,
             startEndLoopM: loop,
             activityName: act.name,

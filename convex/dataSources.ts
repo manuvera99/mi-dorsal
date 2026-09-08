@@ -470,3 +470,99 @@ export const systemUpdate = mutation({
     return id;
   },
 });
+
+/**
+ * recordIngestSync: registra el resultado de un sync hecho por un script
+ * CLI (scripts/ingest-to-convex.ts y los scrapers individuales).
+ *
+ * El script llama a esta mutation una vez por fuente al final del ingest,
+ * con el conteo de carreras subidas y la duración. Crea una fila en
+ * `syncHistory` y actualiza `dataSources.lastSyncAt`, `totalSyncs++`,
+ * `lastSyncRaceCount` y `lastSyncDurationMs`.
+ *
+ * Sin auth: los scripts no tienen sesión de Clerk. La seguridad se basa
+ * en que solo se ejecuta desde la GitHub Action (con sus secrets) o
+ * desde la terminal del admin con `CONVEX_DEPLOY_KEY` configurado.
+ *
+ * Idempotente solo en el sentido de que se puede llamar varias veces y
+ * cada llamada genera una entrada nueva en syncHistory (eso es lo que
+ * queremos para tener trazabilidad por ejecución).
+ *
+ * Uso desde el script:
+ *   await client.mutation(api.dataSources.recordIngestSync, {
+ *     dataSourceSlug: "rfea",
+ *     raceCount: 123,
+ *     durationMs: 4500,
+ *     status: "success",
+ *     triggeredBy: "github-action-daily-ingest",
+ *   });
+ */
+export const recordIngestSync = mutation({
+  args: {
+    dataSourceSlug: v.string(),
+    raceCount: v.number(),
+    durationMs: v.number(),
+    status: v.union(v.literal("success"), v.literal("error")),
+    triggeredBy: v.optional(v.string()),
+    error: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Buscar la fuente por slug
+    const source = await ctx.db
+      .query("dataSources")
+      .withIndex("by_slug", (q) => q.eq("slug", args.dataSourceSlug))
+      .unique();
+
+    if (!source) {
+      // No abortamos — la fuente puede no existir todavía (ej. una nueva
+      // añadida al dataSources por el script). Solo logueamos el warning.
+      console.warn(
+        `[recordIngestSync] dataSource con slug "${args.dataSourceSlug}" no existe`,
+      );
+      return { ok: false, reason: "source_not_found" as const };
+    }
+
+    const now = Date.now();
+    const triggeredBy = args.triggeredBy ?? "script:unknown";
+
+    // Crear entrada en syncHistory
+    const syncId = await ctx.db.insert("syncHistory", {
+      dataSourceId: source._id,
+      startedAt: now - args.durationMs, // estimación: arrancó hace durationMs
+      finishedAt: now,
+      durationMs: args.durationMs,
+      status: args.status,
+      raceCount: args.raceCount,
+      error: args.error,
+      triggeredBy,
+    });
+
+    // Actualizar contadores de la fuente
+    await ctx.db.patch(source._id, {
+      lastSyncAt: now,
+      lastSyncDurationMs: args.durationMs,
+      lastSyncRaceCount: args.raceCount,
+      lastSyncError: args.error,
+      totalSyncs: (source.totalSyncs ?? 0) + 1,
+      status: args.status === "success" ? "active" : "error",
+    });
+
+    return { ok: true, syncId, dataSourceId: source._id };
+  },
+});
+
+/**
+ * getDataSourceIdBySlug: resuelve slug → id. Lo usa el script
+ * ingest-to-convex para pasar el `dataSourceId` correcto a `systemUpsert`.
+ * Sin auth: solo lee un índice por slug, no expone nada sensible.
+ */
+export const getDataSourceIdBySlug = query({
+  args: { slug: v.string() },
+  handler: async (ctx, { slug }) => {
+    const source = await ctx.db
+      .query("dataSources")
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
+      .unique();
+    return source?._id ?? null;
+  },
+});

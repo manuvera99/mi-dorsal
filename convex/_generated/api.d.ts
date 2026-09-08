@@ -34,6 +34,7 @@ import type * as crons_yearReview from "../crons/yearReview.js";
 import type * as dataSources from "../dataSources.js";
 import type * as detectIntervalsBackfill from "../detectIntervalsBackfill.js";
 import type * as detectIntervalsBackfillHelpers from "../detectIntervalsBackfillHelpers.js";
+import type * as devOnly_backfillIsRunning from "../devOnly/backfillIsRunning.js";
 import type * as devOnly_cleanTestUserByClerkId from "../devOnly/cleanTestUserByClerkId.js";
 import type * as devOnly_enrichTestUserByEmail from "../devOnly/enrichTestUserByEmail.js";
 import type * as devOnly_markFeatured from "../devOnly/markFeatured.js";
@@ -97,6 +98,7 @@ declare const fullApi: ApiFromModules<{
   dataSources: typeof dataSources;
   detectIntervalsBackfill: typeof detectIntervalsBackfill;
   detectIntervalsBackfillHelpers: typeof detectIntervalsBackfillHelpers;
+  "devOnly/backfillIsRunning": typeof devOnly_backfillIsRunning;
   "devOnly/cleanTestUserByClerkId": typeof devOnly_cleanTestUserByClerkId;
   "devOnly/enrichTestUserByEmail": typeof devOnly_enrichTestUserByEmail;
   "devOnly/markFeatured": typeof devOnly_markFeatured;

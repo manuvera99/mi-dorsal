@@ -2,7 +2,9 @@
 // scripts/ingest-to-convex.ts
 // =============================================================================
 // Lee scripts/output/all-races.json y sube cada carrera a Convex vía la
-// mutation api.races.create.
+// mutation api.races.systemUpsert. Al final, registra el sync de cada
+// fuente en api.dataSources.recordIngestSync para que el admin dashboard
+// vea "última sync: hace Xh, +N carreras".
 //
 // Uso:
 //   1. Configurar .env.local con NEXT_PUBLIC_CONVEX_URL y CONVEX_DEPLOYMENT
@@ -32,10 +34,24 @@ interface UnifiedRace {
   level?: string;
   distance?: number;
   elevation?: number;
+  endurancePoints?: number;
+  nationalLeague?: string;
   homologated?: boolean;
+  surface?: "asfalto" | "tierra" | "montaña" | "cross" | "pista";
+  source: "RFEA" | "FEDME" | "ITRA" | "Sportmaniacs" | "Runedia";
   sourceUrl: string;
   officialUrl?: string;
 }
+
+// Mapeo del campo `source` del JSON al slug de la dataSource en Convex.
+// Coincide con la tabla dataSources (ver convex/dataSources.ts).
+const SOURCE_NAME_TO_SLUG: Record<UnifiedRace["source"], string> = {
+  RFEA: "rfea",
+  FEDME: "fedme",
+  ITRA: "itra",
+  Sportmaniacs: "sportmaniacs",
+  Runedia: "runedia",
+};
 
 function inferProvince(location: string, source: string): string {
   if (!location) return "valencia";
@@ -86,11 +102,30 @@ async function main() {
 
   const client = new ConvexHttpClient(convexUrl);
 
+  // -------------------------------------------------------------------
+  // Resolver dataSourceId por slug al inicio (1 query por source).
+  // Cache en memoria para no repetir la query por cada carrera.
+  // -------------------------------------------------------------------
+  const dataSourceIdCache = new Map<string, string | null>();
+  const getDataSourceId = async (sourceName: UnifiedRace["source"]): Promise<string | null> => {
+    const slug = SOURCE_NAME_TO_SLUG[sourceName];
+    if (!slug) return null;
+    if (!dataSourceIdCache.has(slug)) {
+      const id = await client.query(api.dataSources.getDataSourceIdBySlug, { slug });
+      dataSourceIdCache.set(slug, id);
+    }
+    return dataSourceIdCache.get(slug) ?? null;
+  };
+
+  // Conteos por source para reportar al final
+  const sourceStats: Record<string, { created: number; updated: number; errors: number }> = {};
   let success = 0;
   let failed = 0;
+  const t0 = Date.now();
 
   for (const r of races) {
     try {
+      const dataSourceId = await getDataSourceId(r.source);
       // systemUpsert: idempotente. Si ya existe (mismo officialUrl o
       // mismo nombre+fecha), actualiza los campos vacíos. Si no, crea.
       const res: any = await client.mutation(api.races.systemUpsert, {
@@ -109,19 +144,71 @@ async function main() {
           ? `Carrera ${r.modality} de ${r.sourceUrl ? new URL(r.sourceUrl).hostname : "origen oficial"}. ${r.level ? "Nivel: " + r.level + "." : ""}`
           : `Carrera de ${new URL(r.sourceUrl).hostname}.`,
         scraperAdapter: r.sourceUrl ? new URL(r.sourceUrl).hostname.split(".")[0] : undefined,
+        // 8 sep 2026: pasamos dataSourceId para que systemUpsert vincule
+        // la carrera a su fuente (antes la dataSourceId quedaba vacía).
+        dataSourceId: dataSourceId ?? undefined,
       });
+
       success++;
-      process.stdout.write(res?.action === "updated" ? "u" : ".");
+      const action = res?.action === "updated" ? "u" : ".";
+      process.stdout.write(action);
+
+      // Acumular por source
+      const stat = sourceStats[r.source] ?? { created: 0, updated: 0, errors: 0 };
+      if (res?.action === "updated") stat.updated++;
+      else stat.created++;
+      sourceStats[r.source] = stat;
     } catch (err) {
       failed++;
+      const stat = sourceStats[r.source] ?? { created: 0, updated: 0, errors: 0 };
+      stat.errors++;
+      sourceStats[r.source] = stat;
       console.error(`\n[ingest-to-convex] ❌ Falló "${r.name}":`, err);
     }
   }
 
+  const totalDurationMs = Date.now() - t0;
+
   console.log(`\n\n[ingest-to-convex] ✅ ${success} carreras procesadas (created+updated)`);
   if (failed > 0) console.log(`[ingest-to-convex] ⚠️  ${failed} carreras fallaron`);
-  console.log(`[ingest-to-convex] Re-ejecuta este script y verás solo "u" (updates) si no hay carreras nuevas.`);
+  console.log(`[ingest-to-convex] Duración total: ${(totalDurationMs / 1000).toFixed(1)}s`);
   console.log(`[ingest-to-convex] Verifica en https://dashboard.convex.dev`);
+  console.log(`[ingest-to-convex] Re-ejecuta este script y verás solo "u" (updates) si no hay carreras nuevas.`);
+
+  // -------------------------------------------------------------------
+  // Registrar el sync por cada fuente (para que el admin dashboard
+  // muestre "última sync: hace Xh, +N carreras").
+  // -------------------------------------------------------------------
+  console.log(`\n[ingest-to-convex] Registrando sync en dataSources...`);
+  for (const [sourceName, stat] of Object.entries(sourceStats)) {
+    const slug = SOURCE_NAME_TO_SLUG[sourceName as UnifiedRace["source"]];
+    if (!slug) continue;
+    const totalForSource = stat.created + stat.updated;
+    if (totalForSource === 0 && stat.errors === 0) continue;
+    try {
+      // Estimamos la duración por source como proporcional al total
+      // (no medimos por source individual porque el loop es secuencial).
+      // Para sources con 0 carreras, prorrateamos 0; para sources con
+      // muchas, prorrateamos ~durationMs * (count / total).
+      const totalAll = success || 1;
+      const sourceDuration = Math.round((totalForSource / totalAll) * totalDurationMs);
+      const status: "success" | "error" = stat.errors > stat.created + stat.updated ? "error" : "success";
+      await client.mutation(api.dataSources.recordIngestSync, {
+        dataSourceSlug: slug,
+        raceCount: totalForSource,
+        durationMs: sourceDuration,
+        status,
+        triggeredBy: "github-action-daily-ingest",
+        error: stat.errors > 0 ? `${stat.errors} carreras fallaron` : undefined,
+      });
+      console.log(
+        `  ✓ ${sourceName} (${slug}): ${totalForSource} carreras, ${sourceDuration}ms, ${status}` +
+          (stat.errors > 0 ? `, ${stat.errors} errores` : ""),
+      );
+    } catch (err) {
+      console.error(`  ✗ ${sourceName} (${slug}): error registrando sync:`, err);
+    }
+  }
 }
 
 main().catch((err) => {

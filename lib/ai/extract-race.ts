@@ -16,6 +16,7 @@
 // =============================================================================
 
 import { cleanUrl } from "./clean-url";
+import { logAiUsage } from "./log-usage";
 
 export interface ExtractedRace {
   name: string;
@@ -91,6 +92,9 @@ export async function extractRaceFromUrl(url: string): Promise<ExtractedRace | n
   const model = cleanUrl(process.env.OPENAI_MODEL ?? DEFAULT_MODEL);
   const isMiniMax = /minimax/i.test(baseUrl);
 
+  // Marca de inicio para loguear duración y tokens de la llamada al LLM.
+  const llmStart = Date.now();
+
   // 1. Fetch la URL
   const html = await fetchUrl(url);
 
@@ -159,6 +163,18 @@ Extrae la información de la carrera.`;
     });
   } catch (e: any) {
     clearTimeout(timeoutId);
+    logAiUsage({
+      functionLabel: "extract_race",
+      model,
+      provider: baseUrl,
+      promptTokens: 0,
+      completionTokens: 0,
+      success: false,
+      errorMessage: e?.name === "AbortError"
+        ? `Timeout (50s) llamando a ${baseUrl}`
+        : `Error de red: ${e?.message ?? e}`,
+      durationMs: Date.now() - llmStart,
+    });
     if (e?.name === "AbortError") {
       throw new Error(`Timeout (50s) llamando a ${baseUrl} con ${model}`);
     }
@@ -182,22 +198,84 @@ Extrae la información de la carrera.`;
       });
       if (!retry.ok) {
         const t = await retry.text();
+        logAiUsage({
+          functionLabel: "extract_race",
+          model,
+          provider: baseUrl,
+          promptTokens: 0,
+          completionTokens: 0,
+          success: false,
+          errorMessage: `LLM error ${retry.status} (sin response_format)`,
+          durationMs: Date.now() - llmStart,
+        });
         throw new Error(`LLM error ${retry.status} (sin response_format): ${t.slice(0, 300)}`);
       }
       const data2 = await retry.json();
       const content2 = data2?.choices?.[0]?.message?.content;
-      if (!content2) throw new Error("LLM no devolvió contenido");
+      if (!content2) {
+        logAiUsage({
+          functionLabel: "extract_race",
+          model,
+          provider: baseUrl,
+          promptTokens: data2?.usage?.prompt_tokens ?? 0,
+          completionTokens: data2?.usage?.completion_tokens ?? 0,
+          success: false,
+          errorMessage: "LLM no devolvió contenido",
+          durationMs: Date.now() - llmStart,
+        });
+        throw new Error("LLM no devolvió contenido");
+      }
       const cleaned2 = stripThinkBlocks(content2);
+      logAiUsage({
+        functionLabel: "extract_race",
+        model,
+        provider: baseUrl,
+        promptTokens: data2?.usage?.prompt_tokens ?? 0,
+        completionTokens: data2?.usage?.completion_tokens ?? 0,
+        success: true,
+        durationMs: Date.now() - llmStart,
+      });
       return sanitize(parseJsonLoose(cleaned2));
     }
+    logAiUsage({
+      functionLabel: "extract_race",
+      model,
+      provider: baseUrl,
+      promptTokens: 0,
+      completionTokens: 0,
+      success: false,
+      errorMessage: `LLM error ${res.status}: ${errText.slice(0, 200)}`,
+      durationMs: Date.now() - llmStart,
+    });
     throw new Error(`LLM error ${res.status}: ${errText.slice(0, 300)}`);
   }
 
   const data = await res.json();
   const content = data?.choices?.[0]?.message?.content;
-  if (!content) throw new Error("LLM no devolvió contenido");
+  if (!content) {
+    logAiUsage({
+      functionLabel: "extract_race",
+      model,
+      provider: baseUrl,
+      promptTokens: data?.usage?.prompt_tokens ?? 0,
+      completionTokens: data?.usage?.completion_tokens ?? 0,
+      success: false,
+      errorMessage: "LLM no devolvió contenido",
+      durationMs: Date.now() - llmStart,
+    });
+    throw new Error("LLM no devolvió contenido");
+  }
 
   const cleaned = stripThinkBlocks(content);
+  logAiUsage({
+    functionLabel: "extract_race",
+    model,
+    provider: baseUrl,
+    promptTokens: data?.usage?.prompt_tokens ?? 0,
+    completionTokens: data?.usage?.completion_tokens ?? 0,
+    success: true,
+    durationMs: Date.now() - llmStart,
+  });
   return sanitize(parseJsonLoose(cleaned));
 }
 

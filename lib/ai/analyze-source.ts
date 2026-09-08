@@ -37,6 +37,7 @@ export interface ExtractedSource {
 // Si en el futuro se mueve a un módulo común, importamos desde ahí.
 
 import { cleanUrl } from "./clean-url";
+import { logAiUsage } from "./log-usage";
 
 const DEFAULT_BASE_URL = "https://api.openai.com/v1";
 const DEFAULT_MODEL = "gpt-4o-mini";
@@ -165,6 +166,9 @@ Analiza la web como fuente de datos para scraping.`;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 50_000);
 
+  // Marca de inicio para loguear duración y tokens de la llamada al LLM.
+  const llmStart = Date.now();
+
   let res: Response;
   try {
     res = await fetch(`${baseUrl}/chat/completions`, {
@@ -178,6 +182,18 @@ Analiza la web como fuente de datos para scraping.`;
     });
   } catch (e: any) {
     clearTimeout(timeoutId);
+    logAiUsage({
+      functionLabel: "analyze_source",
+      model,
+      provider: baseUrl,
+      promptTokens: 0,
+      completionTokens: 0,
+      success: false,
+      errorMessage: e?.name === "AbortError"
+        ? `Timeout (50s) llamando a ${baseUrl}`
+        : `Error de red: ${e?.message ?? e}`,
+      durationMs: Date.now() - llmStart,
+    });
     if (e?.name === "AbortError") {
       throw new Error(`Timeout (50s) llamando a ${baseUrl} con ${model}`);
     }
@@ -200,20 +216,82 @@ Analiza la web como fuente de datos para scraping.`;
       });
       if (!retry.ok) {
         const t = await retry.text();
+        logAiUsage({
+          functionLabel: "analyze_source",
+          model,
+          provider: baseUrl,
+          promptTokens: 0,
+          completionTokens: 0,
+          success: false,
+          errorMessage: `LLM error ${retry.status} (sin response_format)`,
+          durationMs: Date.now() - llmStart,
+        });
         throw new Error(`LLM error ${retry.status} (sin response_format): ${t.slice(0, 300)}`);
       }
       const data2 = await retry.json();
       const c2 = data2?.choices?.[0]?.message?.content;
-      if (!c2) throw new Error("LLM no devolvió contenido");
+      if (!c2) {
+        logAiUsage({
+          functionLabel: "analyze_source",
+          model,
+          provider: baseUrl,
+          promptTokens: data2?.usage?.prompt_tokens ?? 0,
+          completionTokens: data2?.usage?.completion_tokens ?? 0,
+          success: false,
+          errorMessage: "LLM no devolvió contenido",
+          durationMs: Date.now() - llmStart,
+        });
+        throw new Error("LLM no devolvió contenido");
+      }
+      logAiUsage({
+        functionLabel: "analyze_source",
+        model,
+        provider: baseUrl,
+        promptTokens: data2?.usage?.prompt_tokens ?? 0,
+        completionTokens: data2?.usage?.completion_tokens ?? 0,
+        success: true,
+        durationMs: Date.now() - llmStart,
+      });
       return sanitize(parseJsonLoose(stripThinkBlocks(c2)), url);
     }
+    logAiUsage({
+      functionLabel: "analyze_source",
+      model,
+      provider: baseUrl,
+      promptTokens: 0,
+      completionTokens: 0,
+      success: false,
+      errorMessage: `LLM error ${res.status}: ${errText.slice(0, 200)}`,
+      durationMs: Date.now() - llmStart,
+    });
     throw new Error(`LLM error ${res.status}: ${errText.slice(0, 300)}`);
   }
 
   const data = await res.json();
   const content = data?.choices?.[0]?.message?.content;
-  if (!content) throw new Error("LLM no devolvió contenido");
+  if (!content) {
+    logAiUsage({
+      functionLabel: "analyze_source",
+      model,
+      provider: baseUrl,
+      promptTokens: data?.usage?.prompt_tokens ?? 0,
+      completionTokens: data?.usage?.completion_tokens ?? 0,
+      success: false,
+      errorMessage: "LLM no devolvió contenido",
+      durationMs: Date.now() - llmStart,
+    });
+    throw new Error("LLM no devolvió contenido");
+  }
 
+  logAiUsage({
+    functionLabel: "analyze_source",
+    model,
+    provider: baseUrl,
+    promptTokens: data?.usage?.prompt_tokens ?? 0,
+    completionTokens: data?.usage?.completion_tokens ?? 0,
+    success: true,
+    durationMs: Date.now() - llmStart,
+  });
   return sanitize(parseJsonLoose(stripThinkBlocks(content)), url);
 }
 

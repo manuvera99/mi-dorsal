@@ -24,6 +24,7 @@ import {
   Tag,
   PanelLeftClose,
   PanelLeftOpen,
+  Sparkles,
 } from "lucide-react";
 
 const SIDEBAR_COLLAPSED_KEY = "midorsal:admin:sidebarCollapsed";
@@ -38,6 +39,7 @@ const navItems = [
   { href: "/admin/duplicates", label: "Duplicados", icon: Copy },
   { href: "/admin/blog", label: "Blog", icon: BookOpen },
   { href: "/admin/newsletter", label: "Newsletter", icon: Mail },
+  { href: "/admin/ai-usage", label: "Uso de IA", icon: Sparkles },
   { href: "/admin/sources", label: "Fuentes", icon: Database },
   { href: "/admin/users", label: "Usuarios", icon: Users },
 ];

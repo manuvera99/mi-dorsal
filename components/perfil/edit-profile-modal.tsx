@@ -19,6 +19,7 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { mockApi, isMockMode } from "@/lib/mock/provider";
 import { X, Loader2 } from "lucide-react";
+import { ClubSelect } from "./club-select";
 
 const BIO_MAX = 280;
 const DISPLAY_NAME_MAX = 60;
@@ -180,14 +181,11 @@ export function EditProfileModal({
               <label htmlFor="ep-club" className="block text-sm font-medium text-gray-700 mb-1">
                 Club <span className="text-gray-400 font-normal">(opcional)</span>
               </label>
-              <input
-                id="ep-club"
-                type="text"
+              <ClubSelect
                 value={club}
-                onChange={(e) => setClub(e.target.value)}
+                onChange={setClub}
+                disabled={saving}
                 maxLength={CLUB_MAX}
-                placeholder="Bull Runners, Atletismo X, sin club…"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </div>
 

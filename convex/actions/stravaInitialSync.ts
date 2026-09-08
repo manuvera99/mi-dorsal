@@ -48,6 +48,25 @@ const MIN_DISTANCE_M_FOR_DETAIL = 4750;
 // cuando un chunk tiene muchas actividades largas.
 const DETAIL_FETCH_DELAY_MS = 400;
 
+/**
+ * Convierte todos los `null` de un objeto a `undefined` (recursivo solo
+ * a primer nivel, suficiente para los args de Convex). Los validators
+ * de Convex `v.optional(v.string())` / `v.optional(v.number())` NO
+ * aceptan `null` literal — hay que pasar `undefined` o el valor
+ * correcto. Strava devuelve `null` para campos opcionales, así que
+ * cualquier ingest sin normalizar termina reventando con
+ * "Value does not match validator" en el primer campo null.
+ *
+ * IMPORTANTE: NO aplica a `false`/`0`/`""` (que son valores válidos).
+ */
+function nullsToUndefined<T extends Record<string, unknown>>(obj: T): T {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    out[k] = v === null ? undefined : v;
+  }
+  return out as T;
+}
+
 // ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
@@ -146,10 +165,14 @@ async function runSyncChunk(ctx: any, args: SyncArgs) {
   }));
 
   // 6) Ingerir cada actividad. Las que alcanzan el umbral de distancia
-  // piden el detalle (best_efforts) antes — es lo que usa Strava para
-  // calcular sus "Mejores tiempos", no la distancia total de la actividad.
+  // piden el detalle (best_efforts + map + splits + gear + device) antes
+  // — es lo que usa Strava para calcular sus "Mejores tiempos" y donde
+  // vienen los campos que el listado NO incluye.
   for (const activity of activities) {
-    let bestEfforts: StravaActivitySummary["best_efforts"];
+    // `effective` es la versión "mejorada" de la actividad: si pudimos
+    // obtener el detail, lo usamos (tiene map, splits, gear, etc.). Si
+    // no, caemos al summary del listado (sin esos campos).
+    let effective: StravaActivitySummary = activity;
     if (activity.distance >= MIN_DISTANCE_M_FOR_DETAIL) {
       try {
         const detail = await getActivity(activity.id, tokens, async (newTokens) => {
@@ -161,7 +184,7 @@ async function runSyncChunk(ctx: any, args: SyncArgs) {
             expiresAt: encoded.expiresAt,
           });
         });
-        bestEfforts = detail.data.best_efforts;
+        effective = detail.data;
         await sleep(DETAIL_FETCH_DELAY_MS);
       } catch (e: any) {
         console.warn(
@@ -169,7 +192,7 @@ async function runSyncChunk(ctx: any, args: SyncArgs) {
         );
       }
     }
-    await ingestOneActivity(ctx, profileId, activity, raceCandidates, bestEfforts);
+    await ingestOneActivity(ctx, profileId, effective, raceCandidates);
   }
 
   // 7) Actualizar progreso
@@ -220,7 +243,6 @@ async function ingestOneActivity(
   profileId: string,
   activity: StravaActivitySummary,
   raceCandidates: RaceMatchCandidate[],
-  bestEfforts?: StravaActivitySummary["best_efforts"],
 ) {
   // Mapear a nuestro formato normalizado
   const startedAt = new Date(activity.start_date_local).getTime();
@@ -278,7 +300,10 @@ async function ingestOneActivity(
       source: "oauth",
       providerActivityId: normalized.providerActivityId,
       type: classifiedType,
-      name: normalized.name,
+      // Strava puede devolver null en strings (name, description, sport_type);
+      // los validators v.optional(v.string()) NO aceptan null, hay que
+      // normalizar a undefined.
+      name: normalized.name ?? undefined,
       startedAt: normalized.startedAt,
       durationSec: normalized.durationSec,
       distanceM: normalized.distanceM,
@@ -287,20 +312,71 @@ async function ingestOneActivity(
       maxHeartRate: normalized.maxHeartRate,
       avgCadence: normalized.avgCadence,
       elevationGainM: normalized.elevationGainM,
-      description: normalized.description,
+      description: normalized.description ?? undefined,
       matchedRaceId: matchedRaceId as any,
       isPrivate: normalized.isPrivate,
       rawPayload: JSON.stringify(activity),
-      stravaSportType: activity.sport_type ?? activity.type,
-      // Detalle (solo presente en getActivity, no en el listado)
+      stravaSportType: activity.sport_type ?? activity.type ?? undefined,
+      // Detalle (solo presente en getActivity, no en el listado).
+      // Filtramos los splits a solo los campos que declaramos en el
+      // schema — Strava devuelve más (average_grade_adjusted_speed,
+      // pace_zone, start_index, etc.) y el validator de Convex es
+      // estricto, rechaza el objeto entero si hay extras.
       mapPolyline: activity.map?.summary_polyline ?? undefined,
       gearId: activity.gear?.id ?? activity.gear_id ?? undefined,
       gearName: activity.gear?.name ?? undefined,
       gearDistanceM: activity.gear?.distance ?? undefined,
       deviceName: activity.device_name ?? undefined,
-      splitsMetric: activity.splits_metric ?? undefined,
+      splitsMetric: activity.splits_metric?.map((s: any) => ({
+        split: s.split,
+        distance: s.distance,
+        elapsed_time: s.elapsed_time,
+        moving_time: s.moving_time,
+        elevation_difference: s.elevation_difference,
+        average_speed: s.average_speed,
+        average_heartrate: s.average_heartrate,
+        average_cadence: s.average_cadence,
+      })),
       locationCity: activity.location_city ?? undefined,
       locationCountry: activity.location_country ?? undefined,
+      // -----------------------------------------------------------------
+      // Campos extra (2026-09-08) — engagement, esfuerzo, weather, laps, etc.
+      // normalizado a undefined si Strava devuelve null (los validators
+      // de Convex con v.optional(v.number()) NO aceptan null literal).
+      // -----------------------------------------------------------------
+      kudosCount: activity.kudos_count ?? undefined,
+      commentCount: activity.comment_count ?? undefined,
+      achievementCount: activity.achievement_count ?? undefined,
+      athleteCount: activity.athlete_count ?? undefined,
+      photoCount: activity.photo_count ?? undefined,
+      calories: activity.calories ?? undefined,
+      workoutType: activity.workout_type ?? undefined,
+      perceivedExertion: activity.perceived_exertion ?? undefined,
+      sufferScore: activity.suffer_score ?? undefined,
+      hasPower: activity.device_watts ?? activity.has_power ?? undefined,
+      averageWatts: activity.average_watts ?? undefined,
+      maxWatts: activity.max_watts ?? undefined,
+      weightedAverageWatts: activity.weighted_average_watts ?? undefined,
+      maxCadence: activity.max_cadence ?? undefined,
+      utcOffsetSeconds: activity.utc_offset ?? undefined,
+      externalId: activity.external_id ?? undefined,
+      averageGradeAdjustedSpeed: activity.average_grade_adjusted_speed ?? undefined,
+      gradeAdjustedDistance: activity.grade_adjusted_distance ?? undefined,
+      embedToken: activity.embed_token ?? undefined,
+      // Weather (si está disponible)
+      averageTemp: activity.average_temp ?? undefined,
+      minTemp: activity.min_temp ?? undefined,
+      maxTemp: activity.max_temp ?? undefined,
+      feelsLikeTemp: activity.feels_like ?? undefined,
+      averageWindSpeed: activity.average_wind_speed ?? undefined,
+      precipitationIntensity: activity.precipitation_intensity ?? undefined,
+      weatherObservationTime: activity.weather_observation_time ?? undefined,
+      // Laps y segments (arrays, sin filtrar — el validator es v.any())
+      laps: activity.laps ?? undefined,
+      segmentEfforts: activity.segment_efforts ?? undefined,
+      // Detalle completo parseado (solo si es el detail, no el list)
+      rawStravaDetail:
+        activity.map || activity.splits_metric ? (activity as any) : undefined,
     },
   );
   const activityId = upserted.id;
@@ -326,8 +402,8 @@ async function ingestOneActivity(
   const prDistanceM = matchPRDistance(distanceM);
   const isUltra = prDistanceM !== null && prDistanceM >= 50000;
 
-  if (!isUltra && bestEfforts && bestEfforts.length > 0) {
-    for (const effort of bestEfforts) {
+  if (!isUltra && activity.best_efforts && activity.best_efforts.length > 0) {
+    for (const effort of activity.best_efforts) {
       const effortDistanceM = matchBestEffortName(effort.name);
       if (!effortDistanceM) continue;
       await ctx.runMutation(internal.stravaExport.checkAndUpdatePR, {

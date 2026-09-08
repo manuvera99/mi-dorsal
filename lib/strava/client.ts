@@ -405,6 +405,37 @@ export interface StravaActivitySummary {
   location_city?: string | null;
   location_state?: string | null;
   location_country?: string | null;
+  // -----------------------------------------------------------------
+  // Campos extra para reports (2026-09-08) — todos opcionales porque
+  // solo algunos están en la respuesta de detalle, y la disponibilidad
+  // varía (p.ej. weather solo en actividades recientes). Los counts
+  // (kudos/comment/achievement/athlete/photo) ya están arriba.
+  // -----------------------------------------------------------------
+  calories?: number;
+  workout_type?: number; // 0=default, 1=race, 2=workout
+  perceived_exertion?: number;
+  suffer_score?: number;
+  device_watts?: boolean; // deviceWatts
+  has_power?: boolean;
+  average_watts?: number;
+  max_watts?: number;
+  weighted_average_watts?: number;
+  max_cadence?: number;
+  utc_offset?: number;
+  average_grade_adjusted_speed?: number;
+  grade_adjusted_distance?: number;
+  embed_token?: string;
+  // Weather
+  average_temp?: number;
+  min_temp?: number;
+  max_temp?: number;
+  feels_like?: number;
+  average_wind_speed?: number;
+  precipitation_intensity?: number;
+  weather_observation_time?: string;
+  // Arrays
+  laps?: unknown[];
+  segment_efforts?: unknown[];
 }
 
 export interface StravaActivitiesResponse {

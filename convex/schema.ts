@@ -805,6 +805,52 @@ export default defineSchema({
     /** Ciudad/estado/país de la actividad (si Strava los tiene). */
     locationCity: v.optional(v.string()),
     locationCountry: v.optional(v.string()),
+    // -----------------------------------------------------------------
+    // Campos extra de Strava para reports (añadidos 2026-09-08)
+    // -----------------------------------------------------------------
+    // Engagement / social
+    kudosCount: v.optional(v.number()),
+    commentCount: v.optional(v.number()),
+    achievementCount: v.optional(v.number()),
+    athleteCount: v.optional(v.number()),
+    photoCount: v.optional(v.number()),
+    // Esfuerzo / training load
+    calories: v.optional(v.number()),
+    workoutType: v.optional(v.number()), // 0=default, 1=race, 2=long_run, 3=interval
+    perceivedExertion: v.optional(v.number()),
+    sufferScore: v.optional(v.number()),
+    // Potencia (cycling o running con Stryd/PowerPod)
+    hasPower: v.optional(v.boolean()),
+    averageWatts: v.optional(v.number()),
+    maxWatts: v.optional(v.number()),
+    weightedAverageWatts: v.optional(v.number()),
+    // Cadencia
+    maxCadence: v.optional(v.number()),
+    // Identificadores y extras de Strava
+    utcOffsetSeconds: v.optional(v.number()),
+    externalId: v.optional(v.string()),
+    averageGradeAdjustedSpeed: v.optional(v.number()),
+    gradeAdjustedDistance: v.optional(v.number()),
+    embedToken: v.optional(v.string()),
+    // Weather (si Strava lo registró; recientes suelen tenerlo)
+    averageTemp: v.optional(v.number()),
+    minTemp: v.optional(v.number()),
+    maxTemp: v.optional(v.number()),
+    feelsLikeTemp: v.optional(v.number()),
+    averageWindSpeed: v.optional(v.number()),
+    precipitationIntensity: v.optional(v.number()),
+    weatherObservationTime: v.optional(v.string()),
+    // Laps (vueltas/intervalos). v.any() porque el shape exacto varía
+    // según el tipo de actividad y no queremos fallar por un campo
+    // extra. Para reports futuros se puede refinar a v.object.
+    laps: v.optional(v.array(v.any())),
+    // Segment efforts: cada segmento que cruzó la actividad con su
+    // tiempo, rank, etc. También v.any() por la misma razón.
+    segmentEfforts: v.optional(v.array(v.any())),
+    // Detalle crudo completo de Strava (parseado, no stringified).
+    // Acceso por reports ad-hoc sin tener que volver a pedir a Strava.
+    // v.any() evita que un campo nuevo de Strava rompa el ingest.
+    rawStravaDetail: v.optional(v.any()),
     // Tipo de deporte original de Strava (Run, TrailRun, Ride, Padel, Hike,
     // WeightTraining, etc.) — SIN normalizar. `type` (arriba) es NUESTRA
     // clasificación de intensidad de carrera (race/tempo/easy/...), pero

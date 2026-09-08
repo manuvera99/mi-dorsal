@@ -791,7 +791,6 @@ export default defineSchema({
     matchedRaceId: v.optional(v.id("races")),
     isOfficialResult: v.optional(v.boolean()),
     isPrivate: v.optional(v.boolean()),
-    rawPayload: v.optional(v.string()),
     // ---------------------------------------------------------------------
     // Datos extraídos del detalle de Strava (getActivity), no del listado.
     // Todos opcionales: las actividades ingeridas por export ZIP o antes
@@ -915,7 +914,7 @@ export default defineSchema({
     // clasificación de intensidad de carrera (race/tempo/easy/...), pero
     // Strava también ingiere ciclismo, pádel, esquí, pesas, etc. bajo el
     // mismo endpoint. Sin este campo no hay forma barata de excluir "no es
-    // running" de queries de feed/stats — solo parseando rawPayload cada vez.
+    // running" de queries de feed/stats.
     // Opcional porque las actividades ingeridas ANTES de este campo (2026-09-07)
     // no lo tienen; para esas, el fallback es asumir "Run" (ya pasaron por
     // classifyActivity, que asume Run/Unknown si no reconoce el tipo).

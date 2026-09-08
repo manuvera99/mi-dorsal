@@ -317,7 +317,6 @@ async function ingestOneActivity(
       description: normalized.description ?? undefined,
       matchedRaceId: matchedRaceId as any,
       isPrivate: normalized.isPrivate,
-      rawPayload: JSON.stringify(activity),
       stravaSportType: activity.sport_type ?? activity.type ?? undefined,
       // Detalle (solo presente en getActivity, no en el listado).
       // Filtramos los splits a solo los campos que declaramos en el
@@ -340,7 +339,7 @@ async function ingestOneActivity(
           average_heartrate: s.average_heartrate,
           average_cadence: s.average_cadence,
         }));
-        return detectIntervalsFromSplits(mapped);
+        return mapped;
       })(),
       detectedIntervals: (() => {
         const mapped = activity.splits_metric?.map((s: any) => ({
@@ -353,7 +352,25 @@ async function ingestOneActivity(
           average_heartrate: s.average_heartrate,
           average_cadence: s.average_cadence,
         }));
-        return detectIntervalsFromSplits(mapped);
+        const laps = activity.laps?.map((l: any) => ({
+          id: l.id,
+          name: l.name,
+          elapsed_time: l.elapsed_time,
+          moving_time: l.moving_time,
+          distance: l.distance,
+          average_speed: l.average_speed,
+          average_heartrate: l.average_heartrate,
+          max_heartrate: l.max_heartrate,
+          lap_index: l.lap_index,
+          start_index: l.start_index,
+        }));
+        return detectIntervalsFromSplits({
+          splits: mapped,
+          laps,
+          totalElevationGainM: activity.total_elevation_gain,
+          activityName: activity.name,
+          sportType: activity.sport_type,
+        });
       })(),
       locationCity: activity.location_city ?? undefined,
       locationCountry: activity.location_country ?? undefined,
@@ -392,9 +409,22 @@ async function ingestOneActivity(
       // Laps y segments (arrays, sin filtrar — el validator es v.any())
       laps: activity.laps ?? undefined,
       segmentEfforts: activity.segment_efforts ?? undefined,
-      // Detalle completo parseado (solo si es el detail, no el list)
-      rawStravaDetail:
-        activity.map || activity.splits_metric ? (activity as any) : undefined,
+      // rawStravaDetail truncado al mínimo necesario:
+      //   - start_latlng / end_latlng → loop distance (detect-intervals pista)
+      //   - best_efforts → contexto del PR en su actividad fuente
+      // El resto del detail (map, splits_metric, photos, description, etc.)
+      // ya está extraído a campos top-level del schema, así que duplicarlo
+      // aquí solo engorda el documento (~10-15 KB por actividad) sin uso.
+      // Si en el futuro se necesita un campo nuevo, añadirlo a la lista
+      // explícita para mantener la lista corta y consciente.
+      rawStravaDetail: (() => {
+        if (!activity.map && !activity.splits_metric) return undefined;
+        return {
+          start_latlng: activity.start_latlng ?? null,
+          end_latlng: activity.end_latlng ?? null,
+          best_efforts: (activity as any).best_efforts ?? null,
+        };
+      })(),
     },
   );
   const activityId = upserted.id;

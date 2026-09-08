@@ -176,7 +176,6 @@ export const handleEvent = action({
         description: normalized.description ?? undefined,
         matchedRaceId: matchedRaceId as any,
         isPrivate: normalized.isPrivate,
-        rawPayload: JSON.stringify(activity),
         stravaSportType: activity.sport_type ?? activity.type ?? undefined,
         // Detalle (solo presente en getActivity, no en el listado).
         // Filtramos los splits a los campos del schema (Convex rechaza
@@ -210,7 +209,25 @@ export const handleEvent = action({
             average_heartrate: s.average_heartrate,
             average_cadence: s.average_cadence,
           }));
-          return detectIntervalsFromSplits(mapped);
+          const laps = activity.laps?.map((l: any) => ({
+            id: l.id,
+            name: l.name,
+            elapsed_time: l.elapsed_time,
+            moving_time: l.moving_time,
+            distance: l.distance,
+            average_speed: l.average_speed,
+            average_heartrate: l.average_heartrate,
+            max_heartrate: l.max_heartrate,
+            lap_index: l.lap_index,
+            start_index: l.start_index,
+          }));
+          return detectIntervalsFromSplits({
+            splits: mapped,
+            laps,
+            totalElevationGainM: activity.total_elevation_gain,
+            activityName: activity.name,
+            sportType: activity.sport_type,
+          });
         })(),
         locationCity: activity.location_city ?? undefined,
         locationCountry: activity.location_country ?? undefined,
@@ -246,7 +263,15 @@ export const handleEvent = action({
         weatherObservationTime: activity.weather_observation_time ?? undefined,
         laps: activity.laps ?? undefined,
         segmentEfforts: activity.segment_efforts ?? undefined,
-        rawStravaDetail: activity as any,
+        // rawStravaDetail truncado al mínimo (ver stravaInitialSync.ts).
+        rawStravaDetail: (() => {
+          if (!activity.map && !activity.splits_metric) return undefined;
+          return {
+            start_latlng: activity.start_latlng ?? null,
+            end_latlng: activity.end_latlng ?? null,
+            best_efforts: (activity as any).best_efforts ?? null,
+          };
+        })(),
       },
     );
     const activityId = upserted.id;

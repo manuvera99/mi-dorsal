@@ -60,7 +60,6 @@ export const upsertActivityInternal = internalMutation({
     matchedRaceId: v.optional(v.id("races")),
     isOfficialResult: v.optional(v.boolean()),
     isPrivate: v.optional(v.boolean()),
-    rawPayload: v.optional(v.string()),
     stravaSportType: v.optional(v.string()),
     // Detalle de Strava (opcional, solo si llega el getActivity)
     mapPolyline: v.optional(v.string()),

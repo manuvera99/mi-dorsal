@@ -197,7 +197,6 @@ async function runIngest(ctx: any, args: IngestArgs) {
       description: activity.description,
       matchedRaceId: matchedRaceId as any,
       isPrivate: activity.isPrivate,
-      rawPayload: JSON.stringify(activity.rawPayload ?? {}),
       stravaSportType: activity.stravaType,
     });
 

@@ -28,7 +28,7 @@ export const resetCoachUsage = internalAction({
     // es OK — solo afecta al path de la llamada, no al runtime. Ver
     // AGENTS.md §15.3 para más detalle.
     const result = await ctx.runMutation(
-      (internal as any).coachAnalysisHelpers.resetAllCoachUsage,
+      ((internal as any).coachAnalysisHelpers as any).resetAllCoachUsage,
       {},
     );
     console.log(

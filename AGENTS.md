@@ -899,6 +899,27 @@ npx convex data update profiles/<id> --patch '{"role":"test"}'
 
 O desde el dashboard web: https://dashboard.convex.dev → proyecto `mi-dorsal` → data → profiles → fila del user → edit role a `"test"`.
 
+### 17.1.1 — Crear un usuario de prueba NUEVO en Clerk (free, sin bypass)
+
+Para probar la UI como un free user real (no como admin), el flujo es:
+
+1. **Signup en Clerk**: ir a `https://mi-dorsal.com/sign-up` y registrarse con el email del test user (ej. `admin@mi-dorsal.com`). Clerk crea el user y manda el magic link.
+2. **Onboarding**: abrir el email, hacer click en el magic link, completar el onboarding básico. Esto crea la fila en `profiles` automáticamente.
+3. **Enrichment con PRs y myRaces**: ejecutar
+   ```bash
+   # En dev (default):
+   npx convex run devOnly/enrichTestUserByEmail:enrichTestUserByEmail \
+     '{"email":"admin@mi-dorsal.com"}'
+   # En producción:
+   npx convex run --prod devOnly/enrichTestUserByEmail:enrichTestUserByEmail \
+     '{"email":"admin@mi-dorsal.com"}'
+   ```
+   El script mete 3 PRs (5K 22:30, 10K 47:15, media 1:44:50) y 2 myRaces (1 done con resultado + 1 planned) en el profile del user. NO modifica el role.
+
+El script es **idempotente**: si lo ejecutas 2 veces, solo reemplaza los PRs/myRaces del seed, no duplica ni machaca otros que el user haya creado a mano.
+
+**Diferencia con `devOnly/seedTestUser.ts`**: el seed crea un profile con `clerkUserId` fake (no tiene cuenta en Clerk, no puede hacer login). El enrichment opera sobre un user real de Clerk que acaba de pasar por signup + onboarding.
+
 ### 17.2 — Rate limit del entrenador IA
 
 Para evitar que alguien abuse de la action `coachAnalysis` (cada llamada cuesta ~€0.0007 con gpt-4o-mini, gratis con MiniMax M3, pero el LLM tiene límites de rate y no queremos saturarlo):

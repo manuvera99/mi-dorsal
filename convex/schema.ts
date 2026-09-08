@@ -955,4 +955,40 @@ export default defineSchema({
     .index("by_type", ["type"])
     .index("by_user", ["userId"])
     .index("by_race", ["raceId"]),
+
+  // ---------------------------------------------------------------------------
+  // 19. CLUB_SUGGESTIONS — clubes que un usuario no encontró en la lista RFEA
+  // ---------------------------------------------------------------------------
+  // Cuando un usuario busca su club en el selector de /perfil y no lo
+  // encuentra, puede reportarlo. Llega al admin para que (a) lo añada al
+  // próximo ingest de la RFEA, o (b) lo descarte si no procede (duplicado,
+  // no es un club de atletismo, etc.).
+  //
+  // status:
+  //   - new: pendiente de revisar por el admin
+  //   - added: ya se añadió al catálogo (en el próximo re-ingest)
+  //   - duplicate: era un duplicado de uno ya existente
+  //   - rejected: no procede (no es club de atletismo, etc.)
+  // ---------------------------------------------------------------------------
+  clubSuggestions: defineTable({
+    userId: v.id("profiles"),
+    clubName: v.string(),
+    ccaa: v.optional(v.string()),
+    note: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
+    status: v.union(
+      v.literal("new"),
+      v.literal("added"),
+      v.literal("duplicate"),
+      v.literal("rejected"),
+    ),
+    adminNote: v.optional(v.string()),
+    reviewedBy: v.optional(v.id("profiles")),
+    reviewedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_status_created", ["status", "createdAt"])
+    .index("by_user", ["userId"])
+    .index("by_club_name", ["clubName"]),
 });

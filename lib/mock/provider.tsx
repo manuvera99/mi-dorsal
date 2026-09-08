@@ -191,4 +191,21 @@ export const mockApi = {
   personalRecords: {
     listMine: async () => MOCK_PRS,
   },
+  clubSuggestions: {
+    /**
+     * Mock de `api.clubSuggestions.submit` (Convex). Acepta la misma forma
+     * de payload y devuelve un id falso. En dev no se persiste: solo sirve
+     * para que el flujo de UI (dialog → loading → confirmación) funcione
+     * sin necesidad de tener Convex configurado.
+     */
+    submit: async (input: {
+      clubName: string;
+      ccaa?: string;
+      note?: string;
+      contactEmail?: string;
+    }) => {
+      console.info("[mock] clubSuggestions.submit", input);
+      return { id: `mock_suggestion_${Date.now()}` as any };
+    },
+  },
 };

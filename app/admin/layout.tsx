@@ -20,6 +20,7 @@ import {
   Copy,
   Inbox,
   MessageCircle,
+  Building2,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -31,6 +32,7 @@ const navItems = [
   { href: "/admin/races", label: "Carreras", icon: Trophy },
   { href: "/admin/race-suggestions", label: "Sugerencias", icon: Inbox },
   { href: "/admin/feedback", label: "Feedback", icon: MessageCircle },
+  { href: "/admin/club-suggestions", label: "Clubes sugeridos", icon: Building2 },
   { href: "/admin/duplicates", label: "Duplicados", icon: Copy },
   { href: "/admin/blog", label: "Blog", icon: BookOpen },
   { href: "/admin/newsletter", label: "Newsletter", icon: Mail },

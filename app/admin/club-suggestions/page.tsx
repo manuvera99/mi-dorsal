@@ -292,9 +292,43 @@ function RealClubSuggestions() {
                 )}
               </div>
 
-              {/* Cambiar estado */}
+              {/* Acción principal: Aceptar y añadir al catálogo */}
+              {selected.status === "new" && (
+                <button
+                  type="button"
+                  onClick={() => handleStatusChange("added")}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-md flex items-center justify-center gap-2 transition-colors"
+                >
+                  <CheckCircle2 className="h-5 w-5" />
+                  Aceptar y añadir al catálogo
+                </button>
+              )}
+
+              {selected.status === "added" && (
+                <div className="bg-green-50 border border-green-200 rounded-md p-3 flex items-start gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-green-900 text-sm">
+                      Ya está en el catálogo
+                    </div>
+                    <p className="text-xs text-green-700 mt-0.5">
+                      El club aparece en el selector de /perfil de los usuarios.
+                    </p>
+                    <a
+                      href="/admin/clubs"
+                      className="text-xs text-green-700 hover:text-green-900 underline mt-1 inline-flex items-center gap-1"
+                    >
+                      Ver catálogo de clubs manuales →
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Cambiar estado (acciones secundarias) */}
               <div>
-                <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Estado</div>
+                <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">
+                  Cambiar estado
+                </div>
                 <div className="flex flex-wrap gap-1.5">
                   {(["new", "added", "duplicate", "rejected"] as const).map((st) => {
                     const isCurrent = selected.status === st;

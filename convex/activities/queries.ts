@@ -89,7 +89,22 @@ export const getMyActivityStats = query({
   args: {},
   handler: async (ctx) => {
     const user = await getOptionalUser(ctx);
-    if (!user) return null;
+    // Defensa: si Clerk está logueado pero el profile aún no se ha
+    // creado en Convex (caso edge del primer login antes del onboarding),
+    // devolvemos un objeto vacío en vez de null. Los componentes
+    // cliente tratan null y "datos vacíos" distinto: null = cargando,
+    // objeto = datos reales (incluso si son ceros).
+    if (!user) {
+      return {
+        totalActivities: 0,
+        totalDistanceKm: 0,
+        weeklyVolumeMedianKm: 0,
+        consistencyPct: 0,
+        avgCadenceSpm: null,
+        byType: {} as Record<string, number>,
+        byProvider: {} as Record<string, number>,
+      };
+    }
 
     const allRaw = await ctx.db
       .query("activities")
@@ -182,7 +197,12 @@ export const getMyRunnerType = query({
   args: {},
   handler: async (ctx): Promise<RunnerTypeResult | null> => {
     const user = await getOptionalUser(ctx);
-    if (!user) return null;
+    // Defensa: si no hay profile aún, devolvemos un RunnerTypeResult
+    // con todas las actividades a 0 (no null). Ver getMyActivityStats
+    // para la misma justificación.
+    if (!user) {
+      return computeRunnerType([]);
+    }
 
     const allRaw = await ctx.db
       .query("activities")

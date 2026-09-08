@@ -41,6 +41,31 @@ function MockPerfil() {
 function RealPerfil() {
   const convexProfile = useQuery(api.users.getMyProfile, {});
   const convexPRs = useQuery(api.personalRecords.listMine, {});
+  const upsertProfile = useMutation(api.users.upsertMyProfile);
+
+  // Fix de raíz (8 sep 2026): si Clerk está logueado pero el profile aún
+  // no existe en Convex (caso edge del primer login antes de cualquier
+  // acción que dispare upsertMyProfile), lo creamos automáticamente con
+  // los datos vacíos. Evita que /perfil explote con "Cannot read
+  // properties of null" en las queries de actividades que dependen del
+  // profile.
+  //
+  // useEffect + skip cuando ya hay profile. useMutation es seguro de
+  // llamar: la mutation es idempotente (si ya existe, hace patch).
+  useEffect(() => {
+    if (convexProfile === null) {
+      // null = no hay profile (NO undefined, que es cargando).
+      // Llamamos sin args — Clerk ya inyectó la identity en el JWT, así
+      // que la mutation sabe quién es el user aunque no le pasemos nada.
+      upsertProfile({}).catch((e) => {
+        // Si falla (ej. Clerk no inyectó la identity aún), no bloqueamos
+        // la UI: mostramos el error en consola y dejamos que el user
+        // vuelva a intentar al interactuar (ej. abrir el form de editar).
+        console.error("[RealPerfil] upsertProfile auto falló:", e);
+      });
+    }
+  }, [convexProfile, upsertProfile]);
+
   return <PerfilContent profile={convexProfile as any} prs={(convexPRs as any) ?? []} />;
 }
 

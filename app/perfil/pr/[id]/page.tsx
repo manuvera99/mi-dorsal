@@ -21,6 +21,13 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default function PrDetailPage({ params }: { params: { id: string } }) {
-  return <PrDetailClient prId={params.id} />;
+export default async function PrDetailPage({
+  params,
+}: {
+  // Next 15: `params` es ahora una Promise. Mismo patrón que
+  // app/carreras/[slug]/page.tsx.
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  return <PrDetailClient prId={id} />;
 }

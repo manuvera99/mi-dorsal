@@ -70,14 +70,21 @@ export function ReportMissingClubDialog({
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
-  // Cierra con Escape (mientras no esté enviando).
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !sending) onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, sending]);
+  // Sin listener propio de Escape: el modal padre (EditProfileModal) ya
+  // captura Escape y cierra el árbol entero (incluido este dialog). Si
+  // ambos capturaban Escape, se cerraban los dos a la vez y daba la
+  // sensación de "se cierra sin hacer nada". El modal padre es la
+  // fuente única de verdad para el cierre por teclado.
+
+  // Handler centralizado para los botones de cierre (X y Cancelar). Lo
+  // logueamos para distinguir en consola entre "click en X", "click en
+  // Cancelar" y "submit del form".
+  const handleCloseClick = (source: "X" | "Cancelar") => {
+    if (sending) return; // no dejar cerrar mientras se está enviando
+    // eslint-disable-next-line no-console
+    console.info(`[report-missing-club] closed via ${source} button`);
+    onClose();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,7 +147,12 @@ export function ReportMissingClubDialog({
     // Backdrop SIN onClick: el dialog solo se cierra con X o Cancelar. Evita
     // que un click accidental cierre el dialog antes de que la mutation
     // termine, dando sensación de "se cierra sin hacer nada".
-    <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
+    // isolation: isolate crea un stacking context nuevo para que z-[100]
+    // sea relativo SOLO al document, no al modal padre (z-50 con backdrop).
+    <div
+      className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4"
+      style={{ isolation: "isolate" }}
+    >
       <div
         className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
         role="dialog"
@@ -150,7 +162,8 @@ export function ReportMissingClubDialog({
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Avisa al admin</h2>
           <button
-            onClick={onClose}
+            type="button"
+            onClick={() => handleCloseClick("X")}
             className="text-gray-400 hover:text-gray-600"
             aria-label="Cerrar"
             disabled={sending}
@@ -253,7 +266,7 @@ export function ReportMissingClubDialog({
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={() => handleCloseClick("Cancelar")}
                 className="btn-secondary flex-1"
                 disabled={sending}
               >

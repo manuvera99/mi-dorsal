@@ -259,7 +259,18 @@ export function ReportMissingClubDialog({
               >
                 Cancelar
               </button>
-              <button type="submit" className="btn-primary flex-1" disabled={sending}>
+              <button
+                type="submit"
+                className="btn-primary flex-1"
+                disabled={sending}
+                onClick={() => {
+                  // Diagnóstico: si el form submit no se triggerea por
+                  // algún motivo, este log confirma que el click sí
+                  // llegó al botón.
+                  // eslint-disable-next-line no-console
+                  console.info("[report-missing-club] submit button clicked");
+                }}
+              >
                 {sending ? (
                   <span className="flex items-center justify-center gap-1.5">
                     <Loader2 className="h-4 w-4 animate-spin" /> Enviando…

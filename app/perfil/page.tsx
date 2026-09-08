@@ -7,7 +7,6 @@ import { mockApi, isMockMode } from "@/lib/mock/provider";
 import { formatTime } from "@/lib/utils";
 import { User, Trophy, TrendingUp, Plus, Trash2 } from "lucide-react";
 import { ConnectionsSection } from "@/components/perfil/connections";
-import { PredictionsCard } from "@/components/perfil/predictions-card";
 import { RunnerTypeCard } from "@/components/perfil/runner-type-card";
 import { CoachAnalysisCard } from "@/components/perfil/coach-analysis-card";
 import { ActivityStatsCard } from "@/components/perfil/activity-stats";
@@ -121,22 +120,6 @@ function PerfilContent({ profile, prs }: { profile: any; prs: any[] }) {
         <PrsSectionReadOnly prs={bestPrsByDistance} />
       ) : (
         <PrsSection prs={bestPrsByDistance} />
-      )}
-
-      {/* Predicciones VDOT inline — solo si hay al menos 1 PR.
-          Es la "celebración" del momento 3 del onboarding: cuando el
-          usuario tiene su primer PR, esta card aparece con VDOT y
-          predicciones para 5K/10K/Media/Maratón. */}
-      {bestPrsByDistance.length > 0 && (
-        <div className="mb-6">
-          <PredictionsCard
-            prs={bestPrsByDistance.map((pr) => ({
-              distanceM: pr.distanceM,
-              distanceLabel: pr.distanceLabel,
-              timeSeconds: pr.timeSeconds,
-            }))}
-          />
-        </div>
       )}
 
       {/* Stats de actividad — se ocultan si 0 actividades (mostramos empty state en feed) */}

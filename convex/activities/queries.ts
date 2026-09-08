@@ -313,3 +313,23 @@ export const getActivitySplits = query({
     return a.splitsMetric ?? null;
   },
 });
+
+/**
+ * Devuelve la actividad completa de Strava para mostrar la página de
+ * detalle de un PR. Incluye polyline, splits, device, gear, location,
+ * desnivel y todos los stats que Strava ingirió.
+ *
+ * Devuelve `null` si la actividad no existe, no es del usuario, o si el
+ * PR no tiene `sourceActivityId` (PRs manuales / heredados).
+ */
+export const getActivityFull = query({
+  args: { id: v.id("activities") },
+  handler: async (ctx, { id }) => {
+    const user = await getOptionalUser(ctx);
+    if (!user) return null;
+    const a = await ctx.db.get(id);
+    if (!a) return null;
+    if (a.userId !== user._id) return null;
+    return a;
+  },
+});

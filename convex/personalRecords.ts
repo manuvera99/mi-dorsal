@@ -44,6 +44,47 @@ export const listMine = query({
 });
 
 /**
+ * Devuelve un PR concreto por su _id, validando que pertenece al usuario
+ * actual. Devuelve `null` si no existe o no es del usuario.
+ *
+ * Usado por la página de detalle `/perfil/pr/[id]`.
+ */
+export const getById = query({
+  args: { id: v.id("personalRecords") },
+  handler: async (ctx, { id }) => {
+    const user = await getOptionalUser(ctx);
+    if (!user) return null;
+    const pr = await ctx.db.get(id);
+    if (!pr) return null;
+    if (pr.userId !== user._id) return null;
+    return pr;
+  },
+});
+
+/**
+ * Historial completo de PRs del usuario en una distancia concreta, incluyendo
+ * los históricos (`isCurrent = false`). Ordenado por `timeSeconds` asc — el
+ * más rápido primero, que es el PR actual.
+ *
+ * Usado por la página de detalle de PR para mostrar la evolución: "este es
+ * tu 5K actual, antes tenías 24:00, antes 25:30…".
+ */
+export const getMyDistanceHistory = query({
+  args: { distanceM: v.number() },
+  handler: async (ctx, { distanceM }) => {
+    const user = await getOptionalUser(ctx);
+    if (!user) return [];
+    const all = await ctx.db
+      .query("personalRecords")
+      .withIndex("by_user_distance", (q) =>
+        q.eq("userId", user._id).eq("distanceM", distanceM),
+      )
+      .collect();
+    return all.sort((a, b) => a.timeSeconds - b.timeSeconds);
+  },
+});
+
+/**
  * Upsert de un PR. Marca el antiguo como `isCurrent=false` y el nuevo como true.
  *
  * Dispara automáticamente el trigger de onboarding `users.markFirstPrAdded`

@@ -8,15 +8,20 @@
  * Si no hay actividad fuente (PR manual, o ingerido antes de este cambio),
  * se renderiza solo la card compacta con tiempo + distancia + fecha.
  *
+ * Toda la card es un link a /perfil/pr/[id] (vista de detalle). El botón
+ * de eliminar (que viene en `onRemove`) se renderiza ENCIMA del link con
+ * z-index y stopPropagation para no navegar al hacer clic en él.
+ *
  * Mantiene la misma estructura visual que la card simple del perfil para
  * que el grid se vea coherente.
  */
 
+import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { PolylineMapWrapper } from "./polyline-map-wrapper";
 import { formatTime, formatDate } from "@/lib/utils";
-import { Trophy, ExternalLink, Trash2 } from "lucide-react";
+import { Trophy, Trash2 } from "lucide-react";
 
 interface PrCardWithMapProps {
   pr: {
@@ -58,10 +63,14 @@ export function PrCardWithMap({ pr, onRemove }: PrCardWithMapProps) {
     pr.source === "strava" || pr.source === "strava-export" || pr.source === "race_result";
 
   return (
-    <div className="relative border border-gray-200 rounded-md p-3 group bg-white">
+    <div className="relative border border-gray-200 rounded-md p-3 group bg-white hover:border-runner-primary hover:shadow-sm transition-all">
       {onRemove && (
         <button
-          onClick={() => onRemove(pr._id, pr.distanceLabel)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onRemove(pr._id, pr.distanceLabel);
+          }}
           className="absolute top-2 right-2 z-10 text-gray-300 hover:text-red-600 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
           aria-label={`Eliminar marca de ${pr.distanceLabel}`}
         >
@@ -69,56 +78,65 @@ export function PrCardWithMap({ pr, onRemove }: PrCardWithMapProps) {
         </button>
       )}
 
-      <div className="flex items-start justify-between gap-2 mb-1">
-        <div className="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1">
-          <Trophy className="h-3 w-3 text-yellow-500" />
-          {pr.distanceLabel}
-        </div>
-        {fromStrava && pr.sourceActivityId && (
-          <a
-            href={`https://www.strava.com/activities/${pr.sourceActivityId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[10px] text-orange-600 hover:underline flex items-center gap-0.5"
-            title="Ver en Strava"
-          >
-            <StravaIcon className="h-2.5 w-2.5" />
-            Strava
-            <ExternalLink className="h-2.5 w-2.5" />
-          </a>
-        )}
-      </div>
-
-      <div className="text-2xl font-bold text-runner-primary font-mono">
-        {formatTime(pr.timeSeconds)}
-      </div>
-
-      {pr.achievedAt && (
-        <div className="text-xs text-gray-500 mt-0.5 mb-2">
-          {formatDate(pr.achievedAt)}
-        </div>
-      )}
-
-      {/* Mini-mapa: solo si la query devolvió polyline. activityMap puede
-          ser undefined mientras carga; en ese caso no renderizamos nada
-          (no fallback feo de "cargando…"). */}
-      {activityMap?.mapPolyline && (
-        <div className="mt-2 -mx-1">
-          <PolylineMapWrapper
-            polyline={activityMap.mapPolyline}
-            height={120}
-            alt={`Mapa del recorrido de tu ${pr.distanceLabel} PR`}
-          />
-          {activityMap.locationCity && (
-            <div className="text-[10px] text-stone-400 mt-1 text-center">
-              📍 {activityMap.locationCity}
-              {activityMap.locationCountry
-                ? `, ${activityMap.locationCountry}`
-                : ""}
-            </div>
+      {/* Toda la card es un link a la página de detalle. El botón de
+          eliminar usa stopPropagation para no disparar la navegación. */}
+      <Link
+        href={`/perfil/pr/${pr._id}`}
+        className="block"
+        aria-label={`Ver detalle de tu ${pr.distanceLabel} en ${formatTime(pr.timeSeconds)}`}
+      >
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <div className="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1">
+            <Trophy className="h-3 w-3 text-yellow-500" />
+            {pr.distanceLabel}
+          </div>
+          {fromStrava && pr.sourceActivityId && (
+            <span
+              className="text-[10px] text-orange-600 flex items-center gap-0.5"
+              title="Vinculado a Strava"
+            >
+              <StravaIcon className="h-2.5 w-2.5" />
+              Strava
+            </span>
           )}
         </div>
-      )}
+
+        <div className="text-2xl font-bold text-runner-primary font-mono">
+          {formatTime(pr.timeSeconds)}
+        </div>
+
+        {pr.achievedAt && (
+          <div className="text-xs text-gray-500 mt-0.5 mb-2">
+            {formatDate(pr.achievedAt)}
+          </div>
+        )}
+
+        {/* Mini-mapa: solo si la query devolvió polyline. activityMap puede
+            ser undefined mientras carga; en ese caso no renderizamos nada
+            (no fallback feo de "cargando…"). */}
+        {activityMap?.mapPolyline && (
+          <div className="mt-2 -mx-1">
+            <PolylineMapWrapper
+              polyline={activityMap.mapPolyline}
+              height={120}
+              alt={`Mapa del recorrido de tu ${pr.distanceLabel} PR`}
+            />
+            {activityMap.locationCity && (
+              <div className="text-[10px] text-stone-400 mt-1 text-center">
+                📍 {activityMap.locationCity}
+                {activityMap.locationCountry
+                  ? `, ${activityMap.locationCountry}`
+                  : ""}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Hint visual de que es clickable */}
+        <div className="text-[10px] text-runner-primary text-right mt-2 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+          Ver detalle →
+        </div>
+      </Link>
     </div>
   );
 }

@@ -9,7 +9,7 @@
 // por km, el dispositivo y las zapatillas.
 // =============================================================================
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { formatDuration, formatDistanceKm } from "@/lib/utils";
@@ -22,14 +22,16 @@ import {
   Activity as ActivityIcon,
   Zap,
   Heart,
-  Clock,
-  Filter,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Watch,
   Footprints,
   MapPin,
 } from "lucide-react";
+
+const PAGE_SIZE = 10;
 
 const TYPE_FILTERS = [
   { value: null as null, label: "Todas", icon: ActivityIcon },
@@ -73,15 +75,39 @@ function Trophy(props: { className?: string }) {
 
 export function ActivityFeed() {
   const [typeFilter, setTypeFilter] = useState<null | string>(null);
-  const [showAll, setShowAll] = useState(false);
+  const [page, setPage] = useState(0);
+  // `cursors[i]` = startedAt del ÚLTIMO item de la página i, que se usa como
+  // cursor (afterMs) para obtener la página i+1. La página 0 parte de
+  // `afterMs: undefined` (las más recientes primero, ya que el query ordena
+  // desc por startedAt). Cuando avanzamos a una nueva página y llegan los
+  // datos, guardamos su cursor aquí.
+  const [cursors, setCursors] = useState<number[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const activities = useQuery(
-    api.activities.queries.listMyActivities,
-    typeFilter
-      ? { limit: showAll ? 200 : 20, type: typeFilter as any }
-      : { limit: showAll ? 200 : 20 },
-  );
+
+  const afterMs = page === 0 ? undefined : cursors[page - 1];
+  const activities = useQuery(api.activities.queries.listMyActivities, {
+    limit: PAGE_SIZE,
+    type: (typeFilter ?? undefined) as any,
+    afterMs,
+  });
   const totalCount = useQuery(api.activities.queries.getMyActivityCount, {});
+
+  // Cuando llegan los datos de una página nueva, guardamos su cursor (último
+  // startedAt) para que "Atrás" pueda volver. Solo si el cursor para esa
+  // página aún no está registrado.
+  useEffect(() => {
+    if (!activities || activities.length === 0) return;
+    if (cursors.length < page + 1) {
+      const lastStartedAt = activities[activities.length - 1].startedAt;
+      setCursors((c) => [...c, lastStartedAt]);
+    }
+  }, [activities, page, cursors.length]);
+
+  // Reset paginación al cambiar el filtro
+  useEffect(() => {
+    setPage(0);
+    setCursors([]);
+  }, [typeFilter]);
 
   if (activities === undefined) {
     return <div className="h-32 bg-gray-100 rounded-lg animate-pulse" />;
@@ -289,14 +315,40 @@ export function ActivityFeed() {
         </div>
       )}
 
-      {activities.length >= 20 && !showAll && total > 20 && (
-        <button
-          onClick={() => setShowAll(true)}
-          className="mt-4 w-full text-sm text-runner-primary hover:underline"
-        >
-          Ver todas las {total.toLocaleString("es-ES")} actividades
-        </button>
-      )}
+      {(() => {
+        const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+        const hasPrev = page > 0;
+        // `hasNext` = true si la página actual viene llena (señal de que
+        // hay más) y aún no estamos en la última. Con la última página
+        // parcial (activities.length < PAGE_SIZE), no hay siguiente.
+        const hasNext = activities.length === PAGE_SIZE && page < totalPages - 1;
+        if (totalPages <= 1) return null;
+        return (
+          <div className="mt-4 flex items-center justify-between gap-2 border-t border-stone-100 pt-3">
+            <button
+              onClick={() => setPage((p) => p - 1)}
+              disabled={!hasPrev}
+              className="inline-flex items-center gap-1 text-sm font-medium text-runner-primary disabled:text-stone-300 disabled:cursor-not-allowed hover:underline"
+              aria-label="Página anterior"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Atrás
+            </button>
+            <span className="text-xs text-stone-500 font-mono">
+              Página {page + 1} de {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => p + 1)}
+              disabled={!hasNext}
+              className="inline-flex items-center gap-1 text-sm font-medium text-runner-primary disabled:text-stone-300 disabled:cursor-not-allowed hover:underline"
+              aria-label="Página siguiente"
+            >
+              Siguiente
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 }

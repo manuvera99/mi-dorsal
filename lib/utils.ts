@@ -27,6 +27,18 @@ export function formatDuration(sec: number | null | undefined): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+/**
+ * Formatea pace en segundos por kilómetro como "5:24 /km" (corredor popular).
+ * Acepta decimales (e.g. 312.5) y redondea al segundo. Si es inválido,
+ * devuelve "—".
+ */
+export function formatPace(secPerKm: number | null | undefined): string {
+  if (secPerKm == null || !Number.isFinite(secPerKm) || secPerKm <= 0) return "—";
+  const m = Math.floor(secPerKm / 60);
+  const s = Math.round(secPerKm % 60);
+  return `${m}:${String(s).padStart(2, "0")} /km`;
+}
+
 export function formatDistanceKm(m: number | null | undefined): string {
   if (m === null || m === undefined) return "—";
   if (m < 1000) return `${Math.round(m)} m`;

@@ -5,7 +5,19 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { mockApi, isMockMode } from "@/lib/mock/provider";
 import { formatTime } from "@/lib/utils";
-import { User, Trophy, TrendingUp, Plus, Trash2 } from "lucide-react";
+import { User, Trophy, TrendingUp, Plus, Trash2, RefreshCw } from "lucide-react";
+
+/** Tiempo relativo en español. Usado por el banner de auto-sync. */
+function timeAgo(ms: number): string {
+  const diff = Date.now() - ms;
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "menos de 1 min";
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h} h`;
+  const d = Math.floor(h / 24);
+  return `${d} día${d === 1 ? "" : "s"}`;
+}
 import { ConnectionsSection } from "@/components/perfil/connections";
 import { CoachAnalysisCard } from "@/components/perfil/coach-analysis-card";
 import { ActivityStatsCard } from "@/components/perfil/activity-stats";
@@ -14,6 +26,7 @@ import { PrFormModal } from "@/components/perfil/pr-form-modal";
 import { EditProfileModal, ageFromBirthDate } from "@/components/perfil/edit-profile-modal";
 import { PrCardWithMap } from "@/components/perfil/pr-card-with-map";
 import { GearCard } from "@/components/perfil/gear-card";
+import { useAutoSync } from "@/components/perfil/use-auto-sync";
 
 function MockPerfil() {
   const [profile, setProfile] = useState<any>(null);
@@ -40,6 +53,10 @@ function PerfilContent({ profile, prs }: { profile: any; prs: any[] }) {
   const [editing, setEditing] = useState(false);
   const age = ageFromBirthDate(profile?.birthDate);
 
+  // Auto-sync con Strava si la última sync tiene más de 6h.
+  // Banner discreto arriba del todo mientras corre.
+  const { isAutoSyncing, lastSyncedAt, connected } = useAutoSync();
+
   // Defensivo: si la query devolviera duplicados por la misma distancia
   // (legacy data, inconsistencia), nos quedamos con la mejor marca (menor
   // tiempo) por distancia. El backend ya filtra `isCurrent: true`, pero
@@ -59,6 +76,28 @@ function PerfilContent({ profile, prs }: { profile: any; prs: any[] }) {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
+      {/* Banner de auto-sync. Solo aparece cuando el hook está activamente
+          sincronizando (la última sync es >6h y acabamos de abrir la app).
+          No bloquea: el usuario puede seguir interactuando mientras corre. */}
+      {isAutoSyncing && connected && (
+        <div
+          className="mb-4 flex items-center gap-2 px-3 py-2 rounded-md bg-sky-50 border border-sky-200 text-sky-800 text-sm"
+          role="status"
+          aria-live="polite"
+        >
+          <RefreshCw className="h-4 w-4 animate-spin flex-shrink-0" />
+          <span>
+            Sincronizando con Strava para tener tus datos al día…
+          </span>
+          {lastSyncedAt && (
+            <span className="text-xs text-sky-600 ml-auto">
+              última sync: hace{" "}
+              {timeAgo(lastSyncedAt)}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div className="card mb-6">
         <div className="flex items-start gap-4">

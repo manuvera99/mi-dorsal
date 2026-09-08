@@ -16,8 +16,10 @@ import { StravaIcon } from "./icons";
 export function StravaOauthConnect() {
   const status = useQuery(api.stravaOauth.getMyStravaOauthStatus, {});
   const triggerSync = useMutation(api.stravaOauth.triggerSyncNow);
+  const triggerFullSync = useMutation(api.stravaOauth.triggerFullSync);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isFullSyncing, setIsFullSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (status === undefined) {
@@ -69,6 +71,26 @@ export function StravaOauthConnect() {
     }
   };
 
+  const handleFullSync = async () => {
+    if (
+      !confirm(
+        "¿Resincronizar TODO desde Strava?\n\nEsto re-fetcha todas tus actividades (puede tardar 1-2 minutos). Úsalo si acabas de conectar otro dispositivo, si ves datos faltantes (mapa, splits) en actividades antiguas, o si la última sync se quedó a medias.\n\nLas actividades no se duplican: si ya existen, se actualizan con el detalle más reciente.",
+      )
+    ) {
+      return;
+    }
+    setIsFullSyncing(true);
+    setError(null);
+    try {
+      await triggerFullSync({});
+      setError(null);
+    } catch (e: any) {
+      setError(e?.message ?? "Error al resincronizar");
+    } finally {
+      setIsFullSyncing(false);
+    }
+  };
+
   if (!status.connected) {
     return (
       <div>
@@ -105,11 +127,12 @@ export function StravaOauthConnect() {
         )}
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <button
           onClick={handleSyncNow}
           disabled={isSyncing}
           className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 hover:bg-gray-50 rounded-md disabled:opacity-50"
+          title="Trae las actividades nuevas desde la última sync"
         >
           {isSyncing ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -117,6 +140,19 @@ export function StravaOauthConnect() {
             <RefreshCw className="h-3.5 w-3.5" />
           )}
           Sincronizar
+        </button>
+        <button
+          onClick={handleFullSync}
+          disabled={isFullSyncing}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 rounded-md disabled:opacity-50"
+          title="Re-fetcha TODAS las actividades con detalle (mapa, splits, gear). Útil si ves datos faltantes o acabas de cambiar de dispositivo."
+        >
+          {isFullSyncing ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <RefreshCw className="h-3.5 w-3.5" />
+          )}
+          Resincronizar todo
         </button>
         <button
           onClick={handleDisconnect}

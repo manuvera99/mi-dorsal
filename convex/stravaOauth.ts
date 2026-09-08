@@ -226,3 +226,42 @@ export const triggerSyncNow = mutation({
     return { ok: true, message: "Sync iniciado en background" };
   },
 });
+
+/**
+ * Dispara un "full resync" sin rate limit ni cooldown. Re-ingiere TODAS
+ * las actividades de Strava desde cero (la action `startInitialSync`
+ * pagina por todas las actividades y es idempotente: `upsertActivityInternal`
+ * hace patch, no duplica).
+ *
+ * Útil cuando:
+ *  - El usuario cambió de dispositivo y quiere re-fetchar el detalle
+ *    (polyline, splits, etc.) que faltaba en una sync anterior.
+ *  - Strava devolvió errores transitorios y la sync quedó incompleta.
+ *  - El usuario quiere re-poblar `mapPolyline` y `splitsMetric` en
+ *    actividades antiguas (después de un cambio de schema, por ejemplo).
+ *
+ * CUIDADO: hace muchas llamadas a la API de Strava (1 + N detalles).
+ *   En plan Free de Strava el rate limit es 100 req/15min — para
+ *   usuarios con >500 act el sync puede quedarse a medias si no se
+ *   reintenta. La action `startInitialSync` ya está paginada para
+ *   re-llamarse sola con `ctx.scheduler.runAfter`, así que completa
+ *   sola si el usuario no cancela.
+ */
+export const triggerFullSync = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireUser(ctx);
+    if (!user.stravaAccessToken) {
+      throw new Error("No tienes Strava conectado");
+    }
+    // Resetear lastSyncAt para que el UI muestre "sincronizando…".
+    await ctx.db.patch(user._id, { stravaLastSyncAt: Date.now() });
+    // Disparar la action de sync (idempotente, paginada).
+    await ctx.scheduler.runAfter(
+      0,
+      (internal as any)["actions/stravaInitialSync"].startInitialSync,
+      { profileId: user._id },
+    );
+    return { ok: true, message: "Full resync iniciado en background" };
+  },
+});

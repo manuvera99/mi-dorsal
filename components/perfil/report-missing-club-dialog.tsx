@@ -138,10 +138,11 @@ export function ReportMissingClubDialog({
 
   return (
     // Backdrop SIN onClick: el dialog solo se cierra con X o Cancelar.
-    // isolation: isolate crea un stacking context nuevo para que z-[100]
-    // sea relativo SOLO al document, no al modal padre (z-50 con backdrop).
+    // z-[2100] (mayor que el modal padre z-[2000]) para estar visualmente
+    // encima. isolation: isolate para que el z-index sea relativo al
+    // stacking context nuevo y no se mezcle con el de Leaflet.
     <div
-      className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[2100] bg-black/50 flex items-center justify-center p-4"
       style={{ isolation: "isolate" }}
     >
       <div

@@ -136,9 +136,14 @@ export function EditProfileModal({
   };
 
   return (
+    // z-[2000] + isolation: isolate para superar a los mapas de Leaflet
+    // (z-index 400 en sus controles). Sin esto, los mapas se renderizan
+    // ENCIMA del modal y el usuario acaba clickeando el mapa pensando
+    // que clickea el botón del modal.
     <div
-      className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[2000] bg-black/50 flex items-center justify-center p-4"
       onClick={onClose}
+      style={{ isolation: "isolate" }}
     >
       <div
         className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"

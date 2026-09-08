@@ -76,11 +76,12 @@ crons.cron(
   (internal as any)["crons/resetCoachUsage"].resetCoachUsage,
 );
 
-// Renovar la suscripción a webhooks de Strava cada 12h (Strava las
-// desactiva a las 24h sin eventos).
+// Renovar la suscripción a webhooks de Strava. Strava las desactiva a
+// las 24h sin eventos; con 1 user activo y 1 admin testeando, 24h es
+// suficiente margen. Antes era cada 12h (mitad de ejecuciones innecesarias).
 crons.cron(
   "renew-strava-webhook",
-  "0 */12 * * *", // cada 12 horas
+  "5 0 * * *", // una vez al día a las 00:05 UTC
   (internal as any)["actions/stravaWebhookSubscription"].ensureWebhookSubscription,
 );
 

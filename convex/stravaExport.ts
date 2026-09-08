@@ -16,8 +16,16 @@ import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 import { requireUser, getOptionalUser } from "./_helpers";
 import { getDistanceLabel } from "./_helpers";
-import { parseStravaProfileRow, type StravaProfileRow } from "./activities/normalize";
+import { parseStravaProfileRow, type StravaProfileRow, isRunningSportType } from "./activities/normalize";
 import { detectIntervalsFromSplits } from "../lib/training/detect-intervals";
+
+// Wrapper local: si stravaSportType es undefined (actividad legada sin
+// el campo), asumimos running (la mayoría de las actividades son runs).
+// Centralizado aquí para que el ingest y el backfill coincidan.
+function isRunningSportTypeForIndex(stravaSportType: string | undefined): boolean {
+  if (!stravaSportType) return true;
+  return isRunningSportType(stravaSportType);
+}
 
 // ---------------------------------------------------------------------------
 // Helpers internos (los usa la action de ingest)
@@ -61,6 +69,9 @@ export const upsertActivityInternal = internalMutation({
     isOfficialResult: v.optional(v.boolean()),
     isPrivate: v.optional(v.boolean()),
     stravaSportType: v.optional(v.string()),
+    // 8 sep 2026: precomputado en el ingest para que las queries puedan
+    // filtrar en el índice `by_user_running` en vez de leer toda la tabla.
+    isRunning: v.optional(v.boolean()),
     // Detalle de Strava (opcional, solo si llega el getActivity)
     mapPolyline: v.optional(v.string()),
     gearId: v.optional(v.string()),
@@ -159,6 +170,11 @@ export const upsertActivityInternal = internalMutation({
       )
       .first();
 
+    // Precomputado para que el feed/stats pueda filtrar en el índice
+    // `by_user_running` en vez de cargar toda la tabla y filtrar en cliente.
+    // Coste: 1 llamada a lib (ya importada en activities/normalize).
+    const isRunning = isRunningSportTypeForIndex(args.stravaSportType);
+
     if (existing) {
       // Patch solo los campos que han cambiado
       await ctx.db.patch(existing._id, {
@@ -177,6 +193,7 @@ export const upsertActivityInternal = internalMutation({
         matchedRaceId: args.matchedRaceId,
         isPrivate: args.isPrivate,
         stravaSportType: args.stravaSportType,
+        isRunning,
         mapPolyline: args.mapPolyline,
         gearId: args.gearId,
         gearName: args.gearName,
@@ -230,6 +247,7 @@ export const upsertActivityInternal = internalMutation({
 
     const id = await ctx.db.insert("activities", {
       ...args,
+      isRunning,
       detectedIntervals:
         args.detectedIntervals ??
         detectIntervalsFromSplits({

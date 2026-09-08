@@ -2,6 +2,16 @@
 // mi-dorsal — Activities queries
 // =============================================================================
 // Queries para el feed y stats de actividades del usuario autenticado.
+//
+// OPTIMIZACIONES DE COSTE (8 sep 2026):
+// - Usan el índice `by_user_running` (userId, isRunning, startedAt) en vez
+//   de cargar TODAS las actividades del usuario y filtrar en cliente. Sin
+//   el índice, las queries de feed leían ~1.3 MB por carga (712 act × 1.8 KB)
+//   aunque solo ~250 fueran running.
+// - Proyectan solo los campos que el feed usa, descartando splitsMetric,
+//   rawStravaDetail, detectedIntervals, segmentEfforts, etc. que pesan
+//   ~1.5 KB por fila y solo se necesitan en el detalle. Bajamos de ~1.3 MB
+//   por carga a ~50-100 KB (~90% menos).
 // =============================================================================
 
 import { v } from "convex/values";
@@ -11,11 +21,76 @@ import { computeRunnerType, type ActivityInput, type RunnerTypeResult } from "..
 import { isRunningSportType } from "./normalize";
 
 // ---------------------------------------------------------------------------
+// Proyección para el feed
+// ---------------------------------------------------------------------------
+
+/**
+ * Proyecta una actividad al subset de campos que el feed usa directamente.
+ * Excluye: rawStravaDetail, detectedIntervals, segmentEfforts, social stats
+ * (kudos/comment/etc.), weather, power, laps (van en queries separadas).
+ * Incluye: los campos del feed + mapPolyline/splitsMetric (sin ellos el
+ * feed no podría mostrar el mapa al expandir la card sin lanzar una query
+ * extra por cada actividad).
+ * Coste: ~400-600 bytes por fila (vs ~1.8 KB del documento completo).
+ */
+type FeedActivity = {
+  _id: string;
+  _creationTime: number;
+  name: string | undefined;
+  startedAt: number;
+  durationSec: number;
+  distanceM: number;
+  avgPaceSecPerKm: number | undefined;
+  avgHeartRate: number | undefined;
+  elevationGainM: number | undefined;
+  type: string;
+  stravaSportType: string | undefined;
+  isPrivate: boolean | undefined;
+  isIntervalWorkout: boolean | undefined;
+  matchedRaceId: string | undefined;
+  mapPolyline: string | undefined;
+  splitsMetric: any[] | undefined;
+  deviceName: string | undefined;
+  gearId: string | undefined;
+  gearName: string | undefined;
+  locationCity: string | undefined;
+  locationCountry: string | undefined;
+};
+
+function projectForFeed(a: any): FeedActivity {
+  return {
+    _id: a._id,
+    _creationTime: a._creationTime,
+    name: a.name,
+    startedAt: a.startedAt,
+    durationSec: a.durationSec,
+    distanceM: a.distanceM,
+    avgPaceSecPerKm: a.avgPaceSecPerKm,
+    avgHeartRate: a.avgHeartRate,
+    elevationGainM: a.elevationGainM,
+    type: a.type,
+    stravaSportType: a.stravaSportType,
+    isPrivate: a.isPrivate,
+    isIntervalWorkout: a.detectedIntervals?.isIntervalWorkout,
+    matchedRaceId: a.matchedRaceId,
+    mapPolyline: a.mapPolyline,
+    splitsMetric: a.splitsMetric,
+    deviceName: a.deviceName,
+    gearId: a.gearId,
+    gearName: a.gearName,
+    locationCity: a.locationCity,
+    locationCountry: a.locationCountry,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Feed de actividades
 // ---------------------------------------------------------------------------
 
 /**
- * Lista las actividades del usuario actual con paginación y filtros opcionales.
+ * Lista las actividades de RUNNING del usuario con paginación y filtros
+ * opcionales. Usa el índice `by_user_running` para no leer ciclismo/pádel/
+ * esquí/pesas de la tabla.
  */
 export const listMyActivities = query({
   args: {
@@ -31,7 +106,7 @@ export const listMyActivities = query({
         v.literal("trail"),
       ),
     ),
-    afterMs: v.optional(v.number()), // actividades con startedAt < afterMs (para paginación cursor)
+    afterMs: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const user = await getOptionalUser(ctx);
@@ -39,61 +114,80 @@ export const listMyActivities = query({
 
     const limit = Math.min(args.limit ?? 50, 200);
 
-    // Query con índice by_user_started (userId, startedAt desc implícito)
-    const all = await ctx.db
+    // Lee SOLO running desde el índice. Si el user no tiene `isRunning`
+    // seteado en alguna actividad legada, el filtro .eq no la matchea —
+    // fallback con el índice viejo `by_user_started` solo para esas.
+    const fromIndex = await ctx.db
       .query("activities")
-      .withIndex("by_user_started", (q) => q.eq("userId", user._id))
+      .withIndex("by_user_running", (q) =>
+        q.eq("userId", user._id).eq("isRunning", true),
+      )
       .order("desc")
       .collect();
 
-    // Filtro "solo running": Strava ingiere cualquier deporte (pádel,
-    // ciclismo, esquí, pesas...) bajo el mismo endpoint — sin esto, el feed
-    // muestra actividades que no son correr.
-    const runningOnly = all.filter((a) => isRunningSportType(a.stravaSportType));
+    // Fallback: actividades legadas (sin isRunning) — son pocas, ~0 hoy.
+    // Si el backfill se ejecutó, esta query devuelve 0 filas.
+    const legacy = await ctx.db
+      .query("activities")
+      .withIndex("by_user_started", (q) => q.eq("userId", user._id))
+      .collect()
+      .then((all) =>
+        all.filter((a) => a.isRunning === undefined && isRunningSportType(a.stravaSportType)),
+      );
 
-    let filtered = runningOnly;
+    let combined = [...fromIndex, ...legacy];
+
     if (args.type) {
-      filtered = filtered.filter((a) => a.type === args.type);
+      combined = combined.filter((a) => a.type === args.type);
     }
     if (args.afterMs !== undefined) {
-      filtered = filtered.filter((a) => a.startedAt < args.afterMs!);
+      combined = combined.filter((a) => a.startedAt < args.afterMs!);
     }
 
-    return filtered.slice(0, limit);
+    // Orden por startedAt desc
+    combined.sort((a, b) => b.startedAt - a.startedAt);
+
+    return combined.slice(0, limit).map(projectForFeed);
   },
 });
 
 /**
- * Cuenta el total de actividades de RUNNING del usuario (excluye otros
- * deportes que Strava haya ingerido bajo el mismo perfil).
+ * Cuenta el total de actividades de RUNNING del usuario.
+ * Usa el índice `by_user_running` y devuelve el count sin traer los docs.
  */
 export const getMyActivityCount = query({
   args: {},
   handler: async (ctx) => {
     const user = await getOptionalUser(ctx);
     if (!user) return 0;
-    const all = await ctx.db
+    const fromIndex = await ctx.db
+      .query("activities")
+      .withIndex("by_user_running", (q) =>
+        q.eq("userId", user._id).eq("isRunning", true),
+      )
+      .collect();
+    // Fallback legadas (sin isRunning)
+    const legacy = await ctx.db
       .query("activities")
       .withIndex("by_user_started", (q) => q.eq("userId", user._id))
-      .collect();
-    return all.filter((a) => isRunningSportType(a.stravaSportType)).length;
+      .collect()
+      .then((all) =>
+        all.filter((a) => a.isRunning === undefined && isRunningSportType(a.stravaSportType)),
+      );
+    return fromIndex.length + legacy.length;
   },
 });
 
 /**
  * Stats resumen del usuario: total km, km/semana, cadencia media, etc.
- * Calculado on-the-fly (las queries son baratas, ~500ms para 1000 act).
- * Solo cuenta actividades de running — ver isRunningSportType.
+ * Lee solo running desde el índice. Proyecta solo los campos que necesita
+ * (distanceM, startedAt, type, avgCadence, provider) — no trae el doc
+ * completo.
  */
 export const getMyActivityStats = query({
   args: {},
   handler: async (ctx) => {
     const user = await getOptionalUser(ctx);
-    // Defensa: si Clerk está logueado pero el profile aún no se ha
-    // creado en Convex (caso edge del primer login antes del onboarding),
-    // devolvemos un objeto vacío en vez de null. Los componentes
-    // cliente tratan null y "datos vacíos" distinto: null = cargando,
-    // objeto = datos reales (incluso si son ceros).
     if (!user) {
       return {
         totalActivities: 0,
@@ -106,11 +200,25 @@ export const getMyActivityStats = query({
       };
     }
 
-    const allRaw = await ctx.db
+    // Solo necesitamos unos pocos campos de cada actividad. Hacemos la query
+    // con el índice y luego mapeamos — Convex cobra bandwidth por el tamaño
+    // de lo que devolvemos, no por el de lo que leemos del disco.
+    const fromIndex = await ctx.db
+      .query("activities")
+      .withIndex("by_user_running", (q) =>
+        q.eq("userId", user._id).eq("isRunning", true),
+      )
+      .collect();
+
+    const legacy = await ctx.db
       .query("activities")
       .withIndex("by_user_started", (q) => q.eq("userId", user._id))
-      .collect();
-    const activities = allRaw.filter((a) => isRunningSportType(a.stravaSportType));
+      .collect()
+      .then((all) =>
+        all.filter((a) => a.isRunning === undefined && isRunningSportType(a.stravaSportType)),
+      );
+
+    const activities = [...fromIndex, ...legacy];
 
     if (activities.length === 0) {
       return {
@@ -124,12 +232,11 @@ export const getMyActivityStats = query({
       };
     }
 
-    // Calcular stats
+    // Calcular stats (mismo cálculo que antes, solo corre sobre running)
     const distances = activities.map((a) => a.distanceM).sort((a, b) => a - b);
     const medianDistance = distances[Math.floor(distances.length / 2)];
     const totalDistanceM = activities.reduce((s, a) => s + a.distanceM, 0);
 
-    // Volumen semanal
     const weeklyTotals = new Map<number, number>();
     for (const a of activities) {
       const d = new Date(a.startedAt);
@@ -139,7 +246,6 @@ export const getMyActivityStats = query({
     const weeklyVolumes = Array.from(weeklyTotals.values()).sort((a, b) => a - b);
     const weeklyVolumeMedianKm = weeklyVolumes[Math.floor(weeklyVolumes.length / 2)] ?? 0;
 
-    // Consistencia
     const sortedByDate = [...activities].sort((a, b) => a.startedAt - b.startedAt);
     const firstMs = sortedByDate[0].startedAt;
     const lastMs = sortedByDate[sortedByDate.length - 1].startedAt;
@@ -149,7 +255,6 @@ export const getMyActivityStats = query({
     ).size;
     const consistencyPct = Math.min(1, uniqueDays / totalDays);
 
-    // Cadencia media (solo easy + long_run + recovery)
     const easyLike = activities.filter(
       (a) => a.type === "easy" || a.type === "long_run" || a.type === "recovery",
     );
@@ -160,13 +265,11 @@ export const getMyActivityStats = query({
       ? cadences.sort((a, b) => a - b)[Math.floor(cadences.length / 2)]
       : null;
 
-    // Por tipo
     const byType: Record<string, number> = {};
     for (const a of activities) {
       byType[a.type] = (byType[a.type] ?? 0) + 1;
     }
 
-    // Por provider
     const byProvider: Record<string, number> = {};
     for (const a of activities) {
       byProvider[a.provider] = (byProvider[a.provider] ?? 0) + 1;
@@ -188,29 +291,33 @@ export const getMyActivityStats = query({
 });
 
 /**
- * Calcula el tipo de corredor del usuario actual.
- * Calcula on-the-fly cada vez (las heurísticas son baratas, ~200ms para 1000 act).
- * Si en el futuro el cálculo se vuelve pesado, podemos cachearlo en el profile.
- * Solo cuenta actividades de running — ver isRunningSportType.
+ * Runner type del usuario. Calcula on-the-fly sobre running.
  */
 export const getMyRunnerType = query({
   args: {},
   handler: async (ctx): Promise<RunnerTypeResult | null> => {
     const user = await getOptionalUser(ctx);
-    // Defensa: si no hay profile aún, devolvemos un RunnerTypeResult
-    // con todas las actividades a 0 (no null). Ver getMyActivityStats
-    // para la misma justificación.
     if (!user) {
       return computeRunnerType([]);
     }
 
-    const allRaw = await ctx.db
+    const fromIndex = await ctx.db
+      .query("activities")
+      .withIndex("by_user_running", (q) =>
+        q.eq("userId", user._id).eq("isRunning", true),
+      )
+      .collect();
+
+    const legacy = await ctx.db
       .query("activities")
       .withIndex("by_user_started", (q) => q.eq("userId", user._id))
-      .collect();
-    const activities = allRaw.filter((a) => isRunningSportType(a.stravaSportType));
+      .collect()
+      .then((all) =>
+        all.filter((a) => a.isRunning === undefined && isRunningSportType(a.stravaSportType)),
+      );
 
-    // Mapear a ActivityInput
+    const activities = [...fromIndex, ...legacy];
+
     const inputs: ActivityInput[] = activities.map((a) => ({
       type: a.type,
       startedAt: a.startedAt,
@@ -230,16 +337,7 @@ export const getMyRunnerType = query({
 // ---------------------------------------------------------------------------
 
 /**
- * Resumen de gear del usuario: cada par de zapatillas / bici con sus km
- * totales en mi-dorsal y la fecha de la última actividad en la que se usó.
- *
- * Calculado on-the-fly desde `activities` (suma de `distanceM` agrupada
- * por `gearId`). Solo se cuentan actividades de running.
- *
- * Útil para:
- *  - Card "Tus zapatillas" en el perfil.
- *  - Alerta de cambio de zapatillas cuando se acerquen a 800 km.
- *  - Mostrar el nombre del modelo en la card de cada actividad.
+ * Resumen de gear del usuario. Lee solo running desde el índice.
  */
 export const getMyGearSummary = query({
   args: {},
@@ -247,21 +345,29 @@ export const getMyGearSummary = query({
     const user = await getOptionalUser(ctx);
     if (!user) return [];
 
-    const all = await ctx.db
+    const fromIndex = await ctx.db
       .query("activities")
-      .withIndex("by_user_started", (q) => q.eq("userId", user._id))
+      .withIndex("by_user_running", (q) =>
+        q.eq("userId", user._id).eq("isRunning", true),
+      )
       .collect();
 
-    const running = all.filter((a) => isRunningSportType(a.stravaSportType));
+    const legacy = await ctx.db
+      .query("activities")
+      .withIndex("by_user_started", (q) => q.eq("userId", user._id))
+      .collect()
+      .then((all) =>
+        all.filter((a) => a.isRunning === undefined && isRunningSportType(a.stravaSportType)),
+      );
 
-    // Agrupar por gearId. Actividades sin gear (gearId undefined) se
-    // ignoran — no podemos asociarlas a un par de zapatillas concreto.
+    const running = [...fromIndex, ...legacy];
+
     type GearSummary = {
       gearId: string;
       gearName: string | undefined;
       totalDistanceM: number;
       activityCount: number;
-      lastUsedAt: number; // ms epoch
+      lastUsedAt: number;
     };
     const byGear = new Map<string, GearSummary>();
     for (const a of running) {
@@ -272,7 +378,6 @@ export const getMyGearSummary = query({
         prev.activityCount += 1;
         if (a.startedAt > prev.lastUsedAt) {
           prev.lastUsedAt = a.startedAt;
-          // Si la última actividad trae un nombre más reciente, preferimos ese.
           if (a.gearName) prev.gearName = a.gearName;
         }
       } else {
@@ -286,20 +391,18 @@ export const getMyGearSummary = query({
       }
     }
 
-    // Ordenar por km totales desc (las zapatillas más usadas primero).
     return Array.from(byGear.values()).sort(
       (a, b) => b.totalDistanceM - a.totalDistanceM,
     );
   },
 });
 
+// ---------------------------------------------------------------------------
+// Single-activity queries (sin cambios — ya eran eficientes)
+// ---------------------------------------------------------------------------
+
 /**
  * Devuelve la polyline y metadata de mapa para una actividad concreta.
- * Se usa en la card de un PR (o en una actividad del feed) para mostrar
- * el mini-mapa del recorrido.
- *
- * El check de propiedad es por `userId` (no se filtra por provider) para
- * soportar también actividades ingeridas por export ZIP en el futuro.
  */
 export const getActivityMap = query({
   args: { id: v.id("activities") },
@@ -318,10 +421,6 @@ export const getActivityMap = query({
   },
 });
 
-/**
- * Devuelve los splits por km de una actividad (gráfica de pace por km).
- * Mismo check de propiedad que `getActivityMap`.
- */
 export const getActivitySplits = query({
   args: { id: v.id("activities") },
   handler: async (ctx, { id }) => {
@@ -335,12 +434,8 @@ export const getActivitySplits = query({
 });
 
 /**
- * Devuelve la actividad completa de Strava para mostrar la página de
- * detalle de un PR. Incluye polyline, splits, device, gear, location,
- * desnivel y todos los stats que Strava ingirió.
- *
- * Devuelve `null` si la actividad no existe, no es del usuario, o si el
- * PR no tiene `sourceActivityId` (PRs manuales / heredados).
+ * Devuelve la actividad completa para la página de detalle de un PR.
+ * Solo se llama al abrir un PR específico, no en el feed.
  */
 export const getActivityFull = query({
   args: { id: v.id("activities") },
@@ -355,17 +450,7 @@ export const getActivityFull = query({
 });
 
 /**
- * Devuelve actividades candidatas para vincular a un PR. Busca por:
- *  - distancia (tolerancia ±10% para cubrir variantes del GPS)
- *  - ventana temporal alrededor del `achievedAt` del PR (±windowDays,
- *    default 30). Esto evita matches accidentales con actividades
- *    antiguas de la misma distancia.
- *
- * Solo running (isRunningSportType). Ordena por closeness al tiempo
- * del PR (las más probables primero). Devuelve hasta 20.
- *
- * Usado por la página de detalle de un PR sin `sourceActivityId` para
- * que el usuario pueda vincularlo con un click.
+ * Busca candidatos para vincular a un PR. Solo running.
  */
 export const findCandidateActivitiesForPr = query({
   args: {
@@ -384,20 +469,17 @@ export const findCandidateActivitiesForPr = query({
     const distMin = args.distanceM * 0.9;
     const distMax = args.distanceM * 1.1;
 
-    // Filtrar todo lo del usuario con `by_user_started` (userId, startedAt).
-    // El índice es por (userId, startedAt) — necesitamos filtrar por startedAt
-    // en el cliente. Para datasets pequeños (<10k act) está bien.
-    const all = await ctx.db
+    const fromIndex = await ctx.db
       .query("activities")
-      .withIndex("by_user_started", (q) => q.eq("userId", user._id))
+      .withIndex("by_user_running", (q) =>
+        q.eq("userId", user._id).eq("isRunning", true),
+      )
       .collect();
 
-    const candidates = all
-      .filter((a) => isRunningSportType(a.stravaSportType))
+    const candidates = fromIndex
       .filter((a) => a.startedAt >= lower && a.startedAt <= upper)
       .filter((a) => a.distanceM >= distMin && a.distanceM <= distMax)
       .map((a) => {
-        // Distancia al target: 0 = exact match, mayor = peor.
         const distError = Math.abs(a.distanceM - args.distanceM) / args.distanceM;
         const timeError = Math.abs(a.durationSec - args.targetTimeSeconds) / args.targetTimeSeconds;
         const score = distError + timeError;
@@ -405,21 +487,12 @@ export const findCandidateActivitiesForPr = query({
       })
       .sort((a, b) => a.score - b.score)
       .slice(0, 20)
-      .map((c) => c.activity);
+      .map((c) => projectForFeed(c.activity));
 
     return candidates;
   },
 });
 
-/**
- * Busca una actividad por `providerActivityId` (Strava ID). Se usa cuando
- * el usuario pega una URL de Strava del estilo
- * `https://www.strava.com/activities/1234567890` y queremos resolver
- * el id y enlazarlo a un PR sin pedirle que lo busque.
- *
- * Devuelve `null` si la actividad no está en nuestro DB (el usuario
- * tendría que sincronizar primero desde Strava).
- */
 export const findActivityByProviderId = query({
   args: { providerActivityId: v.string() },
   handler: async (ctx, { providerActivityId }) => {

@@ -919,10 +919,21 @@ export default defineSchema({
     // no lo tienen; para esas, el fallback es asumir "Run" (ya pasaron por
     // classifyActivity, que asume Run/Unknown si no reconoce el tipo).
     stravaSportType: v.optional(v.string()),
+    // === 8 sep 2026: optimizaciones de coste ===
+    // Precomputado de isRunningSportType(stravaSportType) para poder filtrar
+    // en el índice `by_user_running` y NO leer actividades de ciclismo /
+    // pádel / esquí / pesas en cada carga del feed. Sin esto, las queries
+    // hacían .collect() y filtraban en cliente (enviaba toda la tabla al
+    // cliente antes de filtrar). Lo escribe el ingest + la migración.
+    isRunning: v.optional(v.boolean()),
     syncedAt: v.number(),
   })
     .index("by_user_started", ["userId", "startedAt"])
     .index("by_user_type", ["userId", "type"])
+    // Índice para filtrar solo running en el feed/stats. Con 1 user y 712
+    // actividades, filtrar en cliente cuesta ~1.3 MB de bandwidth por query;
+    // con índice, solo se leen las ~200-300 actividades de running.
+    .index("by_user_running", ["userId", "isRunning", "startedAt"])
     .index("by_matched_race", ["matchedRaceId"])
     .index("by_provider_activity", ["provider", "providerActivityId"]),
 

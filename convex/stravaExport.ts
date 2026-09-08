@@ -17,6 +17,7 @@ import { mutation, query, internalMutation } from "./_generated/server";
 import { requireUser, getOptionalUser } from "./_helpers";
 import { getDistanceLabel } from "./_helpers";
 import { parseStravaProfileRow, type StravaProfileRow } from "./activities/normalize";
+import { detectIntervalsFromSplits } from "../lib/training/detect-intervals";
 
 // ---------------------------------------------------------------------------
 // Helpers internos (los usa la action de ingest)
@@ -80,6 +81,20 @@ export const upsertActivityInternal = internalMutation({
           average_cadence: v.optional(v.number()),
         }),
       ),
+    ),
+    detectedIntervals: v.optional(
+      v.object({
+        isIntervalWorkout: v.boolean(),
+        paceVariabilityCv: v.number(),
+        fastSplits: v.number(),
+        slowSplits: v.number(),
+        estimatedRepetitions: v.number(),
+        fastPaceSecPerKm: v.union(v.number(), v.null()),
+        slowPaceSecPerKm: v.union(v.number(), v.null()),
+        fastAvgHrBpm: v.union(v.number(), v.null()),
+        slowAvgHrBpm: v.union(v.number(), v.null()),
+        reason: v.string(),
+      }),
     ),
     locationCity: v.optional(v.string()),
     locationCountry: v.optional(v.string()),
@@ -149,6 +164,8 @@ export const upsertActivityInternal = internalMutation({
         gearDistanceM: args.gearDistanceM,
         deviceName: args.deviceName,
         splitsMetric: args.splitsMetric,
+        detectedIntervals:
+          args.detectedIntervals ?? detectIntervalsFromSplits(args.splitsMetric),
         locationCity: args.locationCity,
         locationCountry: args.locationCountry,
         // Campos extra (2026-09-08)
@@ -188,6 +205,8 @@ export const upsertActivityInternal = internalMutation({
 
     const id = await ctx.db.insert("activities", {
       ...args,
+      detectedIntervals:
+        args.detectedIntervals ?? detectIntervalsFromSplits(args.splitsMetric),
       syncedAt: Date.now(),
     });
     return { id, created: true };

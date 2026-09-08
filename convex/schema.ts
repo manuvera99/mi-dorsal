@@ -826,6 +826,27 @@ export default defineSchema({
     workoutType: v.optional(v.number()), // 0=default, 1=race, 2=long_run, 3=interval
     perceivedExertion: v.optional(v.number()),
     sufferScore: v.optional(v.number()),
+    /**
+     * Detección de series/intervalos a partir de los splits por km
+     * (splitsMetric). Se calcula en el ingest y en el backfill. La señal
+     * primaria es la variabilidad del pace entre splits (CV>15% + >=2
+     * rápidos + >=2 lentos). Se mantiene aunque workoutType venga de
+     * Strava porque Garmin Connect no lo rellena.
+     */
+    detectedIntervals: v.optional(
+      v.object({
+        isIntervalWorkout: v.boolean(),
+        paceVariabilityCv: v.number(),
+        fastSplits: v.number(),
+        slowSplits: v.number(),
+        estimatedRepetitions: v.number(),
+        fastPaceSecPerKm: v.union(v.number(), v.null()),
+        slowPaceSecPerKm: v.union(v.number(), v.null()),
+        fastAvgHrBpm: v.union(v.number(), v.null()),
+        slowAvgHrBpm: v.union(v.number(), v.null()),
+        reason: v.string(),
+      }),
+    ),
     // Potencia (cycling o running con Stryd/PowerPod)
     hasPower: v.optional(v.boolean()),
     averageWatts: v.optional(v.number()),
@@ -1082,4 +1103,62 @@ export default defineSchema({
     .index("by_active", ["isActive"])
     .index("by_source", ["source"])
     .index("by_suggestion", ["suggestionId"]),
+
+  // ---------------------------------------------------------------------------
+  // 20. AI_USAGE_LOG — registro de cada llamada a un LLM
+  // ---------------------------------------------------------------------------
+  // Una fila por cada llamada a OpenAI/MiniMax/Claude/etc. desde lib/ai/*.
+  // Se usa para:
+  //   - Panel /admin/ai-usage: gráfica diaria de tokens, coste estimado en €,
+  //     desglose por función de lib/ai/* y por modelo.
+  //   - Auditoría: detectar spikes de consumo o errores.
+  //
+  // El coste se calcula en el momento del log (en el cliente que llama) a
+  // partir de los precios hardcoded en lib/ai/pricing.ts y se guarda como
+  // costeEur para no tener que re-evaluar cada vez que se cambian las
+  // tarifas. Esto significa que el histórico refleja el coste a precio de
+  // ese momento — para "coste a precios de hoy" habría que recomputar.
+  //
+  // functionLabel identifica el origen de la llamada. Valores actuales:
+  //   - "extract_race"        → lib/ai/extract-race.ts
+  //   - "extract_race_deep"   → lib/ai/extract-race-deep.ts
+  //   - "analyze_source"      → lib/ai/analyze-source.ts
+  //   - "coach_analysis"      → lib/ai/coach-analysis.ts
+  // ---------------------------------------------------------------------------
+  aiUsageLog: defineTable({
+    /** Cuándo se hizo la llamada (timestamp unix ms). */
+    timestamp: v.number(),
+    /** Origen de la llamada dentro de lib/ai/. Ver comentario arriba. */
+    functionLabel: v.string(),
+    /** Modelo usado (ej: "gpt-4o-mini", "MiniMax-M3"). */
+    model: v.string(),
+    /** Base URL del proveedor (para distinguir OpenAI vs MiniMax vs otros). */
+    provider: v.string(),
+    /** Tokens de prompt (input). */
+    promptTokens: v.number(),
+    /** Tokens de completion (output). */
+    completionTokens: v.number(),
+    /** promptTokens + completionTokens. Lo guardamos pre-computado para
+     *  no tener que sumar en cada query de la pantalla admin. */
+    totalTokens: v.number(),
+    /** Coste estimado en EUR, calculado en el momento del log con
+     *  lib/ai/pricing.ts. */
+    costEur: v.number(),
+    /** "¿Tuvo éxito la llamada?" — false si fue un error (timeout, 4xx/5xx). */
+    success: v.boolean(),
+    /** Mensaje de error si success=false. Acotado a 500 chars. */
+    errorMessage: v.optional(v.string()),
+    /** Duración de la llamada en ms (incluye el fetch al LLM, no el pre/post
+     *  processing en lib/ai/). Útil para detectar lentitud. */
+    durationMs: v.optional(v.number()),
+    /** Año-Mes-Día (YYYY-MM-DD) en UTC, pre-computado para queries rápidas
+     *  de la pantalla diaria. Lo guardamos como string para poder usar
+     *  range queries simples con by_date. */
+    dateUtc: v.string(),
+  })
+    .index("by_date", ["dateUtc"])
+    .index("by_function", ["functionLabel", "timestamp"])
+    .index("by_model", ["model", "timestamp"])
+    .index("by_function_date", ["functionLabel", "dateUtc"])
+    .index("by_timestamp", ["timestamp"]),
 });

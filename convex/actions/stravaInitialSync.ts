@@ -15,6 +15,7 @@ import { v } from "convex/values";
 import { action, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { getDistanceLabel } from "../_helpers";
+import { detectIntervalsFromSplits } from "../../lib/training/detect-intervals";
 import {
   decodeTokens,
   ensureFreshToken,
@@ -328,16 +329,32 @@ async function ingestOneActivity(
       gearName: activity.gear?.name ?? undefined,
       gearDistanceM: activity.gear?.distance ?? undefined,
       deviceName: activity.device_name ?? undefined,
-      splitsMetric: activity.splits_metric?.map((s: any) => ({
-        split: s.split,
-        distance: s.distance,
-        elapsed_time: s.elapsed_time,
-        moving_time: s.moving_time,
-        elevation_difference: s.elevation_difference,
-        average_speed: s.average_speed,
-        average_heartrate: s.average_heartrate,
-        average_cadence: s.average_cadence,
-      })),
+      splitsMetric: (() => {
+        const mapped = activity.splits_metric?.map((s: any) => ({
+          split: s.split,
+          distance: s.distance,
+          elapsed_time: s.elapsed_time,
+          moving_time: s.moving_time,
+          elevation_difference: s.elevation_difference,
+          average_speed: s.average_speed,
+          average_heartrate: s.average_heartrate,
+          average_cadence: s.average_cadence,
+        }));
+        return detectIntervalsFromSplits(mapped);
+      })(),
+      detectedIntervals: (() => {
+        const mapped = activity.splits_metric?.map((s: any) => ({
+          split: s.split,
+          distance: s.distance,
+          elapsed_time: s.elapsed_time,
+          moving_time: s.moving_time,
+          elevation_difference: s.elevation_difference,
+          average_speed: s.average_speed,
+          average_heartrate: s.average_heartrate,
+          average_cadence: s.average_cadence,
+        }));
+        return detectIntervalsFromSplits(mapped);
+      })(),
       locationCity: activity.location_city ?? undefined,
       locationCountry: activity.location_country ?? undefined,
       // -----------------------------------------------------------------

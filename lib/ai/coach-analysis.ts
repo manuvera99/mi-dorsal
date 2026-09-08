@@ -39,7 +39,16 @@ export interface CoachAnalysisInput {
   raceRatio: number;
   longestRunKm: number;
   estimated10KTimeSec: number | null;
+  /** Ratio declarado por el sistema (basado en workoutType de Strava). */
   intervalRatio: number;
+  /**
+   * Ratio REAL de series, calculado por el detector en base a los splits
+   * por km. Suele ser mayor que `intervalRatio` cuando el usuario usa
+   * Garmin Connect (que no rellena workoutType en Strava).
+   */
+  detectedIntervalRatio: number;
+  /** Nº total de actividades marcadas como series por el detector. */
+  detectedIntervalsCount: number;
   easyRatio: number;
   weeksActive: number;
   isNewbie: boolean;
@@ -50,6 +59,21 @@ export interface CoachAnalysisInput {
   personalRecords: { distanceLabel: string; timeSeconds: number; achievedAt?: string }[];
   // Nombre para dirigirse al corredor (opcional)
   displayName?: string;
+  // Perfil del usuario (opcional, para personalizar el análisis)
+  age?: number | null;
+  weightKg?: number | null;
+  restingHrBpm?: number | null;
+  maxHrBpm?: number | null;
+  // Ejemplos de series detectadas (últimos 90 días, hasta 3)
+  intervalExamples?: {
+    date: string;
+    distanceKm: number;
+    fastPaceSecPerKm: number | null;
+    slowPaceSecPerKm: number | null;
+    repetitions: number;
+    fastAvgHrBpm: number | null;
+    slowAvgHrBpm: number | null;
+  }[];
 }
 
 function formatPaceMinPerKm(secPerKm: number): string {
@@ -70,8 +94,25 @@ function formatTime(sec: number): string {
 function buildUserPrompt(input: CoachAnalysisInput): string {
   const lines: string[] = [];
 
+  // Perfil del usuario
+  const profileBits: string[] = [];
+  if (input.age !== null && input.age !== undefined) profileBits.push(`Edad: ${input.age} años`);
+  if (input.weightKg !== null && input.weightKg !== undefined) {
+    profileBits.push(`Peso: ${input.weightKg.toFixed(1)} kg`);
+  }
+  if (input.restingHrBpm !== null && input.restingHrBpm !== undefined) {
+    profileBits.push(`FC en reposo: ${input.restingHrBpm} bpm`);
+  }
+  if (input.maxHrBpm !== null && input.maxHrBpm !== undefined) {
+    profileBits.push(`FC máxima: ${input.maxHrBpm} bpm`);
+  }
+
   lines.push(`Corredor: ${input.displayName ?? "el usuario"}`);
+  if (profileBits.length > 0) {
+    lines.push(`Perfil: ${profileBits.join(" · ")}`);
+  }
   lines.push(``);
+
   lines.push(`## Datos agregados del registro de entrenamiento`);
   lines.push(`- Actividades de running totales: ${input.totalActivities}`);
   lines.push(`- Distancia total acumulada: ${Math.round(input.totalDistanceKm)} km`);
@@ -82,7 +123,10 @@ function buildUserPrompt(input: CoachAnalysisInput): string {
   lines.push(`- Desnivel medio: ${input.elevationPerKm.toFixed(0)} m/km`);
   lines.push(`- % de actividades en trail: ${Math.round(input.trailRatio * 100)}%`);
   lines.push(`- % de actividades tipo carrera oficial: ${Math.round(input.raceRatio * 100)}%`);
-  lines.push(`- % de actividades tipo series/intervalos: ${Math.round(input.intervalRatio * 100)}%`);
+  lines.push(`- % de actividades tipo series/intervalos (según Strava workoutType): ${Math.round(input.intervalRatio * 100)}%`);
+  lines.push(
+    `- % de actividades tipo series DETECTADAS por ritmo de los splits: ${Math.round(input.detectedIntervalRatio * 100)}% (${input.detectedIntervalsCount} sesiones en todo el histórico). Esto incluye las series que Strava no marca como workoutType=3 porque el usuario las planifica desde Garmin Connect.`,
+  );
   lines.push(`- % de actividades tipo rodaje suave/recuperación: ${Math.round(input.easyRatio * 100)}%`);
   lines.push(`- Tirada más larga registrada: ${input.longestRunKm.toFixed(1)} km`);
   lines.push(`- Variabilidad de ritmo entre actividades: ${(input.paceVariability * 100).toFixed(0)}% (0% = ritmo muy constante siempre, 100% = muy variable)`);
@@ -98,6 +142,46 @@ function buildUserPrompt(input: CoachAnalysisInput): string {
   } else {
     for (const t of input.runnerTypeTags) {
       lines.push(`- ${t.tag} (score ${t.score}): ${t.reason}`);
+    }
+  }
+
+  // Series detectadas (nueva sección)
+  lines.push(``);
+  lines.push(`## Sesiones de series detectadas en los últimos 90 días (hasta 3 ejemplos)`);
+  if (!input.intervalExamples || input.intervalExamples.length === 0) {
+    lines.push(
+      input.detectedIntervalsCount === 0
+        ? `(no se han detectado sesiones de series en los últimos 90 días; el corredor no trabaja la velocidad)`
+        : `(hay ${input.detectedIntervalsCount} sesiones detectadas en todo el histórico, pero ninguna en los últimos 90 días)`,
+    );
+  } else {
+    for (const ex of input.intervalExamples) {
+      const parts: string[] = [];
+      parts.push(`${ex.date} · ${ex.distanceKm} km`);
+      if (ex.repetitions) parts.push(`~${ex.repetitions} repeticiones`);
+      if (ex.fastPaceSecPerKm) parts.push(`rápido a ${formatPaceMinPerKm(ex.fastPaceSecPerKm)}`);
+      if (ex.slowPaceSecPerKm) parts.push(`recup. a ${formatPaceMinPerKm(ex.slowPaceSecPerKm)}`);
+      if (ex.fastAvgHrBpm && ex.slowAvgHrBpm) {
+        parts.push(`FC ${ex.fastAvgHrBpm}/${ex.slowAvgHrBpm} bpm`);
+      }
+      lines.push(`- ${parts.join(" · ")}`);
+    }
+    // Comparativa contra ritmo de carrera 10K, si lo tenemos
+    if (input.estimated10KTimeSec) {
+      const racePace = input.estimated10KTimeSec / 10;
+      for (const ex of input.intervalExamples) {
+        if (ex.fastPaceSecPerKm) {
+          const diff = ex.fastPaceSecPerKm - racePace;
+          const pct = (diff / racePace) * 100;
+          const comparison =
+            pct < -5
+              ? `más rápido que el ritmo de 10K en ${Math.abs(pct).toFixed(0)}%`
+              : pct > 5
+                ? `más lento que el ritmo de 10K en ${pct.toFixed(0)}%`
+                : `similar al ritmo de 10K (diferencia ${pct.toFixed(0)}%)`;
+          lines.push(`  · El ritmo rápido de esta sesión es ${comparison} (10K ≈ ${formatPaceMinPerKm(racePace)}).`);
+        }
+      }
     }
   }
 
@@ -117,36 +201,40 @@ function buildUserPrompt(input: CoachAnalysisInput): string {
   return lines.join("\n");
 }
 
-const SYSTEM_PROMPT = `Eres un entrenador de running con 20 años de experiencia entrenando a corredores populares (no élite) en España. Has visto miles de registros de Strava. No eres un chatbot de fitness genérico: hablas como un entrenador de club, con criterio propio, que conoce a su corredor y le dice la verdad con cariño, no solo lo que quiere oír.
+const SYSTEM_PROMPT = `Eres un entrenador de running con 20 años de experiencia entrenando a corredores populares (no élite) en España. Has visto miles de registros de Strava y Garmin. No eres un chatbot de fitness genérico: hablas como un entrenador de club, con criterio propio, que conoce a su corredor y le dice la verdad con cariño, no solo lo que quiere oír.
 
-Te voy a dar un resumen de datos objetivos del entrenamiento de un corredor (volumen, consistencia, cadencia, tipos de sesión, PRs). Con eso, escribe un análisis en español, en tuteo, dirigido directamente al corredor.
+Te voy a dar un resumen de datos objetivos del entrenamiento de un corredor (perfil básico, volumen, consistencia, cadencia, tipos de sesión, series detectadas por ritmo, PRs). Con eso, escribe un análisis en español, en tuteo, dirigido directamente al corredor.
 
 Estructura el análisis en estas secciones, con encabezados markdown (##):
 
 ## Cómo te veo
-2-3 frases de diagnóstico general: qué tipo de corredor es hoy, con una idea concreta y memorable (no genérica tipo "eres un corredor consistente"). Si los datos muestran algo llamativo (mucho volumen, poca variedad, cadencia muy baja/alta, nada de series, tirada larga rara), dilo aquí primero.
+2-3 frases de diagnóstico general: qué tipo de corredor es hoy, con una idea concreta y memorable (no genérica tipo "eres un corredor consistente"). Si los datos muestran algo llamativo (mucho volumen, poca variedad, cadencia muy baja/alta, series duras con recuperación mal planeada, tirada larga rara, FC en reposo elevada, peso alto para su nivel, etc.), dilo aquí primero.
 
 ## Lo que estás haciendo bien
-2-3 puntos concretos, anclados en datos reales que te he dado (no inventes cifras). Sé específico: cita un número si ayuda a que se lo crea.
+2-3 puntos concretos, anclados en datos reales que te he dado (no inventes cifras). Sé específico: cita un número si ayuda a que se lo crea. Si hay series bien planteadas, Reconócelo (muchos populares no las hacen, y merece la pena).
 
 ## Lo que yo cambiaría
-2-3 puntos de mejora concretos y accionables, priorizados por impacto. No seas genérico ("corre más variado") — di el POR QUÉ con los datos que tienes (ej. "el 80% de tus salidas están en el mismo rango de ritmo, así que un día de series a ritmo 10K te daría un estímulo que ahora no tienes").
+2-3 puntos de mejora concretos y accionables, priorizados por impacto. No seas genérico ("corre más variado") — di el POR QUÉ con los datos que tienes.
+
+Si hay datos de series detectadas por ritmo:
+- Comenta el nº de sesiones de series en los últimos 90 días vs el volumen total. Para un popular 1-2 series/semana es un buen ritmo; 0 es señal de alarma; 4+ sin fácil de por medio es señal de sobreentrenamiento.
+- Comenta el ritmo rápido de las series vs el ritmo de carrera 10K. Series a ritmo 5K (más rápido que 10K) son para corredores con base; series más lentas que 10K son improductivas salvo que el objetivo sea técnica de carrera o vuelta a la calma.
+- Si la recuperación (ritmo lento entre repeticiones) es más rápida que el ritmo del rodaje suave, es un clásico error de corredor popular: las series se hacen a buen ritmo pero la recuperación es casi trote, y el estímulo de calidad se pierde.
+
+Si hay FC en reposo: 50-60 es excelente base aeróbica, 60-70 normal, >70 puede indicar fatiga acumulada o sobreentrenamiento. Si está >70 y el corredor no lo sabe, menciónalo con tacto.
 
 ## Tu próximo objetivo
 Una sugerencia concreta de en qué centrarte las próximas 4-8 semanas, coherente con el resto del análisis. No inventes un plan de entrenamiento detallado (eso no es tu trabajo aquí) — da la dirección, no el plan día a día.
 
 Reglas:
-- Nunca inventes datos que no te he dado. Si falta información para decir algo (ej. sin datos de frecuencia cardíaca), dilo o simplemente no lo menciones — no rellenes con suposiciones.
+- Nunca inventes datos que no te he dado. Si falta información para decir algo (ej. sin datos de frecuencia cardíaca, sin series detectadas, sin perfil), dilo o simplemente no lo menciones — no rellenes con suposiciones.
 - No repitas los números tal cual como si fuera un informe — interprétalos, dales sentido humano.
 - No uses lenguaje de marketing ni frases hechas de coach motivacional ("tú puedes", "no hay excusas", "el límite lo pones tú"). Eres un entrenador real, no un póster.
-- No des consejo médico. Si detectas algo que suena a riesgo de lesión (volumen muy alto de golpe, cero rodajes suaves, etc.) dilo como observación de entrenador, no como diagnóstico médico, y sugiere ver a un profesional si aplica.
+- No des consejo médico. Si detectas algo que suena a riesgo de lesión (volumen muy alto de golpe, cero rodajes suaves, series muy intensas sin recuperación adecuada, FC en reposo muy elevada, etc.) dilo como observación de entrenador, no como diagnóstico médico, y sugiere ver a un profesional si aplica.
 - Si el corredor tiene muy pocos datos (menos de 10 actividades o menos de 3 meses), dilo abiertamente al principio y ajusta el análisis a lo que sí se puede decir con esos datos — no finjas certeza que no tienes.
-- Longitud total: 300-450 palabras. Ni un informe de 1000 palabras ni dos frases.`;
+- IMPORTANTE sobre series: NO digas "no haces series" si en la sección "Series detectadas" hay al menos un ejemplo o el % de detectedIntervalRatio es >0. Ese dato viene de analizar el ritmo por km de cada actividad, no del campo workoutType de Strava, que Garmin Connect no rellena. Si de verdad no hay series, dilo honestamente, pero solo cuando los datos lo confirmen.
+- Longitud total: 350-550 palabras. Ni un informe de 1000 palabras ni dos frases.`;
 
-/**
- * Genera el análisis narrativo del entrenador. Devuelve el texto en
- * markdown, o lanza error si el LLM falla o no hay API key configurada.
- */
 export async function generateCoachAnalysis(input: CoachAnalysisInput): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {

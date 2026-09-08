@@ -43,14 +43,6 @@ export interface CoachAnalysisInput {
   estimated10KTimeSec: number | null;
   /** Ratio declarado por el sistema (basado en workoutType de Strava). */
   intervalRatio: number;
-  /**
-   * Ratio REAL de series, calculado por el detector en base a los splits
-   * por km. Suele ser mayor que `intervalRatio` cuando el usuario usa
-   * Garmin Connect (que no rellena workoutType en Strava).
-   */
-  detectedIntervalRatio: number;
-  /** Nº total de actividades marcadas como series por el detector. */
-  detectedIntervalsCount: number;
   easyRatio: number;
   weeksActive: number;
   isNewbie: boolean;
@@ -66,18 +58,6 @@ export interface CoachAnalysisInput {
   weightKg?: number | null;
   restingHrBpm?: number | null;
   maxHrBpm?: number | null;
-  // Ejemplos de series detectadas (últimos 90 días, hasta 3)
-  intervalExamples?: {
-    date: string;
-    distanceKm: number;
-    fastPaceSecPerKm: number | null;
-    slowPaceSecPerKm: number | null;
-    repetitions: number;
-    fastAvgHrBpm: number | null;
-    slowAvgHrBpm: number | null;
-    isTrackLike: boolean;
-    fastDeltaSecPerKm: number;
-  }[];
 }
 
 function formatPaceMinPerKm(secPerKm: number): string {
@@ -128,9 +108,6 @@ function buildUserPrompt(input: CoachAnalysisInput): string {
   lines.push(`- % de actividades en trail: ${Math.round(input.trailRatio * 100)}%`);
   lines.push(`- % de actividades tipo carrera oficial: ${Math.round(input.raceRatio * 100)}%`);
   lines.push(`- % de actividades tipo series/intervalos (según Strava workoutType): ${Math.round(input.intervalRatio * 100)}%`);
-  lines.push(
-    `- % de actividades tipo series DETECTADAS por ritmo de los splits: ${Math.round(input.detectedIntervalRatio * 100)}% (${input.detectedIntervalsCount} sesiones en todo el histórico). Esto incluye las series que Strava no marca como workoutType=3 porque el usuario las planifica desde Garmin Connect.`,
-  );
   lines.push(`- % de actividades tipo rodaje suave/recuperación: ${Math.round(input.easyRatio * 100)}%`);
   lines.push(`- Tirada más larga registrada: ${input.longestRunKm.toFixed(1)} km`);
   lines.push(`- Variabilidad de ritmo entre actividades: ${(input.paceVariability * 100).toFixed(0)}% (0% = ritmo muy constante siempre, 100% = muy variable)`);
@@ -150,48 +127,6 @@ function buildUserPrompt(input: CoachAnalysisInput): string {
   }
 
   // Series detectadas (nueva sección)
-  lines.push(``);
-  lines.push(`## Sesiones de series detectadas en los últimos 90 días (hasta 3 ejemplos)`);
-  if (!input.intervalExamples || input.intervalExamples.length === 0) {
-    lines.push(
-      input.detectedIntervalsCount === 0
-        ? `(no se han detectado sesiones de series en los últimos 90 días; el corredor no trabaja la velocidad)`
-        : `(hay ${input.detectedIntervalsCount} sesiones detectadas en todo el histórico, pero ninguna en los últimos 90 días)`,
-    );
-  } else {
-    for (const ex of input.intervalExamples) {
-      const parts: string[] = [];
-      parts.push(`${ex.date} · ${ex.distanceKm} km`);
-      if (ex.repetitions) parts.push(`~${ex.repetitions} repeticiones`);
-      if (ex.fastPaceSecPerKm) parts.push(`rápido a ${formatPaceMinPerKm(ex.fastPaceSecPerKm)}`);
-      if (ex.slowPaceSecPerKm) parts.push(`recup. a ${formatPaceMinPerKm(ex.slowPaceSecPerKm)}`);
-      if (ex.fastAvgHrBpm && ex.slowAvgHrBpm) {
-        parts.push(`FC ${ex.fastAvgHrBpm}/${ex.slowAvgHrBpm} bpm`);
-      }
-      if (ex.isTrackLike) {
-        parts.push(`en pista`);
-      }
-      lines.push(`- ${parts.join(" · ")}`);
-    }
-    // Comparativa contra ritmo de carrera 10K, si lo tenemos
-    if (input.estimated10KTimeSec) {
-      const racePace = input.estimated10KTimeSec / 10;
-      for (const ex of input.intervalExamples) {
-        if (ex.fastPaceSecPerKm) {
-          const diff = ex.fastPaceSecPerKm - racePace;
-          const pct = (diff / racePace) * 100;
-          const comparison =
-            pct < -5
-              ? `más rápido que el ritmo de 10K en ${Math.abs(pct).toFixed(0)}%`
-              : pct > 5
-                ? `más lento que el ritmo de 10K en ${pct.toFixed(0)}%`
-                : `similar al ritmo de 10K (diferencia ${pct.toFixed(0)}%)`;
-          lines.push(`  · El ritmo rápido de esta sesión es ${comparison} (10K ≈ ${formatPaceMinPerKm(racePace)}).`);
-        }
-      }
-    }
-  }
-
   lines.push(``);
   lines.push(`## Marcas personales actuales`);
   if (input.personalRecords.length === 0) {
@@ -223,23 +158,23 @@ Estructura el análisis en estas secciones, con encabezados markdown (##):
 ## Lo que yo cambiaría
 2-3 puntos de mejora concretos y accionables, priorizados por impacto. No seas genérico ("corre más variado") — di el POR QUÉ con los datos que tienes.
 
-Si hay datos de series detectadas por ritmo:
-- Comenta el nº de sesiones de series en los últimos 90 días vs el volumen total. Para un popular 1-2 series/semana es un buen ritmo; 0 es señal de alarma; 4+ sin fácil de por medio es señal de sobreentrenamiento.
-- Comenta el ritmo rápido de las series vs el ritmo de carrera 10K. Series a ritmo 5K (más rápido que 10K) son para corredores con base; series más lentas que 10K son improductivas salvo que el objetivo sea técnica de carrera o vuelta a la calma.
-- Si la recuperación (ritmo lento entre repeticiones) es más rápida que el ritmo del rodaje suave, es un clásico error de corredor popular: las series se hacen a buen ritmo pero la recuperación es casi trote, y el estímulo de calidad se pierde.
-
 Si hay FC en reposo: 50-60 es excelente base aeróbica, 60-70 normal, >70 puede indicar fatiga acumulada o sobreentrenamiento. Si está >70 y el corredor no lo sabe, menciónalo con tacto.
+
+Sobre las series (intervalos): no tenemos datos fiables de si el usuario hace series o no (muchos sincronizan desde Garmin, que no rellena el campo "workoutType" en Strava). Por tanto, NO asumas que hace o que no hace. En lugar de eso, valora el contexto:
+- Si el corredor ya tiene una base aeróbica decente (volumen semanal consistente, algún PR reciente, cadencia en rango) y NO vemos series en los datos, sugiere que probablemente le beneficiaría meter 1 sesión de series a la semana — no como crítica ("no haces series"), sino como oportunidad de mejora ("ahora que tienes X km/semana asentados, un día de series cortas tipo 6×400 a ritmo de 5K con recuperación trotando podría bajarte otros 30-60s en 5K"). 
+- Si el corredor es newbie (<3 meses de historial), NO hables de series todavía — primero consolidar volumen.
+- Si el corredor hace carreras oficiales (raceRatio > 0) o tira a umbral/tempo, no insistas en series — ya está trabajando la intensidad.
 
 ## Tu próximo objetivo
 Una sugerencia concreta de en qué centrarte las próximas 4-8 semanas, coherente con el resto del análisis. No inventes un plan de entrenamiento detallado (eso no es tu trabajo aquí) — da la dirección, no el plan día a día.
 
 Reglas:
-- Nunca inventes datos que no te he dado. Si falta información para decir algo (ej. sin datos de frecuencia cardíaca, sin series detectadas, sin perfil), dilo o simplemente no lo menciones — no rellenes con suposiciones.
+- Nunca inventes datos que no te he dado. Si falta información para decir algo (ej. sin datos de frecuencia cardíaca, sin perfil), dilo o simplemente no lo menciones — no rellenes con suposiciones.
 - No repitas los números tal cual como si fuera un informe — interprétalos, dales sentido humano.
 - No uses lenguaje de marketing ni frases hechas de coach motivacional ("tú puedes", "no hay excusas", "el límite lo pones tú"). Eres un entrenador real, no un póster.
-- No des consejo médico. Si detectas algo que suena a riesgo de lesión (volumen muy alto de golpe, cero rodajes suaves, series muy intensas sin recuperación adecuada, FC en reposo muy elevada, etc.) dilo como observación de entrenador, no como diagnóstico médico, y sugiere ver a un profesional si aplica.
+- No des consejo médico. Si detectas algo que suena a riesgo de lesión (volumen muy alto de golpe, cero rodajes suaves, FC en reposo muy elevada, etc.) dilo como observación de entrenador, no como diagnóstico médico, y sugiere ver a un profesional si aplica.
 - Si el corredor tiene muy pocos datos (menos de 10 actividades o menos de 3 meses), dilo abiertamente al principio y ajusta el análisis a lo que sí se puede decir con esos datos — no finjas certeza que no tienes.
-- IMPORTANTE sobre series: NO digas "no haces series" si en la sección "Series detectadas" hay al menos un ejemplo o el % de detectedIntervalRatio es >0. Ese dato viene de analizar el ritmo por km de cada actividad, no del campo workoutType de Strava, que Garmin Connect no rellena. Si de verdad no hay series, dilo honestamente, pero solo cuando los datos lo confirmen.
+- NO inventes series. NO digas "no haces series" ni "haces series". Mejor: si quieres mencionarlo, usa "no tengo datos fiables sobre si haces series" y valora si le convendría meterlas (ver bloque "Sobre las series" arriba).
 - Longitud total: 350-550 palabras. Ni un informe de 1000 palabras ni dos frases.`;
 
 export async function generateCoachAnalysis(input: CoachAnalysisInput): Promise<string> {

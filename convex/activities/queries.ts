@@ -52,46 +52,14 @@ export const listMyActivities = query({
     const runningOnly = all.filter((a) => isRunningSportType(a.stravaSportType));
 
     let filtered = runningOnly;
-    if (args.type === "interval") {
-      // El campo `type` solo se rellena con `workoutType` de Strava, que
-      // Garmin Connect no transmite. Para detectar series en el feed
-      // consideramos AMBAS señales: el tipo Strava Y la detección local
-      // por splits (detectIntervalsFromSplits). Esto arregla el caso
-      // del usuario que sincroniza desde Garmin y no ve nunca sus series
-      // en el feed.
-      filtered = filtered.filter(
-        (a) =>
-          a.type === "interval" ||
-          a.detectedIntervals?.isIntervalWorkout === true,
-      );
-    } else if (args.type) {
+    if (args.type) {
       filtered = filtered.filter((a) => a.type === args.type);
     }
     if (args.afterMs !== undefined) {
       filtered = filtered.filter((a) => a.startedAt < args.afterMs!);
     }
 
-    // Enriquece cada item con `intervalSource` (solo relevante para series).
-    // - "both": Strava y nuestro detector coinciden
-    // - "strava": solo Strava lo marcó
-    // - "detected": solo nuestro detector lo marcó (caso Garmin típico)
-    // Para actividades que no son series, devuelve undefined.
-    const enriched = filtered.slice(0, limit).map((a) => {
-      if (a.type !== "interval" && a.detectedIntervals?.isIntervalWorkout !== true) {
-        return a;
-      }
-      const fromStrava = a.type === "interval";
-      const fromDetection = a.detectedIntervals?.isIntervalWorkout === true;
-      const source =
-        fromStrava && fromDetection
-          ? "both"
-          : fromStrava
-            ? "strava"
-            : "detected";
-      return { ...a, intervalSource: source };
-    });
-
-    return enriched;
+    return filtered.slice(0, limit);
   },
 });
 

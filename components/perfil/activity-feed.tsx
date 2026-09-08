@@ -39,7 +39,6 @@ const TYPE_FILTERS = [
   { value: "race" as const, label: "Carreras", icon: Trophy },
   { value: "trail" as const, label: "Trail", icon: Mountain },
   { value: "long_run" as const, label: "Tiradas largas", icon: TrendingUp },
-  { value: "interval" as const, label: "Series", icon: Zap },
   { value: "easy" as const, label: "Easy", icon: ActivityIcon },
 ];
 
@@ -53,52 +52,11 @@ const TYPE_BADGES: Record<string, { label: string; color: string; icon: React.Re
   recovery: { label: "Recuperación", color: "bg-gray-400 text-white", icon: <ActivityIcon className="h-3 w-3" /> },
 };
 
-/**
- * Badge específico para actividades de series. Distingue entre:
- *  - "strava":   marcadas por Strava (workoutType=3) — fuente oficial
- *  - "detected": detectadas por nuestro detector (CV del pace >15% + ≥2
- *                splits rápidos + ≥2 lentos) — caso típico Garmin→Strava
- *                donde Strava no rellenó workoutType
- *  - "both":     ambas señales coinciden (alta confianza)
- *
- * El tooltip explica al usuario de dónde sale la clasificación.
- */
-const INTERVAL_SOURCE_BADGES: Record<
-  "strava" | "detected" | "both",
-  { label: string; color: string; tooltip: string }
-> = {
-  strava: {
-    label: "Series (Strava)",
-    color: "bg-purple-600 text-white",
-    tooltip: "Marcada como intervalos en Strava (workoutType=3)",
-  },
-  detected: {
-    label: "Series (detectadas)",
-    color: "bg-purple-500/80 text-white ring-1 ring-purple-300",
-    tooltip:
-      "Detectada por el ritmo de los splits por km (no viene como workoutType en Strava)",
-  },
-  both: {
-    label: "Series ✓",
-    color: "bg-purple-700 text-white",
-    tooltip: "Marcada como intervalos en Strava y detectada por el ritmo",
-  },
-};
-
-function getActivityBadge(a: {
-  type: string;
-  intervalSource?: string;
-}): { label: string; color: string; icon: React.ReactNode; tooltip?: string } {
-  if (a.type === "interval" || a.intervalSource) {
-    const source = (a.intervalSource as keyof typeof INTERVAL_SOURCE_BADGES) ?? "strava";
-    const spec = INTERVAL_SOURCE_BADGES[source] ?? INTERVAL_SOURCE_BADGES.strava;
-    return {
-      label: spec.label,
-      color: spec.color,
-      icon: <Zap className="h-3 w-3" />,
-      tooltip: spec.tooltip,
-    };
-  }
+function getActivityBadge(a: { type: string }): {
+  label: string;
+  color: string;
+  icon: React.ReactNode;
+} {
   return TYPE_BADGES[a.type] ?? TYPE_BADGES.easy;
 }
 
@@ -265,7 +223,6 @@ export function ActivityFeed() {
                   {/* Tipo badge */}
                   <div
                     className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs flex-shrink-0 ${badge.color}`}
-                    title={badge.tooltip}
                   >
                     {badge.icon}
                     {badge.label}

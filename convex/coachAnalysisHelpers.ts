@@ -38,42 +38,6 @@ export const getAnalysisInputs = internalQuery({
       .collect();
     const activities = allActivitiesRaw.filter((a) => isRunningSportType(a.stravaSportType));
 
-    // ---------------------------------------------------------------------
-    // Series detectadas (campo detectedIntervals, calculado en el ingest
-    // y/o por el backfill). Cogemos las 3 más recientes de los últimos 90
-    // días para que el LLM las pueda citar con detalle.
-    // ---------------------------------------------------------------------
-    const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
-    const intervalActivities = activities
-      .filter(
-        (a) =>
-          a.detectedIntervals?.isIntervalWorkout &&
-          a.startedAt >= ninetyDaysAgo,
-      )
-      .sort((a, b) => b.startedAt - a.startedAt)
-      .slice(0, 3);
-
-    const intervalExamples = intervalActivities.map((a) => ({
-      date: new Date(a.startedAt).toISOString().slice(0, 10),
-      distanceKm: Math.round((a.distanceM / 1000) * 10) / 10,
-      fastPaceSecPerKm: a.detectedIntervals?.fastPaceSecPerKm ?? null,
-      slowPaceSecPerKm: a.detectedIntervals?.slowPaceSecPerKm ?? null,
-      repetitions: a.detectedIntervals?.estimatedRepetitions ?? 0,
-      fastAvgHrBpm: a.detectedIntervals?.fastAvgHrBpm ?? null,
-      slowAvgHrBpm: a.detectedIntervals?.slowAvgHrBpm ?? null,
-      isTrackLike: a.detectedIntervals?.isTrackLike ?? false,
-      fastDeltaSecPerKm: a.detectedIntervals?.fastDeltaSecPerKm ?? 0,
-    }));
-
-    // Calculamos el ratio REAL de series sobre el total running, basado en
-    // la detección. Esto sustituye al intervalRatio de deriveInputs (que
-    // solo se basaba en workoutType de Strava y siempre era 0).
-    const detectedIntervalsCount = activities.filter(
-      (a) => a.detectedIntervals?.isIntervalWorkout,
-    ).length;
-    const detectedIntervalRatio =
-      activities.length > 0 ? detectedIntervalsCount / activities.length : 0;
-
     const inputs: ActivityInput[] = activities.map((a) => ({
       type: a.type,
       startedAt: a.startedAt,
@@ -127,9 +91,6 @@ export const getAnalysisInputs = internalQuery({
       longestRunKm: derived.longestRunM / 1000,
       estimated10KTimeSec: derived.estimated10KTimeSec,
       intervalRatio: derived.intervalRatio,
-      // Nuevo: ratio REAL de series basado en detección por splits.
-      detectedIntervalRatio,
-      detectedIntervalsCount,
       easyRatio: derived.easyRatio,
       weeksActive: derived.weeksActive,
       isNewbie: derived.isNewbie,
@@ -141,8 +102,6 @@ export const getAnalysisInputs = internalQuery({
       weightKg,
       restingHrBpm,
       maxHrBpm,
-      // Series: hasta 3 ejemplos recientes para que el LLM los cite
-      intervalExamples,
     };
   },
 });

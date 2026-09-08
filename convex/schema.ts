@@ -837,6 +837,8 @@ export default defineSchema({
       v.object({
         isIntervalWorkout: v.boolean(),
         paceVariabilityCv: v.number(),
+        fastDeltaSecPerKm: v.number(),
+        slowDeltaSecPerKm: v.number(),
         fastSplits: v.number(),
         slowSplits: v.number(),
         estimatedRepetitions: v.number(),
@@ -844,6 +846,7 @@ export default defineSchema({
         slowPaceSecPerKm: v.union(v.number(), v.null()),
         fastAvgHrBpm: v.union(v.number(), v.null()),
         slowAvgHrBpm: v.union(v.number(), v.null()),
+        isTrackLike: v.boolean(),
         reason: v.string(),
       }),
     ),

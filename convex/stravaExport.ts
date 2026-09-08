@@ -86,6 +86,8 @@ export const upsertActivityInternal = internalMutation({
       v.object({
         isIntervalWorkout: v.boolean(),
         paceVariabilityCv: v.number(),
+        fastDeltaSecPerKm: v.number(),
+        slowDeltaSecPerKm: v.number(),
         fastSplits: v.number(),
         slowSplits: v.number(),
         estimatedRepetitions: v.number(),
@@ -93,6 +95,7 @@ export const upsertActivityInternal = internalMutation({
         slowPaceSecPerKm: v.union(v.number(), v.null()),
         fastAvgHrBpm: v.union(v.number(), v.null()),
         slowAvgHrBpm: v.union(v.number(), v.null()),
+        isTrackLike: v.boolean(),
         reason: v.string(),
       }),
     ),

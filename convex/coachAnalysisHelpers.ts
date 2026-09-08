@@ -61,6 +61,8 @@ export const getAnalysisInputs = internalQuery({
       repetitions: a.detectedIntervals?.estimatedRepetitions ?? 0,
       fastAvgHrBpm: a.detectedIntervals?.fastAvgHrBpm ?? null,
       slowAvgHrBpm: a.detectedIntervals?.slowAvgHrBpm ?? null,
+      isTrackLike: a.detectedIntervals?.isTrackLike ?? false,
+      fastDeltaSecPerKm: a.detectedIntervals?.fastDeltaSecPerKm ?? 0,
     }));
 
     // Calculamos el ratio REAL de series sobre el total running, basado en

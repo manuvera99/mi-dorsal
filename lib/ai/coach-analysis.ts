@@ -75,6 +75,8 @@ export interface CoachAnalysisInput {
     repetitions: number;
     fastAvgHrBpm: number | null;
     slowAvgHrBpm: number | null;
+    isTrackLike: boolean;
+    fastDeltaSecPerKm: number;
   }[];
 }
 
@@ -165,6 +167,9 @@ function buildUserPrompt(input: CoachAnalysisInput): string {
       if (ex.slowPaceSecPerKm) parts.push(`recup. a ${formatPaceMinPerKm(ex.slowPaceSecPerKm)}`);
       if (ex.fastAvgHrBpm && ex.slowAvgHrBpm) {
         parts.push(`FC ${ex.fastAvgHrBpm}/${ex.slowAvgHrBpm} bpm`);
+      }
+      if (ex.isTrackLike) {
+        parts.push(`en pista`);
       }
       lines.push(`- ${parts.join(" · ")}`);
     }

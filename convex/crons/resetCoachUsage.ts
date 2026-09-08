@@ -22,15 +22,15 @@ import { internal } from "../_generated/api";
 
 export const resetCoachUsage = internalAction({
   args: {},
-  handler: async (ctx) => {
-    // Workaround TS2589 (Convex 1.18 inferencia circular en mapped types
-    // cuando hay muchas tablas con uniones grandes). Aplicar `as any` aquí
-    // es OK — solo afecta al path de la llamada, no al runtime. Ver
-    // AGENTS.md §15.3 para más detalle.
-    const result = await ctx.runMutation(
-      ((internal as any).coachAnalysisHelpers as any).resetAllCoachUsage,
-      {},
-    );
+  // Workaround TS2589: declarar el return type del handler para cortar la
+  // inferencia circular del mapped type de Convex 1.18. Sin este tipo
+  // explícito, TS intenta inferirlo desde `result` → `ctx.runMutation(...)`
+  // → `internal.<...>` → `api.d.ts` → vuelve aquí = ciclo.
+  handler: async (
+    ctx,
+  ): Promise<{ scanned: number; reset: number }> => {
+    const resetMutation = ((internal as any)["coachAnalysisHelpers"] as any)["resetAllCoachUsage"];
+    const result = await ctx.runMutation(resetMutation, {});
     console.log(
       `[resetCoachUsage] scanned=${result.scanned} reset=${result.reset}`,
     );

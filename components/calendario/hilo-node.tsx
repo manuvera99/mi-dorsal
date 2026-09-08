@@ -113,10 +113,11 @@ export function HiloNode({ index, myRace, isNext }: HiloNodeProps) {
         : "shadow-md shadow-stone-500/15";
 
   return (
-    <div className="relative mt-20 first:mt-0 sm:mt-24">
-      {/* Etiqueta de fecha — "dorsal mini" vertical apoyado sobre el hilo.
-          El contenedor padre dibuja la línea vertical justo por el centro
-          de esta etiqueta (left-0 a left-14 → centro en left-7, sm:left-9). */}
+    <div className="relative first:mt-0">
+      {/* Etiqueta de fecha — "dorsal mini" en top-0 del HiloNode (queda
+          DENTRO del gap de mt-24, sin chocar con la card de arriba).
+          El dorsal mide ~80px; el mt-24 (96px) le deja 16px de aire
+          respecto al borde inferior de la card anterior. */}
       <div
         className={cn(
           "absolute left-0 top-0 z-10 flex w-14 sm:w-[72px] flex-col items-center justify-center rounded-2xl px-1.5 py-2 text-white",
@@ -142,7 +143,9 @@ export function HiloNode({ index, myRace, isNext }: HiloNodeProps) {
       </div>
 
       {/* Punto de estado — anilla blanca alrededor del punto, centrada
-          sobre el hilo (mismo x que la etiqueta). */}
+          sobre el hilo. Va a top-[78px] para alinearse con el centro
+          vertical del dorsal (~80px de alto, padding 2 = 8+8 = 16px
+          de padding + 64 de contenido = 80px). */}
       <div
         className={cn(
           "absolute left-[22px] top-[78px] z-20 h-3 w-3 rounded-full ring-4 sm:left-[30px] sm:top-[86px]",
@@ -153,10 +156,12 @@ export function HiloNode({ index, myRace, isNext }: HiloNodeProps) {
       />
 
       {/* Tarjeta — vive a la derecha del hilo, con margen para no chocar
-          con la etiqueta de fecha. */}
+          con la etiqueta de fecha. El mt-20 empuja la card DEBAJO del
+          dorsal (que mide ~80px y está en top-0 absolute). Así el dorsal
+          queda flotando en el gap entre cards sin tocar ninguna. */}
       <article
         className={cn(
-          "card relative ml-[80px] sm:ml-[96px]",
+          "card relative ml-[80px] mt-24 sm:ml-[96px] sm:mt-28",
           status === "done" && "bg-stone-50/50",
           status === "planned" &&
             isNext &&

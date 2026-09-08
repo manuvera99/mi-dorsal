@@ -17,6 +17,7 @@
 import Link from "next/link";
 import { Calendar, Hash, MapPin, Trophy } from "lucide-react";
 import { cn, formatRaceType, formatTime, formatPaceLong } from "@/lib/utils";
+import { TimePaceCalculator } from "./time-pace-calculator";
 
 type HiloNodeStatus = "planned" | "done" | "dns" | "dnf";
 
@@ -260,77 +261,60 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
         </div>
 
         {/*
-          Bloque de "estadísticas de carrera" — Estimación / Tu PR / Tiempo
-          oficial. Solo se muestra si HAY predicción (decisión del producto:
-          la predicción es el ancla visual; sin ella, la card queda más
-          limpia sin esta sección).
+          Bloque de "objetivo + calculadora":
+          - Línea 1: PR del usuario en la distancia de la carrera (si existe)
+          - Línea 2: calculadora bidireccional tiempo ↔ pace + botón guardar
+          - Línea 3 (si la carrera ya pasó): tiempo oficial real
 
-          Cuando hay predicción:
-          - Estimación: tiempo total + pace objetivo "5:12 min/km" debajo.
-          - Tu PR en X: solo si hay PR con la MISMA distancia que la carrera
-            (match exacto en metros, sin Riegel).
-          - Tiempo oficial: solo si la carrera ya pasó y tenemos resultado.
+          Decisión de producto: la predicción automática de Daniels/Riegel
+          ya no se muestra. El usuario marca su propio objetivo desde la
+          calculadora. Si hay un valor guardado (predictedTimeSeconds de
+          cuando añadió la carrera, o de un guardado anterior), la
+          calculadora arranca con él.
         */}
-        {myRace.predictedTimeSeconds && (
-          <div className="mt-4 flex flex-wrap gap-x-6 gap-y-3 border-t border-stone-100 pt-3">
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-500">
-                Estimación
-              </div>
-              <div className="font-mono text-xl font-bold text-runner-primary">
-                {formatTime(myRace.predictedTimeSeconds)}
-              </div>
-              {/*
-                Pace objetivo: predTime / race.distanceKm. El formato
-                "5:12 min/km" es la opción del producto (más explícito que
-                "/km" para corredores primerizos).
-              */}
-              {race && race.distanceKm > 0 && (
-                <div className="font-mono text-xs font-semibold text-stone-600">
-                  {formatPaceLong(
-                    myRace.predictedTimeSeconds / race.distanceKm,
-                  )}
-                </div>
-              )}
-              {myRace.predictionConfidence && (
-                <div className="text-[10px] text-stone-500">
-                  confianza{" "}
-                  {myRace.predictionConfidence === "high"
-                    ? "alta"
-                    : myRace.predictionConfidence === "medium"
-                      ? "media"
-                      : "baja"}
-                </div>
-              )}
-            </div>
-
+        {(matchingPR ||
+          myRace.predictedTimeSeconds ||
+          myRace.actualTimeSeconds) && (
+          <div className="mt-4 border-t border-stone-100 pt-3">
             {matchingPR && (
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-500">
-                  Tu PR
-                </div>
-                <div className="font-mono text-xl font-bold text-stone-700">
+              <div className="mb-3 flex items-baseline justify-between gap-2 rounded-md bg-stone-50 px-3 py-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-stone-500">
+                  Tu PR en {Math.round(matchingPR.distanceM / 1000)} km
+                </span>
+                <span className="font-mono text-sm font-bold text-stone-700">
                   {formatTime(matchingPR.timeSeconds)}
-                </div>
-                <div className="text-[10px] text-stone-500">
-                  en {Math.round(matchingPR.distanceM / 1000)} km
-                </div>
+                  {race && race.distanceKm > 0 && (
+                    <span className="ml-2 text-[11px] font-normal text-stone-500">
+                      ({formatPaceLong(matchingPR.timeSeconds / race.distanceKm)})
+                    </span>
+                  )}
+                </span>
               </div>
             )}
 
+            {race && race.distanceKm > 0 && (
+              <TimePaceCalculator
+                myRaceId={myRace._id}
+                distanceKm={race.distanceKm}
+                initialTimeSeconds={myRace.predictedTimeSeconds}
+              />
+            )}
+
             {myRace.actualTimeSeconds && (
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-500">
+              <div className="mt-3 flex items-baseline justify-between gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-stone-500">
                   Tiempo oficial
-                </div>
-                <div className="font-mono text-xl font-bold text-runner-accent">
-                  {formatTime(myRace.actualTimeSeconds)}
-                </div>
-                {myRace.actualPosition && (
-                  <div className="text-[10px] text-stone-500">
-                    Posición #{myRace.actualPosition}
-                  </div>
-                )}
+                </span>
+                <span className="text-right">
+                  <span className="font-mono text-base font-bold text-runner-accent">
+                    {formatTime(myRace.actualTimeSeconds)}
+                  </span>
+                  {myRace.actualPosition && (
+                    <span className="ml-2 text-[10px] text-stone-500">
+                      Pos #{myRace.actualPosition}
+                    </span>
+                  )}
+                </span>
               </div>
             )}
           </div>

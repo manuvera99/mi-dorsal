@@ -191,6 +191,47 @@ export const update = mutation({
 });
 
 /**
+ * Guarda el **tiempo objetivo** que el usuario ha elegido en la
+ * calculadora bidireccional de la card de /calendario.
+ *
+ * Por qué un mutation dedicado:
+ *  - El campo `predictedTimeSeconds` lo venía poblando la predicción
+ *    automática de Daniels/Riegel al añadir la carrera. Ahora el usuario
+ *    puede sobreescribirlo con un valor explícito desde la calculadora.
+ *  - Cuando el usuario guarda, machacamos `predictedTimeSeconds` con su
+ *    valor y reseteamos `predictionConfidence` a `undefined` (porque ya
+ *    no es una predicción automática, es una decisión del usuario).
+ *  - Si quisiéramos distinguir "predicción del sistema" vs "objetivo
+ *    del usuario", añadiríamos un campo nuevo (`targetTimeSeconds`).
+ *    Por ahora reusamos `predictedTimeSeconds` para no migrar el schema
+ *    y mantener compat con el resto de la app (página de carrera, emails
+ *    de resultado, etc. siguen mostrando el mismo campo).
+ *
+ * `timeSeconds` puede ser undefined (el usuario borra su objetivo →
+ * la card vuelve al estado "sin definir"). En ese caso, la card
+ * mostrará la calculadora vacía con placeholder.
+ */
+export const setTargetTime = mutation({
+  args: {
+    id: v.id("myRaces"),
+    timeSeconds: v.union(v.number(), v.null()),
+  },
+  handler: async (ctx, { id, timeSeconds }) => {
+    const user = await requireUser(ctx);
+    const myRace = await ctx.db.get(id);
+    if (!myRace) throw new Error("Not found");
+    if (myRace.userId !== user._id) throw new Error("Forbidden");
+
+    // Reseteamos la confianza: ya no es una predicción automática.
+    // Si timeSeconds es null, también limpiamos el campo.
+    await ctx.db.patch(id, {
+      predictedTimeSeconds: timeSeconds ?? undefined,
+      predictionConfidence: undefined,
+    });
+  },
+});
+
+/**
  * Pega el resultado real manualmente (fallback si el scraper falla).
  */
 export const setManualResult = mutation({

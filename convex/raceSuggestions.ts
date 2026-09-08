@@ -286,7 +286,7 @@ ${suggestion.url}
 ${suggestion.suggestedName ? `Nombre: ${suggestion.suggestedName}\n` : ""}${suggestion.suggestedDate ? `Fecha: ${suggestion.suggestedDate}\n` : ""}${suggestion.note ? `\nNota: ${suggestion.note}\n` : ""}
 Revisar en: ${adminUrl}`;
 
-    await ctx.scheduler.runAfter(0, (internal.emails as any).sendEmail, {
+    await ctx.scheduler.runAfter(0, internal.emails.sendEmail.sendEmail, {
       to: process.env.ADMIN_NOTIFICATION_EMAIL || "hola@mi-dorsal.com",
       subject: `🏃 Nueva sugerencia de carrera: ${suggestion.suggestedName || suggestion.url}`,
       html,

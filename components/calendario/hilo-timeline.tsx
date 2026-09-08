@@ -3,10 +3,14 @@
 /**
  * HiloTimeline — el "hilo" vertical del calendario personal.
  *
- * Dibuja una línea vertical discontinua (`border-l-2 border-dashed`) y va
- * colocando `HiloNode`s sobre ella en orden cronológico ascendente. Entre
- * las carreras pasadas y las futuras inserta un marcador "Hoy" que rompe
- * visualmente el hilo.
+ * Dibuja un **SVG curvo** (estilo hilo de coser) que serpentea suavemente
+ * por detrás de los `HiloNode`s. El curveo es sutil (apenas perceptible)
+ * pero le quita la sensación de "línea recta de timeline" y refuerza la
+ * metáfora de marca "El hilo que te une a tu dorsal".
+ *
+ * El SVG se mide con un ResizeObserver para que el path se regenere si
+ * cambia el alto del contenedor (filtros, resize, etc.) sin tener que
+ * hardcodear coordenadas.
  *
  * Props:
  *  - `myRaces`: array con `.race` enriquecido, ya ordenado por fecha ASC.
@@ -15,6 +19,7 @@
  *    el hilo si no hay pasado visible).
  */
 
+import { useEffect, useRef, useState } from "react";
 import { HiloNode } from "./hilo-node";
 
 interface HiloTimelineProps {
@@ -69,13 +74,10 @@ export function HiloTimeline({
       role="list"
       aria-label="Línea de tiempo de tu hilo de carreras"
     >
-      {/* El hilo — línea vertical discontinua que recorre toda la timeline.
-          Posicionada en left-7 (móvil) / left-9 (sm+), que coincide con el
-          centro de la etiqueta de fecha de cada HiloNode (w-14 / w-[72px]). */}
-      <div
-        className="pointer-events-none absolute bottom-0 left-7 top-0 border-l-2 border-dashed border-runner-primary/35 sm:left-9"
-        aria-hidden="true"
-      />
+      {/* El hilo — SVG curvo, fino y semitransparente, serpentea por detrás
+          de las cards. Se mide con ResizeObserver para regenerar el path
+          cuando cambia el alto del contenedor. */}
+      <HiloSvg />
 
       {myRaces.map((mr, i) => {
         const isLast = i === myRaces.length - 1;
@@ -99,6 +101,117 @@ export function HiloTimeline({
       )}
     </div>
   );
+}
+
+/**
+ * HiloSvg — dibuja el "hilo" curvo que recorre la timeline por detrás de
+ * las cards. Estilo: línea fina (1.5 px), color brand semitransparente,
+ * con dashes largos para evocar hilo de coser.
+ *
+ * Implementación:
+ *  - Un `<svg>` absoluto ocupa TODO el contenedor padre.
+ *  - Mide el contenedor con ResizeObserver y vuelve a pintar cuando cambia
+ *    (por resize, por aparición del toggle "Hoy", por carga de imágenes, etc.).
+ *  - El path se construye con curvas Bézier cúbicas (C) que se desvían
+ *    ±6 px del eje vertical — suficiente para que se vea ondulado pero sin
+ *    salirse del centro de la etiqueta de fecha.
+ *  - Los puntos de control se colocan en x = 0.5·ancho (centro del SVG).
+ *    Como el SVG va de left-0 a right-0 pero la etiqueta de fecha está
+ *    en left-0..left-14 / sm:left-[72px], necesitamos el path **relativo
+ *    a la posición real del hilo**, no al centro del SVG.
+ *
+ *  Para eso, el SVG también va posicionado en `left-0 right-auto` con
+ *  `width` igual al ancho de la etiqueta de fecha (14 / 72 px), de modo
+ *  que su x=0 está en el borde izquierdo del timeline y x=ancho está
+ *  en el centro de la etiqueta. Así, el path a x=ancho/2 cae justo
+ *  en el centro de la etiqueta de fecha.
+ */
+function HiloSvg() {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const update = () => {
+      setSize({ w: el.offsetWidth, h: el.offsetHeight });
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener("resize", update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
+  // El path se construye solo si tenemos dimensiones reales.
+  const d = buildHiloPath(size.h, size.w);
+
+  return (
+    <div
+      ref={containerRef}
+      // El wrapper absoluto se ancla a la izquierda con el mismo ancho que
+      // la etiqueta de fecha (w-14 / sm:w-[72px]). El SVG dentro va
+      // absolute, ocupa todo el wrapper.
+      className="pointer-events-none absolute top-0 left-0 w-14 sm:w-[72px]"
+      style={{ height: "100%" }}
+      aria-hidden="true"
+    >
+      <svg
+        width="100%"
+        height="100%"
+        viewBox={`0 0 ${Math.max(1, size.w)} ${Math.max(1, size.h)}`}
+        preserveAspectRatio="none"
+        className="absolute inset-0"
+        // No bloquea clicks: la timeline debajo sigue siendo interactiva.
+        fill="none"
+      >
+        {d && (
+          <path
+            d={d}
+            // Hilo fino, semitransparente, con dashes largos
+            // (8 6) para evocar un pespunte.
+            stroke="rgb(220 38 38 / 0.28)"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeDasharray="6 6"
+          />
+        )}
+      </svg>
+    </div>
+  );
+}
+
+/**
+ * Construye un path SVG que va de (cx, 0) a (cx, h) serpenteando ±6 px
+ * horizontalmente cada ~40 px de alto. El resultado es una onda suave.
+ *
+ * Si `w` o `h` valen 0 (antes del primer paint), devuelve null para
+ * evitar paths degenerados.
+ */
+function buildHiloPath(h: number, w: number): string | null {
+  if (h <= 0 || w <= 0) return null;
+  const cx = w / 2; // centro horizontal del wrapper (= centro de la etiqueta)
+  const amplitude = 6; // desviación lateral en px
+  const step = 40; // longitud de cada "onda" en px verticales
+  const segments = Math.max(1, Math.ceil(h / step));
+
+  let d = `M ${cx} 0`;
+
+  for (let i = 0; i < segments; i++) {
+    const y0 = i * step;
+    const y1 = Math.min(h, (i + 1) * step);
+    // Onda alterna: par a la derecha, impar a la izquierda.
+    const sign = i % 2 === 0 ? 1 : -1;
+    const xCtrl = cx + sign * amplitude;
+    // Curva cúbica simétrica: el control horizontal es el mismo en ambos
+    // extremos, lo que produce una onda limpia tipo "seno".
+    d += ` C ${xCtrl} ${y0 + step * 0.33}, ${xCtrl} ${y1 - step * 0.33}, ${cx} ${y1}`;
+  }
+
+  return d;
 }
 
 function TodayMarker({

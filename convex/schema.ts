@@ -16,6 +16,13 @@ export default defineSchema({
     role: v.optional(v.union(
       v.literal("user"),
       v.literal("admin"),
+      // 'test' = usuario beta-tester marcado a mano por un admin.
+      // Tendrá acceso completo a todas las funciones (cuando haya tiers
+      // de pago, será tratado como premium a efectos de gating).
+      // Mismo nivel de permisos que 'user' para acciones del propio
+      // usuario (puede apuntarse a carreras, crear PRs, etc.); la
+      // diferencia es que NO pagará cuando metamos Stripe.
+      v.literal("test"),
     )),
     displayName: v.optional(v.string()),
     avatarUrl: v.optional(v.string()),
@@ -1046,7 +1053,109 @@ export default defineSchema({
     .index("by_race", ["raceId"]),
 
   // ---------------------------------------------------------------------------
-  // 19. CLUB_SUGGESTIONS — clubes que un usuario no encontró en la lista RFEA
+  // 19. SUBSCRIPTIONS — mirror local del estado de subscripción de Clerk
+  // ---------------------------------------------------------------------------
+  // Clerk Billing (powered by Stripe) gestiona la pasarela de pago, la
+  // creación del customer, los cobros recurrentes, los webhooks y el
+  // cumplimiento fiscal. Esta tabla es un MIRROR de solo lectura para:
+  //   1) Queries rápidas desde el cliente (getMySubscription) sin
+  //      re-loguear al usuario contra Clerk en cada navegación.
+  //   2) Feature gating en el backend Convex (hasPremiumFeature) sin
+  //      una llamada extra a la API de Clerk.
+  //   3) Métricas propias (MRR, churn) sin depender del dashboard de Clerk.
+  //   4) Auditoría: histórico de cambios de plan aunque Clerk los borre.
+  //
+  // Fuente de verdad para PAGOS: Clerk Billing / Stripe. Esta tabla se
+  // sincroniza vía /api/webhooks/clerk-billing (Svix-verified). NUNCA
+  // escribir en ella desde el cliente: solo mutations internas
+  // (`upsertFromClerkEvent`, `cancelFromClerkEvent`).
+  //
+  // Esquema de activation:
+  //   - Plan "free" → status: "active", plan: "free". Cubre todos los
+  //     usuarios que nunca pagaron.
+  //   - Plan "premium" (o el nombre que se defina) → status: "active" mientras
+  //     la suscripción esté viva; "past_due" si falló un cobro; "canceled" si
+  //     el usuario canceló (mantenemos acceso hasta currentPeriodEnd).
+  //
+  // IMPORTANTE: NO activar hasta tener:
+  //   1) Clerk Billing habilitado en el dashboard de Clerk
+  //   2) Productos creados (Free + Premium) en el dashboard
+  //   3) Webhook Svix configurado y firma verificada
+  //   4) Permission key "premium" creada y mapeada a la suscripción
+  // Mientras tanto, dejar la tabla vacía y `getMySubscription` devuelve null
+  // (la app sigue funcionando 100% en plan free).
+  // ---------------------------------------------------------------------------
+  subscriptions: defineTable({
+    /** userId de Clerk (string, no Convex Id porque el user puede
+     *  no estar aún en profiles si acaba de pagar y aún no se ha
+     *  sincronizado). El webhook hace upsert por clerkUserId. */
+    clerkUserId: v.string(),
+
+    /** ID de la suscripción en Clerk (clerk subscription ID).
+     *  Una por usuario mientras esté activa; en cancelada mantenemos
+     *  el id para histórico. */
+    clerkSubscriptionId: v.string(),
+
+    /** ID del plan/producto en Clerk. ej: "free_user", "premium_monthly",
+     *  "premium_yearly". Permite distinguir mensual vs anual sin
+     *  parsear el nombre. */
+    planId: v.string(),
+    /** Nombre legible del plan (para mostrar en UI/admin). */
+    planName: v.string(),
+    /** "free" | "premium" (futuro: "team", "lifetime"...). Es el nivel
+     *  lógico, NO el SKU concreto. El feature gating se hace sobre
+     *  este campo. */
+    tier: v.union(
+      v.literal("free"),
+      v.literal("premium"),
+    ),
+
+    /** Estado reportado por Clerk. Lo guardamos tal cual para poder
+     *  mostrar el estado real en /cuenta/suscripcion sin recalcular. */
+    status: v.union(
+      v.literal("active"),         // suscripción viva, próxima a cobrar
+      v.literal("trialing"),       // en trial gratuito
+      v.literal("past_due"),       // cobro falló, reintentando
+      v.literal("canceled"),       // cancelada por el usuario
+      v.literal("incomplete"),     // primer cobro falló, no llegó a activarse
+      v.literal("incomplete_expired"),
+      v.literal("unpaid"),
+      v.literal("paused"),
+    ),
+
+    /** Fecha del próximo cobro (unix ms) o null si está cancelada/trial. */
+    currentPeriodStart: v.optional(v.number()),
+    currentPeriodEnd: v.optional(v.number()),
+    /** true si el usuario marcó para cancelar al final del periodo
+     *  (sigue teniendo acceso hasta currentPeriodEnd). */
+    cancelAtPeriodEnd: v.optional(v.boolean()),
+    /** Cuándo se canceló definitivamente (unix ms). */
+    canceledAt: v.optional(v.number()),
+
+    /** ID del customer en Clerk/Stripe (útil para soporte). */
+    customerId: v.optional(v.string()),
+    /** Email del pagador (a veces distinto al email del user). */
+    customerEmail: v.optional(v.string()),
+
+    /** Cantidad y moneda del plan (ej: 499 EUR, 3900 EUR). null en free. */
+    amountCents: v.optional(v.number()),
+    currency: v.optional(v.string()),
+
+    /** Última vez que Clerk nos notificó algo de esta sub (unix ms). */
+    lastSyncedAt: v.number(),
+    /** Cuándo se creó esta fila (unix ms). */
+    createdAt: v.number(),
+    /** Evento más reciente de Clerk que la modificó (para debug). */
+    lastEventType: v.optional(v.string()),
+    lastEventId: v.optional(v.string()),
+  })
+    .index("by_clerk_user_id", ["clerkUserId"])
+    .index("by_clerk_subscription_id", ["clerkSubscriptionId"])
+    .index("by_tier", ["tier"])
+    .index("by_status", ["status"]),
+
+  // ---------------------------------------------------------------------------
+  // 20. CLUB_SUGGESTIONS — clubes que un usuario no encontró en la lista RFEA
   // ---------------------------------------------------------------------------
   // Cuando un usuario busca su club en el selector de /perfil y no lo
   // encuentra, puede reportarlo. Llega al admin para que (a) lo añada al

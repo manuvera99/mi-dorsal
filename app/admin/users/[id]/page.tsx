@@ -1,21 +1,25 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { isMockMode } from "@/lib/mock/provider";
 import { formatTime } from "@/lib/utils";
 import Link from "next/link";
-import { ArrowLeft, Shield, ShieldOff, Loader2, Trophy, Calendar, ThumbsUp, Star, User as UserIcon } from "lucide-react";
+import { ArrowLeft, Loader2, Trophy, Calendar, ThumbsUp, Star, FlaskConical } from "lucide-react";
+
+type UserRole = "user" | "admin" | "test";
 
 export default function UserDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const id = params.id as string;
   const useMock = isMockMode();
   const data = useMock ? null : useQuery(api.users.adminGetProfile, { profileId: id as Id<"profiles"> });
   const setRole = useMock ? null : useMutation(api.users.setUserRole);
+  const [pendingRole, setPendingRole] = useState<UserRole | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   if (useMock) {
     return (
@@ -36,11 +40,31 @@ export default function UserDetailPage() {
 
   const { profile, prs, myRaces, votes, ratings } = data;
 
-  const toggleRole = async () => {
-    const newRole = profile.role === "admin" ? "user" : "admin";
-    if (confirm(`¿Cambiar rol de ${profile.displayName ?? profile.clerkUserId} a "${newRole}"?`)) {
-      if (!setRole) return;
+  const currentRole: UserRole = (profile.role as UserRole | undefined) ?? "user";
+
+  const onChangeRole = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newRole = e.target.value as UserRole;
+    if (newRole === currentRole) return;
+    if (!setRole) return;
+    const labelMap: Record<UserRole, string> = {
+      user: "user (normal)",
+      admin: "admin",
+      test: "test (beta-tester)",
+    };
+    if (!confirm(`¿Cambiar rol de ${profile.displayName ?? profile.clerkUserId} a "${labelMap[newRole]}"?`)) {
+      // Revertir el select visualmente al valor actual.
+      e.target.value = currentRole;
+      return;
+    }
+    setError(null);
+    setPendingRole(newRole);
+    try {
       await setRole({ profileId: profile._id, role: newRole });
+    } catch (err: any) {
+      setError(err?.message ?? "Error cambiando el rol");
+      // El query se rehidrata con el valor real, así que el select vuelve solo.
+    } finally {
+      setPendingRole(null);
     }
   };
 
@@ -50,35 +74,52 @@ export default function UserDetailPage() {
         <ArrowLeft className="h-3 w-3" /> Volver a usuarios
       </Link>
 
-      <div className="bg-white border rounded-lg p-6 mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="bg-white border rounded-lg p-6 mb-6 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4 min-w-0">
           <div className="h-16 w-16 rounded-full bg-runner-primary text-white flex items-center justify-center text-2xl font-bold">
             {(profile.displayName ?? profile.clerkUserId).charAt(0).toUpperCase()}
           </div>
-          <div>
-            <h1 className="text-2xl font-bold">{profile.displayName ?? "(sin nombre)"}</h1>
-            <p className="text-sm text-gray-500 font-mono">{profile.clerkUserId}</p>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold truncate">{profile.displayName ?? "(sin nombre)"}</h1>
+            <p className="text-sm text-gray-500 font-mono truncate">{profile.clerkUserId}</p>
             <p className="text-xs text-gray-400 mt-1">
               Alta: {new Date(profile._creationTime).toLocaleString("es-ES")}
               {profile.club && ` · Club: ${profile.club}`}
             </p>
           </div>
         </div>
-        <button
-          onClick={toggleRole}
-          className={`inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold ${
-            profile.role === "admin"
-              ? "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              : "bg-runner-primary text-white hover:opacity-90"
-          }`}
-        >
-          {profile.role === "admin" ? (
-            <><ShieldOff className="h-4 w-4" /> Quitar admin</>
-          ) : (
-            <><Shield className="h-4 w-4" /> Hacer admin</>
-          )}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <label htmlFor="role-select" className="text-sm text-gray-600">Rol:</label>
+          <select
+            id="role-select"
+            value={currentRole}
+            onChange={onChangeRole}
+            disabled={pendingRole !== null}
+            className="border rounded-md px-3 py-2 text-sm font-medium bg-white disabled:opacity-50"
+          >
+            <option value="user">user</option>
+            <option value="admin">admin</option>
+            <option value="test">test</option>
+          </select>
+          {pendingRole && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
+        </div>
       </div>
+
+      {error && (
+        <div className="mb-4 p-3 rounded-md bg-red-50 border border-red-200 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      {currentRole === "test" && (
+        <div className="mb-4 p-3 rounded-md bg-amber-50 border border-amber-200 text-sm text-amber-900 flex items-start gap-2">
+          <FlaskConical className="h-4 w-4 mt-0.5 shrink-0" />
+          <div>
+            <strong>Beta-tester.</strong> Tiene acceso a todo lo que haya disponible
+            en la app. Cuando lleguen los tiers de pago, se le dará bypass de premium.
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
         <MiniStat label="PRs" value={prs.length} icon={Trophy} color="orange" />

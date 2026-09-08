@@ -97,14 +97,56 @@ export const bootstrapFirstAdmin = mutation({
 
 /**
  * Cambia el rol de un usuario. Solo admins pueden.
+ *
+ * Roles soportados:
+ *  - 'user'  → usuario normal.
+ *  - 'admin' → acceso al panel /admin.
+ *  - 'test'  → beta-tester. Mismas capacidades que 'user' hoy; cuando
+ *              lleguen los tiers de pago, se le dará bypass de premium.
+ *              Un admin lo marca desde /admin/users/[id].
+ *
+ * Guard de auto-degradación: un admin NO puede degradarse a sí mismo
+ * (de 'admin' a 'user' o 'test'). Para evitar que un admin se quede
+ * sin acceso accidentalmente. Si el último admin quiere salir, lo
+ * tiene que promover a 'admin' a otro usuario primero.
+ *
+ * Tampoco puede degradar a otro admin sin promoverse a sí mismo como
+ * 'admin' primero (defensa en profundidad: dos admins mínimo).
  */
 export const setUserRole = mutation({
   args: {
     profileId: v.id("profiles"),
-    role: v.union(v.literal("user"), v.literal("admin")),
+    role: v.union(v.literal("user"), v.literal("admin"), v.literal("test")),
   },
   handler: async (ctx, { profileId, role }) => {
-    await requireAdmin(ctx);
+    const me = await requireAdmin(ctx);
+
+    const target = await ctx.db.get(profileId);
+    if (!target) throw new Error("Profile no encontrado");
+
+    // No permitir que un admin se quite su propio rol de admin.
+    if (target._id === me._id && target.role === "admin" && role !== "admin") {
+      throw new Error(
+        "No puedes degradarte a ti mismo. Pide a otro admin que te quite el rol.",
+      );
+    }
+
+    // Si el target es admin y lo vamos a degradar, exigir que haya
+    // al menos otro admin activo después del cambio.
+    if (target.role === "admin" && role !== "admin") {
+      const otherAdmins = await ctx.db
+        .query("profiles")
+        .filter((q) => q.eq(q.field("role"), "admin"))
+        .collect();
+      // otherAdmins incluye al propio target. Si solo queda 1, bloqueamos.
+      const remainingAdmins = otherAdmins.filter((p) => p._id !== target._id);
+      if (remainingAdmins.length === 0) {
+        throw new Error(
+          "No puedes degradar al último admin. Promueve a otro usuario primero.",
+        );
+      }
+    }
+
     await ctx.db.patch(profileId, { role });
     return profileId;
   },
@@ -116,7 +158,9 @@ export const setUserRole = mutation({
 export const adminListProfiles = query({
   args: {
     search: v.optional(v.string()),
-    role: v.optional(v.union(v.literal("user"), v.literal("admin"))),
+    role: v.optional(
+      v.union(v.literal("user"), v.literal("admin"), v.literal("test")),
+    ),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);

@@ -5,7 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { isMockMode } from "@/lib/mock/provider";
 import Link from "next/link";
-import { Search, Users as UsersIcon, Shield, Loader2, Trophy, Calendar } from "lucide-react";
+import { Search, Users as UsersIcon, Shield, Loader2, Trophy, Calendar, FlaskConical } from "lucide-react";
 
 function MockUsersList() {
   return (
@@ -18,9 +18,29 @@ function MockUsersList() {
   );
 }
 
+type RoleFilter = "all" | "user" | "admin" | "test";
+
+function RoleBadge({ role }: { role: string | undefined }) {
+  if (role === "admin") {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs bg-runner-primary text-white px-2 py-0.5 rounded">
+        <Shield className="h-3 w-3" /> admin
+      </span>
+    );
+  }
+  if (role === "test") {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 rounded">
+        <FlaskConical className="h-3 w-3" /> test
+      </span>
+    );
+  }
+  return <span className="text-xs text-gray-500">user</span>;
+}
+
 function RealUsersList() {
   const [search, setSearch] = useState("");
-  const [role, setRole] = useState<"all" | "user" | "admin">("all");
+  const [role, setRole] = useState<RoleFilter>("all");
   const useMock = isMockMode();
   const profiles = useMock ? null : useQuery(api.users.adminListProfiles, {
     search: search || undefined,
@@ -45,11 +65,12 @@ function RealUsersList() {
         <select
           className="border rounded-md px-3 py-2 text-sm"
           value={role}
-          onChange={(e) => setRole(e.target.value as any)}
+          onChange={(e) => setRole(e.target.value as RoleFilter)}
         >
           <option value="all">Todos los roles</option>
           <option value="user">Usuarios</option>
           <option value="admin">Admins</option>
+          <option value="test">TEST (beta-testers)</option>
         </select>
         <div className="text-sm text-gray-500 ml-auto">
           {profiles === undefined || profiles === null ? "…" : `${profiles.length} usuarios`}
@@ -91,13 +112,7 @@ function RealUsersList() {
                   </td>
                   <td className="px-4 py-3 text-gray-500 font-mono text-xs">{p.clerkUserId.slice(0, 16)}…</td>
                   <td className="px-4 py-3">
-                    {p.role === "admin" ? (
-                      <span className="inline-flex items-center gap-1 text-xs bg-runner-primary text-white px-2 py-0.5 rounded">
-                        <Shield className="h-3 w-3" /> admin
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-500">user</span>
-                    )}
+                    <RoleBadge role={p.role} />
                   </td>
                   <td className="px-4 py-3 text-gray-600">{p.club ?? "—"}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs">

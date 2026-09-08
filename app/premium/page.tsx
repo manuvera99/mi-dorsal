@@ -27,7 +27,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://mi-dorsal.com";
 export const metadata: Metadata = {
   title: "mi-dorsal Premium — Más de tu temporada de carreras",
   description:
-    "Predice tus tiempos, sincroniza Strava, planifica tu temporada y recibe alertas personalizadas. Desde 4,99 €/mes. Sin compromiso, cancela cuando quieras.",
+    "Sincronización Strava en tiempo real, entrenador IA ilimitado, planificación de temporada y alertas personalizadas. Desde 4,99 €/mes. Sin compromiso, cancela cuando quieras.",
   alternates: {
     canonical: "/premium",
   },
@@ -58,25 +58,34 @@ type PlanFeature = {
 };
 
 const PLAN_FEATURES: PlanFeature[] = [
-  // Catálogo y comunidad
+  // Catálogo y comunidad (siempre free)
   { category: "Catálogo y comunidad", label: "Ver catálogo de carreras", free: true, premium: true },
   { category: "Catálogo y comunidad", label: "Votar y comentar carreras", free: true, premium: true },
-  { category: "Catálogo y comunidad", label: "Recibir resultados por email", free: "3 últimos", premium: "Ilimitados + diploma PDF" },
+  { category: "Catálogo y comunidad", label: "Recibir resultados por email", free: true, premium: true },
+  { category: "Catálogo y comunidad", label: "Newsletter editorial", free: true, premium: true },
 
-  // Calendario
-  { category: "Calendario personal", label: "Carreras en tu calendario", free: "Hasta 5", premium: "Ilimitadas" },
+  // Calendario (free, sin límite — Pro es "comodidad", no acceso)
+  { category: "Calendario personal", label: "Carreras en tu calendario", free: "Sin límite", premium: "Sin límite" },
+  { category: "Calendario personal", label: "Marcar dorsales y notas", free: true, premium: true },
   { category: "Calendario personal", label: "Exportar a Google/Apple Calendar", free: false, premium: true },
-  { category: "Calendario personal", label: "Widget para tu web/blog", free: false, premium: true },
+  { category: "Calendario personal", label: "Widget público para tu web/blog", free: false, premium: true },
 
-  // Predicciones
-  { category: "Predicciones y análisis", label: "Predicción de tiempo (Daniels VDOT)", free: "1 al mes", premium: "Ilimitadas + alta confianza" },
+  // PRs (siempre free — son la base del producto)
+  { category: "Marcas personales", label: "Añadir PRs a mano", free: "Ilimitados", premium: "Ilimitados" },
+  { category: "Marcas personales", label: "Subir export de Strava (ZIP)", free: true, premium: true },
+  { category: "Marcas personales", label: "Re-subir export tras cambiar de dispositivo", free: false, premium: true },
+
+  // Predicciones (siempre free, coste $0)
+  { category: "Predicciones y análisis", label: "Predicción de tiempo (Daniels VDOT)", free: "Ilimitadas", premium: "Ilimitadas + alta confianza" },
+  { category: "Predicciones y análisis", label: "Entrenador IA con voz de club", free: "1 al mes", premium: "Ilimitado" },
   { category: "Predicciones y análisis", label: "Planificación inteligente de temporada", free: false, premium: true },
   { category: "Predicciones y análisis", label: "Estadísticas avanzadas de tus PRs", free: false, premium: true },
   { category: "Predicciones y análisis", label: "Compararte con la comunidad", free: false, premium: true },
 
-  // Integraciones
-  { category: "Integraciones", label: "Sincronización con Strava", free: false, premium: true },
-  { category: "Integraciones", label: "Sincronización con Garmin", free: false, premium: true },
+  // Integraciones (Strava OAuth solo Pro — consume API; export ZIP libre)
+  { category: "Integraciones", label: "Subir export de Strava (ZIP, una vez)", free: true, premium: true },
+  { category: "Integraciones", label: "Sincronización Strava OAuth (API + webhook tiempo real)", free: false, premium: true },
+  { category: "Integraciones", label: "Sincronización con Garmin", free: false, premium: "Próximamente" },
 
   // Alertas y soporte
   { category: "Alertas y soporte", label: "Alertas personalizadas (carreras en tu zona, nuevas ediciones)", free: false, premium: true },

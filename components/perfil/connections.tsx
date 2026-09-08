@@ -25,6 +25,7 @@ import {
 } from "./icons";
 import { StravaExportUploader } from "./strava-export-uploader";
 import { StravaOauthConnect } from "./strava-oauth-connect";
+import { PremiumFeatureLock } from "@/components/billing/premium-feature-lock";
 
 export function ConnectionsSection() {
   const summary = useQuery(api.stravaExport.getMyStravaSummary, {});
@@ -114,10 +115,23 @@ export function ConnectionsSection() {
           </div>
         )}
 
-        {/* OAuth */}
-        <div className="mb-4">
-          <StravaOauthConnect />
-        </div>
+        {/* OAuth — solo Pro (sesión 8 sep 2026).
+            Free puede seguir subiendo el export ZIP, pero NO consumir
+            la API de Strava (OAuth + webhook). El gate usa
+            <PremiumFeatureLock> con variant="banner" para mostrar el
+            upsell claro en lugar del botón de OAuth. */}
+        <PremiumFeatureLock
+          feature="Sincronización con Strava"
+          description="Conecta tu cuenta de Strava y tus actividades se importan solas. Detectamos carreras, actualizamos tus PRs automáticamente. El export manual sigue funcionando en free."
+          variant="banner"
+        >
+          {/* Si el user es Pro, renderiza el OAuth connect. La
+              <StravaOauthConnect> ya muestra el estado correcto
+              (conectado/desconectado) y el botón de OAuth. */}
+          <div className="mb-4">
+            <StravaOauthConnect />
+          </div>
+        </PremiumFeatureLock>
 
         {/* Divider entre OAuth y export */}
         {!oauthStatus?.connected && summary?.fromExport === 0 && (

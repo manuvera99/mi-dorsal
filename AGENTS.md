@@ -1023,4 +1023,46 @@ TypeError: Cannot read properties of null (reading 'totalActivities')
 
 **Lección relacionada (memoria del agente, 8 sep 2026)**: el typecheck de `npx convex dev` es menos estricto que el de `npx convex deploy` / `next build`. Si un `internalAction` o `internalMutation` rompe con TS2589/TS2615 (tipo circular en mapped type de Convex 1.18), el workaround definitivo es **declarar el return type del handler explícitamente** (`handler: async (ctx): Promise<{...}> => {...}`). Los casts a `any` no bastan. Ver el código de `convex/crons/resetCoachUsage.ts` para el ejemplo aplicado.
 
+### 17.6 — Decisión final Free vs Pro (sesión 8 sep 2026)
+
+**Filosofía:** "Pro es **comodidad**, no acceso". El free tiene todo lo esencial para usar mi-dorsal como un corredor popular. Pro te quita fricción (sincronización automática, alertas, planner), pero no te bloquea el uso básico. Esto maximiza la viralidad (un corredor popular prueba la app sin pagar) y la conversión gradual (cuando nota la fricción, paga).
+
+**Lo que es SIEMPRE FREE** (no se gatea nunca):
+- Ver el catálogo de carreras y todas las fichas.
+- Buscar, filtrar, votar, comentar, sistema 8D.
+- Newsletter "Historias de dorsal" y la landing `/blog`.
+- Predicciones VDOT (cálculo local, $0 de coste).
+- Añadir PRs manuales (sin límite).
+- Subir el export de Strava (ZIP) UNA vez en la vida del user.
+- Resultados por email y diploma PDF.
+- Calendario personal (sin límite de carreras).
+
+**Lo que es SOLO PRO** (gateado con `<PremiumFeatureLock>` o `<Paywall>`):
+- **Sincronización con Strava OAuth** (consume API de Strava) — el botón se reemplaza por un banner con CTA a `/cuenta/suscripcion`. El export ZIP sigue siendo free, porque son los datos del user, no tocan la API.
+- Re-subir el export de Strava tras cambiar de dispositivo.
+- Alertas personalizadas (carreras en tu zona, nuevas ediciones, cambios de precio).
+- Planificador inteligente de temporada ("estas 6 carreras encajan con tu nivel").
+- Compararte con la comunidad (percentiles anónimos).
+- Export a Google Calendar / Apple Calendar.
+- Widget público "Mis carreras" para blog.
+- Estadísticas avanzadas de PRs.
+- Entrenador IA ilimitado (el free tiene 1/mes, sin paywall bloqueante — solo mensaje claro al agotar).
+
+**Lo que tiene BYPASS** (admin y role="test" en `profiles`):
+- TODO lo de Pro, sin pagar. Implementado en `convex/subscriptions.ts:hasPremiumAccess` y `getMyPremiumStatus`. Documentado en §17.1.
+
+**Componentes de gating disponibles** (sesión 8 sep 2026):
+- `<Paywall variant="inline|card|subtle">` (`components/billing/paywall.tsx`): general, para envolver features opcionales con un upsell. El children se renderiza solo si `useHasPremium()` es true.
+- `<PremiumFeatureLock variant="subtle|banner|inline">` (`components/billing/premium-feature-lock.tsx`): específico para features de DATOS (Strava, calendario, diploma). El banner variant reemplaza un botón entero por un bloque con CTA. Para el caso del Strava OAuth en `connections.tsx`, es el componente usado.
+
+**Por qué Strava OAuth es Pro pero el export ZIP es free** (decisión Manu, sesión 8 sep 2026):
+- OAuth consume la API de Strava (rate limit 200 req/15min, 2000/día). Si todos los free usan OAuth, quemamos los rate limits sin pagar nada a Strava. El export ZIP es una descarga estática que el user hace a mano desde la web de Strava, son sus datos, no tocan la API.
+- Diferenciador emocional: el corredor popular que ya tiene cuenta en Strava no siente que "le estamos quitando" algo — puede subir su historial cuando quiera. La comodidad (sincronización automática, alertas) sí es Pro.
+
+**No implementado todavía** (pendiente para cuando se monte la feature de diploma descargable en /perfil):
+- Gate del diploma PDF descargable. La función `renderDiploma` en `lib/pdf/diploma.tsx` existe pero no se invoca desde runtime (no hay UI en /perfil que la use todavía). Cuando se implemente, gatear a partir del 4º resultado. Free puede VER el resultado siempre (es su derecho), pero el PDF descargable (un asset) se bloquea con `<PremiumFeatureLock variant="subtle">` después de 3.
+
+**Landing `/premium`** (`app/premium/page.tsx`):
+- Tabla comparativa `PLAN_FEATURES` actualizada para reflejar esta decisión. Es importante que la landing sea HONESTA con lo que el free ya tiene — mentir diciendo "Strava es solo Pro" cuando el export ZIP es free genera desconfianza.
+
 **Última actualización**: 8 de septiembre de 2026. Sesión de integración de pasarela de pagos: esqueleto de Clerk Billing (Stripe bajo el capó) listo pero no activado. Tabla `subscriptions` en Convex + webhook handler Svix-verified en `/api/webhooks/clerk-billing` + componentes `<Paywall>`/`<PremiumBadge>` + páginas `/premium` (landing pública) y `/cuenta/suscripcion` (gestión) + doc `docs/BILLING_SETUP.md` con el runbook de activación. Cero coste mientras no se active. Activación en Q3-Q4 2026 según `docs/MONETIZATION_PLAN.md`. Sesión anterior: 7 sep 2026 (enrichment masivo de carreras con IA). Misma sesión (continuación): bypass admin/test en `hasPremiumAccess` y `getMyPremiumStatus` + rate limit del entrenador IA (free=1/mes, pro=∞, admin/test=∞) con reset mensual vía cron + UI con contador "X de Y al mes" en `CoachAnalysisCard` y CTA suave a `/cuenta/suscripcion` cuando se agota. Misma sesión (más tarde): scripts de devOnly para crear/limpiar usuarios de prueba (`seedTestUser`, `enrichTestUserByEmail`, `cleanTestUserByClerkId`) + fix del bug "TypeError: Cannot read properties of null (reading 'totalActivities')" en `/perfil` con dos capas: queries devuelven objeto neutro cuando no hay profile + `useEffect` en `RealPerfil` que dispara `upsertMyProfile` automáticamente al detectar `null` en `getMyProfile`. Documentado en §17.5.

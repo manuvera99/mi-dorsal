@@ -208,4 +208,16 @@ export const mockApi = {
       return { id: `mock_suggestion_${Date.now()}` as any };
     },
   },
+  clubsCatalog: {
+    /**
+     * Mock de `api.clubsCatalog.listAll` (público). Devuelve algunos clubs
+     * manuales de ejemplo para que el ClubSelect tenga contenido en mock mode.
+     */
+    listAll: async () => {
+      return [
+        { _id: "mock_club_1" as any, name: "Bull Runners", ccaa: "Comunidad Valenciana", source: "manual" as const },
+        { _id: "mock_club_2" as any, name: "Runners Alicante", ccaa: "Comunidad Valenciana", source: "from_suggestion" as const },
+      ];
+    },
+  },
 };

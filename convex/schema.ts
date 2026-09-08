@@ -1047,4 +1047,39 @@ export default defineSchema({
     .index("by_status_created", ["status", "createdAt"])
     .index("by_user", ["userId"])
     .index("by_club_name", ["clubName"]),
+
+  // ---------------------------------------------------------------------------
+  // 20. CLUBS_CATALOG — clubs manuales / añadidos por el admin
+  // ---------------------------------------------------------------------------
+  // Catálogo extendido de clubes. El catálogo base son los clubs federados
+  // de la RFEA (cargados en `lib/data/clubs.json` en build time), pero
+  // algunos clubs (populares, secciones de colegio, clubs de running no
+  // federados, etc.) se añaden manualmente desde /admin/clubs.
+  //
+  // El ClubSelect combina ambas fuentes en runtime. Los clubs manuales
+  // tienen precedencia sobre la RFEA en caso de duplicado de nombre+ccaa.
+  //
+  // Cuando el admin marca una sugerencia como "added" en
+  // /admin/club-suggestions, el handler crea automáticamente una fila
+  // aquí con source: "from_suggestion".
+  // ---------------------------------------------------------------------------
+  clubsCatalog: defineTable({
+    name: v.string(),
+    ccaa: v.string(),
+    source: v.union(
+      v.literal("manual"),
+      v.literal("from_suggestion"),
+    ),
+    // Si viene de una sugerencia, referencia a la fila original.
+    suggestionId: v.optional(v.id("clubSuggestions")),
+    createdBy: v.id("profiles"),
+    createdAt: v.number(),
+    // Si el admin lo desactivó (en vez de eliminarlo para mantener
+    // referencias históricas en clubSuggestions, etc.).
+    isActive: v.optional(v.boolean()),
+  })
+    .index("by_name_ccaa", ["name", "ccaa"])
+    .index("by_active", ["isActive"])
+    .index("by_source", ["source"])
+    .index("by_suggestion", ["suggestionId"]),
 });

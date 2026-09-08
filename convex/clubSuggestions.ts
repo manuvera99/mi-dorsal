@@ -13,7 +13,7 @@
 
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { internal, api } from "./_generated/api";
 import { getOptionalUser, requireAdmin } from "./_helpers";
 
 // ---------------------------------------------------------------------------
@@ -189,6 +189,19 @@ export const adminUpdateStatus = mutation({
     if (Object.keys(patch).length > 0) {
       await ctx.db.patch(id, patch);
     }
+
+    // Si pasa a "added", crea automáticamente el club en clubsCatalog.
+    // Idempotente: si ya existe uno con el mismo name+ccaa, no duplica.
+    // Hacemos el upsert desde la MISMA mutation para que sea atómico
+    // (no hay ventana donde la sugerencia está "added" pero el club no existe).
+    if (status === "added" && suggestion.status !== "added") {
+      await ctx.runMutation(api.clubsCatalog.upsertFromSuggestion, {
+        name: suggestion.clubName,
+        ccaa: suggestion.ccaa,
+        suggestionId: id,
+      });
+    }
+
     return id;
   },
 });

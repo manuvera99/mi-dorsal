@@ -19,6 +19,7 @@ import type * as activities_queries from "../activities/queries.js";
 import type * as adminTools from "../adminTools.js";
 import type * as blog from "../blog.js";
 import type * as clubSuggestions from "../clubSuggestions.js";
+import type * as clubsCatalog from "../clubsCatalog.js";
 import type * as coachAnalysisHelpers from "../coachAnalysisHelpers.js";
 import type * as cronJobs from "../cronJobs.js";
 import type * as crons_checkResults from "../crons/checkResults.js";
@@ -72,6 +73,7 @@ declare const fullApi: ApiFromModules<{
   adminTools: typeof adminTools;
   blog: typeof blog;
   clubSuggestions: typeof clubSuggestions;
+  clubsCatalog: typeof clubsCatalog;
   coachAnalysisHelpers: typeof coachAnalysisHelpers;
   cronJobs: typeof cronJobs;
   "crons/checkResults": typeof crons_checkResults;

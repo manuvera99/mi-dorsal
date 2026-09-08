@@ -3,36 +3,23 @@
 // =============================================================================
 // mi-dorsal — Combobox de búsqueda de club de atletismo
 // =============================================================================
-// Con 3.812 clubes en la lista, un <select> plano es injusable. Este
-// combobox replica el patrón estándar: input arriba + lista filtrada abajo.
+// Combobox con búsqueda en tiempo real. Combina:
+//   - Clubs federados RFEA (catálogo base, estático en lib/data/clubs.json)
+//   - Clubs manuales / añadidos (runtime via Convex, ver useCombinedClubs)
 //
 // Funcionalidad:
-//   - Filtrado en tiempo real por nombre y/o CCAA (case-insensitive).
-//   - Top 50 resultados. Si hay más, indicamos "y N más" al final.
-//   - Botón "Otro (especificar a mano)" → input libre (clubs no federados).
-//   - Botón "No encuentro mi club" → dialog de report para el admin.
-//   - Muestra el club seleccionado como pill con X para limpiar.
-//
-// Datos: `lib/data/clubs.json` (cacheados en build, sin API en runtime).
+//   - Filtrado case- y accent-insensitive por nombre y/o CCAA.
+//   - Top 50 resultados + aviso "refina la búsqueda" si hay más.
+//   - "Otro (especificar)" para clubs no federados (Bull Runners, etc.).
+//   - "No encuentro mi club, avisa al admin" para reportar al admin.
+//   - Pill arriba con el club seleccionado + X para limpiar.
 // =============================================================================
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import clubsData from "@/lib/data/clubs.json";
 import { Search, X, ChevronDown } from "lucide-react";
 import { ReportMissingClubDialog } from "./report-missing-club-dialog";
+import { useCombinedClubs, type ClubEntry } from "./use-combined-clubs";
 
-type ClubEntry = { name: string; ccaa: string };
-type ClubsPayload = {
-  source: string;
-  fetchedAt: string;
-  total: number;
-  clubs: ClubEntry[];
-};
-
-const data = clubsData as ClubsPayload;
-
-// Top N resultados cuando no hay query. Mantenemos el orden alfabético
-// que ya viene en el JSON.
 const MAX_VISIBLE_RESULTS = 50;
 
 export interface ClubSelectProps {
@@ -43,9 +30,8 @@ export interface ClubSelectProps {
   maxLength?: number;
 }
 
-// Normaliza para búsqueda: minúsculas, sin tildes. Usado para match
-// case- y accent-insensitive (el usuario puede teclear "alicante" y
-// matchear "Alicante").
+// Normaliza para búsqueda: minúsculas, sin tildes. Permite que "alicante"
+// matchee "Alicante".
 function normalizeForSearch(s: string): string {
   return s
     .toLowerCase()
@@ -59,8 +45,8 @@ export function ClubSelect({
   disabled,
   maxLength = 80,
 }: ClubSelectProps) {
-  // Estados: input del buscador, si el usuario eligió "Otro", texto de "Otro",
-  // y si el dialog de report está abierto.
+  const { clubs: data, isLoading } = useCombinedClubs();
+
   const [query, setQuery] = useState("");
   const [otherText, setOtherText] = useState("");
   const [showOther, setShowOther] = useState(false);
@@ -71,8 +57,8 @@ export function ClubSelect({
 
   // ¿El value actual es un club exacto de la lista, "Otro", o vacío?
   const exactMatch = useMemo(
-    () => data.clubs.find((c) => c.name === value) ?? null,
-    [value],
+    () => data.find((c) => c.name === value) ?? null,
+    [value, data],
   );
   const isOther = !exactMatch && value !== "" && value != null;
 
@@ -86,36 +72,33 @@ export function ClubSelect({
       setShowOther(false);
       setOtherText("");
     }
-    // Resetea query al cargar: el usuario verá el club seleccionado (pill)
-    // y, si quiere cambiar, escribirá en el buscador.
     setQuery("");
   }, [value, isOther]);
 
-  // Resultados del filtrado. Si no hay query, top 50 alfabético. Si hay,
-  // busca por nombre Y por CCAA (substring, accent-insensitive).
+  // Filtrado: si no hay query, top 50. Si hay, busca por nombre o CCAA.
   const results = useMemo(() => {
     const q = normalizeForSearch(query.trim());
     if (q === "") {
-      return data.clubs.slice(0, MAX_VISIBLE_RESULTS);
+      return data.slice(0, MAX_VISIBLE_RESULTS);
     }
-    const filtered = data.clubs.filter((c) => {
+    const filtered = data.filter((c) => {
       const name = normalizeForSearch(c.name);
       const ccaa = normalizeForSearch(c.ccaa);
       return name.includes(q) || ccaa.includes(q);
     });
     return filtered.slice(0, MAX_VISIBLE_RESULTS);
-  }, [query]);
+  }, [query, data]);
 
   const hasMoreResults = useMemo(() => {
     const q = normalizeForSearch(query.trim());
-    if (q === "") return data.clubs.length > MAX_VISIBLE_RESULTS;
-    const total = data.clubs.filter((c) => {
+    if (q === "") return data.length > MAX_VISIBLE_RESULTS;
+    const total = data.filter((c) => {
       const name = normalizeForSearch(c.name);
       const ccaa = normalizeForSearch(c.ccaa);
       return name.includes(q) || ccaa.includes(q);
     }).length;
     return total > MAX_VISIBLE_RESULTS;
-  }, [query]);
+  }, [query, data]);
 
   // Cierra el dropdown al hacer click fuera.
   useEffect(() => {
@@ -139,17 +122,14 @@ export function ClubSelect({
     setShowOther(false);
     setOtherText("");
     setQuery("");
-    // Reabrir el buscador para que el usuario pueda elegir otro.
     setTimeout(() => inputRef.current?.focus(), 0);
   };
 
   const handleOtherToggle = () => {
     if (showOther) {
-      // Ya está en modo "Otro": colapsar.
       setShowOther(false);
       onChange(otherText);
     } else {
-      // Activar modo "Otro".
       setShowOther(true);
       onChange(otherText || "");
       setIsOpen(false);
@@ -162,20 +142,21 @@ export function ClubSelect({
     onChange(trimmed);
   };
 
-  // Render del pill con el club actualmente seleccionado (o el modo "Otro").
   const renderSelectedPill = () => {
     if (value === "") {
-      return (
-        <p className="text-xs text-gray-400 italic mt-1">
-          Sin club
-        </p>
-      );
+      return <p className="text-xs text-gray-400 italic mt-1">Sin club</p>;
     }
     if (exactMatch) {
+      const isManual = exactMatch.source !== "rfea";
       return (
         <p className="text-xs text-gray-600 mt-1">
           <span className="font-medium">{exactMatch.name}</span>
           <span className="text-gray-400"> · {exactMatch.ccaa}</span>
+          {isManual && (
+            <span className="ml-1 text-[10px] text-runner-primary font-semibold uppercase tracking-wide">
+              · añadido
+            </span>
+          )}
         </p>
       );
     }
@@ -246,18 +227,29 @@ export function ClubSelect({
           className="absolute z-10 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-80 overflow-y-auto"
           role="listbox"
         >
-          {results.length > 0 ? (
+          {isLoading ? (
+            <div className="px-3 py-4 text-center text-sm text-gray-500">
+              Cargando catálogo…
+            </div>
+          ) : results.length > 0 ? (
             <>
               {results.map((c) => (
                 <button
                   type="button"
-                  key={`${c.ccaa}|${c.name}`}
+                  key={`${c.ccaa}|${c.name}|${c.source}`}
                   onClick={() => selectClub(c.name)}
                   className="w-full text-left px-3 py-2 hover:bg-runner-warm focus:bg-runner-warm focus:outline-none"
                   role="option"
                   aria-selected={value === c.name}
                 >
-                  <div className="text-sm font-medium text-gray-900">{c.name}</div>
+                  <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                    {c.name}
+                    {c.source !== "rfea" && (
+                      <span className="text-[10px] text-runner-primary font-semibold uppercase tracking-wide">
+                        añadido
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs text-gray-500">{c.ccaa}</div>
                 </button>
               ))}
@@ -270,7 +262,7 @@ export function ClubSelect({
           ) : (
             <div className="px-3 py-4 text-center">
               <p className="text-sm text-gray-600">
-                No hemos encontrado <span className="font-medium">"{query}"</span> en la lista RFEA.
+                No hemos encontrado <span className="font-medium">"{query}"</span> en el catálogo.
               </p>
               <button
                 type="button"

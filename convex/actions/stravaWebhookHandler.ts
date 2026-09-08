@@ -154,27 +154,40 @@ export const handleEvent = action({
     const matchedRaceId = findBestRaceMatch(normalized, raceCandidates) ?? undefined;
 
     // Upsert actividad
-    await ctx.runMutation(internal.stravaExport.upsertActivityInternal, {
-      userId: profile.profileId as any,
-      provider: "strava",
-      source: "oauth",
-      providerActivityId: normalized.providerActivityId,
-      type: classifiedType,
-      name: normalized.name,
-      startedAt: normalized.startedAt,
-      durationSec: normalized.durationSec,
-      distanceM: normalized.distanceM,
-      avgPaceSecPerKm: normalized.avgPaceSecPerKm,
-      avgHeartRate: normalized.avgHeartRate,
-      maxHeartRate: normalized.maxHeartRate,
-      avgCadence: normalized.avgCadence,
-      elevationGainM: normalized.elevationGainM,
-      description: normalized.description,
-      matchedRaceId: matchedRaceId as any,
-      isPrivate: normalized.isPrivate,
-      rawPayload: JSON.stringify(activity),
-      stravaSportType: activity.sport_type ?? activity.type,
-    });
+    const upserted = await ctx.runMutation(
+      internal.stravaExport.upsertActivityInternal,
+      {
+        userId: profile.profileId as any,
+        provider: "strava",
+        source: "oauth",
+        providerActivityId: normalized.providerActivityId,
+        type: classifiedType,
+        name: normalized.name,
+        startedAt: normalized.startedAt,
+        durationSec: normalized.durationSec,
+        distanceM: normalized.distanceM,
+        avgPaceSecPerKm: normalized.avgPaceSecPerKm,
+        avgHeartRate: normalized.avgHeartRate,
+        maxHeartRate: normalized.maxHeartRate,
+        avgCadence: normalized.avgCadence,
+        elevationGainM: normalized.elevationGainM,
+        description: normalized.description,
+        matchedRaceId: matchedRaceId as any,
+        isPrivate: normalized.isPrivate,
+        rawPayload: JSON.stringify(activity),
+        stravaSportType: activity.sport_type ?? activity.type,
+        // Detalle (solo presente en getActivity, no en el listado)
+        mapPolyline: activity.map?.summary_polyline ?? undefined,
+        gearId: activity.gear?.id ?? activity.gear_id ?? undefined,
+        gearName: activity.gear?.name ?? undefined,
+        gearDistanceM: activity.gear?.distance ?? undefined,
+        deviceName: activity.device_name ?? undefined,
+        splitsMetric: activity.splits_metric ?? undefined,
+        locationCity: activity.location_city ?? undefined,
+        locationCountry: activity.location_country ?? undefined,
+      },
+    );
+    const activityId = upserted.id;
 
     // PR check. Mismo criterio que stravaInitialSync.ts:
     //   - 5K-Maratón: usar best_efforts de Strava (mejor tramo GPS continuo
@@ -197,6 +210,7 @@ export const handleEvent = action({
           timeSeconds: effort.elapsed_time,
           raceId: matchedRaceId as any,
           achievedAt: new Date(effort.start_date_local).toISOString(),
+          activityId: activityId as any,
           source: "strava",
         });
       }
@@ -213,6 +227,7 @@ export const handleEvent = action({
         timeSeconds: durationSec,
         raceId: matchedRaceId as any,
         achievedAt: new Date(startedAt).toISOString(),
+        activityId: activityId as any,
         source: "strava",
       });
     }

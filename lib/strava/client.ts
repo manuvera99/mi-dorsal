@@ -311,6 +311,47 @@ export interface StravaBestEffort {
   achievements?: unknown[];
 }
 
+/**
+ * Resumen del equipo (zapatillas, bici, etc.) usado en una actividad.
+ * Solo viene en la respuesta de detalle (getActivity), no en el listado.
+ */
+export interface StravaGear {
+  id: string;
+  name?: string;
+  primary?: boolean;
+  distance?: number; // metros totales en este gear
+}
+
+/**
+ * Split por km (metric) o por milla (standard). Strava devuelve pace medio,
+ * HR medio, elevación ganada y cadence media por split. Útil para gráficas
+ * de pace por km en el feed y la card del PR.
+ */
+export interface StravaSplit {
+  distance: number; // metros del split (normalmente 1000 o 1609)
+  elapsed_time: number;
+  moving_time: number;
+  elevation_difference: number;
+  average_speed: number; // m/s
+  average_heartrate?: number;
+  average_cadence?: number;
+  pace_zone?: number; // 1-5 según zonal habitual de Strava
+  split: number; // número de split (1-based)
+}
+
+/**
+ * Mapa simplificado de una actividad. Strava siempre devuelve `id` y
+ * `summary_polyline` en la respuesta de detalle. `summary_polyline` es un
+ * string codificado en formato Google polyline encoding (~200-500 chars para
+ * un 10K) que se decodifica a [lat, lng][] con la lib `polyline-encoded`
+ * o `google-polyline` — listo para pintar en un Leaflet/Mapbox.
+ */
+export interface StravaMap {
+  id: string;
+  summary_polyline: string | null;
+  polyline?: string | null; // opcional; requiere pedirlo explícitamente
+}
+
 export interface StravaActivitySummary {
   id: number;
   external_id: string | null;
@@ -350,6 +391,20 @@ export interface StravaActivitySummary {
   has_heartrate: boolean;
   /** Solo presente en la respuesta de detalle (getActivity), no en el listado. */
   best_efforts?: StravaBestEffort[];
+  /** Solo en detalle. summary_polyline (~200-500 chars) → [lat, lng][] para mapa. */
+  map?: StravaMap;
+  /** Solo en detalle. Nombre del dispositivo (ej. "Garmin Forerunner 945"). */
+  device_name?: string;
+  /** Solo en detalle. Detalle del gear usado (zapatillas, bici, etc.). */
+  gear?: StravaGear;
+  /** Solo en detalle. Splits por km (métricas) si la actividad es de running. */
+  splits_metric?: StravaSplit[];
+  /** Solo en detalle. Splits por milla (standard). */
+  splits_standard?: StravaSplit[];
+  /** Solo en detalle. Localización textual. */
+  location_city?: string | null;
+  location_state?: string | null;
+  location_country?: string | null;
 }
 
 export interface StravaActivitiesResponse {

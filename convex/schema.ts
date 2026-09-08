@@ -392,6 +392,10 @@ export default defineSchema({
     timeSeconds: v.number(),
     achievedAt: v.optional(v.string()),
     raceId: v.optional(v.id("races")),
+    /** Actividad (Strava/export) de la que se extrajo este PR. Útil para
+     *  mostrar la ruta del PR, splits y gear. Null para PRs manuales o
+     *  heredados antes de este cambio. */
+    sourceActivityId: v.optional(v.id("activities")),
     source: v.union(
       v.literal("manual"),
       v.literal("strava"),
@@ -766,6 +770,41 @@ export default defineSchema({
     isOfficialResult: v.optional(v.boolean()),
     isPrivate: v.optional(v.boolean()),
     rawPayload: v.optional(v.string()),
+    // ---------------------------------------------------------------------
+    // Datos extraídos del detalle de Strava (getActivity), no del listado.
+    // Todos opcionales: las actividades ingeridas por export ZIP o antes
+    // de este cambio (2026-09-08) no los tienen, y el detalle puede no
+    // llegar por rate limit o fallo de fetch — la UI tiene que tratarlos
+    // como "no disponible", no como error.
+    // ---------------------------------------------------------------------
+    /** Polyline codificada del track GPS (formato Google). Decodificar a [lat,lng][]. */
+    mapPolyline: v.optional(v.string()),
+    /** ID del gear de Strava (zapatillas, bici). */
+    gearId: v.optional(v.string()),
+    /** Nombre del gear (ej. "Nike Pegasus 41"). */
+    gearName: v.optional(v.string()),
+    /** Distancia total acumulada en este gear en el momento de la actividad (m). */
+    gearDistanceM: v.optional(v.number()),
+    /** Nombre del dispositivo con el que se grabó (ej. "Garmin Forerunner 945"). */
+    deviceName: v.optional(v.string()),
+    /** Splits por km (running) — pace, HR, cadencia, desnivel por km. */
+    splitsMetric: v.optional(
+      v.array(
+        v.object({
+          split: v.number(),
+          distance: v.number(),
+          elapsed_time: v.number(),
+          moving_time: v.number(),
+          elevation_difference: v.number(),
+          average_speed: v.number(),
+          average_heartrate: v.optional(v.number()),
+          average_cadence: v.optional(v.number()),
+        }),
+      ),
+    ),
+    /** Ciudad/estado/país de la actividad (si Strava los tiene). */
+    locationCity: v.optional(v.string()),
+    locationCountry: v.optional(v.string()),
     // Tipo de deporte original de Strava (Run, TrailRun, Ride, Padel, Hike,
     // WeightTraining, etc.) — SIN normalizar. `type` (arriba) es NUESTRA
     // clasificación de intensidad de carrera (race/tempo/easy/...), pero

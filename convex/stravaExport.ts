@@ -61,6 +61,28 @@ export const upsertActivityInternal = internalMutation({
     isPrivate: v.optional(v.boolean()),
     rawPayload: v.optional(v.string()),
     stravaSportType: v.optional(v.string()),
+    // Detalle de Strava (opcional, solo si llega el getActivity)
+    mapPolyline: v.optional(v.string()),
+    gearId: v.optional(v.string()),
+    gearName: v.optional(v.string()),
+    gearDistanceM: v.optional(v.number()),
+    deviceName: v.optional(v.string()),
+    splitsMetric: v.optional(
+      v.array(
+        v.object({
+          split: v.number(),
+          distance: v.number(),
+          elapsed_time: v.number(),
+          moving_time: v.number(),
+          elevation_difference: v.number(),
+          average_speed: v.number(),
+          average_heartrate: v.optional(v.number()),
+          average_cadence: v.optional(v.number()),
+        }),
+      ),
+    ),
+    locationCity: v.optional(v.string()),
+    locationCountry: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Idempotencia: buscar existente por (provider, providerActivityId)
@@ -89,6 +111,14 @@ export const upsertActivityInternal = internalMutation({
         matchedRaceId: args.matchedRaceId,
         isPrivate: args.isPrivate,
         stravaSportType: args.stravaSportType,
+        mapPolyline: args.mapPolyline,
+        gearId: args.gearId,
+        gearName: args.gearName,
+        gearDistanceM: args.gearDistanceM,
+        deviceName: args.deviceName,
+        splitsMetric: args.splitsMetric,
+        locationCity: args.locationCity,
+        locationCountry: args.locationCountry,
         syncedAt: Date.now(),
       });
       return { id: existing._id, created: false };
@@ -113,6 +143,10 @@ export const checkAndUpdatePR = internalMutation({
     timeSeconds: v.number(),
     raceId: v.optional(v.id("races")),
     achievedAt: v.optional(v.string()),
+    /** Actividad de la que viene este PR (para enlazar la ruta / splits
+     *  en la card del PR). Opcional: los callsites que no lo tengan (p.ej.
+     *  resultados de carrera scrapeados) simplemente no lo pasan. */
+    activityId: v.optional(v.id("activities")),
     source: v.union(
       v.literal("strava"),
       v.literal("strava-export"),
@@ -148,6 +182,7 @@ export const checkAndUpdatePR = internalMutation({
       timeSeconds: args.timeSeconds,
       achievedAt: args.achievedAt,
       raceId: args.raceId,
+      sourceActivityId: args.activityId,
       source: args.source,
       isCurrent: true,
     });

@@ -270,27 +270,40 @@ async function ingestOneActivity(
   const matchedRaceId = findBestRaceMatch(normalized, raceCandidates) ?? undefined;
 
   // Upsert actividad (idempotente por provider + providerActivityId)
-  await ctx.runMutation(internal.stravaExport.upsertActivityInternal, {
-    userId: profileId as any,
-    provider: "strava",
-    source: "oauth",
-    providerActivityId: normalized.providerActivityId,
-    type: classifiedType,
-    name: normalized.name,
-    startedAt: normalized.startedAt,
-    durationSec: normalized.durationSec,
-    distanceM: normalized.distanceM,
-    avgPaceSecPerKm: normalized.avgPaceSecPerKm,
-    avgHeartRate: normalized.avgHeartRate,
-    maxHeartRate: normalized.maxHeartRate,
-    avgCadence: normalized.avgCadence,
-    elevationGainM: normalized.elevationGainM,
-    description: normalized.description,
-    matchedRaceId: matchedRaceId as any,
-    isPrivate: normalized.isPrivate,
-    rawPayload: JSON.stringify(activity),
-    stravaSportType: activity.sport_type ?? activity.type,
-  });
+  const upserted = await ctx.runMutation(
+    internal.stravaExport.upsertActivityInternal,
+    {
+      userId: profileId as any,
+      provider: "strava",
+      source: "oauth",
+      providerActivityId: normalized.providerActivityId,
+      type: classifiedType,
+      name: normalized.name,
+      startedAt: normalized.startedAt,
+      durationSec: normalized.durationSec,
+      distanceM: normalized.distanceM,
+      avgPaceSecPerKm: normalized.avgPaceSecPerKm,
+      avgHeartRate: normalized.avgHeartRate,
+      maxHeartRate: normalized.maxHeartRate,
+      avgCadence: normalized.avgCadence,
+      elevationGainM: normalized.elevationGainM,
+      description: normalized.description,
+      matchedRaceId: matchedRaceId as any,
+      isPrivate: normalized.isPrivate,
+      rawPayload: JSON.stringify(activity),
+      stravaSportType: activity.sport_type ?? activity.type,
+      // Detalle (solo presente en getActivity, no en el listado)
+      mapPolyline: activity.map?.summary_polyline ?? undefined,
+      gearId: activity.gear?.id ?? activity.gear_id ?? undefined,
+      gearName: activity.gear?.name ?? undefined,
+      gearDistanceM: activity.gear?.distance ?? undefined,
+      deviceName: activity.device_name ?? undefined,
+      splitsMetric: activity.splits_metric ?? undefined,
+      locationCity: activity.location_city ?? undefined,
+      locationCountry: activity.location_country ?? undefined,
+    },
+  );
+  const activityId = upserted.id;
 
   // PR check.
   //
@@ -323,6 +336,7 @@ async function ingestOneActivity(
         timeSeconds: effort.elapsed_time,
         raceId: matchedRaceId as any,
         achievedAt: new Date(effort.start_date_local).toISOString(),
+        activityId: activityId as any,
         source: "strava",
       });
     }
@@ -339,6 +353,7 @@ async function ingestOneActivity(
       timeSeconds: durationSec,
       raceId: matchedRaceId as any,
       achievedAt: new Date(startedAt).toISOString(),
+      activityId: activityId as any,
       source: "strava",
     });
   }

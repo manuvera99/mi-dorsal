@@ -204,3 +204,112 @@ export const getMyRunnerType = query({
     return computeRunnerType(inputs);
   },
 });
+
+// ---------------------------------------------------------------------------
+// Gear (zapatillas, bici) — agregado por gearId
+// ---------------------------------------------------------------------------
+
+/**
+ * Resumen de gear del usuario: cada par de zapatillas / bici con sus km
+ * totales en mi-dorsal y la fecha de la última actividad en la que se usó.
+ *
+ * Calculado on-the-fly desde `activities` (suma de `distanceM` agrupada
+ * por `gearId`). Solo se cuentan actividades de running.
+ *
+ * Útil para:
+ *  - Card "Tus zapatillas" en el perfil.
+ *  - Alerta de cambio de zapatillas cuando se acerquen a 800 km.
+ *  - Mostrar el nombre del modelo en la card de cada actividad.
+ */
+export const getMyGearSummary = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getOptionalUser(ctx);
+    if (!user) return [];
+
+    const all = await ctx.db
+      .query("activities")
+      .withIndex("by_user_started", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const running = all.filter((a) => isRunningSportType(a.stravaSportType));
+
+    // Agrupar por gearId. Actividades sin gear (gearId undefined) se
+    // ignoran — no podemos asociarlas a un par de zapatillas concreto.
+    type GearSummary = {
+      gearId: string;
+      gearName: string | undefined;
+      totalDistanceM: number;
+      activityCount: number;
+      lastUsedAt: number; // ms epoch
+    };
+    const byGear = new Map<string, GearSummary>();
+    for (const a of running) {
+      if (!a.gearId) continue;
+      const prev = byGear.get(a.gearId);
+      if (prev) {
+        prev.totalDistanceM += a.distanceM;
+        prev.activityCount += 1;
+        if (a.startedAt > prev.lastUsedAt) {
+          prev.lastUsedAt = a.startedAt;
+          // Si la última actividad trae un nombre más reciente, preferimos ese.
+          if (a.gearName) prev.gearName = a.gearName;
+        }
+      } else {
+        byGear.set(a.gearId, {
+          gearId: a.gearId,
+          gearName: a.gearName,
+          totalDistanceM: a.distanceM,
+          activityCount: 1,
+          lastUsedAt: a.startedAt,
+        });
+      }
+    }
+
+    // Ordenar por km totales desc (las zapatillas más usadas primero).
+    return Array.from(byGear.values()).sort(
+      (a, b) => b.totalDistanceM - a.totalDistanceM,
+    );
+  },
+});
+
+/**
+ * Devuelve la polyline y metadata de mapa para una actividad concreta.
+ * Se usa en la card de un PR (o en una actividad del feed) para mostrar
+ * el mini-mapa del recorrido.
+ *
+ * El check de propiedad es por `userId` (no se filtra por provider) para
+ * soportar también actividades ingeridas por export ZIP en el futuro.
+ */
+export const getActivityMap = query({
+  args: { id: v.id("activities") },
+  handler: async (ctx, { id }) => {
+    const user = await getOptionalUser(ctx);
+    if (!user) return null;
+    const a = await ctx.db.get(id);
+    if (!a) return null;
+    if (a.userId !== user._id) return null;
+    return {
+      mapPolyline: a.mapPolyline ?? null,
+      deviceName: a.deviceName ?? null,
+      locationCity: a.locationCity ?? null,
+      locationCountry: a.locationCountry ?? null,
+    };
+  },
+});
+
+/**
+ * Devuelve los splits por km de una actividad (gráfica de pace por km).
+ * Mismo check de propiedad que `getActivityMap`.
+ */
+export const getActivitySplits = query({
+  args: { id: v.id("activities") },
+  handler: async (ctx, { id }) => {
+    const user = await getOptionalUser(ctx);
+    if (!user) return null;
+    const a = await ctx.db.get(id);
+    if (!a) return null;
+    if (a.userId !== user._id) return null;
+    return a.splitsMetric ?? null;
+  },
+});

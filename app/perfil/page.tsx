@@ -14,6 +14,8 @@ import { ActivityStatsCard } from "@/components/perfil/activity-stats";
 import { ActivityFeed } from "@/components/perfil/activity-feed";
 import { PrFormModal } from "@/components/perfil/pr-form-modal";
 import { EditProfileModal, ageFromBirthDate } from "@/components/perfil/edit-profile-modal";
+import { PrCardWithMap } from "@/components/perfil/pr-card-with-map";
+import { GearCard } from "@/components/perfil/gear-card";
 
 function MockPerfil() {
   const [profile, setProfile] = useState<any>(null);
@@ -140,6 +142,9 @@ function PerfilContent({ profile, prs }: { profile: any; prs: any[] }) {
       {/* Stats de actividad — se ocultan si 0 actividades (mostramos empty state en feed) */}
       {!isMockMode() && <ActivityStatsCard />}
 
+      {/* Zapatillas con km totales + alerta de cambio a 800km */}
+      {!isMockMode() && <GearCard />}
+
       {/* Feed de actividades — con empty state para usuarios sin Strava */}
       {!isMockMode() && <ActivityFeed />}
 
@@ -208,26 +213,11 @@ function PrsSection({ prs }: { prs: any[] }) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {prs.map((pr) => (
-            <div key={pr._id} className="relative border border-gray-200 rounded-md p-3 group">
-              <button
-                onClick={() => handleRemovePr(pr._id, pr.distanceLabel)}
-                className="absolute top-2 right-2 text-gray-300 hover:text-red-600 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
-                aria-label={`Eliminar marca de ${pr.distanceLabel}`}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-              <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
-                {pr.distanceLabel}
-              </div>
-              <div className="text-2xl font-bold text-runner-primary font-mono">
-                {formatTime(pr.timeSeconds)}
-              </div>
-              {pr.achievedAt && (
-                <div className="text-xs text-gray-500 mt-1">
-                  {new Date(pr.achievedAt).toLocaleDateString("es-ES", { month: "short", year: "numeric" })}
-                </div>
-              )}
-            </div>
+            <PrCardWithMap
+              key={pr._id}
+              pr={pr}
+              onRemove={handleRemovePr}
+            />
           ))}
         </div>
       )}
@@ -256,19 +246,7 @@ function PrsSectionReadOnly({ prs }: { prs: any[] }) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {prs.map((pr) => (
-            <div key={pr._id} className="border border-gray-200 rounded-md p-3">
-              <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
-                {pr.distanceLabel}
-              </div>
-              <div className="text-2xl font-bold text-runner-primary font-mono">
-                {formatTime(pr.timeSeconds)}
-              </div>
-              {pr.achievedAt && (
-                <div className="text-xs text-gray-500 mt-1">
-                  {new Date(pr.achievedAt).toLocaleDateString("es-ES", { month: "short", year: "numeric" })}
-                </div>
-              )}
-            </div>
+            <PrCardWithMap key={pr._id} pr={pr} />
           ))}
         </div>
       )}

@@ -8,18 +8,38 @@ import { api } from "./_generated/api";
 import { requireUser, getOptionalUser, getDistanceLabel } from "./_helpers";
 
 /**
- * Lista todos los PRs del usuario actual.
+ * Lista los PRs **actuales** (mejor marca por distancia) del usuario.
  * Devuelve [] si no hay usuario (en vez de throw) para no romper la UI.
+ *
+ * Filtra `isCurrent = true` porque `upsert` mantiene un histórico: cada vez
+ * que el usuario bate un PR, el antiguo se marca como `isCurrent = false` y
+ * se inserta el nuevo. Si devolviéramos todos, la UI del perfil mostraría
+ * la misma distancia repetida N veces (una por cada mejora histórica), y
+ * las predicciones VDOT se contaminarían con tiempos viejos.
+ *
+ * Deduplicación defensiva extra: si por inconsistencia legacy hubiera
+ * varios `isCurrent = true` en la misma distancia, nos quedamos con el de
+ * menor `timeSeconds` (la mejor marca, por definición).
  */
 export const listMine = query({
   args: {},
   handler: async (ctx) => {
     const user = await getOptionalUser(ctx);
     if (!user) return [];
-    return await ctx.db
+    const all = await ctx.db
       .query("personalRecords")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
+    const current = all.filter((pr) => pr.isCurrent === true);
+    // Defensivo: una sola fila por distancia, la mejor (menor tiempo).
+    const byDistance = new Map<number, (typeof current)[number]>();
+    for (const pr of current) {
+      const prev = byDistance.get(pr.distanceM);
+      if (!prev || pr.timeSeconds < prev.timeSeconds) {
+        byDistance.set(pr.distanceM, pr);
+      }
+    }
+    return Array.from(byDistance.values());
   },
 });
 

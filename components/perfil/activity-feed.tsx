@@ -5,12 +5,16 @@
 // =============================================================================
 // Lista paginada de las actividades del usuario, con filtros por tipo
 // (Todas / Carreras / Trail / Long runs / Series / Easy) y paginación simple.
+// Cada item se puede expandir para ver el mapa del recorrido, los splits
+// por km, el dispositivo y las zapatillas.
 // =============================================================================
 
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { formatDuration, formatDistanceKm } from "@/lib/utils";
+import { PolylineMapWrapper } from "./polyline-map-wrapper";
+import { SplitsChart } from "./splits-chart";
 import {
   Calendar,
   Mountain,
@@ -20,6 +24,11 @@ import {
   Heart,
   Clock,
   Filter,
+  ChevronDown,
+  ChevronUp,
+  Watch,
+  Footprints,
+  MapPin,
 } from "lucide-react";
 
 const TYPE_FILTERS = [
@@ -65,6 +74,7 @@ function Trophy(props: { className?: string }) {
 export function ActivityFeed() {
   const [typeFilter, setTypeFilter] = useState<null | string>(null);
   const [showAll, setShowAll] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const activities = useQuery(
     api.activities.queries.listMyActivities,
     typeFilter
@@ -77,8 +87,13 @@ export function ActivityFeed() {
     return <div className="h-32 bg-gray-100 rounded-lg animate-pulse" />;
   }
 
+  // `useQuery` puede devolver undefined en el primer render. Coerce a 0
+  // para que las comparaciones y `.toLocaleString()` no rompan en SSR
+  // (pre-existente; el componente ya usaba totalCount como si fuera number).
+  const total = totalCount ?? 0;
+
   // Empty state: usuario sin actividades. Le enseñamos cómo empezar.
-  if (totalCount === 0) {
+  if (total === 0) {
     return (
       <div className="card mb-6">
         <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
@@ -118,7 +133,7 @@ export function ActivityFeed() {
           Actividad reciente
         </h2>
         <span className="text-xs text-gray-500">
-          {totalCount.toLocaleString("es-ES")} total
+          {total.toLocaleString("es-ES")} total
         </span>
       </div>
 
@@ -152,65 +167,134 @@ export function ActivityFeed() {
         <div className="space-y-2">
           {activities.map((a) => {
             const badge = TYPE_BADGES[a.type];
+            const expanded = expandedId === a._id;
+            const hasDetail =
+              a.mapPolyline || (a.splitsMetric && a.splitsMetric.length > 0) ||
+              a.deviceName || a.gearName || a.locationCity;
             return (
               <div
                 key={a._id}
-                className="flex items-center gap-3 p-3 border border-gray-100 rounded-md hover:bg-gray-50 transition-colors"
+                className="border border-gray-100 rounded-md hover:bg-gray-50 transition-colors"
               >
-                {/* Tipo badge */}
-                <div
-                  className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${badge.color}`}
+                <button
+                  type="button"
+                  onClick={() => hasDetail && setExpandedId(expanded ? null : a._id)}
+                  className={
+                    "w-full flex items-center gap-3 p-3 text-left " +
+                    (hasDetail ? "cursor-pointer" : "cursor-default")
+                  }
+                  aria-expanded={expanded}
+                  disabled={!hasDetail}
                 >
-                  {badge.icon}
-                  {badge.label}
-                </div>
-
-                {/* Info principal */}
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm truncate">
-                    {a.name ?? formatActivityType(a.type)}
+                  {/* Tipo badge */}
+                  <div
+                    className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs flex-shrink-0 ${badge.color}`}
+                  >
+                    {badge.icon}
+                    {badge.label}
                   </div>
-                  <div className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
-                    <span>
-                      {new Date(a.startedAt).toLocaleDateString("es-ES", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </span>
-                    {a.avgHeartRate && (
-                      <span className="flex items-center gap-0.5">
-                        <Heart className="h-3 w-3" />
-                        {Math.round(a.avgHeartRate)}
+
+                  {/* Info principal */}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">
+                      {a.name ?? formatActivityType(a.type)}
+                    </div>
+                    <div className="text-xs text-gray-500 flex items-center gap-2 mt-0.5 flex-wrap">
+                      <span>
+                        {new Date(a.startedAt).toLocaleDateString("es-ES", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
                       </span>
-                    )}
-                    {a.matchedRaceId && (
-                      <span className="text-emerald-600">· carrera</span>
-                    )}
+                      {a.avgHeartRate && (
+                        <span className="flex items-center gap-0.5">
+                          <Heart className="h-3 w-3" />
+                          {Math.round(a.avgHeartRate)}
+                        </span>
+                      )}
+                      {a.matchedRaceId && (
+                        <span className="text-emerald-600">· carrera</span>
+                      )}
+                      {a.gearName && (
+                        <span className="flex items-center gap-0.5 text-stone-500">
+                          <Footprints className="h-3 w-3" />
+                          <span className="truncate max-w-[120px]">{a.gearName}</span>
+                        </span>
+                      )}
+                      {a.deviceName && (
+                        <span className="flex items-center gap-0.5 text-stone-500">
+                          <Watch className="h-3 w-3" />
+                          <span className="truncate max-w-[120px]">{a.deviceName}</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                {/* Distancia + tiempo */}
-                <div className="text-right flex-shrink-0">
-                  <div className="font-mono font-semibold text-sm">
-                    {formatDistanceKm(a.distanceM)}
+                  {/* Distancia + tiempo */}
+                  <div className="text-right flex-shrink-0">
+                    <div className="font-mono font-semibold text-sm">
+                      {formatDistanceKm(a.distanceM)}
+                    </div>
+                    <div className="text-xs text-gray-500 font-mono">
+                      {formatDuration(a.durationSec)}
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-500 font-mono">
-                    {formatDuration(a.durationSec)}
+
+                  {hasDetail && (
+                    <div className="flex-shrink-0 text-stone-400">
+                      {expanded ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </div>
+                  )}
+                </button>
+
+                {expanded && hasDetail && (
+                  <div className="px-3 pb-3 pt-1 space-y-3 border-t border-stone-100 bg-stone-50/50 rounded-b-md">
+                    {/* Mapa del recorrido */}
+                    {a.mapPolyline && (
+                      <PolylineMapWrapper
+                        polyline={a.mapPolyline}
+                        height={180}
+                        alt={`Mapa de ${a.name ?? formatActivityType(a.type)}`}
+                      />
+                    )}
+
+                    {/* Splits por km */}
+                    {a.splitsMetric && a.splitsMetric.length > 0 && (
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wide text-stone-500 font-semibold mb-1.5">
+                          Splits por km
+                        </div>
+                        <SplitsChart splits={a.splitsMetric} barMaxHeight={28} />
+                      </div>
+                    )}
+
+                    {/* Metadata: ubicación */}
+                    {a.locationCity && (
+                      <div className="flex items-center gap-1 text-xs text-stone-600">
+                        <MapPin className="h-3 w-3" />
+                        {a.locationCity}
+                        {a.locationCountry ? `, ${a.locationCountry}` : ""}
+                      </div>
+                    )}
                   </div>
-                </div>
+                )}
               </div>
             );
           })}
         </div>
       )}
 
-      {activities.length >= 20 && !showAll && totalCount > 20 && (
+      {activities.length >= 20 && !showAll && total > 20 && (
         <button
           onClick={() => setShowAll(true)}
           className="mt-4 w-full text-sm text-runner-primary hover:underline"
         >
-          Ver todas las {totalCount.toLocaleString("es-ES")} actividades
+          Ver todas las {total.toLocaleString("es-ES")} actividades
         </button>
       )}
     </div>

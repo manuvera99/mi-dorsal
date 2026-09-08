@@ -62,6 +62,19 @@ export interface DetectIntervalsArgs {
   totalElevationGainM?: number | null;
   /** Distancia en metros entre el primer y el último punto GPS (loop). */
   startEndLoopM?: number | null;
+  /**
+   * Nombre de la actividad (Strava `name`). Lo usamos como señal
+   * secundaria: nombres como "Z5 6x400", "Fartlek 3x(200/100)",
+   * "Series 5x1000" o prefijo "Carrera de noche" en actividades planas
+   * son indicadores fuertes de series en pista, incluso si los splits
+   * por km diluyen la estructura.
+   */
+  activityName?: string | null;
+  /**
+   * sport_type de Strava. Si viene como "TrackRun" o "VirtualRun"
+   * con laps cortos, también es pista.
+   */
+  sportType?: string | null;
 }
 
 export interface DetectedIntervals {
@@ -117,6 +130,8 @@ export function detectIntervalsFromSplits(
   const splits = opts.splits ?? null;
   const elev = opts.totalElevationGainM ?? null;
   const loop = opts.startEndLoopM ?? null;
+  const name = (opts.activityName ?? "").toLowerCase();
+  const sport = (opts.sportType ?? "").toLowerCase();
 
   const empty: DetectedIntervals = {
     isIntervalWorkout: false,
@@ -135,6 +150,29 @@ export function detectIntervalsFromSplits(
   };
 
   if (!splits || splits.length < MIN_SPLITS) {
+    // Si no hay splits suficientes pero el nombre indica serie técnica
+    // (Z5, Fartlek, x(200...), o sport_type=TrackRun), no podemos
+    // aplicar las reglas A/B pero devolvemos un resultado neutral para
+    // que el LLM pueda ver el nombre y mencionar la serie en su
+    // análisis.
+    const nameIndicatesSeries = detectSeriesFromName(name, sport);
+    if (nameIndicatesSeries.likely) {
+      return {
+        isIntervalWorkout: true,
+        paceVariabilityCv: 0,
+        fastDeltaSecPerKm: 0,
+        slowDeltaSecPerKm: 0,
+        fastSplits: 0,
+        slowSplits: 0,
+        estimatedRepetitions: 0,
+        fastPaceSecPerKm: null,
+        slowPaceSecPerKm: null,
+        fastAvgHrBpm: null,
+        slowAvgHrBpm: null,
+        isTrackLike: elev !== null && elev <= ELEV_MAX_FOR_TRACK,
+        reason: `nombre sugiere serie (${nameIndicatesSeries.matched}), pero sin splits suficientes para análisis`,
+      };
+    }
     return {
       ...empty,
       reason: `solo ${splits?.length ?? 0} splits (mín ${MIN_SPLITS})`,
@@ -167,11 +205,14 @@ export function detectIntervalsFromSplits(
   });
 
   // ¿La actividad parece hecha en una pista?
+  // Criterio: elev <= 5m (plana) O sport_type=TrackRun O nombre con
+  // marcador de pista. El loop < 100m lo usamos como refuerzo si lo
+  // tenemos, pero NO como condición indispensable.
+  const nameHint = detectSeriesFromName(name, sport);
   const isTrackLike =
-    elev !== null &&
-    loop !== null &&
-    elev <= ELEV_MAX_FOR_TRACK &&
-    loop <= LOOP_MAX_FOR_TRACK;
+    (elev !== null && elev <= ELEV_MAX_FOR_TRACK) ||
+    sport === "trackrun" ||
+    nameHint.likely;
 
   // Si no es pista, no marcamos como serie (falsos positivos por
   // cuestas, semáforos, terreno irregular).
@@ -193,20 +234,29 @@ export function detectIntervalsFromSplits(
     };
   }
 
-  // Es pista: aplicar reglas A y B.
+  // Es pista: aplicar reglas A, B y C.
   const fastDelta = mean - minP;
   const slowDelta = maxP - mean;
 
+  // Regla A — series multi-rep clásicas (CV alto + alternancia clara)
   const ruleA =
     cv > CV_RULE_A &&
     fastIndices.length >= 2 &&
     slowIndices.length >= 2;
 
+  // Regla B — series cortas 1-2 reps. Exigimos al menos UN split
+  // claramente más rápido que la media (5% más rápido como mínimo).
   const ruleB =
     fastDelta > FAST_DELTA_RULE_B &&
-    fastIndices.length >= 1;
+    minP < mean * 0.95;
 
-  const isIntervalWorkout = ruleA || ruleB;
+  // Regla C — el nombre de la actividad indica serie técnica
+  // (Z5 6x400, Fartlek, etc.) y hay al menos una pequeña variación
+  // de pace. Más permisiva que A y B porque sabemos que Strava agrupa
+  // los splits por km y diluye la estructura de repeticiones sub-km.
+  const ruleC = nameHint.likely && (cv > 0.02 || fastDelta > 5);
+
+  const isIntervalWorkout = ruleA || ruleB || ruleC;
 
   return {
     isIntervalWorkout,
@@ -257,11 +307,61 @@ export function isIntervalActivity(args: {
   splits: SplitMetric[] | null | undefined;
   totalElevationGainM?: number | null;
   startEndLoopM?: number | null;
+  activityName?: string | null;
+  sportType?: string | null;
 }): boolean {
   if (args.workoutType === 3) return true;
   return detectIntervalsFromSplits({
     splits: args.splits,
     totalElevationGainM: args.totalElevationGainM,
     startEndLoopM: args.startEndLoopM,
+    activityName: args.activityName,
+    sportType: args.sportType,
   }).isIntervalWorkout;
+}
+
+/**
+ * Heurística basada en el NOMBRE de la actividad. Muchos usuarios de
+ * Garmin nombran sus series técnicas con patrones reconocibles:
+ *
+ *   - "Z5 6x400", "Z3-Z4 5x1000", "Z7 2x(200/150/100)"
+ *   - "Fartlek 6x3min"
+ *   - "Series 5x1000"
+ *   - "Track 8x200"
+ *   - sport_type = "TrackRun"
+ *
+ * El prefijo "Carrera de noche" de Manu no es señal por sí solo (es el
+ * nombre genérico que usa para todas las actividades en pista), pero
+ * combinado con elev=0 + loop<100m lo cazamos por las reglas A/B.
+ *
+ * Devuelve { likely, matched } para que el caller sepa qué marcador
+ * disparó la señal.
+ */
+function detectSeriesFromName(
+  name: string,
+  sport: string,
+): { likely: boolean; matched: string | null } {
+  if (sport === "trackrun") {
+    return { likely: true, matched: "sport=TrackRun" };
+  }
+  if (!name) return { likely: false, matched: null };
+
+  // Marcadores típicos de series técnicas en el nombre
+  const patterns: Array<[RegExp, string]> = [
+    [/\bz\d+\b/i, "Zona Z# (Z3, Z5, Z7...)"],
+    [/\bserie[s]?\b/i, "palabra 'Series'"],
+    [/\bfartlek\b/i, "palabra 'Fartlek'"],
+    [/\b\d+\s*x\s*\d+/i, "patrón NxM (5x1000, 6x400)"],
+    [/\b\d+\s*x\s*\(/i, "patrón Nx(...) (2x(200/100))"],
+    [/\btrack\b/i, "palabra 'Track'"],
+    [/\bintervalo[s]?\b/i, "palabra 'Intervalo(s)'"],
+    [/\bcambio[s]?\s+de\s+ritmo\b/i, "cambios de ritmo"],
+  ];
+
+  for (const [re, label] of patterns) {
+    if (re.test(name)) {
+      return { likely: true, matched: label };
+    }
+  }
+  return { likely: false, matched: null };
 }

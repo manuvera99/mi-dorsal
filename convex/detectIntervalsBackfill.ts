@@ -74,7 +74,9 @@ export const runBackfill = action({
       for (const act of page.page as Array<{
         _id: string;
         userId: string;
+        name: string | undefined;
         splitsMetric: SplitMetric[] | null | undefined;
+        stravaSportType: string | undefined;
         elevationGainM: number | undefined;
         rawStravaDetail: RawStravaDetail | null | undefined;
         detectedIntervals: unknown | null | undefined;
@@ -90,6 +92,8 @@ export const runBackfill = action({
             splits: act.splitsMetric,
             totalElevationGainM: act.elevationGainM,
             startEndLoopM: loop,
+            activityName: act.name,
+            sportType: act.stravaSportType,
           });
           await ctx.runMutation(internal.detectIntervalsBackfillHelpers.patchOne, {
             activityId: act._id as any,

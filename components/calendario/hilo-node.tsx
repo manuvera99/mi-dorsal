@@ -155,7 +155,7 @@ export function HiloNode({ index, myRace, isNext }: HiloNodeProps) {
           queda flotando en el gap entre cards sin tocar ninguna. */}
       <article
         className={cn(
-          "card relative ml-[80px] mt-8 sm:ml-[96px] sm:mt-10",
+          "card relative ml-[80px] mt-6 sm:ml-[96px] sm:mt-8",
           status === "done" && "bg-stone-50/50",
           status === "planned" &&
             isNext &&

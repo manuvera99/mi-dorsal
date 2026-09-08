@@ -11,9 +11,12 @@
 // estado de éxito antes de cerrar.
 //
 // Decisión de UX: el backdrop NO cierra el dialog al hacer click fuera
-// (rompía el flujo: un click accidental cerraba el dialog antes de que la
-// mutation terminara, dando sensación de "se cierra sin hacer nada"). Solo
-// X y Cancelar cierran.
+// (rompía el flujo). Solo X y Cancelar cierran.
+//
+// Decisión técnica: NO usamos <form> ni type="submit". El submit nativo
+// recarga la página si por algún motivo e.preventDefault() no se ejecuta
+// a tiempo (React + streaming SSR pueden dar race conditions con el
+// preventDefault). Con type="button" + onClick es imposible que pase.
 // =============================================================================
 
 import { useEffect, useState } from "react";
@@ -27,9 +30,6 @@ const NAME_MAX = 120;
 const CCAA_MAX = 60;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Lista de CCAA para el <select>. Mismo set que lib/geo/region.ts (19 CCAA +
-// Ceuta + Melilla), pero como string libre para que el admin pueda
-// identificar la solicitud sin necesidad de tener la clave exacta.
 const CCAA_OPTIONS = [
   "Andalucía",
   "Aragón",
@@ -73,22 +73,19 @@ export function ReportMissingClubDialog({
   // Sin listener propio de Escape: el modal padre (EditProfileModal) ya
   // captura Escape y cierra el árbol entero (incluido este dialog). Si
   // ambos capturaban Escape, se cerraban los dos a la vez y daba la
-  // sensación de "se cierra sin hacer nada". El modal padre es la
-  // fuente única de verdad para el cierre por teclado.
+  // sensación de "se cierra sin hacer nada".
 
-  // Handler centralizado para los botones de cierre (X y Cancelar). Lo
-  // logueamos para distinguir en consola entre "click en X", "click en
-  // Cancelar" y "submit del form".
+  // Handler centralizado para los botones de cierre (X y Cancelar).
   const handleCloseClick = (source: "X" | "Cancelar") => {
     if (sending) return; // no dejar cerrar mientras se está enviando
-    // eslint-disable-next-line no-console
     console.info(`[report-missing-club] closed via ${source} button`);
     onClose();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
+    if (sending) return; // guard contra doble click
     setError(null);
+    console.info("[report-missing-club] submit handler entered");
 
     const trimmedName = clubName.trim();
     if (trimmedName.length < 2) {
@@ -113,26 +110,22 @@ export function ReportMissingClubDialog({
       note: trimmedNote || undefined,
       contactEmail: trimmedEmail || undefined,
     };
-    // Log diagnóstico: si el usuario reporta otro bug, podemos ver en la
-    // consola del navegador exactamente qué payload se mandó y qué devolvió.
-    // eslint-disable-next-line no-console
-    console.info("[report-missing-club] submitting", payload);
+    console.info("[report-missing-club] submitting payload", payload);
     try {
       if (useMock) {
         await mockApi.clubSuggestions.submit(payload);
       } else {
         const result = await submitConvex(payload);
-        // eslint-disable-next-line no-console
         console.info("[report-missing-club] submitted OK", result);
       }
       setSent(true);
-      // Cierra a los 1.5s para que el usuario vea la confirmación.
-      setTimeout(() => onClose(), 1500);
+      // Cierra a los 2s para que el usuario vea la confirmación.
+      setTimeout(() => {
+        console.info("[report-missing-club] auto-closing after success");
+        onClose();
+      }, 2000);
     } catch (e: any) {
-      // eslint-disable-next-line no-console
       console.error("[report-missing-club] submit failed", e);
-      // Convex a veces devuelve solo "Server Error" sin detalle. Mostramos
-      // un mensaje útil para que el usuario sepa qué pasó.
       const raw = e?.message ?? String(e);
       setError(
         raw && raw !== "Server Error"
@@ -144,9 +137,7 @@ export function ReportMissingClubDialog({
   };
 
   return (
-    // Backdrop SIN onClick: el dialog solo se cierra con X o Cancelar. Evita
-    // que un click accidental cierre el dialog antes de que la mutation
-    // termine, dando sensación de "se cierra sin hacer nada".
+    // Backdrop SIN onClick: el dialog solo se cierra con X o Cancelar.
     // isolation: isolate crea un stacking context nuevo para que z-[100]
     // sea relativo SOLO al document, no al modal padre (z-50 con backdrop).
     <div
@@ -180,15 +171,16 @@ export function ReportMissingClubDialog({
               El admin la revisará y, si procede, la añadirá al próximo
               re-ingest de la lista RFEA.
             </p>
+            <p className="text-xs text-gray-400 mt-3">Cerrando automáticamente…</p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-4">
             <p className="text-sm text-gray-600">
               Dinos el nombre del club que no encuentras. Lo revisaremos y,
               si es un club de atletismo registrado, lo añadiremos a la lista.
             </p>
 
-            <fieldset disabled={sending} className="space-y-4 m-0 p-0 border-0">
+            <div className="space-y-4">
               <div>
                 <label htmlFor="rmc-name" className="block text-sm font-medium text-gray-700 mb-1">
                   Nombre del club
@@ -255,7 +247,7 @@ export function ReportMissingClubDialog({
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                 />
               </div>
-            </fieldset>
+            </div>
 
             {error && (
               <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-md p-2">
@@ -272,17 +264,13 @@ export function ReportMissingClubDialog({
               >
                 Cancelar
               </button>
+              {/* type="button" + onClick: NO usamos form submit. El submit
+                  nativo recarga la página si preventDefault llega tarde. */}
               <button
-                type="submit"
+                type="button"
+                onClick={handleSubmit}
                 className="btn-primary flex-1"
                 disabled={sending}
-                onClick={() => {
-                  // Diagnóstico: si el form submit no se triggerea por
-                  // algún motivo, este log confirma que el click sí
-                  // llegó al botón.
-                  // eslint-disable-next-line no-console
-                  console.info("[report-missing-club] submit button clicked");
-                }}
               >
                 {sending ? (
                   <span className="flex items-center justify-center gap-1.5">
@@ -293,7 +281,7 @@ export function ReportMissingClubDialog({
                 )}
               </button>
             </div>
-          </form>
+          </div>
         )}
       </div>
     </div>

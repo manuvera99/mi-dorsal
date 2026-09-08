@@ -836,6 +836,16 @@ export default defineSchema({
     detectedIntervals: v.optional(
       v.object({
         isIntervalWorkout: v.boolean(),
+        confidence: v.optional(v.union(
+          v.literal("high"),
+          v.literal("medium"),
+          v.literal("low"),
+        )),
+        detectionMode: v.optional(v.union(
+          v.literal("laps"),
+          v.literal("splits"),
+          v.literal("name"),
+        )),
         paceVariabilityCv: v.number(),
         fastDeltaSecPerKm: v.optional(v.number()),
         slowDeltaSecPerKm: v.optional(v.number()),
@@ -871,9 +881,11 @@ export default defineSchema({
     averageWindSpeed: v.optional(v.number()),
     precipitationIntensity: v.optional(v.number()),
     weatherObservationTime: v.optional(v.string()),
-    // Laps (vueltas/intervalos). v.any() porque el shape exacto varía
-    // según el tipo de actividad y no queremos fallar por un campo
-    // extra. Para reports futuros se puede refinar a v.object.
+    // Laps (vueltas/intervalos). v.any() porque Strava devuelve muchos
+    // campos extra (activity, athlete, average_cadence, device_watts,
+    // pace_zone, etc.) que no necesitamos y que el validator rechaza.
+    // Mantenemos los laps por si en el futuro se quiere usar la señal
+    // más fiable de series (laps cortos con paces alternantes).
     laps: v.optional(v.array(v.any())),
     // Segment efforts: cada segmento que cruzó la actividad con su
     // tiempo, rank, etc. También v.any() por la misma razón.

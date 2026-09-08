@@ -39,6 +39,19 @@ export function formatPace(secPerKm: number | null | undefined): string {
   return `${m}:${String(s).padStart(2, "0")} /km`;
 }
 
+/**
+ * Variante "larga" del pace objetivo para cards de carrera. Es lo mismo
+ * que `formatPace` pero con "min/km" en vez de "/km", más explícito
+ * para el corredor primerizo. Usado en /calendario y otras cards
+ * donde se quiere dejar claro que es tiempo por kilómetro.
+ */
+export function formatPaceLong(secPerKm: number | null | undefined): string {
+  if (secPerKm == null || !Number.isFinite(secPerKm) || secPerKm <= 0) return "—";
+  const m = Math.floor(secPerKm / 60);
+  const s = Math.round(secPerKm % 60);
+  return `${m}:${String(s).padStart(2, "0")} min/km`;
+}
+
 export function formatDistanceKm(m: number | null | undefined): string {
   if (m === null || m === undefined) return "—";
   if (m < 1000) return `${Math.round(m)} m`;

@@ -16,9 +16,17 @@
 
 import Link from "next/link";
 import { Calendar, Hash, MapPin, Trophy } from "lucide-react";
-import { cn, formatRaceType, formatTime } from "@/lib/utils";
+import { cn, formatRaceType, formatTime, formatPaceLong } from "@/lib/utils";
 
 type HiloNodeStatus = "planned" | "done" | "dns" | "dnf";
+
+/** PR mínimo que necesitamos en este componente. Coincide con la forma
+ *  que devuelve `api.personalRecords.listMine` (subset de campos). */
+interface UserPR {
+  distanceM: number;
+  distanceLabel?: string;
+  timeSeconds: number;
+}
 
 interface HiloNodeProps {
   /** Posición 1-based en el hilo (para "Hilo #01", "Hilo #02"…). */
@@ -27,6 +35,26 @@ interface HiloNodeProps {
   myRace: any;
   /** Si es la próxima carrera a correr (énfasis visual). */
   isNext?: boolean;
+  /** PRs actuales del usuario (uno por distancia). Opcional: si no se
+   *  pasan, no se muestra el bloque "Tu PR en X" en la card. */
+  userPRs?: UserPR[];
+}
+
+/**
+ * Encuentra el PR del usuario que coincide con la distancia de la carrera.
+ * Match EXACTO en metros (race.distanceKm * 1000 === pr.distanceM).
+ * Si no hay match exacto, devuelve null y la card no muestra el bloque.
+ *
+ * El usuario pidió match exacto ("si tiene PR en esa distancia se la
+ * muestra ahi") en vez de Riegel/tolerancia.
+ */
+function findMatchingPR(
+  raceDistanceKm: number,
+  prs: UserPR[] | undefined,
+): UserPR | null {
+  if (!prs || prs.length === 0) return null;
+  const targetM = Math.round(raceDistanceKm * 1000);
+  return prs.find((pr) => pr.distanceM === targetM) ?? null;
 }
 
 const STATUS: Record<
@@ -95,11 +123,13 @@ function fmtShortDate(d: string | undefined): {
   }
 }
 
-export function HiloNode({ index, myRace, isNext }: HiloNodeProps) {
+export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
   const status: HiloNodeStatus =
     (myRace.status as HiloNodeStatus) || "planned";
   const s = STATUS[status];
   const race = myRace.race;
+  // PR matching: solo si la distancia coincide exacta con la de la carrera.
+  const matchingPR = race ? findMatchingPR(race.distanceKm, userPRs) : null;
   const { day, month, year } = fmtShortDate(race?.startDate);
 
   // "Sombra" del tab según el estado (rojo, verde o gris) para mantener el
@@ -229,28 +259,65 @@ export function HiloNode({ index, myRace, isNext }: HiloNodeProps) {
           )}
         </div>
 
-        {(myRace.predictedTimeSeconds || myRace.actualTimeSeconds) && (
+        {/*
+          Bloque de "estadísticas de carrera" — Estimación / Tu PR / Tiempo
+          oficial. Solo se muestra si HAY predicción (decisión del producto:
+          la predicción es el ancla visual; sin ella, la card queda más
+          limpia sin esta sección).
+
+          Cuando hay predicción:
+          - Estimación: tiempo total + pace objetivo "5:12 min/km" debajo.
+          - Tu PR en X: solo si hay PR con la MISMA distancia que la carrera
+            (match exacto en metros, sin Riegel).
+          - Tiempo oficial: solo si la carrera ya pasó y tenemos resultado.
+        */}
+        {myRace.predictedTimeSeconds && (
           <div className="mt-4 flex flex-wrap gap-x-6 gap-y-3 border-t border-stone-100 pt-3">
-            {myRace.predictedTimeSeconds && (
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-500">
+                Estimación
+              </div>
+              <div className="font-mono text-xl font-bold text-runner-primary">
+                {formatTime(myRace.predictedTimeSeconds)}
+              </div>
+              {/*
+                Pace objetivo: predTime / race.distanceKm. El formato
+                "5:12 min/km" es la opción del producto (más explícito que
+                "/km" para corredores primerizos).
+              */}
+              {race && race.distanceKm > 0 && (
+                <div className="font-mono text-xs font-semibold text-stone-600">
+                  {formatPaceLong(
+                    myRace.predictedTimeSeconds / race.distanceKm,
+                  )}
+                </div>
+              )}
+              {myRace.predictionConfidence && (
+                <div className="text-[10px] text-stone-500">
+                  confianza{" "}
+                  {myRace.predictionConfidence === "high"
+                    ? "alta"
+                    : myRace.predictionConfidence === "medium"
+                      ? "media"
+                      : "baja"}
+                </div>
+              )}
+            </div>
+
+            {matchingPR && (
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-500">
-                  Estimación
+                  Tu PR
                 </div>
-                <div className="font-mono text-xl font-bold text-runner-primary">
-                  {formatTime(myRace.predictedTimeSeconds)}
+                <div className="font-mono text-xl font-bold text-stone-700">
+                  {formatTime(matchingPR.timeSeconds)}
                 </div>
-                {myRace.predictionConfidence && (
-                  <div className="text-[10px] text-stone-500">
-                    confianza{" "}
-                    {myRace.predictionConfidence === "high"
-                      ? "alta"
-                      : myRace.predictionConfidence === "medium"
-                        ? "media"
-                        : "baja"}
-                  </div>
-                )}
+                <div className="text-[10px] text-stone-500">
+                  en {Math.round(matchingPR.distanceM / 1000)} km
+                </div>
               </div>
             )}
+
             {myRace.actualTimeSeconds && (
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-500">

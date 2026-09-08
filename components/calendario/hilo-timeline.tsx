@@ -20,6 +20,8 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { HiloNode } from "./hilo-node";
 
 interface HiloTimelineProps {
@@ -33,6 +35,13 @@ export function HiloTimeline({
   showTodayMarker = true,
 }: HiloTimelineProps) {
   if (myRaces.length === 0) return null;
+
+  // PRs actuales del usuario (uno por distancia). Se hace UNA query aquí
+  // y se pasa a cada HiloNode, en vez de N queries por nodo. El HiloNode
+  // hace match exacto en metros para decidir si muestra el bloque "Tu PR".
+  // useQuery devuelve undefined mientras carga — eso es OK, el HiloNode
+  // simplemente no muestra el bloque del PR hasta que llegue.
+  const userPRs = useQuery(api.personalRecords.listMine, {});
 
   // Encontrar el índice de la primera carrera con fecha estrictamente
   // posterior a hoy → ahí va el marcador "Hoy".
@@ -64,6 +73,7 @@ export function HiloTimeline({
         index={displayIndex}
         myRace={mr}
         isNext={isNext}
+        userPRs={userPRs as any}
       />
     );
   };

@@ -113,7 +113,7 @@ export function HiloNode({ index, myRace, isNext }: HiloNodeProps) {
         : "shadow-md shadow-stone-500/15";
 
   return (
-    <div className="relative pb-12 last:pb-0 sm:pb-14">
+    <div className="relative pb-20 last:pb-0 sm:pb-24">
       {/* Etiqueta de fecha — "dorsal mini" vertical apoyado sobre el hilo.
           El contenedor padre dibuja la línea vertical justo por el centro
           de esta etiqueta (left-0 a left-14 → centro en left-7, sm:left-9). */}

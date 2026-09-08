@@ -104,27 +104,28 @@ export function HiloTimeline({
 }
 
 /**
- * HiloSvg — dibuja el "hilo" curvo que recorre la timeline por detrás de
- * las cards. Estilo: línea fina (1.5 px), color brand semitransparente,
- * con dashes largos para evocar hilo de coser.
+ * HiloSvg — dibuja el "hilo" como una **senda de pisadas** de corredor.
+ *
+ * En lugar de una línea curva, generamos pares de huellas (pie izq + pie
+ * der) que bajan en zigzag suave por el eje vertical del timeline. Esto
+ * refuerza la metáfora de marca "El hilo que te une a tu dorsal" — el
+ * corredor VA DEJANDO SU RASTRO carrera a carrera.
+ *
+ * Cada pisada es una elipse (~12x18 px) con un pequeño arco a un lado
+ * (talón), rotada ±10° alternadamente para que parezca un paso natural.
+ * El color es `runner-primary` al 22 % de opacidad: sutil, no distrae de
+ * las cards, pero inequívocamente "el rastro de tu hilo".
+ *
+ * Las pisadas se dibujan EN EL ESPACIO ENTRE LAS CARDS (entre dorsal y
+ * dorsal), no debajo del dorsal — para que el dorsal siga siendo el
+ * ancla visual y las pisadas rellenen el aire.
  *
  * Implementación:
  *  - Un `<svg>` absoluto ocupa TODO el contenedor padre.
  *  - Mide el contenedor con ResizeObserver y vuelve a pintar cuando cambia
  *    (por resize, por aparición del toggle "Hoy", por carga de imágenes, etc.).
- *  - El path se construye con curvas Bézier cúbicas (C) que se desvían
- *    ±6 px del eje vertical — suficiente para que se vea ondulado pero sin
- *    salirse del centro de la etiqueta de fecha.
- *  - Los puntos de control se colocan en x = 0.5·ancho (centro del SVG).
- *    Como el SVG va de left-0 a right-0 pero la etiqueta de fecha está
- *    en left-0..left-14 / sm:left-[72px], necesitamos el path **relativo
- *    a la posición real del hilo**, no al centro del SVG.
- *
- *  Para eso, el SVG también va posicionado en `left-0 right-auto` con
- *  `width` igual al ancho de la etiqueta de fecha (14 / 72 px), de modo
- *  que su x=0 está en el borde izquierdo del timeline y x=ancho está
- *  en el centro de la etiqueta. Así, el path a x=ancho/2 cae justo
- *  en el centro de la etiqueta de fecha.
+ *  - Las pisadas se colocan en `cx = w/2` (centro de la etiqueta de fecha)
+ *    con offsets pequeños ±6 px para imitar un paso natural.
  */
 function HiloSvg() {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -146,15 +147,15 @@ function HiloSvg() {
     };
   }, []);
 
-  // El path se construye solo si tenemos dimensiones reales.
-  const d = buildHiloPath(size.h, size.w);
+  const footprints = buildFootprints(size.h, size.w);
 
   return (
     <div
       ref={containerRef}
-      // El wrapper absoluto se ancla a la izquierda con el mismo ancho que
-      // la etiqueta de fecha (w-14 / sm:w-[72px]). El SVG dentro va
-      // absolute, ocupa todo el wrapper.
+      // Wrapper absoluto con el mismo ancho que la etiqueta de fecha
+      // (w-14 / sm:w-[72px]). El SVG dentro va absolute, ocupa todo el
+      // wrapper. x=0 está en el borde izquierdo del timeline, x=ancho
+      // está en el centro de la etiqueta — ahí caen las pisadas.
       className="pointer-events-none absolute top-0 left-0 w-14 sm:w-[72px]"
       style={{ height: "100%" }}
       aria-hidden="true"
@@ -164,54 +165,101 @@ function HiloSvg() {
         height="100%"
         viewBox={`0 0 ${Math.max(1, size.w)} ${Math.max(1, size.h)}`}
         preserveAspectRatio="none"
-        className="absolute inset-0"
+        className="absolute inset-0 overflow-visible"
         // No bloquea clicks: la timeline debajo sigue siendo interactiva.
         fill="none"
       >
-        {d && (
-          <path
-            d={d}
-            // Hilo fino, semitransparente, con dashes largos
-            // (8 6) para evocar un pespunte.
-            stroke="rgb(220 38 38 / 0.28)"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeDasharray="6 6"
-          />
-        )}
+        {footprints.map((fp, i) => (
+          <Footprint key={i} {...fp} />
+        ))}
       </svg>
     </div>
   );
 }
 
 /**
- * Construye un path SVG que va de (cx, 0) a (cx, h) serpenteando ±6 px
- * horizontalmente cada ~40 px de alto. El resultado es una onda suave.
+ * Footprint — una pisada minimalista de corredor.
  *
- * Si `w` o `h` valen 0 (antes del primer paint), devuelve null para
- * evitar paths degenerados.
+ * Forma: elipse principal (la planta del pie) con un pequeño arco a un
+ * lado (el talón). Cuando va rotada, el talón marca la dirección del paso.
+ *
+ * Tamaño: 12x18 px. Color: runner-primary al 22% para que sea sutil.
+ *
+ * `isLeft`: true → pie izquierdo (talón a la derecha); false → pie derecho
+ * (talón a la izquierda). Eso hace que las pisadas alternadas formen una
+ * pisada "andando".
  */
-function buildHiloPath(h: number, w: number): string | null {
-  if (h <= 0 || w <= 0) return null;
-  const cx = w / 2; // centro horizontal del wrapper (= centro de la etiqueta)
-  const amplitude = 6; // desviación lateral en px
-  const step = 40; // longitud de cada "onda" en px verticales
-  const segments = Math.max(1, Math.ceil(h / step));
+function Footprint({
+  cx,
+  cy,
+  isLeft,
+}: {
+  cx: number;
+  cy: number;
+  isLeft: boolean;
+}) {
+  // Rotación: el pie izq apunta a la derecha (hacia el centro del timeline)
+  // y el pie der a la izquierda, alternando en cada paso.
+  const rotation = isLeft ? 12 : -12;
+  // El talón se coloca a un lado u otro según el pie.
+  const heelDx = isLeft ? 5 : -5;
+  const heelDy = -7;
 
-  let d = `M ${cx} 0`;
+  return (
+    <g transform={`translate(${cx} ${cy}) rotate(${rotation})`}>
+      {/* Planta del pie — elipse ligeramente alargada hacia los dedos */}
+      <ellipse
+        cx={0}
+        cy={0}
+        rx={5}
+        ry={8}
+        fill="rgb(220 38 38 / 0.22)"
+      />
+      {/* Talón — arco pequeño detrás de la planta */}
+      <ellipse
+        cx={heelDx}
+        cy={heelDy}
+        rx={2.5}
+        ry={3}
+        fill="rgb(220 38 38 / 0.22)"
+      />
+    </g>
+  );
+}
 
-  for (let i = 0; i < segments; i++) {
-    const y0 = i * step;
-    const y1 = Math.min(h, (i + 1) * step);
-    // Onda alterna: par a la derecha, impar a la izquierda.
-    const sign = i % 2 === 0 ? 1 : -1;
-    const xCtrl = cx + sign * amplitude;
-    // Curva cúbica simétrica: el control horizontal es el mismo en ambos
-    // extremos, lo que produce una onda limpia tipo "seno".
-    d += ` C ${xCtrl} ${y0 + step * 0.33}, ${xCtrl} ${y1 - step * 0.33}, ${cx} ${y1}`;
+/**
+ * Genera el array de pisadas para la timeline. Estrategia:
+ *  - Empezamos en y=0 (justo debajo del primer dorsal) y bajamos hasta h.
+ *  - El paso vertical entre pisadas del mismo pie es 60 px; como alternamos
+ *    pies, hay 30 px entre pisadas consecutivas (un paso natural).
+ *  - Las pisadas se desplazan lateralmente ±5 px alternando para formar
+ *    una línea en zigzag, como si el corredor avanzara por el centro del
+ *    timeline.
+ *  - Saltamos los primeros ~70 px y los últimos ~50 px para no chocar
+ *    con los dorsales (que ocupan la parte de arriba de cada card).
+ *
+ * Devuelve un array vacío si h<=0.
+ */
+function buildFootprints(
+  h: number,
+  w: number,
+): { cx: number; cy: number; isLeft: boolean }[] {
+  if (h <= 0 || w <= 0) return [];
+  const cx = w / 2;
+  const step = 32; // px verticales entre pisadas consecutivas (paso natural)
+  const startY = 70; // saltamos la zona del dorsal (la etiqueta ocupa ~80px)
+  const endY = h - 30; // no pisamos el final
+  const out: { cx: number; cy: number; isLeft: boolean }[] = [];
+
+  for (let y = startY; y <= endY; y += step) {
+    const i = out.length;
+    const isLeft = i % 2 === 0;
+    // Offset lateral: ±4 px alternando. Pequeño, para no salirse del
+    // wrapper de la etiqueta de fecha.
+    const dx = isLeft ? -3 : 3;
+    out.push({ cx: cx + dx, cy: y, isLeft });
   }
-
-  return d;
+  return out;
 }
 
 function TodayMarker({

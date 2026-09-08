@@ -203,7 +203,7 @@ export async function generateCoachAnalysis(input: CoachAnalysisInput): Promise<
     throw new Error(`LLM error ${res.status}: ${errText.slice(0, 300)}`);
   }
 
-  const data = await res.json();
+  const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
   const content = data?.choices?.[0]?.message?.content;
   if (!content) throw new Error("LLM no devolvió contenido");
 

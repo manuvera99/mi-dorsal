@@ -108,9 +108,25 @@ export const upsert = mutation({
     timeSeconds: v.number(),
     achievedAt: v.optional(v.string()),
     raceId: v.optional(v.id("races")),
+    /** Actividad de Strava de la que se extrajo este PR. Si se pasa, debe
+     *  existir y ser del usuario actual (validamos aquí). Permite al
+     *  usuario pegar una URL de Strava al crear el PR y obtener el mapa
+     *  / splits / gear gratis. */
+    sourceActivityId: v.optional(v.id("activities")),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
+
+    // Si pasan sourceActivityId, validar que existe y es del usuario.
+    // Si no es válido, lo ignoramos (no fallamos — podría ser que Strava
+    // aún no se sincronizó y el usuario pegó la URL por adelantado).
+    let validatedActivityId: typeof args.sourceActivityId | undefined = undefined;
+    if (args.sourceActivityId) {
+      const a = await ctx.db.get(args.sourceActivityId);
+      if (a && a.userId === user._id) {
+        validatedActivityId = args.sourceActivityId;
+      }
+    }
 
     // Buscar PR actual para esta distancia
     const current = await ctx.db
@@ -147,6 +163,7 @@ export const upsert = mutation({
       timeSeconds: args.timeSeconds,
       achievedAt: args.achievedAt,
       raceId: args.raceId,
+      sourceActivityId: validatedActivityId,
       source: "manual",
       isCurrent: true,
     });
@@ -155,6 +172,52 @@ export const upsert = mutation({
     await ctx.runMutation(api.users.markFirstPrAdded, {});
 
     return { id, saved: true, isFirstPr, wasImproved: current != null };
+  },
+});
+
+/**
+ * Vincula un PR existente a una actividad de Strava. Usado desde la página
+ * de detalle de PR para que el usuario pueda "Buscar actividad" o pegar
+ * una URL de Strava y obtener el mapa / splits / gear sin re-introducir
+ * la marca a mano.
+ *
+ * Valida que:
+ *  - El PR es del usuario.
+ *  - La actividad es del usuario.
+ *
+ * Si ya había un `sourceActivityId` previo, lo sobreescribe.
+ */
+export const linkToActivity = mutation({
+  args: {
+    prId: v.id("personalRecords"),
+    activityId: v.id("activities"),
+  },
+  handler: async (ctx, { prId, activityId }) => {
+    const user = await requireUser(ctx);
+    const pr = await ctx.db.get(prId);
+    if (!pr) throw new Error("PR not found");
+    if (pr.userId !== user._id) throw new Error("Forbidden");
+    const a = await ctx.db.get(activityId);
+    if (!a) throw new Error("Activity not found");
+    if (a.userId !== user._id) throw new Error("Forbidden");
+    await ctx.db.patch(prId, { sourceActivityId: activityId });
+    return { ok: true };
+  },
+});
+
+/**
+ * Quita el vínculo del PR con la actividad de Strava (deja `sourceActivityId = undefined`).
+ * Útil si el usuario se equivoca de actividad y quiere desvincular.
+ */
+export const unlinkFromActivity = mutation({
+  args: { prId: v.id("personalRecords") },
+  handler: async (ctx, { prId }) => {
+    const user = await requireUser(ctx);
+    const pr = await ctx.db.get(prId);
+    if (!pr) throw new Error("PR not found");
+    if (pr.userId !== user._id) throw new Error("Forbidden");
+    await ctx.db.patch(prId, { sourceActivityId: undefined });
+    return { ok: true };
   },
 });
 

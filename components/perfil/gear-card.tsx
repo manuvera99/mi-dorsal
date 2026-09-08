@@ -44,17 +44,11 @@ export function GearCard() {
   }
 
   if (gear.length === 0) {
-    return (
-      <div className="card mb-6">
-        <h2 className="text-lg font-semibold flex items-center gap-2 mb-2">
-          <Footprints className="h-5 w-5 text-runner-primary" /> Tus zapatillas
-        </h2>
-        <p className="text-sm text-stone-600 leading-relaxed">
-          Cuando Strava detecte con qué zapatillas corres, las verás aquí
-          con los km que les llevas. Útil para saber cuándo toca cambiarlas.
-        </p>
-      </div>
-    );
+    // Sin zapatillas detectadas → no renderizamos la card. El usuario
+    // probablemente aún no tiene Strava con gear configurado, y mostrar
+    // una card vacía con copy explicativo es ruido. Cuando Strava ingiera
+    // alguna actividad con `gearId`, la card aparecerá automáticamente.
+    return null;
   }
 
   return (

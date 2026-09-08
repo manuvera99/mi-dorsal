@@ -16,11 +16,12 @@
  */
 
 import Link from "next/link";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { formatTime, formatDate, formatPace } from "@/lib/utils";
 import { PolylineMapWrapper } from "@/components/perfil/polyline-map-wrapper";
 import { SplitsChart } from "@/components/perfil/splits-chart";
+import { LinkStravaSection } from "@/components/perfil/link-strava-section";
 import {
   ArrowLeft,
   Trophy,
@@ -33,6 +34,7 @@ import {
   Activity as ActivityIcon,
   TrendingDown,
   Calendar,
+  Unlink,
 } from "lucide-react";
 
 function StravaIcon({ className }: { className?: string }) {
@@ -199,6 +201,18 @@ export function PrDetailClient({ prId }: { prId: string }) {
         )}
       </div>
 
+      {/* Si el PR aún no tiene actividad de Strava vinculada, mostramos
+          el bloque de búsqueda. Si ya tiene, un botón pequeño para
+          desvincular por si se equivocó. */}
+      {!pr.sourceActivityId && (
+        <LinkStravaSection
+          prId={pr._id}
+          distanceM={pr.distanceM}
+          timeSeconds={pr.timeSeconds}
+          achievedAt={pr.achievedAt}
+        />
+      )}
+
       {/* Mapa del recorrido (si hay polyline) */}
       {activity?.mapPolyline && (
         <div className="card mb-4">
@@ -291,6 +305,14 @@ export function PrDetailClient({ prId }: { prId: string }) {
         </a>
       )}
 
+      {/* Si ya hay actividad vinculada, mostramos un botón discreto para
+          desvincular (por si el usuario se equivocó de actividad). */}
+      {pr.sourceActivityId && activity && (
+        <div className="mb-4 flex justify-end">
+          <UnlinkActivityButton prId={pr._id} />
+        </div>
+      )}
+
       {/* Historial de PRs para esta distancia */}
       {otherHistory.length > 0 && (
         <div className="card">
@@ -335,5 +357,40 @@ export function PrDetailClient({ prId }: { prId: string }) {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Sub-componente: botón pequeño "Desvincular" que aparece cuando el PR ya
+ * tiene una actividad de Strava vinculada. Útil si el usuario se equivocó
+ * de actividad y quiere volver a buscar/vincular otra.
+ */
+function UnlinkActivityButton({ prId }: { prId: string }) {
+  const unlink = useMutation(api.personalRecords.unlinkFromActivity);
+
+  const handleClick = async () => {
+    if (
+      !confirm(
+        "¿Desvincular esta marca de su actividad de Strava? El PR seguirá existiendo, solo perderá el mapa, los splits y la asociación.",
+      )
+    ) {
+      return;
+    }
+    try {
+      await unlink({ prId: prId as any });
+    } catch (e) {
+      console.error("Error desvinculando:", e);
+      alert("No se pudo desvincular. Inténtalo de nuevo.");
+    }
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      className="text-xs text-stone-500 hover:text-red-600 inline-flex items-center gap-1"
+    >
+      <Unlink className="h-3 w-3" />
+      Desvincular de Strava
+    </button>
   );
 }

@@ -8,12 +8,17 @@
 // `personalRecords.upsert` que ya usa el flujo automático — si el tiempo
 // no mejora el PR actual de esa distancia, la mutation simplemente no hace
 // nada (lo avisamos en el formulario, no es un error).
+//
+// Opcionalmente el usuario puede pegar una URL de Strava para vincular el
+// PR a esa actividad y obtener el mapa, splits y gear gratis. Si la
+// actividad no está en nuestro DB todavía, se ignora silenciosamente
+// (la mutation `upsert` valida la propiedad).
 // =============================================================================
 
 import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { X, Loader2 } from "lucide-react";
+import { X, Loader2, Link2, Check } from "lucide-react";
 
 // Debe coincidir con PR_DISTANCES_M en convex/activities/normalize.ts.
 const PR_DISTANCES: { distanceM: number; label: string }[] = [
@@ -47,15 +52,34 @@ function parseTimeToSeconds(input: string): number | null {
   return total > 0 ? total : null;
 }
 
+/** Extrae el ID numérico de una URL o string de Strava, o null si no encaja. */
+function parseStravaActivityId(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  const m = trimmed.match(/activities\/(\d+)/);
+  if (m) return m[1];
+  if (/^\d{6,}$/.test(trimmed)) return trimmed;
+  return null;
+}
+
 export function PrFormModal({ onClose }: { onClose: () => void }) {
   const upsertPr = useMutation(api.personalRecords.upsert);
 
   const [distanceM, setDistanceM] = useState<number>(PR_DISTANCES[0].distanceM);
   const [timeInput, setTimeInput] = useState("");
   const [achievedAt, setAchievedAt] = useState("");
+  const [stravaUrl, setStravaUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Si el usuario pega URL de Strava, intentamos resolver la actividad
+  // contra nuestro DB para dar feedback inmediato (si la encontró o no).
+  const parsedStravaId = stravaUrl ? parseStravaActivityId(stravaUrl) : null;
+  const resolvedActivity = useQuery(
+    api.activities.queries.findActivityByProviderId,
+    parsedStravaId ? ({ providerActivityId: parsedStravaId } as any) : ("skip" as any),
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,6 +102,10 @@ export function PrFormModal({ onClose }: { onClose: () => void }) {
         distanceLabel: distance.label,
         timeSeconds,
         achievedAt: achievedAt || undefined,
+        // Solo pasamos sourceActivityId si la URL resuelve a una actividad
+        // que existe en nuestro DB y pertenece al usuario. Si no, lo
+        // ignoramos (la mutation valida y no falla).
+        sourceActivityId: (resolvedActivity?._id as any) ?? undefined,
       });
 
       if (!result.saved) {
@@ -165,6 +193,44 @@ export function PrFormModal({ onClose }: { onClose: () => void }) {
                 onChange={(e) => setAchievedAt(e.target.value)}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
               />
+            </div>
+
+            <div>
+              <label htmlFor="pr-strava-url" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                <Link2 className="h-3.5 w-3.5" />
+                URL de Strava (opcional)
+              </label>
+              <input
+                id="pr-strava-url"
+                type="text"
+                placeholder="https://www.strava.com/activities/1234567890"
+                value={stravaUrl}
+                onChange={(e) => setStravaUrl(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm font-mono disabled:opacity-60 disabled:cursor-not-allowed"
+              />
+              {/* Feedback de la resolución de la URL. Solo si el usuario
+                  ha pegado algo que parece URL. */}
+              {stravaUrl.trim() && (
+                <div className="mt-1.5 text-xs">
+                  {!parsedStravaId ? (
+                    <span className="text-amber-700">
+                      No detectamos un ID de actividad válido en esa URL.
+                    </span>
+                  ) : resolvedActivity === undefined ? (
+                    <span className="text-stone-500">Buscando…</span>
+                  ) : resolvedActivity === null ? (
+                    <span className="text-amber-700">
+                      No tenemos esta actividad sincronizada. Conecta Strava
+                      y vuelve a intentarlo (o guarda sin vincular).
+                    </span>
+                  ) : (
+                    <span className="text-emerald-700 inline-flex items-center gap-1">
+                      <Check className="h-3 w-3" />
+                      Vincularemos tu PR a «{resolvedActivity.name ?? "esta actividad"}»
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </fieldset>
 

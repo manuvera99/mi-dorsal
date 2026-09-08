@@ -7,7 +7,6 @@ import { mockApi, isMockMode } from "@/lib/mock/provider";
 import { formatTime } from "@/lib/utils";
 import { User, Trophy, TrendingUp, Plus, Trash2 } from "lucide-react";
 import { ConnectionsSection } from "@/components/perfil/connections";
-import { RunnerTypeCard } from "@/components/perfil/runner-type-card";
 import { CoachAnalysisCard } from "@/components/perfil/coach-analysis-card";
 import { ActivityStatsCard } from "@/components/perfil/activity-stats";
 import { ActivityFeed } from "@/components/perfil/activity-feed";
@@ -130,9 +129,6 @@ function PerfilContent({ profile, prs }: { profile: any; prs: any[] }) {
 
       {/* Feed de actividades — con empty state para usuarios sin Strava */}
       {!isMockMode() && <ActivityFeed />}
-
-      {/* Tu hilo runner (heurísticas) — renombrado a "Tu tipo de corredor" en el card */}
-      {!isMockMode() && <RunnerTypeCard />}
 
       {/* Análisis narrativo del entrenador IA — a petición, cacheado en el profile */}
       {!isMockMode() && (

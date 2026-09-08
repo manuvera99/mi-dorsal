@@ -333,3 +333,85 @@ export const getActivityFull = query({
     return a;
   },
 });
+
+/**
+ * Devuelve actividades candidatas para vincular a un PR. Busca por:
+ *  - distancia (tolerancia ±10% para cubrir variantes del GPS)
+ *  - ventana temporal alrededor del `achievedAt` del PR (±windowDays,
+ *    default 30). Esto evita matches accidentales con actividades
+ *    antiguas de la misma distancia.
+ *
+ * Solo running (isRunningSportType). Ordena por closeness al tiempo
+ * del PR (las más probables primero). Devuelve hasta 20.
+ *
+ * Usado por la página de detalle de un PR sin `sourceActivityId` para
+ * que el usuario pueda vincularlo con un click.
+ */
+export const findCandidateActivitiesForPr = query({
+  args: {
+    distanceM: v.number(),
+    targetTimeSeconds: v.number(),
+    aroundMs: v.optional(v.number()),
+    windowDays: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getOptionalUser(ctx);
+    if (!user) return [];
+    const windowDays = args.windowDays ?? 30;
+    const around = args.aroundMs ?? Date.now();
+    const lower = around - windowDays * 24 * 60 * 60 * 1000;
+    const upper = around + windowDays * 24 * 60 * 60 * 1000;
+    const distMin = args.distanceM * 0.9;
+    const distMax = args.distanceM * 1.1;
+
+    // Filtrar todo lo del usuario con `by_user_started` (userId, startedAt).
+    // El índice es por (userId, startedAt) — necesitamos filtrar por startedAt
+    // en el cliente. Para datasets pequeños (<10k act) está bien.
+    const all = await ctx.db
+      .query("activities")
+      .withIndex("by_user_started", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const candidates = all
+      .filter((a) => isRunningSportType(a.stravaSportType))
+      .filter((a) => a.startedAt >= lower && a.startedAt <= upper)
+      .filter((a) => a.distanceM >= distMin && a.distanceM <= distMax)
+      .map((a) => {
+        // Distancia al target: 0 = exact match, mayor = peor.
+        const distError = Math.abs(a.distanceM - args.distanceM) / args.distanceM;
+        const timeError = Math.abs(a.durationSec - args.targetTimeSeconds) / args.targetTimeSeconds;
+        const score = distError + timeError;
+        return { activity: a, score };
+      })
+      .sort((a, b) => a.score - b.score)
+      .slice(0, 20)
+      .map((c) => c.activity);
+
+    return candidates;
+  },
+});
+
+/**
+ * Busca una actividad por `providerActivityId` (Strava ID). Se usa cuando
+ * el usuario pega una URL de Strava del estilo
+ * `https://www.strava.com/activities/1234567890` y queremos resolver
+ * el id y enlazarlo a un PR sin pedirle que lo busque.
+ *
+ * Devuelve `null` si la actividad no está en nuestro DB (el usuario
+ * tendría que sincronizar primero desde Strava).
+ */
+export const findActivityByProviderId = query({
+  args: { providerActivityId: v.string() },
+  handler: async (ctx, { providerActivityId }) => {
+    const user = await getOptionalUser(ctx);
+    if (!user) return null;
+    return await ctx.db
+      .query("activities")
+      .withIndex("by_provider_activity", (q) =>
+        q
+          .eq("provider", "strava")
+          .eq("providerActivityId", providerActivityId),
+      )
+      .first();
+  },
+});

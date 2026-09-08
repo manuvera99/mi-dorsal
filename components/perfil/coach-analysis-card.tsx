@@ -232,10 +232,10 @@ function LimitReachedMessage({
           Has usado tus {remaining === 0 ? "análisis" : "intentos"} este mes.
           {resetDateText && <> Se resetea el {resetDateText}.</>}{" "}
           <Link
-            href="/cuenta/suscripcion"
+            href="/premium"
             className="text-runner-primary hover:underline font-medium"
           >
-            Hazte Premium
+            Ver planes
           </Link>{" "}
           para análisis ilimitados.
         </span>
@@ -255,10 +255,10 @@ function LimitReachedMessage({
             Con Premium tienes análisis ilimitados y más funciones.
           </p>
           <Link
-            href="/cuenta/suscripcion"
+            href="/premium"
             className="text-xs font-semibold text-runner-primary hover:underline"
           >
-            Ver planes Premium →
+            Ver planes →
           </Link>
         </div>
       </div>

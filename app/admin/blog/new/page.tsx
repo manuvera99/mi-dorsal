@@ -1,8 +1,7 @@
+"use client";
 // =============================================================================
 // mi-dorsal — /admin/blog/new (crear post)
 // =============================================================================
-
-"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";

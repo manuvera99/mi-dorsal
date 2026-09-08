@@ -1,3 +1,4 @@
+"use client";
 // =============================================================================
 // mi-dorsal — /admin/club-suggestions
 // =============================================================================
@@ -10,8 +11,6 @@
 // Patrón visual copiado de /admin/feedback (StatCard, layout, filtros
 // pill, lista con detail panel). Misma estética, distinto dominio.
 // =============================================================================
-
-"use client";
 
 import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "convex/react";

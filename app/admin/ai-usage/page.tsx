@@ -1,3 +1,8 @@
+"use client";
+
+// Páginas admin: no se prerenderizan porque usan Clerk+Convex en cliente.
+export const dynamic = "force-dynamic";
+
 // =============================================================================
 // mi-dorsal — /admin/ai-usage
 // =============================================================================
@@ -15,8 +20,6 @@
 // Los datos se leen de la tabla aiUsageLog (Convex), instrumentada por
 // lib/ai/log-usage.ts desde cada llamada a un LLM en lib/ai/*.
 // =============================================================================
-
-"use client";
 
 import { useState } from "react";
 import { useQuery } from "convex/react";

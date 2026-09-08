@@ -7,7 +7,7 @@
  * El objetivo: que el visitante se imagine usando la app.
  */
 
-import { Mail, Calendar, Trophy } from "lucide-react";
+import { Mail, Calendar, Trophy, Zap } from "lucide-react";
 
 const MOMENTS = [
   {
@@ -24,6 +24,12 @@ const MOMENTS = [
     icon: Trophy,
     when: "Noviembre, el día después.",
     body: "Resultado oficial publicado: 1h 26' 14\". Nuevo PR. El diploma PDF ya está en tu buzón. Lo compartes en el grupo de WhatsApp del club. 🎉",
+  },
+  {
+    icon: Zap,
+    when: "Diciembre. Te haces Pro.",
+    body: "Conectas Strava una vez. Tus 312 actividades del 2024 entran solas, los PRs se actualizan y un entrenador IA con voz de club te dice dónde apretar para bajar de 1:25 en la Behobia 2027.",
+    pro: true,
   },
 ];
 
@@ -47,7 +53,13 @@ export function UseCase() {
             return (
               <li key={i} className="flex gap-4 items-start group">
                 <div className="flex-shrink-0 flex flex-col items-center">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-runner-primary text-white shadow-md group-hover:scale-105 transition-transform">
+                  <div
+                    className={`flex h-12 w-12 items-center justify-center rounded-full text-white shadow-md group-hover:scale-105 transition-transform ${
+                      m.pro
+                        ? "bg-gradient-to-br from-yellow-400 to-amber-500"
+                        : "bg-runner-primary"
+                    }`}
+                  >
                     <Icon className="h-5 w-5" aria-hidden="true" />
                   </div>
                   {i < MOMENTS.length - 1 && (
@@ -57,8 +69,16 @@ export function UseCase() {
                     />
                   )}
                 </div>
-                <div className="pt-1">
-                  <p className="text-base font-semibold text-runner-primary mb-1">{m.when}</p>
+                <div className="pt-1 flex-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <p className="text-base font-semibold text-runner-primary">{m.when}</p>
+                    {m.pro && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-yellow-300 text-runner-dark px-2 py-0.5">
+                        <Zap className="h-3 w-3" aria-hidden="true" />
+                        Pro
+                      </span>
+                    )}
+                  </div>
                   <p className="text-base text-gray-700 leading-relaxed">{m.body}</p>
                 </div>
               </li>

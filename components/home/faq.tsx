@@ -24,7 +24,12 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: "¿Cuánto cuesta mi-dorsal?",
     answer:
-      "Gratis. Sin tarjeta, sin premium, sin truco. Creemos que el corredor popular no debería pagar por no perder su dorsal. Cuando llegue el momento,可能会有一些高级功能 para clubs y organizadores, pero la app del corredor siempre será gratis.",
+      "El plan Free es completo y 100% gratis: catálogo, predicción VDOT, voto 8D, calendario personal, resultados por email y diploma PDF. Si quieres más, Pro Mensual cuesta 2,99 €/mes y Pro Anual 24,99 €/año (≈ 2,08 €/mes, ahorras un 30%). Pro añade Strava en tiempo real, entrenador IA ilimitado, alertas personalizadas y export a calendario. Cancela cuando quieras, sin compromiso. Pagos gestionados por Clerk Billing (Stripe) con RGPD y factura automática.",
+  },
+  {
+    question: "¿Qué hay gratis y qué es de pago?",
+    answer:
+      "Gratis: TODO lo que hace el 90% de los corredores — catálogo, predicción de tiempo, voto 8D, calendario, PRs, resultados oficiales y un export de Strava (ZIP) por cuenta. Pro: Strava OAuth en tiempo real (webhook), re-subir Strava sin límite, entrenador IA con voz de club sin restricción, planificador de temporada, alertas personalizadas, export a Google/Apple Calendar, widget público y soporte prioritario 24 h.",
   },
   {
     question: "¿De dónde sacáis las carreras?",
@@ -49,17 +54,17 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: "¿Tenéis app móvil nativa?",
     answer:
-      "Aún no, pero la web funciona como PWA: puedes añadirla a la pantalla de inicio de tu móvil y abrirla como si fuera una app. La nativa para iOS y Android está en el roadmap para 2026.",
+      "Aún no, pero la web funciona como PWA: puedes añadirla a la pantalla de inicio de tu móvil y abrirla como si fuera una app. La nativa para iOS y Android está en el roadmap para 2027.",
   },
   {
     question: "¿Funciona con Strava o Garmin?",
     answer:
-      "Hoy son independientes: tú metes tu dorsal y nosotros seguimos tu resultado oficial. La sincronización con Strava (lectura de activities y VO2max) está en desarrollo (Ola 2). Te avisamos a todos los usuarios cuando esté lista.",
+      "Strava: sí. En plan Free puedes subir un export ZIP una vez. En Pro, la sincronización OAuth es en tiempo real con webhook (cada actividad entra sola y se actualizan tus PRs). Garmin: en roadmap para Pro, sin fecha confirmada aún.",
   },
   {
     question: "¿Puedo compartir mi temporada con mi club?",
     answer:
-      "Sí, cada perfil tiene URL pública. Pronto añadiremos perfiles de club y comparativas entre miembros: 'Carlos, tu media maratón es la 7ª más rápida del club este año'.",
+      "Sí, cada perfil tiene URL pública. Los usuarios Pro pueden además añadir un widget 'Mis carreras' a su blog o web personal. Los perfiles de club completos (con comparativa entre miembros) están en roadmap.",
   },
 ];
 

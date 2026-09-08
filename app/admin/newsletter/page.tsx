@@ -1,11 +1,10 @@
+"use client";
 // =============================================================================
 // mi-dorsal — /admin/newsletter (gestión de suscriptores)
 // =============================================================================
 // Lista suscriptores con filtros, muestra stats y permite acciones manuales
 // (importar CSV, desuscribir manualmente).
 // =============================================================================
-
-"use client";
 
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";

@@ -18,7 +18,15 @@
  */
 
 import Link from "next/link";
-import { ArrowRight, ChevronDown, MapPin, Sparkles, ShieldCheck, CreditCard, Lock } from "lucide-react";
+import {
+  ArrowRight,
+  ChevronDown,
+  MapPin,
+  Sparkles,
+  ShieldCheck,
+  CreditCard,
+  Lock,
+} from "lucide-react";
 import { RegionSwitcher } from "@/components/region-switcher";
 
 export function Hero() {
@@ -45,10 +53,20 @@ export function Hero() {
       <div className="relative grid md:grid-cols-5 gap-8 md:gap-10 px-6 py-16 md:px-12 md:py-20">
         {/* COLUMNA TEXTO (60% en desktop) */}
         <div className="md:col-span-3 max-w-2xl">
-          <p className="inline-flex items-center gap-2 text-sm font-medium bg-white/15 backdrop-blur-sm rounded-full px-3 py-1 mb-5">
+          <p className="inline-flex items-center gap-2 text-sm font-medium bg-white/15 backdrop-blur-sm rounded-full px-3 py-1 mb-3">
             <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
             Para corredores populares de toda España
           </p>
+
+          {/* Badge Pro: refleja el lanzamiento real del plan de pago */}
+          <Link
+            href="/premium"
+            className="inline-flex items-center gap-1.5 bg-yellow-300/95 text-runner-dark text-xs font-bold rounded-full px-3 py-1 mb-5 hover:bg-yellow-200 transition-colors"
+          >
+            <Sparkles className="h-3 w-3 text-runner-primary" aria-hidden="true" />
+            Nuevo · Pro desde 2,99 €/mes
+            <ArrowRight className="h-3 w-3" aria-hidden="true" />
+          </Link>
 
           <h1
             id="hero-title"
@@ -92,7 +110,7 @@ export function Hero() {
           <ul className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-red-50/90">
             <li className="inline-flex items-center gap-1.5">
               <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Gratis · sin tarjeta</span>
+              <span>Plan Free completo · sin tarjeta</span>
             </li>
             <li className="inline-flex items-center gap-1.5">
               <Lock className="h-3.5 w-3.5" aria-hidden="true" />
@@ -101,6 +119,10 @@ export function Hero() {
             <li className="inline-flex items-center gap-1.5">
               <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
               <span>Cumplimos RGPD</span>
+            </li>
+            <li className="inline-flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>Strava sync en Pro</span>
             </li>
           </ul>
         </div>

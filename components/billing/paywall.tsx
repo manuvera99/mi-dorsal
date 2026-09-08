@@ -12,8 +12,11 @@
 // Características:
 //   - Re-renderiza automáticamente cuando el usuario se suscribe (gracias
 //     a useHasPremium → useQuery reactivo).
-//   - El CTA apunta a /cuenta/suscripcion (no a Stripe directo, dejamos
-//     que Clerk gestione el checkout).
+//   - El CTA apunta a /premium (la landing de marketing con 3 tiers
+//     y FAQ) — el checkout real vive en /cuenta/suscripcion (que es
+//     donde está el <PricingTable /> de Clerk). Sesión 9 sep 2026:
+//     cambiamos el routing para que el usuario SIEMPRE vea el contexto
+//     de marketing antes del checkout, no salte directo al pago.
 //   - Variante `inline` (default) para incrustar dentro de un card o
 //     sección; `card` para una sección más prominente; `modal` no
 //     implementado aún (sería un UpgradeDialog para abrir desde botones).
@@ -69,8 +72,8 @@ export function Paywall({
       <p className="text-sm text-stone-600">
         <Lock className="inline h-3.5 w-3.5 mr-1 -mt-0.5" />
         {feature} es premium.{" "}
-        <Link href="/cuenta/suscripcion" className="text-runner-primary hover:underline font-medium">
-          Hazte premium
+        <Link href="/premium" className="text-runner-primary hover:underline font-medium">
+          Ver planes
         </Link>
         .
       </p>
@@ -92,10 +95,10 @@ export function Paywall({
           </p>
         )}
         <Link
-          href="/cuenta/suscripcion"
+          href="/premium"
           className="inline-flex items-center gap-1.5 rounded-md bg-runner-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-runner-primary/90 transition-colors"
         >
-          Ver planes Premium
+          Ver planes
           <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
@@ -115,7 +118,7 @@ export function Paywall({
             )}
           </p>
           <Link
-            href="/cuenta/suscripcion"
+            href="/premium"
             className="inline-flex items-center gap-1 text-runner-primary hover:underline font-medium mt-1.5"
           >
             Ver planes

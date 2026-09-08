@@ -16,7 +16,9 @@ import { Hero } from "@/components/home/hero";
 import { TrustBar } from "@/components/home/trust-bar";
 import { Problem } from "@/components/home/problem";
 import { HowItWorks } from "@/components/home/how-it-works";
+import { WhatsHere } from "@/components/home/whats-here";
 import { Features } from "@/components/home/features";
+import { ProTeaser } from "@/components/home/pro-teaser";
 import {
   FeaturedRacesLazy,
   CommunityRankingLazy,
@@ -25,8 +27,10 @@ import {
   FaqLazy,
   FinalCtaLazy,
 } from "@/components/home/lazy-sections";
-import { WelcomeOverlay } from "@/components/onboarding/welcome-overlay";
-import { ResultBanner } from "@/components/home/result-banner";
+import {
+  ResultBannerIsland,
+  WelcomeOverlayIsland,
+} from "@/components/home/client-only-islands";
 
 // Revalidar cada 5 minutos. La home es la misma para todos los usuarios de
 // una ventana de 5 min; las queries a Convex (FeaturedRaces, CommunityRanking)
@@ -64,8 +68,14 @@ export default function HomePage() {
         {/* 4. CÓMO FUNCIONA */}
         <HowItWorks />
 
+        {/* 4b. LO QUE YA ESTÁ FUNCIONANDO (nuevo sep 2026) */}
+        <WhatsHere />
+
         {/* 5. FEATURES */}
         <Features />
+
+        {/* 5b. TEASER DEL PLAN PRO (nuevo sep 2026) */}
+        <ProTeaser />
 
         {/* 6. CARRERAS DESTACADAS (lazy: ssr:false, ahorra ~12 KB del HTML inicial) */}
         <FeaturedRacesLazy />
@@ -86,21 +96,21 @@ export default function HomePage() {
         <FinalCtaLazy />
       </div>
 
-      {/* 12. RESULT BANNER (client island) — se muestra solo para
+      {/* 12. RESULT BANNER (client-only island) — se muestra solo para
           usuarios logueados con un resultado oficial reciente.
-          Posicionado tras las 11 secciones para no romper el orden
-          documentado en AGENTS.md §3. */}
+          Envuelto en dynamic({ssr:false}) para que el prerender ISR
+          de la home no falle intentando ejecutar useUser de Clerk
+          sin provider. Posicionado tras las 11 secciones para no
+          romper el orden documentado en AGENTS.md §3. */}
       <div className="mx-auto max-w-7xl px-4">
-        <ResultBanner />
+        <ResultBannerIsland />
       </div>
 
-      {/* 13. ONBOARDING WELCOME OVERLAY (client island) */}
-      {/* Modal esquivable que aparece la primera vez que un usuario
-          logueado aterriza en la home. Solo lee Clerk+Convex en cliente,
-          no afecta al ISR de la home (revalidate=300). Si el usuario
-          ya cerró el welcome o no está logueado, el componente no
-          renderiza nada. Ver components/onboarding/welcome-overlay.tsx */}
-      <WelcomeOverlay />
+      {/* 13. ONBOARDING WELCOME OVERLAY (client-only island).
+          Modal esquivable que aparece la primera vez que un usuario
+          logueado aterriza en la home. Mismo motivo del wrapper:
+          Clerk+Convex no están disponibles en el prerender. */}
+      <WelcomeOverlayIsland />
     </>
   );
 }
@@ -121,7 +131,15 @@ const FAQ_PAGE_JSONLD = JSON.stringify({
       name: "¿Cuánto cuesta mi-dorsal?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Gratis. Sin tarjeta, sin premium, sin truco. Creemos que el corredor popular no debería pagar por no perder su dorsal.",
+        text: "El plan Free es completo y 100% gratis: catálogo, predicción VDOT, voto 8D, calendario personal, resultados por email y diploma PDF. Pro Mensual cuesta 2,99 €/mes y Pro Anual 24,99 €/año (≈ 2,08 €/mes, ahorras 30%). Pro añade Strava en tiempo real, entrenador IA ilimitado, alertas personalizadas y export a calendario. Cancela cuando quieras.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "¿Qué hay gratis y qué es de pago?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Gratis: catálogo, predicción de tiempo, voto 8D, calendario, PRs, resultados oficiales y un export de Strava (ZIP) por cuenta. Pro: Strava OAuth en tiempo real, re-subir Strava sin límite, entrenador IA con voz de club sin restricción, planificador de temporada, alertas personalizadas, export a Google/Apple Calendar, widget público y soporte prioritario 24 h.",
       },
     },
     {
@@ -161,7 +179,7 @@ const FAQ_PAGE_JSONLD = JSON.stringify({
       name: "¿Tenéis app móvil nativa?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Aún no, pero la web funciona como PWA: puedes añadirla a la pantalla de inicio de tu móvil. La nativa para iOS y Android está en el roadmap para 2026.",
+        text: "Aún no, pero la web funciona como PWA: puedes añadirla a la pantalla de inicio de tu móvil. La nativa para iOS y Android está en el roadmap para 2027.",
       },
     },
     {
@@ -169,7 +187,7 @@ const FAQ_PAGE_JSONLD = JSON.stringify({
       name: "¿Funciona con Strava o Garmin?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Hoy son independientes. La sincronización con Strava está en desarrollo (Ola 2). Te avisamos cuando esté lista.",
+        text: "Strava: sí. En plan Free puedes subir un export ZIP una vez. En Pro, la sincronización OAuth es en tiempo real con webhook. Garmin: en roadmap para Pro, sin fecha confirmada aún.",
       },
     },
     {
@@ -177,7 +195,7 @@ const FAQ_PAGE_JSONLD = JSON.stringify({
       name: "¿Puedo compartir mi temporada con mi club?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Sí, cada perfil tiene URL pública. Pronto añadiremos perfiles de club y comparativas entre miembros.",
+        text: "Sí, cada perfil tiene URL pública. Los usuarios Pro pueden además añadir un widget 'Mis carreras' a su blog o web personal. Los perfiles de club completos están en roadmap.",
       },
     },
   ],

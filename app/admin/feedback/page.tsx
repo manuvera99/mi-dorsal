@@ -1,3 +1,4 @@
+"use client";
 // =============================================================================
 // mi-dorsal — /admin/feedback
 // =============================================================================
@@ -7,8 +8,6 @@
 //   - Cambiar el estado: new → in_progress → done | wontfix
 //   - Añadir notas internas
 // =============================================================================
-
-"use client";
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";

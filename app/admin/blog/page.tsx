@@ -1,8 +1,7 @@
+"use client";
 // =============================================================================
 // mi-dorsal — /admin/blog (gestión de posts del blog)
 // =============================================================================
-
-"use client";
 
 import { useState } from "react";
 import Link from "next/link";

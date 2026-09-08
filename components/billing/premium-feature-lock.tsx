@@ -11,7 +11,10 @@
 //
 // A diferencia de <Paywall>, este componente está pensado para BLOQUEAR
 // un botón o sección de UI (no para envolver una feature opcional).
-// El copy es más directo: "Esto es Pro" + CTA a /cuenta/suscripcion.
+// El copy es más directo: "Esto es Pro" + CTA a /premium (la landing
+// de marketing). El checkout real vive en /cuenta/suscripcion —
+// sesión 9 sep 2026 decidimos que el user siempre vea el contexto
+// de marketing antes del pago.
 //
 // Variantes:
 //   - "subtle"  → solo texto pequeño con link a Pro. Para inline junto
@@ -66,10 +69,10 @@ export function PremiumFeatureLock({
         <Lock className="h-3 w-3" />
         <span>{feature} es Pro.</span>
         <Link
-          href="/cuenta/suscripcion"
+          href="/premium"
           className="text-runner-primary hover:underline font-medium"
         >
-          Hazte Pro
+          Ver planes
         </Link>
       </p>
     );
@@ -90,10 +93,10 @@ export function PremiumFeatureLock({
               <p className="text-xs text-stone-600 mb-2">{description}</p>
             )}
             <Link
-              href="/cuenta/suscripcion"
+              href="/premium"
               className="inline-flex items-center gap-1 text-xs font-semibold text-runner-primary hover:underline"
             >
-              Ver planes Pro
+              Ver planes
               <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
@@ -117,10 +120,10 @@ export function PremiumFeatureLock({
         </p>
       )}
       <Link
-        href="/cuenta/suscripcion"
+        href="/premium"
         className="inline-flex items-center gap-1.5 rounded-md bg-runner-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-runner-primary/90 transition-colors"
       >
-        Ver planes Pro
+        Ver planes
         <ArrowRight className="h-4 w-4" />
       </Link>
       {bypassed && (

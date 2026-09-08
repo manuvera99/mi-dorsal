@@ -1,3 +1,4 @@
+"use client";
 // =============================================================================
 // mi-dorsal — /admin/clubs
 // =============================================================================
@@ -10,8 +11,6 @@
 // Los clubs que vienen de la RFEA están en lib/data/clubs.json (estático)
 // y NO aparecen aquí — son la base. Aquí solo se gestionan los añadidos.
 // =============================================================================
-
-"use client";
 
 import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "convex/react";

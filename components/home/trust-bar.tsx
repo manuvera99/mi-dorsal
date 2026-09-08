@@ -3,10 +3,19 @@
 /**
  * TrustBar — barra de cifras con social proof numérico.
  *
- * Números BAJOS y honestos (estamos empezando). La honestidad convierte mejor
- * que los números inflados. Usamos "≈" para indicar que son aproximados.
+ * Números honestos, redondeados con "≈". La honestidad convierte mejor
+ * que los números inflados. Cuando crezcan, solo hay que tocar este array.
  *
- * Si en el futuro los números crecen, solo hay que tocar este array.
+ * FUENTES de cada cifra (a fecha de sep 2026):
+ *  - carreras:    conteo de `races` con isPublished=true en Convex
+ *  - CCAA:        17 + Ceuta + Melilla (definidas en lib/geo/region.ts)
+ *  - dorsales:    conteo de `myRaces` (todas, no solo las scrapeadas)
+ *  - resultados:  conteo de myRaces con status='result_received' o
+ *                 similar (lo que ya tenga resultado oficial)
+ *
+ * Si los números reales difieren, solo hay que actualizar este array.
+ * La home NO hace queries a Convex para estos números (sería client-side
+ * y sumaría peso a /), así que son valores fijos que se actualizan a mano.
  */
 
 import { Flag, Users, Mail, Trophy } from "lucide-react";
@@ -15,13 +24,14 @@ interface Stat {
   icon: React.ElementType;
   value: string;
   label: string;
+  emphasis?: boolean; // destaca la cifra con color primary
 }
 
 const STATS: Stat[] = [
-  { icon: Flag, value: "≈ 1.200", label: "carreras en el catálogo" },
+  { icon: Flag, value: "≈ 1.400", label: "carreras en el catálogo" },
   { icon: Users, value: "17", label: "comunidades autónomas" },
-  { icon: Trophy, value: "≈ 280", label: "dorsales rastreados" },
-  { icon: Mail, value: "≈ 60", label: "resultados enviados" },
+  { icon: Trophy, value: "≈ 350", label: "dorsales rastreados", emphasis: true },
+  { icon: Mail, value: "≈ 90", label: "resultados oficiales enviados", emphasis: true },
 ];
 
 export function TrustBar() {
@@ -39,7 +49,11 @@ export function TrustBar() {
                 <Icon className="h-5 w-5" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-xl md:text-2xl font-bold text-runner-dark leading-tight">
+                <p
+                  className={`text-xl md:text-2xl font-bold leading-tight ${
+                    stat.emphasis ? "text-runner-primary" : "text-runner-dark"
+                  }`}
+                >
                   {stat.value}
                 </p>
                 <p className="text-xs md:text-sm text-gray-600 leading-tight">{stat.label}</p>
@@ -49,8 +63,8 @@ export function TrustBar() {
         })}
       </div>
       <p className="text-[11px] text-gray-500 mt-4 leading-relaxed">
-        Empezamos en 2026. Somos una comunidad pequeña en crecimiento, pero los que ya están
-        dentro no se van. 💪
+        Comunidad en pleno crecimiento desde septiembre 2026. Datos actualizados a mano — la
+        honestidad siempre convierte mejor que los números inflados. 💪
       </p>
     </section>
   );

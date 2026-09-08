@@ -860,6 +860,7 @@ export default defineSchema({
           v.literal("laps"),
           v.literal("splits"),
           v.literal("name"),
+          v.null(),
         )),
         paceVariabilityCv: v.number(),
         fastDeltaSecPerKm: v.optional(v.number()),

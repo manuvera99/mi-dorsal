@@ -97,6 +97,23 @@ export const upsertActivityInternal = internalMutation({
         slowAvgHrBpm: v.union(v.number(), v.null()),
         isTrackLike: v.boolean(),
         reason: v.string(),
+        // Detect-intervals v2 (2026-09-08) — confianza y modo de detección.
+        // v.optional para no romper actividades ingestadas antes del
+        // cambio a la nueva heurística. Si detectIntervalsFromSplits
+        // devuelve `detectionMode: null` (no se detectó patrón), la
+        // mutation pasa null tal cual — el schema lo acepta (ver
+        // convex/schema.ts).
+        confidence: v.optional(
+          v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+        ),
+        detectionMode: v.optional(
+          v.union(
+            v.literal("laps"),
+            v.literal("splits"),
+            v.literal("name"),
+            v.null(),
+          ),
+        ),
       }),
     ),
     locationCity: v.optional(v.string()),

@@ -417,21 +417,11 @@ async function ingestOneActivity(
           average_heartrate: s.average_heartrate,
           average_cadence: s.average_cadence,
         }));
-        const laps = activity.laps?.map((l: any) => ({
-          id: l.id,
-          name: l.name,
-          elapsed_time: l.elapsed_time,
-          moving_time: l.moving_time,
-          distance: l.distance,
-          average_speed: l.average_speed,
-          average_heartrate: l.average_heartrate,
-          max_heartrate: l.max_heartrate,
-          lap_index: l.lap_index,
-          start_index: l.start_index,
-        }));
+        // Firma sin `laps` (la versión con `laps` está en la working tree
+        // del usuario, no en HEAD). Cuando el usuario commitee su refactor
+        // de detect-intervals.ts, volverá a añadir el argumento `laps` aquí.
         return detectIntervalsFromSplits({
           splits: mapped,
-          laps,
           totalElevationGainM: activity.total_elevation_gain,
           activityName: activity.name,
           sportType: activity.sport_type,

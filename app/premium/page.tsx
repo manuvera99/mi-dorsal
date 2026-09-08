@@ -16,13 +16,13 @@
 //
 // Pricing expuesto (sesión 8 sep 2026):
 //   - Free: 0 €. Todo lo básico.
-//   - Pro Mensual: 4,99 €/mes. Sin compromiso.
-//   - Pro Anual: 29,99 €/año. Equivale a 2,50 €/mes — ahorra 50%
-//     vs el mensual. Badge "Ahorra 50%" + "Más popular".
-// El pricing real de Clerk Billing está en 4,99 €/mes y 39 €/año en
-// el dashboard. Cuando lo activemos siguiendo docs/BILLING_SETUP.md,
-// hay que alinear estos importes. NO TOCAR el billing de Clerk
-// desde aquí — solo es la landing.
+//   - Pro Mensual: 2,99 €/mes. Sin compromiso.
+//   - Pro Anual: 24,99 €/año. Equivale a 2,08 €/mes — ahorra 30%
+//     vs el mensual. Badge "Ahorra 30%" + "Más popular".
+// El pricing real de Clerk Billing debe coincidir con estos importes
+// cuando se activen siguiendo docs/BILLING_SETUP.md. Si se cambia el
+// precio en Clerk (dashboard), hay que actualizarlo aquí también.
+// NO TOCAR el billing de Clerk desde aquí — solo es la landing.
 // =============================================================================
 
 import type { Metadata } from "next";
@@ -52,7 +52,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://mi-dorsal.com";
 export const metadata: Metadata = {
   title: "mi-dorsal Premium — Más de tu temporada de carreras",
   description:
-    "Sincronización Strava en tiempo real, entrenador IA ilimitado, planificación de temporada y alertas personalizadas. Desde 4,99 €/mes. Sin compromiso, cancela cuando quieras.",
+    "Sincronización Strava en tiempo real, entrenador IA ilimitado, planificación de temporada y alertas personalizadas. Desde 2,99 €/mes. Sin compromiso, cancela cuando quieras.",
   alternates: { canonical: "/premium" },
   openGraph: {
     title: "mi-dorsal Premium",
@@ -114,7 +114,7 @@ const TIERS: Tier[] = [
   {
     id: "pro-monthly",
     name: "Pro Mensual",
-    price: 4.99,
+    price: 2.99,
     period: "/mes",
     tagline: "Pruébalo sin compromiso. Cancela cuando quieras.",
     features: [
@@ -134,14 +134,14 @@ const TIERS: Tier[] = [
   {
     id: "pro-annual",
     name: "Pro Anual",
-    price: 29.99,
+    price: 24.99,
     period: "/año",
-    badge: "Ahorra 50% · Más popular",
+    badge: "Ahorra 30% · Más popular",
     badgeColor: "amber",
     tagline: "Para el corredor que planifica toda la temporada.",
     features: [
       "Todo lo de Pro Mensual, y además:",
-      "Equivale a 2,50 €/mes (pagas una vez al año)",
+      "Equivale a 2,08 €/mes (pagas una vez al año)",
       "Prioridad en features nuevas",
       "Badge de “fundador” en tu perfil",
     ],
@@ -291,7 +291,7 @@ const FAQ: FaqItem[] = [
   {
     question: "¿Cuánto cuesta mi-dorsal Premium?",
     answer:
-      "Hay 2 planes Pro: Pro Mensual a 4,99 €/mes (sin compromiso, cancela cuando quieras) y Pro Anual a 29,99 €/año (equivale a 2,50 €/mes, ahorras 50%). Los dos planes tienen exactamente las mismas features — solo cambia el precio y el periodo de cobro.",
+      "Hay 2 planes Pro: Pro Mensual a 2,99 €/mes (sin compromiso, cancela cuando quieras) y Pro Anual a 24,99 €/año (equivale a 2,08 €/mes, ahorras 30%). Los dos planes tienen exactamente las mismas features — solo cambia el precio y el periodo de cobro.",
   },
   {
     question: "¿Qué incluye Pro que no tenga Free?",
@@ -651,7 +651,7 @@ function PricingCard({ tier }: { tier: Tier }) {
         </div>
         {tier.id === "pro-annual" && (
           <p className="text-xs text-emerald-700 mt-1">
-            Equivale a 2,50 €/mes
+            Equivale a 2,08 €/mes
           </p>
         )}
       </div>

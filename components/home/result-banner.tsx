@@ -16,7 +16,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
-import { Sparkles, X, Trophy, ArrowRight } from "lucide-react";
+import { Sparkles, X, Trophy, ArrowRight, Share2 } from "lucide-react";
 import { formatTime } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
@@ -126,6 +126,13 @@ export function ResultBanner() {
           >
             Ver mi temporada
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+          <Link
+            href={`/resultado/${latest.myRaceId}`}
+            className="mt-3 ml-3 inline-flex items-center gap-1.5 text-sm font-semibold text-white/90 hover:text-white transition-colors"
+          >
+            <Share2 className="h-3.5 w-3.5" aria-hidden="true" />
+            Compartir mi resultado
           </Link>
         </div>
 

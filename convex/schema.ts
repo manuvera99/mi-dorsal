@@ -463,6 +463,9 @@ export default defineSchema({
     )),
     resultScrapedAt: v.optional(v.number()),
     diplomaStorageId: v.optional(v.id("_storage")),
+    // Share card PNG (1200x630, OG image). Pre-generado por
+    // convex/emailNotifications.sendResultFoundEmail al publicar resultado.
+    shareCardStorageId: v.optional(v.id("_storage")),
   })
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])

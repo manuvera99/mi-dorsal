@@ -14,11 +14,19 @@
 //   5) FAQ (6-8 preguntas de compra, reembolso, datos, etc.).
 //   6) CTA final.
 //
-// Pricing expuesto (sesión 8 sep 2026):
-//   - Free: 0 €. Todo lo básico.
-//   - Pro Mensual: 2,99 €/mes. Sin compromiso.
-//   - Pro Anual: 24,99 €/año. Equivale a 2,08 €/mes — ahorra 30%
+// Pricing expuesto (sesión 9 sep 2026, tras revisar doc oficial de
+// Clerk Billing https://clerk.com/docs/guides/billing/overview):
+//   - Free: gratis. Todo lo básico.
+//   - Pro Mensual: $2.99/mes. Sin compromiso.
+//   - Pro Anual: $24.99/año. Equivale a $2.08/mes — ahorra 30%
 //     vs el mensual. Badge "Ahorra 30%" + "Más popular".
+//
+// IMPORTANTE — MONEDA: Clerk Billing SOLO soporta USD a día de hoy
+// (los cargos se procesan en USD aunque tu cuenta de Stripe sea de
+// España). Por eso mostramos $ y no €. Un disclaimer debajo del
+// pricing aclara que tu banco hará la conversión a EUR al cambio del
+// día. Si Clerk añade multi-currency en el futuro, migramos.
+//
 // El pricing real de Clerk Billing debe coincidir con estos importes
 // cuando se activen siguiendo docs/BILLING_SETUP.md. Si se cambia el
 // precio en Clerk (dashboard), hay que actualizarlo aquí también.
@@ -52,7 +60,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://mi-dorsal.com";
 export const metadata: Metadata = {
   title: "mi-dorsal Premium — Más de tu temporada de carreras",
   description:
-    "Sincronización Strava en tiempo real y analisis ilimitado de tu perfil de corredor. Desde 2,99 €/mes. Sin compromiso, cancela cuando quieras.",
+    "Sincronización Strava en tiempo real y análisis ilimitado de tu perfil de corredor. Desde $2.99/mes. Sin compromiso, cancela cuando quieras.",
   alternates: { canonical: "/premium" },
   openGraph: {
     title: "mi-dorsal Premium",
@@ -121,7 +129,7 @@ const TIERS: Tier[] = [
       "Todo lo de Free, y además:",
       "Sincronización Strava OAuth (sync en tiempo real)",
       "Re-subir export de Strava ilimitado",
-      "Analisis de tu perfil de corredor (sin límite)",
+      "Análisis de tu perfil de corredor (sin límite)",
       "Soporte prioritario 24 h",
       "Alertas, export calendario y widget (próximamente)",
     ],
@@ -177,7 +185,7 @@ const PLAN_FEATURES: PlanFeature[] = [
 
   // Predicciones (siempre free, coste $0)
   { category: "Predicciones y análisis", label: "Predicción de tiempo (Daniels VDOT)", free: "Ilimitadas", premium: "Ilimitadas + alta confianza" },
-  { category: "Predicciones y análisis", label: "Analisis de tu perfil de corredor", free: "1 al mes", premium: "Ilimitado" },
+  { category: "Predicciones y análisis", label: "Análisis de tu perfil de corredor", free: "1 al mes", premium: "Ilimitado" },
   { category: "Predicciones y análisis", label: "Planificación inteligente de temporada", free: false, premium: "Próximamente" },
   { category: "Predicciones y análisis", label: "Estadísticas avanzadas de tus PRs", free: false, premium: "Próximamente" },
   { category: "Predicciones y análisis", label: "Compararte con la comunidad", free: false, premium: "Próximamente" },
@@ -287,12 +295,12 @@ const FAQ: FaqItem[] = [
   {
     question: "¿Cuánto cuesta mi-dorsal Premium?",
     answer:
-      "Hay 2 planes Pro: Pro Mensual a 2,99 €/mes (sin compromiso, cancela cuando quieras) y Pro Anual a 24,99 €/año (equivale a 2,08 €/mes, ahorras 30%). Los dos planes tienen exactamente las mismas features — solo cambia el precio y el periodo de cobro.",
+      "Hay 2 planes Pro: Pro Mensual a $2.99/mes (sin compromiso, cancela cuando quieras) y Pro Anual a $24.99/año (equivale a $2.08/mes, ahorras 30%). Los dos planes tienen exactamente las mismas features — solo cambia el precio y el periodo de cobro.",
   },
   {
     question: "¿Qué incluye Pro que no tenga Free?",
     answer:
-      "Sincronización Strava OAuth (sync en tiempo real, consume la API de Strava), analisis ilimitado y soporte prioritario. En roadmap para Pro: alertas personalizadas, planificación de temporada, export a Google/Apple Calendar y widget público. Lo básico (catálogo, predicciones, PRs, export ZIP, calendario) es siempre free.",
+      "Sincronización Strava OAuth (sync en tiempo real, consume la API de Strava), análisis ilimitado y soporte prioritario. En roadmap para Pro: alertas personalizadas, planificación de temporada, export a Google/Apple Calendar y widget público. Lo básico (catálogo, predicciones, PRs, export ZIP, calendario) es siempre free.",
   },
   {
     question: "¿Puedo probar Pro antes de pagar?",
@@ -307,7 +315,7 @@ const FAQ: FaqItem[] = [
   {
     question: "¿Puedo pedir reembolso?",
     answer:
-      "Sí, dentro de los 14 días desde el cobro si no has usado features premium. Escríbenos a hola@mi-dorsal.es y lo gestionamos en 24 h. Pasados los 14 días, no hacemos reembolsos, pero puedes cancelar y mantener el acceso hasta el final del periodo pagado.",
+      "Sí, dentro de los 14 días desde el cobro si no has usado features premium. Escríbenos a hola@mi-dorsal.com y lo gestionamos en 24 h. Pasados los 14 días, no hacemos reembolsos, pero puedes cancelar y mantener el acceso hasta el final del periodo pagado.",
   },
   {
     question: "¿Mis datos están a salvo?",
@@ -322,7 +330,7 @@ const FAQ: FaqItem[] = [
   {
     question: "¿Hay plan familiar o de grupo?",
     answer:
-      "Estamos trabajando en él. Por ahora cada usuario tiene su propia cuenta y suscripción. Si sois 3+ corredores de la misma familia o club, escríbenos a hola@mi-dorsal.es y te hacemos precio.",
+      "Estamos trabajando en él. Por ahora cada usuario tiene su propia cuenta y suscripción. Si sois 3+ corredores de la misma familia o club, escríbenos a hola@mi-dorsal.com y te hacemos precio.",
   },
 ];
 
@@ -544,8 +552,8 @@ export default function PremiumPage() {
             </div>
             <p className="text-center text-sm text-stone-500 mt-6">
               ¿Más preguntas? Escríbenos a{" "}
-              <a href="mailto:hola@mi-dorsal.es" className="text-runner-primary hover:underline">
-                hola@mi-dorsal.es
+              <a href="mailto:hola@mi-dorsal.com" className="text-runner-primary hover:underline">
+                hola@mi-dorsal.com
               </a>
               .
             </p>
@@ -637,7 +645,7 @@ function PricingCard({ tier }: { tier: Tier }) {
       <div className="mb-5">
         <div className="flex items-baseline gap-1">
           <span className="text-4xl font-extrabold text-stone-900">
-            {tier.price === 0 ? "0 €" : `${tier.price.toFixed(2)} €`}
+            {tier.price === 0 ? "Gratis" : `$${tier.price.toFixed(2)}`}
           </span>
           {tier.period && (
             <span className="text-sm text-stone-500 font-medium">
@@ -647,7 +655,7 @@ function PricingCard({ tier }: { tier: Tier }) {
         </div>
         {tier.id === "pro-annual" && (
           <p className="text-xs text-emerald-700 mt-1">
-            Equivale a 2,08 €/mes
+            Equivale a $2.08/mes
           </p>
         )}
       </div>

@@ -1181,11 +1181,32 @@ export default defineSchema({
     /** Evento más reciente de Clerk que la modificó (para debug). */
     lastEventType: v.optional(v.string()),
     lastEventId: v.optional(v.string()),
+
+    // -------------------------------------------------------------------------
+    // Campos de Stripe (migración 9 sep 2026, ver docs/BILLING_SETUP.md).
+    // Coexisten con los de Clerk durante la transición. Una fila activa
+    // actualmente tiene UNO u otro proveedor, no los dos. Mantener ambos
+    // deprecated para permitir rollback sin migración de datos.
+    // -------------------------------------------------------------------------
+
+    /** ID del customer en Stripe (cus_...). Único por user. Creado al
+     *  primer checkout, reutilizado en renovaciones y en el portal.
+     *  Lo guardamos para no tener que llamar a stripe.customers.search
+     *  en cada webhook. */
+    stripeCustomerId: v.optional(v.string()),
+
+    /** ID de la suscripción en Stripe (sub_...). */
+    stripeSubscriptionId: v.optional(v.string()),
+
+    /** ID del price (price_...). Distingue mensual de anual. */
+    stripePriceId: v.optional(v.string()),
   })
     .index("by_clerk_user_id", ["clerkUserId"])
     .index("by_clerk_subscription_id", ["clerkSubscriptionId"])
     .index("by_tier", ["tier"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_stripe_customer_id", ["stripeCustomerId"])
+    .index("by_stripe_subscription_id", ["stripeSubscriptionId"]),
 
   // ---------------------------------------------------------------------------
   // 20. CLUB_SUGGESTIONS — clubes que un usuario no encontró en la lista RFEA

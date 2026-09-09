@@ -475,3 +475,148 @@ export const purgeSubscriptionByClerkUserId = internalMutation({
     return { skipped: false, id: sub._id };
   },
 });
+
+// ---------------------------------------------------------------------------
+// STRIPE — entrypoint para el webhook de Stripe
+// ---------------------------------------------------------------------------
+// Migración de Clerk Billing a Stripe directo (9 sep 2026). El endpoint
+// /api/stripe/webhook firma-verifica con STRIPE_WEBHOOK_SECRET y llama
+// a esta action, que delega en la internal mutation `upsertFromStripeEvent`.
+//
+// El flujo es:
+//   1. Usuario hace click en "Probar 14 días gratis" en /cuenta/suscripcion
+//   2. POST /api/stripe/checkout → crea Checkout Session en Stripe
+//   3. Usuario paga en Stripe (con 3DS si la tarjeta lo requiere)
+//   4. Stripe redirige a /cuenta/suscripcion?success=1
+//   5. Stripe manda webhook checkout.session.completed → creamos la fila
+//   6. customer.subscription.updated cada vez que cambia el estado
+//   7. invoice.paid / invoice.payment_failed marcan trial / past_due
+// ---------------------------------------------------------------------------
+
+/** Mapeo de eventos de Stripe a la info mínima que necesitamos guardar.
+ *  El handler de Next deserializa el evento y nos pasa este objeto
+ *  "limpio" — la mutation no toca el evento crudo de Stripe. */
+const stripeSubscriptionPayload = v.object({
+  /** sub_... */
+  id: v.string(),
+  /** cus_... */
+  customer: v.string(),
+  /** status de Stripe: incomplete, trialing, active, past_due, canceled, unpaid, paused, incomplete_expired */
+  status: v.string(),
+  /** price_... del plan actual */
+  priceId: v.string(),
+  /** unix seconds → ms */
+  currentPeriodStart: v.optional(v.number()),
+  currentPeriodEnd: v.optional(v.number()),
+  cancelAtPeriodEnd: v.optional(v.boolean()),
+  canceledAt: v.optional(v.number()),
+  /** email del customer (a veces distinto al del user Clerk) */
+  customerEmail: v.optional(v.string()),
+});
+
+/** Action pública — entrypoint del webhook. Misma forma que la de
+ *  Clerk Billing: def valida input + def log + delega en internal
+ *  mutation que es la única que escribe. */
+export const handleStripeEvent = action({
+  args: {
+    eventType: v.string(),
+    eventId: v.string(),
+    clerkUserId: v.string(),
+    subscription: stripeSubscriptionPayload,
+  },
+  handler: async (ctx, args) => {
+    if (!args.subscription.id) {
+      throw new Error("handleStripeEvent: subscription.id vacío");
+    }
+    if (!args.clerkUserId) {
+      // Igual que en Clerk: si no hay clerkUserId no podemos asociar.
+      console.warn(
+        `[subscriptions.handleStripeEvent] sin clerkUserId, se ignora. eventId=${args.eventId}`,
+      );
+      return { skipped: true, reason: "no_clerk_user_id" as const };
+    }
+    return await ctx.runMutation(
+      internal.subscriptions.upsertFromStripeEvent,
+      args,
+    );
+  },
+});
+
+/** Upsert idempotente desde un evento de Stripe. Idéntico patrón a
+ *  `upsertFromClerkEvent` (busca por stripeSubscriptionId, hace patch
+ *  o insert). El tier se deriva del priceId comparando contra
+ *  STRIPE_PRICE_MONTHLY / STRIPE_PRICE_YEARLY — así, si en el futuro
+ *  añadís un plan nuevo (e.g. team), solo hay que cambiar este switch. */
+export const upsertFromStripeEvent = internalMutation({
+  args: {
+    eventType: v.string(),
+    eventId: v.string(),
+    clerkUserId: v.string(),
+    subscription: stripeSubscriptionPayload,
+  },
+  handler: async (ctx, { eventType, eventId, clerkUserId, subscription }) => {
+    // Status normalizado al union de Convex. Si Stripe añade un status
+    // nuevo que no contemplamos, lo guardamos como "active" para no
+    // cortar el acceso por error (fail open). El validator del
+    // mutation fallaría al insertar — lo que nos avisa para añadirlo.
+    const KNOWN_STATUSES = [
+      "active",
+      "trialing",
+      "past_due",
+      "canceled",
+      "incomplete",
+      "incomplete_expired",
+      "unpaid",
+      "paused",
+    ] as const;
+    const normalizedStatus = KNOWN_STATUSES.includes(
+      subscription.status as (typeof KNOWN_STATUSES)[number],
+    )
+      ? (subscription.status as (typeof KNOWN_STATUSES)[number])
+      : "active";
+
+    const tier = "premium" as const; // todas las sub de Stripe son premium
+
+    const existing = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_stripe_subscription_id", (q) =>
+        q.eq("stripeSubscriptionId", subscription.id),
+      )
+      .unique();
+
+    const now = Date.now();
+    const patch = {
+      // clerkUserId es el "join key" con el user de Clerk. Aunque
+      // la fuente de pago sea Stripe, el user sigue siendo de Clerk.
+      clerkUserId,
+      stripeCustomerId: subscription.customer,
+      stripeSubscriptionId: subscription.id,
+      stripePriceId: subscription.priceId,
+      // Mantenemos estos campos "deprecated" para que la UI no rompa.
+      clerkSubscriptionId: existing?.clerkSubscriptionId ?? `stripe_${subscription.id}`,
+      planId: subscription.priceId, // price_xxx se muestra en admin
+      planName: `Stripe ${normalizedStatus}`,
+      tier,
+      status: normalizedStatus,
+      currentPeriodStart: subscription.currentPeriodStart,
+      currentPeriodEnd: subscription.currentPeriodEnd,
+      cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+      canceledAt: subscription.canceledAt,
+      customerId: subscription.customer,
+      customerEmail: subscription.customerEmail,
+      lastSyncedAt: now,
+      lastEventType: eventType,
+      lastEventId: eventId,
+    };
+
+    if (existing) {
+      await ctx.db.patch(existing._id, patch);
+      return { skipped: false, action: "updated" as const, id: existing._id };
+    }
+    const id = await ctx.db.insert("subscriptions", {
+      ...patch,
+      createdAt: now,
+    });
+    return { skipped: false, action: "created" as const, id };
+  },
+});

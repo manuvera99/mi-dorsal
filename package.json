@@ -32,6 +32,7 @@
     "@react-email/components": "^0.0.31",
     "@react-email/render": "^1.0.0",
     "@react-pdf/renderer": "^4.1.0",
+    "@stripe/stripe-js": "^9.15.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/og": "1.0.1",
     "cheerio": "^1.0.0",
@@ -54,6 +55,7 @@
     "react-leaflet": "^5.0.0",
     "recharts": "^2.15.0",
     "resend": "^4.0.0",
+    "stripe": "^22.6.1",
     "svix": "^1.99.1",
     "tailwind-merge": "^2.5.5",
     "zod": "^3.24.1"

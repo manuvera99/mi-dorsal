@@ -10,7 +10,7 @@ import { Timer, Star, CalendarDays, Mail } from "lucide-react";
 const FEATURES = [
   {
     icon: Timer,
-    title: "Predice tu tiempo en cada carrera",
+    title: "Calcula tu ritmo para cada carrera",
     body: "Mete tu marca en 5K, 10K o media y obtén tu tiempo estimado en cualquier otra distancia con el método Daniels VDOT — el mismo cálculo que usan las tablas de ritmo de toda la vida.",
     emoji: "⏱️",
   },

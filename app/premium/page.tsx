@@ -208,7 +208,7 @@ type Benefit = {
 const BENEFITS: Benefit[] = [
   {
     icon: Brain,
-    title: "Predice tu tiempo en cualquier carrera",
+    title: "Calcula tu tiempo estimado en cualquier carrera",
     description:
       "Con tu mejor marca en una distancia, calcula tu tiempo estimado en otra usando el método Daniels VDOT — la misma fórmula de las tablas de ritmo clásicas.",
   },
@@ -567,7 +567,7 @@ export default function PremiumPage() {
               Empieza gratis hoy
             </h2>
             <p className="text-rose-100 mb-6">
-              Crea tu cuenta, sube tu primer PR, predice tu próxima carrera.
+              Crea tu cuenta, sube tu primer PR, calcula tu ritmo para tu próxima carrera.
               Cuando quieras más comodidad, te haces Pro en 1 click.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">

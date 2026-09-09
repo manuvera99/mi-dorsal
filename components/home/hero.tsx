@@ -78,7 +78,7 @@ export function Hero() {
           </h1>
 
           <p className="text-lg md:text-xl text-red-50 mb-3 leading-relaxed">
-            Apúntate a las carreras que te motivan, predice tu tiempo y recibe el resultado oficial
+            Apúntate a las carreras que te motivan, calcula tu tiempo estimado y recibe el resultado oficial
             con diploma PDF directamente en tu buzón.
           </p>
 

@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     siteName: "mi-dorsal",
     title: "Carreras populares en España · mi-dorsal",
     description:
-      "Más de 1.400 carreras populares de toda España. Filtra por comunidad, provincia, distancia o mes. Vota y predice tu tiempo.",
+      "Más de 1.400 carreras populares de toda España. Filtra por comunidad, provincia, distancia o mes. Vota y calcula tu tiempo estimado.",
     images: [
       {
         url: "/og-image.png",

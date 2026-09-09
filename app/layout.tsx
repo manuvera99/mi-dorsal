@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     template: "%s · mi-dorsal",
   },
   description:
-    "Catálogo de carreras populares en toda España. Predice tu tiempo, planifica tu temporada y recibe tu resultado oficial por email.",
+    "Catálogo de carreras populares en toda España. Calcula tu tiempo estimado, planifica tu temporada y recibe tu resultado oficial por email.",
   applicationName: "mi-dorsal",
   keywords: [
     "carreras populares",
@@ -87,7 +87,7 @@ export const metadata: Metadata = {
     siteName: "mi-dorsal",
     title: "mi-dorsal · Planifica tu temporada de carreras",
     description:
-      "Catálogo de carreras populares en toda España. Predice tu tiempo, planifica tu temporada y recibe tu resultado oficial por email.",
+      "Catálogo de carreras populares en toda España. Calcula tu tiempo estimado, planifica tu temporada y recibe tu resultado oficial por email.",
     images: [
       {
         url: "/og-image.png",
@@ -103,7 +103,7 @@ export const metadata: Metadata = {
     creator: "@midorsal",
     title: "mi-dorsal · Planifica tu temporada de carreras",
     description:
-      "Catálogo de carreras populares en toda España. Predice tu tiempo, planifica tu temporada y recibe tu resultado oficial por email.",
+      "Catálogo de carreras populares en toda España. Calcula tu tiempo estimado, planifica tu temporada y recibe tu resultado oficial por email.",
     images: ["/og-image.png"],
   },
   robots: {

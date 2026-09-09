@@ -76,7 +76,7 @@ export function websiteJsonLd() {
     url: BASE_URL,
     name: "mi-dorsal",
     description:
-      "Planifica tu temporada de carreras, predice tu tiempo en cada una, y recibe tu resultado oficial por email.",
+      "Planifica tu temporada de carreras, calcula tu tiempo estimado en cada una, y recibe tu resultado oficial por email.",
     inLanguage: "es-ES",
     publisher: { "@id": `${BASE_URL}/#organization` },
     potentialAction: {

@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "mi-dorsal — Planificador de carreras",
     short_name: "mi-dorsal",
     description:
-      "Planifica tu temporada de carreras, predice tu tiempo en cada una, y recibe tu resultado oficial por email. El hilo que te une a tu dorsal.",
+      "Planifica tu temporada de carreras, calcula tu tiempo estimado en cada una, y recibe tu resultado oficial por email. El hilo que te une a tu dorsal.",
     start_url: "/",
     display: "standalone",
     orientation: "portrait",

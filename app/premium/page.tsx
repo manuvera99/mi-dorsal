@@ -5,8 +5,8 @@
 //   1) HERO con propuesta de valor + 3 cards de pricing (Free / Pro
 //      Mensual / Pro Anual). El CTA de cada card apunta a /sign-up
 //      (free) o a /cuenta/suscripcion (pro, logueado) — la lógica
-//      real de checkout vive en <PricingTable /> de Clerk dentro de
-//      /cuenta/suscripcion (no aquí, para no chocar dos checkouts).
+//      real de checkout vive en /api/stripe/checkout (no aquí, para
+//      no chocar dos checkouts).
 //   2) COMPARATIVA detallada (tabla Free vs Pro).
 //   3) BENEFICIOS (6 features explicadas, no solo en lista).
 //   4) SOCIAL PROOF con disclaimer de placeholder (mismo patrón que
@@ -14,23 +14,22 @@
 //   5) FAQ (6-8 preguntas de compra, reembolso, datos, etc.).
 //   6) CTA final.
 //
-// Pricing expuesto (sesión 9 sep 2026, tras revisar doc oficial de
-// Clerk Billing https://clerk.com/docs/guides/billing/overview):
+// Pricing expuesto (sesión 9 sep 2026, migración a Stripe directo):
 //   - Free: gratis. Todo lo básico.
-//   - Pro Mensual: $2.99/mes. Sin compromiso.
-//   - Pro Anual: $24.99/año. Equivale a $2.08/mes — ahorra 30%
-//     vs el mensual. Badge "Ahorra 30%" + "Más popular".
+//   - Pro Mensual: 2,99 €/mes. Sin compromiso. SIN trial (cobro upfront).
+//   - Pro Anual: 24,99 €/año. Equivale a 2,08 €/mes — ahorra 30%.
+//     14 días de trial gratis (sin tarjeta).
+//   Badge "Ahorra 30%" + "Más popular" en el anual.
 //
-// IMPORTANTE — MONEDA: Clerk Billing SOLO soporta USD a día de hoy
-// (los cargos se procesan en USD aunque tu cuenta de Stripe sea de
-// España). Por eso mostramos $ y no €. Un disclaimer debajo del
-// pricing aclara que tu banco hará la conversión a EUR al cambio del
-// día. Si Clerk añade multi-currency en el futuro, migramos.
+// IMPORTANTE — MONEDA: cobramos en EUR directamente con Stripe directo
+// (a diferencia de Clerk Billing que solo soporta USD, Stripe directo
+// sí permite EUR nativo). El precio del producto en dashboard.stripe.com
+// está en EUR.
 //
-// El pricing real de Clerk Billing debe coincidir con estos importes
-// cuando se activen siguiendo docs/BILLING_SETUP.md. Si se cambia el
-// precio en Clerk (dashboard), hay que actualizarlo aquí también.
-// NO TOCAR el billing de Clerk desde aquí — solo es la landing.
+// El pricing real de Stripe debe coincidir con estos importes cuando
+// se activen siguiendo docs/BILLING_SETUP.md. Si se cambia el precio
+// en Stripe (dashboard), hay que actualizarlo aquí también.
+// NO TOCAR el billing de Stripe desde aquí — solo es la landing.
 // =============================================================================
 
 import type { Metadata } from "next";
@@ -60,7 +59,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://mi-dorsal.com";
 export const metadata: Metadata = {
   title: "mi-dorsal Premium — Más de tu temporada de carreras",
   description:
-    "Sincronización Strava en tiempo real y análisis ilimitado de tu perfil de corredor. Desde $2.99/mes. Sin compromiso, cancela cuando quieras.",
+    "Sincronización Strava en tiempo real y análisis ilimitado de tu perfil de corredor. Desde 2,99 €/mes. Sin compromiso, cancela cuando quieras.",
   alternates: { canonical: "/premium" },
   openGraph: {
     title: "mi-dorsal Premium",
@@ -295,7 +294,7 @@ const FAQ: FaqItem[] = [
   {
     question: "¿Cuánto cuesta mi-dorsal Premium?",
     answer:
-      "Hay 2 planes Pro: Pro Mensual a $2.99/mes (sin compromiso, cancela cuando quieras) y Pro Anual a $24.99/año (equivale a $2.08/mes, ahorras 30%). Los dos planes tienen exactamente las mismas features — solo cambia el precio y el periodo de cobro.",
+      "Hay 2 planes Pro: Pro Mensual a 2,99 €/mes (sin compromiso, cancela cuando quieras) y Pro Anual a 24,99 €/año (equivale a 2,08 €/mes, ahorras 30%). Los dos planes tienen exactamente las mismas features — solo cambia el precio y el periodo de cobro. El Pro Anual incluye 14 días de prueba gratis sin tarjeta.",
   },
   {
     question: "¿Qué incluye Pro que no tenga Free?",
@@ -645,7 +644,7 @@ function PricingCard({ tier }: { tier: Tier }) {
       <div className="mb-5">
         <div className="flex items-baseline gap-1">
           <span className="text-4xl font-extrabold text-stone-900">
-            {tier.price === 0 ? "Gratis" : `$${tier.price.toFixed(2)}`}
+            {tier.price === 0 ? "Gratis" : `${tier.price.toFixed(2)} €`}
           </span>
           {tier.period && (
             <span className="text-sm text-stone-500 font-medium">
@@ -655,7 +654,7 @@ function PricingCard({ tier }: { tier: Tier }) {
         </div>
         {tier.id === "pro-annual" && (
           <p className="text-xs text-emerald-700 mt-1">
-            Equivale a $2.08/mes
+            Equivale a 2,08 €/mes
           </p>
         )}
       </div>

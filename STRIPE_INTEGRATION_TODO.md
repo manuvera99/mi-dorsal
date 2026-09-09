@@ -20,8 +20,8 @@ Los siguientes valores son placeholders o dependencias externas que debes revisa
 | `STRIPE_SECRET_KEY` | (vacío) | Tu `sk_live_...` del dashboard de Stripe. Configurar en Vercel → Project → Settings → Environment Variables, marcar Production + Preview + Development. |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | (vacío) | Tu `pk_live_...` del dashboard. **Mismo prefijo que tu build tool** (Next.js usa `NEXT_PUBLIC_`, no `VITE_`). |
 | `STRIPE_WEBHOOK_SECRET` | (vacío) | El `whsec_...` que te da Stripe al crear el endpoint del webhook. |
-| `STRIPE_PRICE_MONTHLY` | (vacío) | El `price_...` del producto "Premium mensual" ($2.99 USD/mes). Lo encuentras en [dashboard.stripe.com/prices](https://dashboard.stripe.com/prices). |
-| `STRIPE_PRICE_YEARLY` | (vacío) | El `price_...` del producto "Premium anual" ($24.99 USD/año). |
+| `STRIPE_PRICE_MONTHLY` | (vacío) | El `price_...` del producto "Premium mensual" (2,99 €/mes, en EUR). Lo encuentras en [dashboard.stripe.com/prices](https://dashboard.stripe.com/prices). |
+| `STRIPE_PRICE_YEARLY` | (vacío) | El `price_...` del producto "Premium anual" (24,99 €/año, en EUR). |
 | `stripePriceId` (en `handleStripeEvent` action) | `item?.price.id ?? ""` | Si llega vacío, logueamos y seguimos — no es bloqueante, pero verifica que `customer.subscription.*` siempre incluya el item. |
 
 **No tenemos placeholders en el código**: el `success_url` y `cancel_url` ya apuntan a `process.env.NEXT_PUBLIC_APP_URL` con valores reales (`/cuenta/suscripcion?success=1&session_id={CHECKOUT_SESSION_ID}` y `/premium?canceled=1`). El `line_items[].price` se resuelve en runtime desde `STRIPE_PRICE_MONTHLY` o `STRIPE_PRICE_YEARLY` según el `priceId` que mande el front.
@@ -42,7 +42,7 @@ Estos parámetros fueron configurados en el Checkout Studio de Stripe el 9 sep 2
 | `phone_number_collection.enabled` | `false` | No pedimos teléfono. |
 | `automatic_tax.enabled` | `false` | Sin tax automático (lo gestionarás tú si lo necesitas en el futuro con Stripe Tax). |
 | `allow_promotion_codes` | `false` | **Cambio importante**: antes era `true`. Si quieres permitir códigos promo, vuelve a activarlo. |
-| `payment_method_collection` | `always` | Solo aplica a `mode: "subscription"`. Pedimos método SIEMPRE para poder renovar. |
+| `payment_method_collection` | `always` (anual) / `if_required` (mensual) | **Override del Studio**: el anual con trial SÍ guarda tarjeta (`always`). El mensual sin trial no necesita forzar tarjeta (`if_required`). Si quieres volver al "always" del Studio para ambos, edita el endpoint `/api/stripe/checkout`. |
 | `submit_type` | `auto` | Stripe decide según el contenido del carrito. |
 | `integration_identifier` | `hosted_web_0001` | Metadata para los analytics internos de Stripe. |
 | `origin_context` | `web` | Metadata para los analytics internos de Stripe. |
@@ -72,14 +72,15 @@ Marca **Production**, **Preview** y **Development** para cada una.
 Si aún no los has creado (ver dashboard en [products](https://dashboard.stripe.com/products)):
 
 - **Producto 1: "Premium mensual"**
-  - Modelo: Goods/Services o Software (SaaS)
-  - Precio: $2.99 USD recurring, **monthly**
-  - Trial: **14 días gratis sin tarjeta**
+  - Modelo: Software (SaaS)
+  - Precio: **2,99 EUR** recurring, **monthly**
+  - Trial: **ninguno** (cobro upfront al suscribirse)
   - Copia el `price_...` → `STRIPE_PRICE_MONTHLY`
 
 - **Producto 2: "Premium anual"**
-  - Precio: $24.99 USD recurring, **yearly**
-  - Trial: **14 días gratis sin tarjeta**
+  - Precio: **24,99 EUR** recurring, **yearly**
+  - Trial: **14 días gratis sin tarjeta** (decisión de producto: el
+    anual es compromiso mayor, el trial reduce la fricción)
   - Copia el `price_...` → `STRIPE_PRICE_YEARLY`
 
 ### 3. Crear el endpoint de webhook
@@ -149,7 +150,8 @@ El portal de gestión (`/api/stripe/portal`) abre la UI hospedada de Stripe para
    existente en Stripe (por email) o crea uno nuevo
    ↓
 4. Endpoint Next.js → stripe.checkout.sessions.create(...) con los
-   parámetros del Checkout Studio + trial_period_days: 14
+   parámetros del Checkout Studio. El anual lleva `trial_period_days: 14`
+   (sin tarjeta), el mensual NO (cobro inmediato)
    ↓
 5. Stripe devuelve una URL de Checkout (session.url)
    ↓
@@ -170,13 +172,15 @@ El portal de gestión (`/api/stripe/portal`) abre la UI hospedada de Stripe para
 12. Convex action llama a internal mutation `upsertFromStripeEvent`
     ↓
 13. Convex crea/actualiza fila en tabla `subscriptions`
-    (tier: "premium", status: "trialing", stripeSubscriptionId, etc.)
+    (tier: "premium", status: "active" si mensual o "trialing" si anual,
+    stripeSubscriptionId, etc.)
     ↓
 14. El front, gracias a `useHasPremium` (query reactivo en Convex),
     re-renderiza automáticamente y muestra el badge Premium
     ↓
-15. El user navega feliz con su Pro. A los 14 días Stripe cobra
-    automáticamente (porque pidió método de pago con payment_method_collection: "always")
+15. Si es anual: el user usa Pro gratis 14 días. Al final, Stripe cobra
+    automáticamente (porque pidió método de pago con payment_method_collection: "always").
+    Si es mensual: ya está cobrando desde el día 1.
     ↓
 16. Si el user cancela desde el portal → Stripe manda
     `customer.subscription.updated` con status: "canceled" → webhook

@@ -131,14 +131,26 @@ export async function POST(req: NextRequest) {
     //   - allow_promotion_codes: false (decisión del Studio)
     //   - billing_address_collection: "auto" (recogida opcional)
     //   - phone_number_collection, automatic_tax: explícitamente off
-    //   - payment_method_collection: "always" (pedimos método SIEMPRE,
-    //     útil en subscription donde guardaremos la tarjeta para renovar)
+    //   - payment_method_collection: "if_required" para mensual sin
+    //     trial (el Studio decía "always" pero eso solo tiene sentido
+    //     si hay trial o si queremos cobrar al cliente sin avisar).
+    //     Para el anual con trial sí lo queremos "always" para guardar
+    //     tarjeta y poder renovar al final del trial.
     //   - submit_type: "auto" (deja que Stripe elija según el contenido)
     //   - integration_identifier, origin_context: metadata para los
     //     analytics internos de Stripe
     // Parámetros `sample_only` que SÍ tenemos con valores reales y por
     // tanto NO se reemplazan (regla 6 del Studio): mode (subscription),
     // success_url, cancel_url, line_items.
+    //
+    // Diferencia mensual vs anual (sesión 9 sep 2026):
+    //   - Mensual: SIN trial. Cobro inmediato al suscribirse. Stripe
+    //     solo pide método de pago si es estrictamente necesario.
+    //   - Anual: CON trial 14 días sin tarjeta. Stripe pide método de
+    //     pago al final del trial (porque "always" en trial_mode).
+    //     Decisión de producto: el anual es compromiso mayor → el trial
+    //     reduce la fricción de "pago upfront 25€".
+    const isAnnual = body.priceId === "premium_yearly";
     const session = await stripe.checkout.sessions.create({
       // ── fixed_by_ui ──────────────────────────────────────────────
       ui_mode: "hosted_page",
@@ -146,7 +158,10 @@ export async function POST(req: NextRequest) {
       phone_number_collection: { enabled: false },
       automatic_tax: { enabled: false },
       allow_promotion_codes: false,
-      payment_method_collection: "always",
+      // Override del Studio: "always" para anual (con trial, queremos
+      // guardar tarjeta), "if_required" para mensual (sin trial, cobro
+      // upfront — no necesitamos tarjeta forzada).
+      payment_method_collection: isAnnual ? "always" : "if_required",
       submit_type: "auto",
       integration_identifier: "hosted_web_0001",
       origin_context: "web",
@@ -164,7 +179,9 @@ export async function POST(req: NextRequest) {
         priceAlias: body.priceId,   // para logging
       },
       subscription_data: {
-        trial_period_days: 14,
+        // Solo el anual tiene trial (14 días sin tarjeta). El mensual
+        // cobra al instante.
+        ...(isAnnual ? { trial_period_days: 14 } : {}),
         metadata: {
           clerkUserId: userId,    // también en la sub para redundancia
         },

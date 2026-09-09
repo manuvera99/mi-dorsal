@@ -155,16 +155,16 @@ function RealSuscripcionContent() {
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <CheckoutButton
-            label="Probar Pro Mensual — $2.99/mes"
-            sublabel="14 días gratis"
+            label="Hacerme Pro Mensual — 2,99 €/mes"
+            sublabel="Cobro inmediato. Sin compromiso."
             loading={isCheckoutLoading === "monthly"}
             disabled={isCheckoutLoading !== null || isPortalLoading}
             onClick={() => startCheckout("premium_monthly")}
             variant="primary"
           />
           <CheckoutButton
-            label="Probar Pro Anual — $24.99/año"
-            sublabel="14 días gratis · ahorra 30%"
+            label="Probar Pro Anual — 24,99 €/año"
+            sublabel="14 días gratis sin tarjeta · ahorra 30%"
             loading={isCheckoutLoading === "yearly"}
             disabled={isCheckoutLoading !== null || isPortalLoading}
             onClick={() => startCheckout("premium_yearly")}
@@ -173,9 +173,8 @@ function RealSuscripcionContent() {
         </div>
         <p className="text-xs text-stone-500 mt-3 flex items-start gap-1.5">
           <Shield className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-          Los precios se cobran en USD. El cargo en tu tarjeta aparecerá
-          convertido a EUR al cambio de tu banco. Pagos seguros por
-          Stripe (PSD2 / 3D Secure).
+          Pagos seguros por Stripe en EUR (PSD2 / 3D Secure). Cancela
+          cuando quieras desde el portal de gestión.
         </p>
       </section>
 

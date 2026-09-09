@@ -17,7 +17,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useMutation } from "convex/react";
-import { Calendar, Hash, MapPin, Trophy, Pencil } from "lucide-react";
+import { Calendar, Hash, MapPin, Trophy, Pencil, Loader2 } from "lucide-react";
 import { cn, formatRaceType, formatTime, formatPaceLong } from "@/lib/utils";
 import { TimePaceCalculator } from "./time-pace-calculator";
 import { api } from "@/convex/_generated/api";
@@ -172,6 +172,7 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
 
   const [editingDistance, setEditingDistance] = useState(false);
   const [pendingDistance, setPendingDistance] = useState<DistanceOption | null>(null);
+  const [savingDistance, setSavingDistance] = useState(false);
   const updateDistance = useMutation(api.myRaces.updateDistance);
   const toast = useToast();
 
@@ -179,14 +180,25 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
 
   const handleSaveDistance = async () => {
     if (!pendingDistance) return;
-    await updateDistance({ id: myRace._id, selectedDistance: pendingDistance });
-    toast.show({
-      variant: "info",
-      title: "Distancia actualizada",
-      description: "Recalculamos tu predicción para la nueva distancia.",
-    });
-    setEditingDistance(false);
-    setPendingDistance(null);
+    setSavingDistance(true);
+    try {
+      await updateDistance({ id: myRace._id, selectedDistance: pendingDistance });
+      toast.show({
+        variant: "info",
+        title: "Distancia actualizada",
+        description: "Recalculamos tu predicción para la nueva distancia.",
+      });
+      setEditingDistance(false);
+      setPendingDistance(null);
+    } catch (e) {
+      toast.show({
+        variant: "warning",
+        title: "No se pudo cambiar la distancia",
+        description: "Inténtalo de nuevo.",
+      });
+    } finally {
+      setSavingDistance(false);
+    }
   };
 
   // "Sombra" del tab según el estado (rojo, verde o gris) para mantener el
@@ -409,17 +421,24 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
                   setEditingDistance(false);
                   setPendingDistance(null);
                 }}
-                className="text-xs text-stone-500 hover:underline"
+                disabled={savingDistance}
+                className="text-xs text-stone-500 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={handleSaveDistance}
-                disabled={!pendingDistance}
-                className="rounded-md bg-runner-primary px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-white disabled:opacity-50"
+                disabled={savingDistance || !pendingDistance}
+                className="rounded-md bg-runner-primary px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-white shadow-sm transition-opacity hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Guardar distancia
+                {savingDistance ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Guardando
+                  </span>
+                ) : (
+                  "Guardar distancia"
+                )}
               </button>
             </div>
           </div>

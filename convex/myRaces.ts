@@ -74,6 +74,11 @@ export const add = mutation({
     dorsalNumber: v.optional(v.string()),
     registrationDate: v.optional(v.string()),
     notes: v.optional(v.string()),
+    selectedDistance: v.optional(v.object({
+      distanceKm: v.number(),
+      label: v.string(),
+      elevationGainM: v.optional(v.number()),
+    })),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
@@ -108,12 +113,15 @@ export const add = mutation({
       .filter((q) => q.eq(q.field("isCurrent"), true))
       .collect();
 
+    const effectiveDistanceKm = args.selectedDistance?.distanceKm ?? race.distanceKm;
+    const effectiveElevationGainM = args.selectedDistance?.elevationGainM ?? race.elevationGainM;
+
     let prediction: ReturnType<typeof predictForMyRace> | null = null;
     try {
       prediction = predictForMyRace({
         race: {
-          distanceKm: race.distanceKm,
-          elevationGainM: race.elevationGainM,
+          distanceKm: effectiveDistanceKm,
+          elevationGainM: effectiveElevationGainM,
           raceType: race.raceType,
           startDate: race.startDate,
         },
@@ -139,6 +147,9 @@ export const add = mutation({
       registrationDate: args.registrationDate,
       notes: args.notes,
       status: "planned",
+      selectedDistanceKm: args.selectedDistance?.distanceKm,
+      selectedDistanceLabel: args.selectedDistance?.label,
+      selectedElevationGainM: args.selectedDistance?.elevationGainM,
       predictedTimeSeconds: prediction?.predictedTimeSeconds,
       predictionConfidence: prediction?.confidence,
       predictionFactors: prediction?.factors,

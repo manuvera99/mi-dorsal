@@ -579,12 +579,12 @@ flowchart LR
 <section id="stack">
   <div class="sec-head"><span class="sec-num">02</span></div>
   <h2>Stack técnico</h2>
-  <p class="sec-sub">Lo que hay en <code>package.json</code> y por qué. Sin sorpresas: las decisiones se documentan en <code>AGENTS.md</code> §6.4.</p>
+  <p class="sec-sub">Lo que hay en <code>package.json</code> y por qué. Sin sorpresas: las decisiones se documentan en <code>docs/core/stack.md</code>.</p>
 
   <div class="grid grid-3">
     <div class="card">
       <h3>Next.js 15</h3>
-      <p>App Router + RSC. Páginas con query a Convex llevan <code>export const dynamic = "force-dynamic"</code> (ver AGENTS.md §6.1).</p>
+      <p>App Router + RSC. Páginas con query a Convex llevan <code>export const dynamic = "force-dynamic"</code> (ver docs/core/anti-patterns.md).</p>
     </div>
     <div class="card">
       <h3>React 19</h3>
@@ -1238,7 +1238,7 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains; preload</code></
   </table>
 
   <h3>Procedimiento de deploy</h3>
-  <p>Documentado en <code>AGENTS.md</code> §9.2. Resumen:</p>
+  <p>Documentado en <code>docs/core/deploy-checklist.md</code>. Resumen:</p>
   <ol>
     <li><code>npx tsc --noEmit</code> → 0 errores.</li>
     <li><code>npm run build</code> → <code>✓ Compiled successfully</code>. <strong>No skippear.</strong> Vercel detecta inferencias más estrictas que local.</li>
@@ -1265,7 +1265,7 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains; preload</code></
 
   <div class="tree">
 <div class="row"><span class="p">├──</span><span class="folder">app/</span></div>
-<div class="row"><span class="p">│   ├──</span><span class="file">page.tsx</span> <span class="desc">← Home (force-dynamic). 11 secciones, ver AGENTS.md §3.</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">page.tsx</span> <span class="desc">← Home (force-dynamic). 11 secciones, ver docs/core/home-structure.md.</span></div>
 <div class="row"><span class="p">│   ├──</span><span class="file">carreras/page.tsx + client.tsx</span> <span class="desc">← Catálogo (force-dynamic). Lógica interactiva en client.</span></div>
 <div class="row"><span class="p">│   ├──</span><span class="file">carreras/[slug]/page.tsx</span> <span class="desc">← Ficha de carrera + Schema.org SportsEvent.</span></div>
 <div class="row"><span class="p">│   ├──</span><span class="file">calendario/page.tsx</span> <span class="desc">← Calendario personal (protegido).</span></div>
@@ -1285,7 +1285,7 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains; preload</code></
 <div class="row"><span class="p">├──</span><span class="folder">components/</span></div>
 <div class="row"><span class="p">│   ├──</span><span class="file">home/</span> <span class="desc">← 10 componentes de la home. El orden de import en app/page.tsx es el orden visual.</span></div>
 <div class="row"><span class="p">│   ├──</span><span class="file">carreras/</span> <span class="desc">← 5 componentes del catálogo.</span></div>
-<div class="row"><span class="p">│   ├──</span><span class="file">header.tsx</span> <span class="desc">← Header con hamburguesa móvil. NO eliminar el panel mobile (AGENTS.md §6.6).</span></div>
+<div class="row"><span class="p">│   ├──</span><span class="file">header.tsx</span> <span class="desc">← Header con hamburguesa móvil. NO eliminar el panel mobile (docs/core/anti-patterns.md).</span></div>
 <div class="row"><span class="p">│   ├──</span><span class="file">region-switcher.tsx + use-user-region.ts</span> <span class="desc">← Pill de CCAA con portal a document.body.</span></div>
 <div class="row"><span class="p">│   ├──</span><span class="file">race-card.tsx, race-filters.tsx, race-map-wrapper.tsx</span></div>
 <div class="row"><span class="p">│   └──</span><span class="file">blog/, newsletter/</span> <span class="desc">← Componentes del blog y del form de newsletter.</span></div>

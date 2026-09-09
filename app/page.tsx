@@ -5,7 +5,7 @@
 // render inicial es la versión genérica ("Las que más molan este mes") y se
 // reescribe tras hidratación sin afectar al HTML cacheado.
 //
-// Ver AGENTS.md §6.1 (la nota sobre force-dynamic aplica a /carreras, no a /).
+// Ver docs/core/anti-patterns.md (la nota sobre force-dynamic aplica a /carreras, no a /).
 //
 // Sobre el HTML inicial: Vercel comprime con brotli los HTML dinámicos
 // (/carreras) y los assets estáticos (CSS, JS, fuentes), pero NO comprime
@@ -101,7 +101,7 @@ export default function HomePage() {
           Envuelto en dynamic({ssr:false}) para que el prerender ISR
           de la home no falle intentando ejecutar useUser de Clerk
           sin provider. Posicionado tras las 11 secciones para no
-          romper el orden documentado en AGENTS.md §3. */}
+          romper el orden documentado en docs/core/home-structure.md. */}
       <div className="mx-auto max-w-7xl px-4">
         <ResultBannerIsland />
       </div>

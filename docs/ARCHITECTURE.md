@@ -284,7 +284,7 @@ CLI del blog: `npm run content:new` (esqueleto) + `npm run content:publish` (sub
 | `PDF_PARSER_SECRET` | Vercel + Convex | Header `X-PDF-Parser-Secret` |
 | `NEXT_PUBLIC_USE_MOCK` | local | `true` para dev sin credenciales |
 
-### Procedimiento de deploy (resumen de AGENTS.md §9.2)
+### Procedimiento de deploy (resumen de `docs/core/deploy-checklist.md`)
 
 1. `npx tsc --noEmit` → 0 errores
 2. `npm run build` → `✓ Compiled successfully` (**no skippear**)
@@ -315,7 +315,7 @@ app/                      # Next.js App Router
 
 components/
 ├── home/, carreras/      # Componentes por sección
-├── header.tsx            # ⚠️ NO eliminar hamburguesa móvil (AGENTS.md §6.6)
+├── header.tsx            # ⚠️ NO eliminar hamburguesa móvil (docs/core/anti-patterns.md)
 ├── region-switcher.tsx   # Pill de CCAA con portal a document.body
 └── race-card.tsx, race-filters.tsx, race-map-wrapper.tsx
 

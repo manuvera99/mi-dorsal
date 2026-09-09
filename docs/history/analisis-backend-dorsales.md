@@ -1,9 +1,11 @@
 # mi-dorsal — Análisis funcional y técnico del backend de tracking de dorsales
 
+> **Documento histórico y SUPERADO.** Todos los gaps que detecta este análisis (emails sin cablear, `userEmail` hardcodeado, sin webhook de Clerk, sin detección de proveedor de cronometraje) están confirmados como arreglados en `docs/ARCHITECTURE.md`. No citar los hallazgos de este documento como estado actual — consérvalo solo como registro de cómo estaba el backend el 4 sep 2026.
+>
 > **Autor:** Mavis (análisis como desarrollador senior especializado en scraping + datos de running)
 > **Fecha:** 4 sept 2026
-> **Estado del documento:** Análisis en frío. Sin código modificado todavía.
-> **Veredicto rápido:** la infraestructura está al 60%, el cableado crítico está al 20%. Hay un esqueleto muy bien pensado y TODO comments enormes. Si ejecutamos este plan, en 4-6 semanas podemos tener el flujo end-to-end real funcionando.
+> **Estado del documento:** Análisis en frío, en su momento. Sin código modificado todavía (en 4 sep 2026).
+> **Veredicto rápido (en su momento):** la infraestructura está al 60%, el cableado crítico está al 20%. Hay un esqueleto muy bien pensado y TODO comments enormes. Si ejecutamos este plan, en 4-6 semanas podemos tener el flujo end-to-end real funcionando.
 
 ---
 

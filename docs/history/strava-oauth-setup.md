@@ -1,6 +1,8 @@
 # Setup manual: Strava OAuth (Ola 1)
 
-> **Estado:** código listo, pendiente de configuración manual por Manu.
+> **Documento histórico.** Runbook ya ejecutado una vez (integración Strava OAuth ya está en producción — ver `docs/core/strava-integration.md` para el estado actual del código). Se conserva como referencia si hay que repetir el proceso (nueva app de Strava, revocación, etc.).
+>
+> **Estado en su momento:** código listo, pendiente de configuración manual por Manu.
 > **Tiempo estimado:** 20-30 minutos (la mayor parte esperando aprobación de Strava).
 > **Coste:** Strava Summit subscription ≈ $5/mes (necesario para Standard Tier).
 

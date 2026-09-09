@@ -4,7 +4,7 @@
  * WelcomeOverlay — modal esquivable que se muestra la primera vez que un
  * usuario logueado aterriza en la app (post-sign-up o post-login).
  *
- * Reglas UX (ver AGENTS.md §2.1, "tono cercano, humor sutil de corredor"):
+ * Reglas UX (ver docs/core/brand-voice.md, "tono cercano, humor sutil de corredor"):
  *  - Cero modal bloqueante con backdrop negro opaco: usamos blur sutil.
  *  - Mobile-first: el grid se apila en <md, las tarjetas van una debajo de otra.
  *  - Cierra con Escape, click fuera y X. Sin "Skip" agresivo: el link

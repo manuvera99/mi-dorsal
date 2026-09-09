@@ -54,3 +54,31 @@ logs/
 # debug test scripts (created during dev, not for repo)
 test-*.cjs
 test-*.mjs
+
+# one-shot debug/inspect scripts (prefijo _). NO son tests automatizados.
+# Convención interna: cualquier archivo _*.{ts,mjs,cjs,js,tsx,json,txt,ps1,bat,sh}
+# en cualquier subcarpeta se considera debug one-shot y NUNCA debe ir al repo.
+**/_*.mjs
+**/_*.cjs
+**/_*.ts
+**/_*.tsx
+**/_*.js
+**/_*.json
+**/_*.txt
+**/_*.ps1
+**/_*.bat
+**/_*.sh
+# Temp files varios
+*.tmp
+*.bak
+*.log.bak
+*.swp
+*.swo
+*~
+
+# Local trash (papelera interna usada por sesiones de limpieza)
+/.trash/
+
+# Diploma / preview artifacts (se regeneran con scripts/dev/)
+/diploma-preview.html
+/diploma-preview-assets/

@@ -247,9 +247,10 @@ export function resultFoundEmail(args: {
           </tr>
 
           <!-- Share card visual (inline cid:). Inyectado por
-               convex/emailNotifications.sendResultFoundEmail reemplazando el
-               marcador SHARE_CARD_INLINE por la imagen pre-generada.
-               Si no hay inline, este bloque queda vacío (no rompe el email). -->
+               convex/emailNotificationsAction.sendResultFoundEmail
+               reemplazando el marcador SHARE_CARD_INLINE por la imagen
+               pre-generada. Si no hay inline, este bloque queda vacío
+               (no rompe el email). -->
           <!--SHARE_CARD_INLINE-->
 
           <!-- CTAs -->

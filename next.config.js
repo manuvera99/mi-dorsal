@@ -39,6 +39,14 @@ const nextConfig = {
     "/api/result": [
       "./lib/pdf/fonts/**/*",
     ],
+    // Endpoint interno que la Convex action llama para generar el
+    // diploma PDF + share card PNG reales (ver convex/emailNotificationsAction.ts).
+    // Necesita ambos: pdfkit para el PDF, TTF de disco para el PNG.
+    "/api/internal/render-diploma": [
+      "./node_modules/pdfkit/js/standard-fonts/**/*",
+      "./node_modules/pdfkit/js/data/**/*",
+      "./lib/pdf/fonts/**/*",
+    ],
   },
   // Compresión: Vercel ya lo hace, pero por si se despliega en otro lado
   compress: true,

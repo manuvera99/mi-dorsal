@@ -4,7 +4,8 @@
 // GET /api/result/{myRaceId}/share-card.png
 //
 // Sirve el PNG pre-generado por la action
-// `convex/emailNotifications.sendResultFoundEmail` desde Convex Storage.
+// `convex/emailNotificationsAction.sendResultFoundEmail` desde Convex
+// Storage.
 //
 // Este PNG se usa para:
 //   - inline cid: en el email de resultado
@@ -41,7 +42,7 @@ export async function GET(
     //    con stack trace (que es ruido en logs y rompe crawlers).
     let data;
     try {
-      data = await fetchQuery(api.emailNotifications.getMyRaceForShareCard, {
+      data = await fetchQuery(api.emailNotificationsHelpers.getMyRaceForShareCard, {
         myRaceId,
       });
     } catch (convexErr) {
@@ -74,7 +75,7 @@ export async function GET(
     // 2. Resolver URL firmada
     let blobUrl;
     try {
-      blobUrl = await fetchQuery(api.emailNotifications.getStorageUrl, {
+      blobUrl = await fetchQuery(api.emailNotificationsHelpers.getStorageUrl, {
         storageId: data.shareCardStorageId,
       });
     } catch (convexErr) {

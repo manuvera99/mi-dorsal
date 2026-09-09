@@ -42,6 +42,8 @@ import type * as devOnly_promoteToAdmin from "../devOnly/promoteToAdmin.js";
 import type * as devOnly_seedTestUser from "../devOnly/seedTestUser.js";
 import type * as devOnly_slimActivitiesPayload from "../devOnly/slimActivitiesPayload.js";
 import type * as emailDispatch from "../emailDispatch.js";
+import type * as emailNotificationsAction from "../emailNotificationsAction.js";
+import type * as emailNotificationsHelpers from "../emailNotificationsHelpers.js";
 import type * as emails_sendEmail from "../emails/sendEmail.js";
 import type * as emails_templates_resultFound from "../emails/templates/resultFound.js";
 import type * as feedback from "../feedback.js";
@@ -106,6 +108,8 @@ declare const fullApi: ApiFromModules<{
   "devOnly/seedTestUser": typeof devOnly_seedTestUser;
   "devOnly/slimActivitiesPayload": typeof devOnly_slimActivitiesPayload;
   emailDispatch: typeof emailDispatch;
+  emailNotificationsAction: typeof emailNotificationsAction;
+  emailNotificationsHelpers: typeof emailNotificationsHelpers;
   "emails/sendEmail": typeof emails_sendEmail;
   "emails/templates/resultFound": typeof emails_templates_resultFound;
   feedback: typeof feedback;

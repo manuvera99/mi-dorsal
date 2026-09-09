@@ -7,55 +7,80 @@
 //
 //   1. Lee profile + myRace + race + PR actual
 //   2. Calcula si el resultado bate el PR (sin modificarlo aún)
-//   3. Genera el diploma PDF (lib/pdf/diploma.tsx)
-//   4. Genera el share card PNG 1200x630 (lib/share-card/render.tsx)
-//   5. Sube ambos a Convex Storage y guarda los IDs en myRaces
-//   6. Renderiza el email HTML con todos los datos
-//   7. Envía el email con Resend: diploma PDF como attachment + share card
+//   3. Pide el diploma PDF + share card PNG a
+//      app/api/internal/render-diploma (ver nota abajo)
+//   4. Sube ambos a Convex Storage y guarda los IDs en myRaces
+//   5. Renderiza el email HTML con todos los datos
+//   6. Envía el email con Resend: diploma PDF como attachment + share card
 //      PNG inline con cid: (para que se vea en la bandeja sin hacer clic)
-//   8. Log a notificationLog (idempotente)
+//   7. Log a notificationLog (idempotente)
 //
 // El PR se persiste DESPUÉS desde checkResults.ts (updateIfBetter), que
 // recibe el previousTimeSeconds implícito en el flujo.
+//
+// Por qué el PDF/PNG NO se generan aquí con renderDiploma/renderShareCard:
+// esas funciones usan @react-pdf/renderer (pdfkit) y @vercel/og (satori),
+// que leen assets binarios (TTF, WASM) con fs.readFileSync desde rutas
+// relativas al propio paquete al cargar el módulo. El paso de análisis de
+// `npx convex deploy` EJECUTA el módulo para bundlearlo y falla con ENOENT
+// porque esos assets no existen en el sandbox de Convex (aunque sí existen
+// en el Lambda de Vercel, vía next.config.js outputFileTracingIncludes).
+// Por eso la generación real vive en
+// app/api/internal/render-diploma/route.ts (runtime Node de Vercel, ya
+// verificado en producción) y esta action solo hace fetch a ese endpoint.
+//
+// Por qué este archivo NO vive en convex/actions/: Convex exige "use node"
+// para TODO archivo dentro de esa carpeta (legado — ver docs de actions),
+// y esta action ya no usa fs/path (delega en el endpoint interno de
+// Next.js), así que no necesita el runtime Node. Se referencia como
+// internal.emailNotificationsAction.sendResultFoundEmail.
+// Las queries/mutations que sirven al front (getMyRaceForDiploma,
+// getStorageUrl, etc.) viven en convex/emailNotificationsHelpers.ts.
 // =============================================================================
 
-import { internalAction, internalQuery, internalMutation, query } from "./_generated/server";
+import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
-import { renderDiploma, DiplomaProps } from "@/lib/pdf/diploma";
-import { renderShareCard, ShareCardProps } from "@/lib/share-card/render";
+import type { DiplomaProps } from "../lib/pdf/diploma";
+import type { ShareCardProps } from "../lib/share-card/render";
 import { resultFoundEmail } from "./emails/templates/resultFound";
 
-// ===========================================================================
-// Queries auxiliares (lectura desde la action)
-// ===========================================================================
+/**
+ * Llama a /api/internal/render-diploma (Next.js, runtime Node) para
+ * generar el PDF+PNG. Ver nota arriba sobre por qué no se genera in-process.
+ */
+async function renderViaInternalApi(
+  diploma: DiplomaProps,
+  shareCard: ShareCardProps,
+): Promise<{ pdfBuffer: Buffer; pngBuffer: Buffer }> {
+  const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://www.mi-dorsal.com").replace(/\/$/, "");
+  const secret = process.env.INTERNAL_API_SECRET;
+  if (!secret) {
+    throw new Error("INTERNAL_API_SECRET no configurado en Convex env vars");
+  }
 
-export const getDataForEmail = internalQuery({
-  args: { myRaceId: v.id("myRaces") },
-  handler: async (ctx, { myRaceId }) => {
-    const myRace = await ctx.db.get(myRaceId);
-    if (!myRace) return null;
-    const profile = await ctx.db.get(myRace.userId);
-    if (!profile) return null;
-    const race = await ctx.db.get(myRace.raceId);
-    if (!race) return null;
-
-    // PR actual en la distancia del race (sin modificarlo)
-    const distanceM = Math.round(race.distanceKm * 1000);
-    const currentPR = await ctx.db
-      .query("personalRecords")
-      .withIndex("by_user_distance_current", (q) =>
-        q
-          .eq("userId", profile._id)
-          .eq("distanceM", distanceM)
-          .eq("isCurrent", true),
-      )
-      .unique();
-
-    return { myRace, profile, race, currentPR };
-  },
-});
+  const res = await fetch(`${APP_URL}/api/internal/render-diploma`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-internal-secret": secret,
+    },
+    body: JSON.stringify({ diploma, shareCard }),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`render-diploma endpoint failed: ${res.status} ${detail}`);
+  }
+  const { diplomaBase64, shareCardBase64 } = (await res.json()) as {
+    diplomaBase64: string;
+    shareCardBase64: string;
+  };
+  return {
+    pdfBuffer: Buffer.from(diplomaBase64, "base64"),
+    pngBuffer: Buffer.from(shareCardBase64, "base64"),
+  };
+}
 
 // ===========================================================================
 // Action principal
@@ -77,7 +102,7 @@ export const sendResultFoundEmail = internalAction({
     const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://www.mi-dorsal.com").replace(/\/$/, "");
 
     // ---------- 1. Cargar datos completos desde Convex ----------
-    const data = await ctx.runQuery(internal.emailNotifications.getDataForEmail, {
+    const data = await ctx.runQuery(internal.emailNotificationsHelpers.getDataForEmail, {
       myRaceId: args.myRaceId,
     });
     if (!data) {
@@ -91,7 +116,7 @@ export const sendResultFoundEmail = internalAction({
     }
 
     // Idempotencia: si ya se envió este email para esta myRace, no repetir.
-    const alreadySent = await ctx.runQuery(internal.emailNotifications.hasLogForMyRace, {
+    const alreadySent = await ctx.runQuery(internal.emailNotificationsHelpers.hasLogForMyRace, {
       userId: profile._id,
       myRaceId: myRace._id,
       type: "result_found",
@@ -134,13 +159,12 @@ export const sendResultFoundEmail = internalAction({
       issuedAt,
       myRaceId: myRace._id,
     };
-    const pdfBuffer = await renderDiploma(diplomaProps);
-
-    // ---------- 4. Generar share card PNG ----------
+    // ---------- 4. Generar diploma PDF + share card PNG ----------
+    // (vía el endpoint interno de Next.js — ver nota al inicio del archivo)
     const cardProps: ShareCardProps = {
       ...diplomaProps,
     };
-    const pngBuffer = await renderShareCard(cardProps);
+    const { pdfBuffer, pngBuffer } = await renderViaInternalApi(diplomaProps, cardProps);
 
     // ---------- 5. Subir a Convex Storage ----------
     // `body: new Uint8Array(buf)` evita el lío de tipos Buffer vs BodyInit
@@ -154,7 +178,7 @@ export const sendResultFoundEmail = internalAction({
     if (!diplomaUploadRes.ok) {
       throw new Error(`Diploma upload failed: ${diplomaUploadRes.status}`);
     }
-    const diplomaBlob = await diplomaUploadRes.json();
+    const diplomaBlob = (await diplomaUploadRes.json()) as { storageId: string };
     const diplomaStorageId = diplomaBlob.storageId as Id<"_storage">;
 
     const cardUploadUrl = await ctx.storage.generateUploadUrl();
@@ -166,11 +190,11 @@ export const sendResultFoundEmail = internalAction({
     if (!cardUploadRes.ok) {
       throw new Error(`Share card upload failed: ${cardUploadRes.status}`);
     }
-    const cardBlob = await cardUploadRes.json();
+    const cardBlob = (await cardUploadRes.json()) as { storageId: string };
     const shareCardStorageId = cardBlob.storageId as Id<"_storage">;
 
     // Persistir storage IDs en myRace para descargas futuras
-    await ctx.runMutation(internal.emailNotifications.attachStorageIds, {
+    await ctx.runMutation(internal.emailNotificationsHelpers.attachStorageIds, {
       myRaceId: myRace._id,
       diplomaStorageId,
       shareCardStorageId,
@@ -263,7 +287,7 @@ export const sendResultFoundEmail = internalAction({
     }
 
     // ---------- 8. Log ----------
-    await ctx.runMutation(internal.emailNotifications.writeLog, {
+    await ctx.runMutation(internal.emailNotificationsHelpers.writeLog, {
       userId: profile._id,
       myRaceId: myRace._id,
       type: "result_found",
@@ -281,80 +305,6 @@ export const sendResultFoundEmail = internalAction({
       shareCardStorageId,
       error: errorMsg,
     };
-  },
-});
-
-// ===========================================================================
-// Mutations / queries internas (helpers de la action)
-// ===========================================================================
-
-export const hasLogForMyRace = internalQuery({
-  args: {
-    userId: v.id("profiles"),
-    myRaceId: v.id("myRaces"),
-    type: v.union(
-      v.literal("welcome"),
-      v.literal("reminder_7d"),
-      v.literal("reminder_1d"),
-      v.literal("result_found"),
-      v.literal("result_not_found"),
-      v.literal("weekly_digest"),
-      v.literal("year_review"),
-    ),
-  },
-  handler: async (ctx, { userId, myRaceId, type }) => {
-    const log = await ctx.db
-      .query("notificationLog")
-      .withIndex("by_user_type", (q) =>
-        q.eq("userId", userId).eq("type", type),
-      )
-      .filter((q) => q.eq(q.field("relatedMyRaceId"), myRaceId))
-      .first();
-    return log !== null;
-  },
-});
-
-export const attachStorageIds = internalMutation({
-  args: {
-    myRaceId: v.id("myRaces"),
-    diplomaStorageId: v.id("_storage"),
-    shareCardStorageId: v.id("_storage"),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.myRaceId, {
-      diplomaStorageId: args.diplomaStorageId,
-      shareCardStorageId: args.shareCardStorageId,
-    });
-  },
-});
-
-export const writeLog = internalMutation({
-  args: {
-    userId: v.id("profiles"),
-    myRaceId: v.id("myRaces"),
-    type: v.union(
-      v.literal("welcome"),
-      v.literal("reminder_7d"),
-      v.literal("reminder_1d"),
-      v.literal("result_found"),
-      v.literal("result_not_found"),
-      v.literal("weekly_digest"),
-      v.literal("year_review"),
-    ),
-    delivered: v.boolean(),
-    resendMessageId: v.optional(v.string()),
-    error: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.insert("notificationLog", {
-      userId: args.userId,
-      relatedMyRaceId: args.myRaceId,
-      type: args.type,
-      sentAt: Date.now(),
-      delivered: args.delivered,
-      resendMessageId: args.resendMessageId,
-      error: args.error,
-    });
   },
 });
 
@@ -397,115 +347,5 @@ function escapeAttr(s: string): string {
 }
 
 function stripBom(s: string): string {
-  return s.replace(/^\uFEFF/, "");
+  return s.replace(/^﻿/, "");
 }
-
-// ===========================================================================
-// Queries PÚBLICAS (llamadas desde endpoints Next.js y desde el cliente)
-// ===========================================================================
-// Diferencia con las internalQuery de arriba: estas son accesibles desde
-// el cliente (app) y desde endpoints API. NO exponen secretos. La
-// privacidad del diploma/card se gestiona a nivel de URL: la URL ya va
-// firmada en el email al dueño del myRace; si la comparte, asume la
-// responsabilidad (consistente con Strava y otras apps de running).
-// ===========================================================================
-
-/**
- * Devuelve los datos mínimos del myRace necesarios para servir el diploma
- * PDF. NO expone email ni datos sensibles — solo lo que el diploma muestra.
- */
-export const getMyRaceForDiploma = query({
-  args: { myRaceId: v.id("myRaces") },
-  handler: async (ctx, { myRaceId }) => {
-    const myRace = await ctx.db.get(myRaceId);
-    if (!myRace) return null;
-    return {
-      _id: myRace._id,
-      dorsalNumber: myRace.dorsalNumber,
-      diplomaStorageId: myRace.diplomaStorageId,
-      actualTimeSeconds: myRace.actualTimeSeconds,
-      actualPosition: myRace.actualPosition,
-      actualPositionCategory: myRace.actualPositionCategory,
-    };
-  },
-});
-
-/**
- * Devuelve los datos mínimos del myRace para servir el share card PNG.
- */
-export const getMyRaceForShareCard = query({
-  args: { myRaceId: v.id("myRaces") },
-  handler: async (ctx, { myRaceId }) => {
-    const myRace = await ctx.db.get(myRaceId);
-    if (!myRace) return null;
-    return {
-      _id: myRace._id,
-      shareCardStorageId: myRace.shareCardStorageId,
-    };
-  },
-});
-
-/**
- * Resuelve la URL firmada de un blob de Convex Storage. Expira en ~1h por
- * defecto (Convex la regenera cada vez). Esto está bien porque los
- * endpoints OG son cacheados por Vercel/CDN durante 1 año, así que solo
- * la primera vez se llama a esta query.
- */
-export const getStorageUrl = query({
-  args: { storageId: v.id("_storage") },
-  handler: async (ctx, { storageId }) => {
-    return await ctx.storage.getUrl(storageId);
-  },
-});
-
-/**
- * Devuelve la metadata completa de un myRace (profile, race, PR) para
- * renderizar la página pública /resultado/{myRaceId}. No expone email.
- */
-export const getMyRaceForPublicPage = query({
-  args: { myRaceId: v.id("myRaces") },
-  handler: async (ctx, { myRaceId }) => {
-    const myRace = await ctx.db.get(myRaceId);
-    if (!myRace) return null;
-    const profile = await ctx.db.get(myRace.userId);
-    const race = await ctx.db.get(myRace.raceId);
-    if (!profile || !race) return null;
-    const distanceM = Math.round(race.distanceKm * 1000);
-    const currentPR = await ctx.db
-      .query("personalRecords")
-      .withIndex("by_user_distance_current", (q) =>
-        q
-          .eq("userId", profile._id)
-          .eq("distanceM", distanceM)
-          .eq("isCurrent", true),
-      )
-      .unique();
-    return {
-      myRace: {
-        _id: myRace._id,
-        dorsalNumber: myRace.dorsalNumber,
-        actualTimeSeconds: myRace.actualTimeSeconds,
-        actualPosition: myRace.actualPosition,
-        actualPositionCategory: myRace.actualPositionCategory,
-        diplomaStorageId: myRace.diplomaStorageId,
-        shareCardStorageId: myRace.shareCardStorageId,
-      },
-      profile: {
-        _id: profile._id,
-        displayName: profile.displayName,
-      },
-      race: {
-        _id: race._id,
-        name: race.name,
-        slug: race.slug,
-        distanceKm: race.distanceKm,
-        startDate: race.startDate,
-        locality: race.locality,
-        resultsUrl: race.resultsUrl,
-      },
-      currentPR: currentPR
-        ? { timeSeconds: currentPR.timeSeconds, achievedAt: currentPR.achievedAt }
-        : null,
-    };
-  },
-});

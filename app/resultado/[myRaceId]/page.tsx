@@ -54,7 +54,7 @@ export async function generateMetadata({
   params: Promise<{ myRaceId: string }>;
 }): Promise<Metadata> {
   const { myRaceId } = await params;
-  const data = await fetchQuery(api.emailNotifications.getMyRaceForPublicPage, {
+  const data = await fetchQuery(api.emailNotificationsHelpers.getMyRaceForPublicPage, {
     myRaceId: myRaceId as Id<"myRaces">,
   }).catch(() => null);
 

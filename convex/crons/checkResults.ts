@@ -219,7 +219,7 @@ export const checkResults = internalAction({
         );
 
         if (notifData) {
-          await ctx.runAction(internal.emailNotifications.sendResultFoundEmail, {
+          await ctx.runAction(internal.emailNotificationsAction.sendResultFoundEmail, {
             userId: notifData.profile._id,
             myRaceId: item.myRaceId as Id<"myRaces">,
             raceName: item.raceName,

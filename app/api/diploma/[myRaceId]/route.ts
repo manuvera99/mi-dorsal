@@ -4,9 +4,9 @@
 // GET /api/diploma/{myRaceId}
 //
 // Sirve el diploma PDF generado por la action
-// `convex/emailNotifications.sendResultFoundEmail`. La action genera el PDF
-// una sola vez al encontrar el resultado, lo sube a Convex Storage y guarda
-// el `diplomaStorageId` en myRaces.
+// `convex/emailNotificationsAction.sendResultFoundEmail`. La action genera
+// el PDF una sola vez al encontrar el resultado, lo sube a Convex Storage y
+// guarda el `diplomaStorageId` en myRaces.
 //
 // Este endpoint solo lee ese blob y lo devuelve. Si no existe (caso legacy:
 // myRace finalizado ANTES de que existiera esta feature), devuelve 404.
@@ -40,7 +40,7 @@ export async function GET(
     //    en vez de 500 para distinguir "infra caída" de "myRace inválido".
     let data;
     try {
-      data = await fetchQuery(api.emailNotifications.getMyRaceForDiploma, {
+      data = await fetchQuery(api.emailNotificationsHelpers.getMyRaceForDiploma, {
         myRaceId,
       });
     } catch (convexErr) {
@@ -48,7 +48,7 @@ export async function GET(
       return NextResponse.json(
         {
           error: "diploma service temporarily unavailable",
-          hint: "La función emailNotifications de Convex no responde. Ejecuta 'npx convex dev' o 'npx convex deploy' para publicar las queries.",
+          hint: "La función emailNotificationsHelpers de Convex no responde. Ejecuta 'npx convex dev' o 'npx convex deploy' para publicar las queries.",
         },
         { status: 503 }
       );
@@ -67,7 +67,7 @@ export async function GET(
     // 2. Resolver URL firmada del blob
     let blobUrl;
     try {
-      blobUrl = await fetchQuery(api.emailNotifications.getStorageUrl, {
+      blobUrl = await fetchQuery(api.emailNotificationsHelpers.getStorageUrl, {
         storageId: data.diplomaStorageId,
       });
     } catch (convexErr) {

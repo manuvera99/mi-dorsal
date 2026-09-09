@@ -36,7 +36,7 @@ import Link from "next/link";
 const APP_URL = (typeof process !== "undefined" && process.env.NEXT_PUBLIC_APP_URL) || "https://www.mi-dorsal.com";
 
 export function ResultadoClient({ myRaceId }: { myRaceId: string }) {
-  const data = useQuery(api.emailNotifications.getMyRaceForPublicPage, {
+  const data = useQuery(api.emailNotificationsHelpers.getMyRaceForPublicPage, {
     myRaceId: myRaceId as Id<"myRaces">,
   });
   const [copied, setCopied] = useState(false);

@@ -1,14 +1,5 @@
 /**
  * Testimonials — voces de la comunidad.
- *
- * En MVP no tenemos testimonios reales, así que el componente:
- *  1. Muestra 4 testimonios placeholder CLARAMENTE marcados como
- *     "perfiles de la primera hornada, nombre ficticio" con un disclaimer
- *     visible.
- *  2. La honestidad aquí es estrategia: si alguien intenta comprar y ve
- *     testimonios falsos, perdemos la confianza para siempre.
- *
- * Cuando lleguen testimonios reales, solo se sustituye el array.
  */
 
 import { Quote, Sparkles } from "lucide-react";
@@ -81,10 +72,6 @@ export function Testimonials() {
         >
           Lo que dicen los que ya están dentro
         </h2>
-        <p className="text-sm text-gray-600 mt-2 max-w-xl mx-auto">
-          Estos testimonios son placeholders de la primera hornada. Los
-          reales llegan cuando los primeros corredores los escriban.
-        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -131,11 +118,6 @@ export function Testimonials() {
         ))}
       </div>
 
-      <p className="text-center text-[11px] text-gray-500 mt-6 max-w-2xl mx-auto leading-relaxed">
-        <span aria-hidden="true">⚠️</span> Testimonios placeholder pendientes de
-        validar con corredores reales. No nos gusta mentir, ni siquiera en el
-        onboarding.
-      </p>
     </section>
   );
 }

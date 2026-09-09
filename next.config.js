@@ -22,6 +22,24 @@ const nextConfig = {
     // desactivamos: es una feature solo útil en development.
     devtoolSegmentExplorer: false,
   },
+  // pdfkit (vía @react-pdf/renderer) resuelve sus fuentes estándar con un
+  // subpath import dinámico del package.json (`#standard-fonts/*` vía
+  // createRequire). El file tracer de Next/Vercel no sigue ese patrón, así
+  // que en el Lambda falta pdfkit/js/standard-fonts/*.cjs y el proceso
+  // crashea (MODULE_NOT_FOUND, exit 128) al importar @react-pdf/renderer,
+  // ANTES de que lib/pdf/diploma.tsx llegue a registrar Inter. Sin esto,
+  // el endpoint /api/diploma nunca puede generar el PDF en Vercel.
+  outputFileTracingIncludes: {
+    "/api/diploma": [
+      "./node_modules/pdfkit/js/standard-fonts/**/*",
+      "./node_modules/pdfkit/js/data/**/*",
+      "./lib/pdf/fonts/**/*",
+    ],
+    // share-card y la action de Convex también cargan las TTF desde disco
+    "/api/result": [
+      "./lib/pdf/fonts/**/*",
+    ],
+  },
   // Compresión: Vercel ya lo hace, pero por si se despliega en otro lado
   compress: true,
   // poweredByHeader: false — quita X-Powered-By por seguridad

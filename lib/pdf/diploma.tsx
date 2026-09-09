@@ -21,6 +21,7 @@ import React from "react";
 import { Document, Page, Text, View, Image, StyleSheet, Font, renderToBuffer } from "@react-pdf/renderer";
 import { readFileSync } from "fs";
 import { join } from "path";
+import QRCode from "qrcode";
 
 // ---------------------------------------------------------------------------
 // Fuentes: registramos Inter (métrica-compatible con Helvetica) como
@@ -28,14 +29,63 @@ import { join } from "path";
 // funcionando sin tocar nombres. Esto evita el bug de @react-pdf en
 // Vercel Lambda donde pdfkit no encuentra las fuentes estándar en el
 // filesystem del Lambda.
+//
+// Estrategia robusta para serverless:
+//   1. Buscar las TTF en varias rutas candidatas (cwd, __dirname, import.meta.url).
+//   2. Si no se encuentran, loguear las rutas probadas y fallback a las
+//      fuentes standard de @react-pdf (que también fallan en Vercel Lambda,
+//      pero al menos no crasheamos con ENOENT).
 // ---------------------------------------------------------------------------
 
-(function registerFonts() {
-  const fontsDir = join(process.cwd(), "lib", "pdf", "fonts");
+function resolveFontsDir(): string | null {
+  const candidates = [
+    join(process.cwd(), "lib", "pdf", "fonts"),
+    join(process.cwd(), ".next", "standalone", "lib", "pdf", "fonts"),
+    // __dirname no existe en ESM, pero Vercel compila TS a CJS, así que
+    // funcionará. Lo intentamos igualmente.
+    typeof __dirname !== "undefined" ? join(__dirname, "..", "..", "lib", "pdf", "fonts") : "",
+  ].filter(Boolean);
+
+  for (const dir of candidates) {
+    try {
+      const regPath = join(dir, "Inter-Regular.ttf");
+      const boldPath = join(dir, "Inter-Bold.ttf");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const fs = require("fs");
+      if (fs.existsSync(regPath) && fs.existsSync(boldPath)) {
+        return dir;
+      }
+    } catch {
+      // continuar con el siguiente candidato
+    }
+  }
+  return null;
+}
+
+function registerFonts() {
+  const fontsDir = resolveFontsDir();
+  if (!fontsDir) {
+    const tried = [
+      join(process.cwd(), "lib", "pdf", "fonts"),
+      join(process.cwd(), ".next", "standalone", "lib", "pdf", "fonts"),
+      typeof __dirname !== "undefined" ? join(__dirname, "..", "..", "lib", "pdf", "fonts") : "(no __dirname)",
+    ];
+    console.error(
+      "[diploma] TTF fonts not found. Tried paths:",
+      tried,
+      "process.cwd()=", process.cwd(),
+      "__dirname=", typeof __dirname !== "undefined" ? __dirname : "(undefined)",
+    );
+    // No lanzamos error: dejamos que @react-pdf intente con su fallback estándar.
+    // El endpoint devolverá 503 con el hint si también falla.
+    return;
+  }
+
   const regPath = join(fontsDir, "Inter-Regular.ttf");
   const boldPath = join(fontsDir, "Inter-Bold.ttf");
   const regB64 = readFileSync(regPath).toString("base64");
   const boldB64 = readFileSync(boldPath).toString("base64");
+
   Font.register({
     family: "Helvetica",
     fonts: [
@@ -43,13 +93,14 @@ import { join } from "path";
       { src: `data:font/ttf;base64,${boldB64}`, fontWeight: "bold" },
     ],
   });
-  // Re-registramos "Helvetica-Bold" como family para que `fontFamily: "Helvetica-Bold"`
-  // siga funcionando en los StyleSheet.
   Font.register({
     family: "Helvetica-Bold",
     src: `data:font/ttf;base64,${boldB64}`,
   });
-})();
+  console.log("[diploma] Fonts registered from", fontsDir);
+}
+
+registerFonts();
 
 // ---------------------------------------------------------------------------
 // Assets: cargamos el logo como base64 para que funcione en cualquier
@@ -312,7 +363,6 @@ const styles = StyleSheet.create({
   qr: {
     width: 36,
     height: 36,
-    backgroundColor: C.dark,
   },
   qrTextWrap: {
     marginLeft: 10,
@@ -344,6 +394,16 @@ const styles = StyleSheet.create({
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** Genera un QR code como data URI PNG (base64) para usar en <Image>. */
+async function generateQRDataUri(url: string): Promise<string> {
+  return QRCode.toDataURL(url, {
+    errorCorrectionLevel: "M",
+    margin: 1,
+    width: 72,
+    color: { dark: "#0a0a0a", light: "#fafaf9" },
+  });
+}
 
 /** Formatea segundos como HH:MM:SS (sin días). */
 function formatHMS(totalSeconds: number): string {
@@ -395,13 +455,19 @@ export interface DiplomaProps {
   verificationId: string;
   appUrl: string;
   issuedAt?: Date;
+  /** ID del myRace para construir la URL del QR. Si se omite se usa verificationId. */
+  myRaceId?: string;
 }
 
 // ---------------------------------------------------------------------------
 // Componente
 // ---------------------------------------------------------------------------
 
-export function Diploma(props: DiplomaProps) {
+interface DiplomaInternalProps extends DiplomaProps {
+  qrDataUri?: string;
+}
+
+export function Diploma(props: DiplomaInternalProps) {
   const timeFormatted = props.timeFormatted
     || (props.timeSeconds ? formatHMS(props.timeSeconds) : "—");
   const paceFormatted = props.paceFormatted
@@ -507,7 +573,11 @@ export function Diploma(props: DiplomaProps) {
 
           <View style={styles.footer}>
             <View style={styles.footerLeft}>
-              <View style={styles.qr} />
+              {props.qrDataUri ? (
+                <Image src={props.qrDataUri} style={styles.qr} />
+              ) : (
+                <View style={styles.qr} />
+              )}
               <View style={styles.qrTextWrap}>
                 <Text style={styles.qrTextTitle}>Compartir resultado</Text>
                 <Text style={styles.qrTextSub}>
@@ -545,5 +615,8 @@ export function Diploma(props: DiplomaProps) {
  *   - Guardar en Convex Storage
  */
 export async function renderDiploma(props: DiplomaProps): Promise<Buffer> {
-  return await renderToBuffer(<Diploma {...props} />);
+  const verifyPath = props.myRaceId ? `/resultado/${props.myRaceId}` : `/verificar/${props.verificationId}`;
+  const verifyUrl = `${props.appUrl}${verifyPath}`;
+  const qrDataUri = await generateQRDataUri(verifyUrl).catch(() => undefined);
+  return await renderToBuffer(<Diploma {...props} qrDataUri={qrDataUri} />);
 }

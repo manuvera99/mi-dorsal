@@ -1,17 +1,15 @@
 // =============================================================================
-// mi-dorsal — Endpoint: diploma PDF
+// mi-dorsal — Endpoint: diploma PDF (modo demo/dev)
 // =============================================================================
-// GET /api/diploma?myRaceId=xxx
+// GET /api/diploma?mode=demo
 //
-// Devuelve el diploma PDF como application/pdf.
+// Genera el diploma con datos hardcodeados para que cualquier dev pueda
+// ver el formato sin necesitar un myRace real.
 //
-// Por ahora: genera el diploma con datos de demo hardcodeados para que
-// cualquier developer pueda ver el formato sin tener que configurar
-// un myRace real. El flujo con datos reales se conectará desde
-// convex/emailNotifications.ts.
-//
-// TODO: cuando esté el flow de producción, cambiar a leer el myRace
-// de Convex y mapearlo a DiplomaProps.
+// El flujo de producción (diplomas reales) usa la ruta dinámica:
+//   GET /api/diploma/{myRaceId}  →  app/api/diploma/[myRaceId]/route.ts
+// Esa ruta lee el PDF pre-generado desde Convex Storage (lo sube
+// emailNotifications.sendResultFoundEmail cuando detecta el resultado).
 // =============================================================================
 
 import { NextRequest, NextResponse } from "next/server";
@@ -64,7 +62,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(
         {
           error: "PDF generation temporarily unavailable in this environment",
-          hint: "El diploma se renderiza en cliente; la generación PDF vía React-PDF no está operativa en Vercel Lambda. Usa la vista previa HTML en /diploma-preview.html o la sección DiplomaPreview de la home.",
+          hint: "La generación PDF vía @react-pdf no está disponible en este entorno. El flujo de producción usa /api/diploma/{myRaceId} que sirve el PDF pre-generado desde Convex Storage.",
         },
         { status: 503 }
       );

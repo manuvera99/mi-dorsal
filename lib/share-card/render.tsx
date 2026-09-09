@@ -12,6 +12,8 @@
 // =============================================================================
 
 import { ImageResponse } from "@vercel/og";
+import { readFileSync } from "fs";
+import { join } from "path";
 
 // ---------------------------------------------------------------------------
 // Tokens (alineados con diploma.tsx y app/globals.css)
@@ -55,29 +57,22 @@ export interface ShareCardProps {
 }
 
 // ---------------------------------------------------------------------------
-// Carga de fuentes (Inter + JetBrains Mono desde Google Fonts CDN)
+// Carga de fuentes (Inter + JetBrains Mono desde disco local)
+// ---------------------------------------------------------------------------
+// Las TTF están en lib/pdf/fonts/ y se incluyen en el bundle de Vercel
+// mediante next.config.js outputFileTracingIncludes (mismo patrón que
+// diploma.tsx). Cargamos desde disco para evitar latencia de red y
+// dependencias de terceros en tiempo de generación.
 // ---------------------------------------------------------------------------
 
-let _fontsCache: Awaited<ReturnType<typeof loadFonts>> | null = null;
+let _fontsCache: ReturnType<typeof loadFonts> | null = null;
 
-async function loadFonts() {
-  // Inter (UI) y JetBrains Mono (dorsal + tiempo)
-  // satori no soporta woff2 directamente — descargamos el TTF original.
-  // Fuentes de Google Fonts CDN (URLs oficiales de los TTF).
-  const [interRegular, interBold, jetRegular, jetBold] = await Promise.all([
-    fetch(
-      "https://github.com/rsms/inter/raw/master/docs/font-files/Inter-Regular.ttf",
-    ).then((r) => r.arrayBuffer()),
-    fetch(
-      "https://github.com/rsms/inter/raw/master/docs/font-files/Inter-Bold.ttf",
-    ).then((r) => r.arrayBuffer()),
-    fetch(
-      "https://github.com/JetBrains/JetBrainsMono/raw/master/fonts/ttf/JetBrainsMono-Regular.ttf",
-    ).then((r) => r.arrayBuffer()),
-    fetch(
-      "https://github.com/JetBrains/JetBrainsMono/raw/master/fonts/ttf/JetBrainsMono-Bold.ttf",
-    ).then((r) => r.arrayBuffer()),
-  ]);
+function loadFonts() {
+  const fontsDir = join(process.cwd(), "lib", "pdf", "fonts");
+  const interRegular = readFileSync(join(fontsDir, "Inter-Regular.ttf"));
+  const interBold = readFileSync(join(fontsDir, "Inter-Bold.ttf"));
+  const jetRegular = readFileSync(join(fontsDir, "JetBrainsMono-Regular.ttf"));
+  const jetBold = readFileSync(join(fontsDir, "JetBrainsMono-Bold.ttf"));
 
   return [
     { name: "Inter", data: interRegular, weight: 400 as const, style: "normal" as const },
@@ -87,9 +82,8 @@ async function loadFonts() {
   ];
 }
 
-async function getFonts() {
-  if (_fontsCache) return _fontsCache;
-  _fontsCache = await loadFonts();
+function getFonts() {
+  if (!_fontsCache) _fontsCache = loadFonts();
   return _fontsCache;
 }
 
@@ -570,7 +564,7 @@ function ShareCard(props: ShareCardProps) {
  *   - Servir desde una API route con cache-control
  */
 export async function renderShareCard(props: ShareCardProps): Promise<Buffer> {
-  const fonts = await getFonts();
+  const fonts = getFonts();
   const res = new ImageResponse(<ShareCard {...props} />, {
     width: 1200,
     height: 630,

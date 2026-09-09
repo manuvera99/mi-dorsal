@@ -132,6 +132,7 @@ export const sendResultFoundEmail = internalAction({
       verificationId,
       appUrl: APP_URL,
       issuedAt,
+      myRaceId: myRace._id,
     };
     const pdfBuffer = await renderDiploma(diplomaProps);
 

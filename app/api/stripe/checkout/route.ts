@@ -125,10 +125,37 @@ export async function POST(req: NextRequest) {
     }
 
     // 5) Crear Checkout Session
+    // Parámetros `fixed_by_ui` (configurados en el Checkout Studio de
+    // Stripe el 9 sep 2026, ver STRIPE_INTEGRATION_TODO.md):
+    //   - ui_mode: "hosted_page" (SDK 22.6.1 ≥ 21.0.0)
+    //   - allow_promotion_codes: false (decisión del Studio)
+    //   - billing_address_collection: "auto" (recogida opcional)
+    //   - phone_number_collection, automatic_tax: explícitamente off
+    //   - payment_method_collection: "always" (pedimos método SIEMPRE,
+    //     útil en subscription donde guardaremos la tarjeta para renovar)
+    //   - submit_type: "auto" (deja que Stripe elija según el contenido)
+    //   - integration_identifier, origin_context: metadata para los
+    //     analytics internos de Stripe
+    // Parámetros `sample_only` que SÍ tenemos con valores reales y por
+    // tanto NO se reemplazan (regla 6 del Studio): mode (subscription),
+    // success_url, cancel_url, line_items.
     const session = await stripe.checkout.sessions.create({
+      // ── fixed_by_ui ──────────────────────────────────────────────
+      ui_mode: "hosted_page",
+      billing_address_collection: "auto",
+      phone_number_collection: { enabled: false },
+      automatic_tax: { enabled: false },
+      allow_promotion_codes: false,
+      payment_method_collection: "always",
+      submit_type: "auto",
+      integration_identifier: "hosted_web_0001",
+      origin_context: "web",
+      // ── sample_only con valores reales (mantener) ────────────────
       mode: "subscription",
-      payment_method_types: ["card"],
       line_items: [{ price: stripePriceId, quantity: 1 }],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      // ── específicos de nuestro flujo (no son del Studio) ───────
       customer: customerId,
       customer_email: customerId ? undefined : userEmail,
       client_reference_id: userId, // ← esto es lo que el webhook usa para
@@ -142,12 +169,6 @@ export async function POST(req: NextRequest) {
           clerkUserId: userId,    // también en la sub para redundancia
         },
       },
-      // Permite al usuario cambiar entre mensual/anual desde el portal
-      // sin tener que volver al checkout.
-      allow_promotion_codes: true,
-      billing_address_collection: "auto",
-      success_url: successUrl,
-      cancel_url: cancelUrl,
       locale: "es",
     });
 

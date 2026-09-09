@@ -56,7 +56,7 @@ const TIERS: Tier[] = [
       "Strava OAuth en tiempo real (webhook)",
       "Analisis de tu perfil de corredor (ilimitado)",
       "Re-subir Strava export sin límite",
-      "Alertas personalizadas y export a calendario",
+      "Alertas y export a calendario (próximamente)",
     ],
     cta: { label: "Probar 14 días gratis", href: "/premium" },
   },

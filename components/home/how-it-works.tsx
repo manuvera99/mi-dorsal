@@ -16,7 +16,7 @@ const STEPS = [
     number: "1",
     icon: Search,
     title: "Encuentra tu carrera",
-    body: "Filtra por comunidad, fecha, distancia o tipo. Más de 1.200 carreras populares actualizadas a diario.",
+    body: "Filtra por comunidad, fecha, distancia o tipo. Más de 1.400 carreras populares actualizadas a diario.",
   },
   {
     number: "2",

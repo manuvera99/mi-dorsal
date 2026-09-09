@@ -27,7 +27,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://mi-dorsal.vercel.ap
 export const metadata: Metadata = {
   title: "Carreras populares en España · Catálogo 2026 y 2027",
   description:
-    "Catálogo de carreras populares de toda España: running, trail, asfalto y obstáculos. Filtra por comunidad autónoma, provincia, distancia (5K, 10K, media maratón, maratón) y mes. Más de 1.200 carreras actualizadas a diario desde RFEA, FEDME e ITRA.",
+    "Catálogo de carreras populares de toda España: running, trail, asfalto y obstáculos. Filtra por comunidad autónoma, provincia, distancia (5K, 10K, media maratón, maratón) y mes. Más de 1.400 carreras actualizadas a diario desde RFEA, FEDME e ITRA.",
   keywords: [
     "carreras populares",
     "carreras España",
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     siteName: "mi-dorsal",
     title: "Carreras populares en España · mi-dorsal",
     description:
-      "Más de 1.200 carreras populares de toda España. Filtra por comunidad, provincia, distancia o mes. Vota y predice tu tiempo.",
+      "Más de 1.400 carreras populares de toda España. Filtra por comunidad, provincia, distancia o mes. Vota y predice tu tiempo.",
     images: [
       {
         url: "/og-image.png",

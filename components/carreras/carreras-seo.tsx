@@ -52,7 +52,7 @@ export function ItemListJsonLd({ baseUrl }: { baseUrl: string }) {
           description:
             "Catálogo completo de carreras populares de running, trail, asfalto y obstáculos en España.",
           url: `${baseUrl}/carreras`,
-          numberOfItems: 1200,
+          numberOfItems: 1400,
           itemListOrder: "https://schema.org/ItemListOrderDescending",
         }),
       }}

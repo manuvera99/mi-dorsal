@@ -70,7 +70,7 @@ export async function generateMetadata({
   const distanceM = Math.round(race.distanceKm * 1000);
   const distanceLabel = getDistanceLabel(distanceM);
   const timeFormatted = formatHMS(myRace.actualTimeSeconds);
-  const runnerName = profile.displayName ?? profile.firstName ?? "Corredor";
+  const runnerName = profile.displayName ?? "Corredor";
   const ogImageUrl = myRace.shareCardStorageId
     ? `${APP_URL}/api/result/${myRaceId}/share-card.png`
     : FALLBACK_OG;

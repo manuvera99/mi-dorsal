@@ -24,12 +24,12 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: "¿Cuánto cuesta mi-dorsal?",
     answer:
-      "El plan Free es completo y 100% gratis: catálogo, predicción VDOT, voto 8D, calendario personal, resultados por email y diploma PDF. Si quieres más, Pro Mensual cuesta 2,99 €/mes y Pro Anual 24,99 €/año (≈ 2,08 €/mes, ahorras un 30%). Pro añade Strava en tiempo real, analisis ilimitado, alertas personalizadas y export a calendario. Cancela cuando quieras, sin compromiso. Pagos gestionados por Clerk Billing (Stripe) con RGPD y factura automática.",
+      "El plan Free es completo y 100% gratis: catálogo, predicción VDOT, voto 8D, calendario personal, resultados por email y diploma PDF. Si quieres más, Pro Mensual cuesta 2,99 €/mes y Pro Anual 24,99 €/año (≈ 2,08 €/mes, ahorras un 30%). Pro añade Strava en tiempo real y analisis ilimitado de tu perfil de corredor. Cancela cuando quieras, sin compromiso. Pagos gestionados por Clerk Billing (Stripe) con RGPD y factura automática.",
   },
   {
     question: "¿Qué hay gratis y qué es de pago?",
     answer:
-      "Gratis: TODO lo que hace el 90% de los corredores — catálogo, predicción de tiempo, voto 8D, calendario, PRs, resultados oficiales y un export de Strava (ZIP) por cuenta. Pro: Strava OAuth en tiempo real (webhook), re-subir Strava sin límite, analisis de tu perfil de corredor sin restricción, planificador de temporada, alertas personalizadas, export a Google/Apple Calendar, widget público y soporte prioritario 24 h.",
+      "Gratis: TODO lo que hace el 90% de los corredores — catálogo, predicción de tiempo, voto 8D, calendario, PRs, resultados oficiales y un export de Strava (ZIP) por cuenta. Pro: Strava OAuth en tiempo real (webhook), re-subir Strava sin límite, analisis de tu perfil de corredor sin restricción y soporte prioritario 24 h. En roadmap para Pro: planificador de temporada, alertas personalizadas, export a Google/Apple Calendar y widget público.",
   },
   {
     question: "¿De dónde sacáis las carreras?",
@@ -64,7 +64,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: "¿Puedo compartir mi temporada con mi club?",
     answer:
-      "Sí, cada perfil tiene URL pública. Los usuarios Pro pueden además añadir un widget 'Mis carreras' a su blog o web personal. Los perfiles de club completos (con comparativa entre miembros) están en roadmap.",
+      "Sí, cada perfil tiene URL pública. El widget 'Mis carreras' embebible y los perfiles de club (con comparativa entre miembros) están en roadmap para Pro.",
   },
 ];
 

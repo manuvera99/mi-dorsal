@@ -52,7 +52,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://mi-dorsal.com";
 export const metadata: Metadata = {
   title: "mi-dorsal Premium — Más de tu temporada de carreras",
   description:
-    "Sincronización Strava en tiempo real, analisis ilimitado, planificación de temporada y alertas personalizadas. Desde 2,99 €/mes. Sin compromiso, cancela cuando quieras.",
+    "Sincronización Strava en tiempo real y analisis ilimitado de tu perfil de corredor. Desde 2,99 €/mes. Sin compromiso, cancela cuando quieras.",
   alternates: { canonical: "/premium" },
   openGraph: {
     title: "mi-dorsal Premium",
@@ -122,12 +122,8 @@ const TIERS: Tier[] = [
       "Sincronización Strava OAuth (sync en tiempo real)",
       "Re-subir export de Strava ilimitado",
       "Analisis de tu perfil de corredor (sin límite)",
-      "Planificador inteligente de temporada",
-      "Alertas personalizadas (tu zona, tu distancia)",
-      "Comparativa con la comunidad",
-      "Export a Google Calendar / Apple Calendar",
-      "Widget público 'Mis carreras' para tu blog",
       "Soporte prioritario 24 h",
+      "Alertas, export calendario y widget (próximamente)",
     ],
     cta: { label: "Probar 14 días gratis", href: "/cuenta/suscripcion" },
   },
@@ -171,8 +167,8 @@ const PLAN_FEATURES: PlanFeature[] = [
   // Calendario (free, sin límite — Pro es "comodidad", no acceso)
   { category: "Calendario personal", label: "Carreras en tu calendario", free: "Sin límite", premium: "Sin límite" },
   { category: "Calendario personal", label: "Marcar dorsales y notas", free: true, premium: true },
-  { category: "Calendario personal", label: "Exportar a Google/Apple Calendar", free: false, premium: true },
-  { category: "Calendario personal", label: "Widget público para tu web/blog", free: false, premium: true },
+  { category: "Calendario personal", label: "Exportar a Google/Apple Calendar", free: false, premium: "Próximamente" },
+  { category: "Calendario personal", label: "Widget público para tu web/blog", free: false, premium: "Próximamente" },
 
   // PRs (siempre free — son la base del producto)
   { category: "Marcas personales", label: "Añadir PRs a mano", free: "Ilimitados", premium: "Ilimitados" },
@@ -182,9 +178,9 @@ const PLAN_FEATURES: PlanFeature[] = [
   // Predicciones (siempre free, coste $0)
   { category: "Predicciones y análisis", label: "Predicción de tiempo (Daniels VDOT)", free: "Ilimitadas", premium: "Ilimitadas + alta confianza" },
   { category: "Predicciones y análisis", label: "Analisis de tu perfil de corredor", free: "1 al mes", premium: "Ilimitado" },
-  { category: "Predicciones y análisis", label: "Planificación inteligente de temporada", free: false, premium: true },
-  { category: "Predicciones y análisis", label: "Estadísticas avanzadas de tus PRs", free: false, premium: true },
-  { category: "Predicciones y análisis", label: "Compararte con la comunidad", free: false, premium: true },
+  { category: "Predicciones y análisis", label: "Planificación inteligente de temporada", free: false, premium: "Próximamente" },
+  { category: "Predicciones y análisis", label: "Estadísticas avanzadas de tus PRs", free: false, premium: "Próximamente" },
+  { category: "Predicciones y análisis", label: "Compararte con la comunidad", free: false, premium: "Próximamente" },
 
   // Integraciones (Strava OAuth solo Pro — consume API; export ZIP libre)
   { category: "Integraciones", label: "Subir export de Strava (ZIP, una vez)", free: true, premium: true },
@@ -192,7 +188,7 @@ const PLAN_FEATURES: PlanFeature[] = [
   { category: "Integraciones", label: "Sincronización con Garmin", free: false, premium: "Próximamente" },
 
   // Alertas y soporte
-  { category: "Alertas y soporte", label: "Alertas personalizadas (carreras en tu zona, nuevas ediciones)", free: false, premium: true },
+  { category: "Alertas y soporte", label: "Alertas personalizadas (carreras en tu zona, nuevas ediciones)", free: false, premium: "Próximamente" },
   { category: "Alertas y soporte", label: "Soporte prioritario (24 h)", free: false, premium: true },
 ];
 
@@ -217,25 +213,25 @@ const BENEFITS: Benefit[] = [
   },
   {
     icon: MapPin,
-    title: "Planifica tu temporada",
+    title: "Planifica tu temporada (próximamente)",
     description:
-      "Te sugerimos qué carreras encajan con tus marcas y tu calendario. Sin conflictos, sin inscripciones de última hora.",
+      "Te sugeriremos qué carreras encajan con tus marcas y tu calendario. Sin conflictos, sin inscripciones de última hora.",
   },
   {
     icon: Bell,
-    title: "Alertas que sí importan",
+    title: "Alertas personalizadas (próximamente)",
     description:
       "Abre inscripciones de tu carrera favorita, cambio de horario, nuevo avituallamiento. Solo lo que te interesa, a tu ritmo.",
   },
   {
     icon: Download,
-    title: "Exporta a donde quieras",
+    title: "Export a calendarios (próximamente)",
     description:
-      "Calendario a Google Calendar o Apple Calendar. Tus marcas a CSV. Sin lock-in, tus datos son tuyos.",
+      "Exporta tu agenda a Google Calendar o Apple Calendar. Tus marcas a CSV. Sin lock-in, tus datos son tuyos.",
   },
   {
     icon: BarChart3,
-    title: "Estadísticas que motivan",
+    title: "Estadísticas avanzadas (próximamente)",
     description:
       "Evolución de tus PRs, comparativa con la comunidad, tendencias por distancia. Datos como celebración, no como reporte.",
   },
@@ -296,7 +292,7 @@ const FAQ: FaqItem[] = [
   {
     question: "¿Qué incluye Pro que no tenga Free?",
     answer:
-      "Sincronización Strava OAuth (sync en tiempo real, consume la API de Strava), analisis ilimitado, alertas personalizadas, planificación de temporada, comparativa con la comunidad, export a Google/Apple Calendar y widget público para tu blog. Lo básico (catálogo, predicciones, PRs, export ZIP, calendario) es siempre free.",
+      "Sincronización Strava OAuth (sync en tiempo real, consume la API de Strava), analisis ilimitado y soporte prioritario. En roadmap para Pro: alertas personalizadas, planificación de temporada, export a Google/Apple Calendar y widget público. Lo básico (catálogo, predicciones, PRs, export ZIP, calendario) es siempre free.",
   },
   {
     question: "¿Puedo probar Pro antes de pagar?",
@@ -612,7 +608,7 @@ function PricingCard({ tier }: { tier: Tier }) {
         isFree ? "opacity-95" : "",
       ].join(" ")}
     >
-      {/* Badge superior (solo Pro Anual: "Ahorra 50%") */}
+      {/* Badge superior (solo Pro Anual) */}
       {tier.badge && (
         <div
           className={[

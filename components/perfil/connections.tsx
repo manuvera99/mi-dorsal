@@ -457,7 +457,7 @@ function InfoModal({ onClose, summary, oauthConnected }: InfoModalProps) {
         <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-xs text-blue-800">
           Tus datos solo se usan para calcular tu tipo de corredor, detectar
           carreras, mandarte el resultado oficial por email, y el análisis
-          con IA. Nunca los vendemos ni los compartimos.{" "}
+          de tu perfil de corredor. Nunca los vendemos ni los compartimos.{" "}
           <a
             href="/legal/privacidad"
             target="_blank"

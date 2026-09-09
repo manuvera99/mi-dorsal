@@ -45,7 +45,7 @@ const CAPABILITIES: Capability[] = [
     emoji: "⏱️",
     title: "Predicción de tiempo en cada carrera (Daniels VDOT)",
     body:
-      "Mete tu mejor marca en 5K, 10K o media y te decimos cuánto harás en cualquier otra distancia. Modelo calibrado con datos de populares.",
+      "Mete tu mejor marca en 5K, 10K o media y calcula tu tiempo estimado en cualquier otra distancia. Mismo cálculo (Daniels VDOT) que usan muchas tablas de ritmo.",
     example: "PR en 10K: 44:21 → predicción en media maratón: 1h 38′ ± 4%",
   },
   {

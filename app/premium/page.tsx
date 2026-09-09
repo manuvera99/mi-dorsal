@@ -210,7 +210,7 @@ const BENEFITS: Benefit[] = [
     icon: Brain,
     title: "Predice tu tiempo en cualquier carrera",
     description:
-      "Con tu mejor marca en una distancia te decimos cuánto harás en otra. Modelo Daniels VDOT calibrado con datos reales de corredores populares.",
+      "Con tu mejor marca en una distancia, calcula tu tiempo estimado en otra usando el método Daniels VDOT — la misma fórmula de las tablas de ritmo clásicas.",
   },
   {
     icon: Trophy,
@@ -265,7 +265,7 @@ const TESTIMONIALS: Testimonial[] = [
     distance: "Media maratón",
     pr: "1:42:18",
     quote:
-      "Lo de la predicción de tiempo me voló la cabeza. Sabía mis 5K y me decía exactamente lo que iba a hacer en la Behobia. Acerté a 18 segundos.",
+      "Metí mi marca de 5K y calculé mi tiempo estimado para la Behobia. Al final quedé a 18 segundos de esa cifra — para ser una fórmula, no está mal.",
     initials: "CM",
   },
   {

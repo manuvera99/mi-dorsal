@@ -3,9 +3,9 @@
 // =============================================================================
 // mi-dorsal — Tarjeta de análisis del perfil de corredor en /perfil
 // =============================================================================
-// Botón que dispara convex/actions/coachAnalysis.ts (LLM con voz de
-// entrenador experimentado), muestra el resultado cacheado en el profile
-// (coachAnalysisText/coachAnalysisAt), y permite regenerarlo.
+// Botón que dispara convex/actions/coachAnalysis.ts (LLM que resume el
+// registro de entrenamiento del usuario), muestra el resultado cacheado
+// en el profile (coachAnalysisText/coachAnalysisAt), y permite regenerarlo.
 //
 // Mientras la action corre, mostramos un toast persistente y minimizable
 // (abajo a la derecha) con un link de vuelta a /perfil. El usuario puede
@@ -85,7 +85,7 @@ export function CoachAnalysisCard({ coachAnalysisText, coachAnalysisAt }: CoachA
       toast.dismiss(toastId);
       toast.show({
         title: "Tu análisis está listo",
-        description: "Hemos actualizado la lectura de tu entrenador.",
+        description: "Hemos actualizado la lectura de tu perfil de corredor.",
         variant: "success",
         action: { label: "Ver análisis", href: "/perfil" },
       });
@@ -125,7 +125,7 @@ export function CoachAnalysisCard({ coachAnalysisText, coachAnalysisAt }: CoachA
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-runner-primary" />
-          Análisis de tu entrenador
+          Análisis de tu perfil de corredor
         </h2>
         <div className="flex items-center gap-3">
           {counterText && (
@@ -152,9 +152,9 @@ export function CoachAnalysisCard({ coachAnalysisText, coachAnalysisAt }: CoachA
       {!text ? (
         <div className="py-6 px-2 text-center">
           <p className="text-sm text-stone-600 max-w-sm mx-auto mb-4 leading-relaxed">
-            Un entrenador con criterio propio, no un generador de frases motivacionales:
-            analiza tu registro de entrenamiento (volumen, consistencia, tipos de sesión,
-            marcas) y te dice qué estás haciendo bien y qué cambiaría.
+            Un análisis de tu registro (volumen, consistencia, tipos de sesión,
+            marcas) que resume qué está funcionando y qué podrías ajustar. Es una
+            lectura de tus datos, no una tutoría personal.
           </p>
           {isAtLimit ? (
             <LimitReachedMessage resetDateText={resetDateText} remaining={remaining} />

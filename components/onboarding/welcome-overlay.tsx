@@ -144,7 +144,7 @@ export function WelcomeOverlay() {
               Añade tu primer PR
             </h2>
             <p className="text-xs text-stone-600 leading-relaxed">
-              Con una marca te predecimos el resto de distancias.
+              Con una marca calculas tu tiempo estimado en el resto de distancias.
             </p>
           </Link>
 

@@ -194,7 +194,7 @@ function PerfilContent({ profile, prs }: { profile: any; prs: any[] }) {
       {/* Feed de actividades — con empty state para usuarios sin Strava */}
       {!isMockMode() && <ActivityFeed />}
 
-      {/* Análisis narrativo del entrenador IA — a petición, cacheado en el profile */}
+      {/* Análisis narrativo del perfil de corredor — a petición, cacheado en el profile */}
       {!isMockMode() && (
         <CoachAnalysisCard
           coachAnalysisText={profile?.coachAnalysisText}
@@ -249,8 +249,8 @@ function PrsSection({ prs }: { prs: any[] }) {
           </h3>
           <p className="text-sm text-stone-600 max-w-sm mx-auto mb-4 leading-relaxed">
             Añade tu mejor marca en una distancia (5K, 10K, lo que sea).
-            Con una sola marca te predecimos el resto: media maratón,
-            maratón, lo que te echen.
+            Con una sola marca puedes calcular tu tiempo estimado en el
+            resto: media maratón, maratón, lo que te echen.
           </p>
         </div>
       ) : (

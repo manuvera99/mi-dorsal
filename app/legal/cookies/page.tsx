@@ -62,7 +62,7 @@ export default function CookiesPage() {
         Cuando entras por primera vez en la web, te mostramos un banner donde puedes aceptar o
         rechazar las cookies no técnicas. Tu elección se guarda en <code>localStorage</code> y
         puedes cambiarla borrando los datos del navegador o escribiéndonos a{" "}
-        <a href="mailto:privacidad@mi-dorsal.es">privacidad@mi-dorsal.es</a>.
+        <a href="mailto:privacidad@mi-dorsal.com">privacidad@mi-dorsal.com</a>.
       </p>
       <p>También puedes gestionar las cookies directamente en tu navegador:</p>
       <ul>

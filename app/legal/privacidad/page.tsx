@@ -18,7 +18,7 @@ export default function PrivacidadPage() {
         <strong>mi-dorsal</strong> (en adelante, "nosotros" o "el servicio") es el responsable del
         tratamiento de los datos personales recogidos a través de este sitio web. Para cualquier
         consulta relativa a protección de datos, puedes escribir a{" "}
-        <a href="mailto:privacidad@mi-dorsal.es">privacidad@mi-dorsal.es</a>.
+        <a href="mailto:privacidad@mi-dorsal.com">privacidad@mi-dorsal.com</a>.
       </p>
 
       <h2>2. Datos que recogemos</h2>
@@ -57,7 +57,7 @@ export default function PrivacidadPage() {
         </li>
         <li>
           <strong>Comunicaciones</strong> (base: consentimiento): emails transaccionales sobre
-          tus carreras y, opcionalmente, un resumen semanal.
+          tus carreras y, si te suscribes, la newsletter editorial mensual.
         </li>
         <li>
           <strong>Publicidad personalizada</strong> (base: consentimiento): si la das, Google
@@ -155,7 +155,7 @@ export default function PrivacidadPage() {
       <p>
         Conservamos tus datos de cuenta mientras no solicites la baja. Puedes solicitar la
         eliminación de tu cuenta y todos los datos asociados en cualquier momento escribiéndonos
-        a <a href="mailto:privacidad@mi-dorsal.es">privacidad@mi-dorsal.es</a>. Los datos
+        a <a href="mailto:privacidad@mi-dorsal.com">privacidad@mi-dorsal.com</a>. Los datos
         anonimizados para analítica agregada pueden conservarse hasta 24 meses.
       </p>
 
@@ -171,7 +171,7 @@ export default function PrivacidadPage() {
       </ul>
       <p>
         Para ejercer estos derechos, escríbenos a{" "}
-        <a href="mailto:privacidad@mi-dorsal.es">privacidad@mi-dorsal.es</a>. También puedes
+        <a href="mailto:privacidad@mi-dorsal.com">privacidad@mi-dorsal.com</a>. También puedes
         presentar una reclamación ante la Agencia Española de Protección de Datos
         (<a href="https://www.aepd.es" target="_blank" rel="noopener noreferrer">www.aepd.es</a>).
       </p>

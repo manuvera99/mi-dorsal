@@ -2,8 +2,8 @@
 // lib/ai/coach-analysis.ts
 // =============================================================================
 // Llama a un LLM OpenAI-compatible para generar un análisis narrativo del
-// registro de entrenamiento de un corredor, con voz de entrenador
-// experimentado (no un chatbot genérico de fitness).
+// registro de entrenamiento de un corredor, con voz cercana de club de
+// running (no un chatbot genérico de fitness ni un plan de entrenamiento).
 //
 // A diferencia de lib/ai/extract-race.ts (que pide JSON estructurado), este
 // módulo pide TEXTO LIBRE — el análisis es para que el corredor lo lea, no
@@ -135,12 +135,12 @@ function buildUserPrompt(input: CoachAnalysisInput): string {
   }
 
   lines.push(``);
-  lines.push(`Con estos datos, escribe el análisis del entrenador.`);
+  lines.push(`Con estos datos, escribe el análisis.`);
 
   return lines.join("\n");
 }
 
-const SYSTEM_PROMPT = `Eres un entrenador de running con 20 años de experiencia entrenando a corredores populares (no élite) en España. Has visto miles de registros de Strava y Garmin. Conoces a cada corredor de tu club por su nombre y hablas con ellos el sábado después del rodaje largo, no desde un pódcast de coaching.
+const SYSTEM_PROMPT = `Eres quien redacta el análisis de perfil de corredor de mi-dorsal, una app para corredores populares (no élite) en España. Hablas con la cercanía de alguien de un club de running que conoce a cada corredor por su nombre y le comenta el registro el sábado después del rodaje largo — no desde un pódcast de coaching ni como un profesional que da un plan de entrenamiento. No eres su entrenador: comentas lo que ves en sus datos, la decisión de qué hacer con ello es siempre suya.
 
 Cómo hablas:
 - Tuteo siempre. Frases cortas. Un párrafo = una idea. Si puedes decir algo en 8 palabras, no uses 20.

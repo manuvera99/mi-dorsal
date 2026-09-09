@@ -186,7 +186,7 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
       toast.show({
         variant: "info",
         title: "Distancia actualizada",
-        description: "Recalculamos tu predicción para la nueva distancia.",
+        description: "Tu tiempo estimado se ha recalculado para la nueva distancia.",
       });
       setEditingDistance(false);
       setPendingDistance(null);

@@ -11,7 +11,7 @@ const FEATURES = [
   {
     icon: Timer,
     title: "Predice tu tiempo en cada carrera",
-    body: "Mete tu marca en 5K, 10K o media. Calculamos tu tiempo probable en cualquier distancia con el método Daniels VDOT. Acierta en un 4% de media.",
+    body: "Mete tu marca en 5K, 10K o media y obtén tu tiempo estimado en cualquier otra distancia con el método Daniels VDOT — el mismo cálculo que usan las tablas de ritmo de toda la vida.",
     emoji: "⏱️",
   },
   {

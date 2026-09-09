@@ -166,7 +166,7 @@ function assertWithinCoachLimit(
   const count = profile.aiCoachUsageCount ?? 0;
   if (count >= limit) {
     throw new Error(
-      `Has alcanzado tu límite de ${limit} análisis del entrenador este mes. Se resetea el día 1 del mes que viene.`,
+      `Has alcanzado tu límite de ${limit} análisis de perfil de corredor este mes. Se resetea el día 1 del mes que viene.`,
     );
   }
   // Marcamos el "now" para que el caller sepa en qué mes estamos.
@@ -218,7 +218,7 @@ export const incrementCoachUsage = internalMutation({
     // (El caller ya habrá comprobado, pero por si acaso.)
     if (!isNewMonth && currentCount >= limit) {
       throw new Error(
-        `Has alcanzado tu límite de ${limit} análisis del entrenador este mes. Se resetea el día 1 del mes que viene.`,
+        `Has alcanzado tu límite de ${limit} análisis de perfil de corredor este mes. Se resetea el día 1 del mes que viene.`,
       );
     }
 

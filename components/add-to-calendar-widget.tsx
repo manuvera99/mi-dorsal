@@ -112,7 +112,7 @@ function MockAddToCalendar({
           ¿Vas a correrla?
         </h3>
         <p className="text-sm text-gray-600 mb-3">
-          Añádela a tu calendario y te predecimos tu tiempo. El dorsal lo puedes
+          Añádela a tu calendario y calcula tu tiempo estimado. El dorsal lo puedes
           añadir después, cuando te llegue.
         </p>
         <button
@@ -168,7 +168,7 @@ function MockAddToCalendar({
         ¿Vas a correrla?
       </h3>
       <p className="text-sm text-gray-600 mb-3">
-        Añádela a tu calendario y te predecimos tu tiempo. El dorsal lo puedes
+        Añádela a tu calendario y calcula tu tiempo estimado. El dorsal lo puedes
         añadir después, cuando te llegue.
       </p>
       <DistanceModalityPicker
@@ -330,7 +330,7 @@ function RealAddToCalendar({
           ¿Vas a correrla?
         </h3>
         <p className="text-sm text-gray-600 mb-3">
-          Añádela a tu calendario y te predecimos tu tiempo. El dorsal lo puedes
+          Añádela a tu calendario y calcula tu tiempo estimado. El dorsal lo puedes
           añadir después, cuando te llegue.
         </p>
         <Link href="/sign-in" className="btn-primary w-full justify-center">
@@ -384,7 +384,7 @@ function RealAddToCalendar({
         ¿Vas a correrla?
       </h3>
       <p className="text-sm text-gray-600 mb-3">
-        Añádela a tu calendario y te predecimos tu tiempo. El dorsal lo puedes
+        Añádela a tu calendario y calcula tu tiempo estimado. El dorsal lo puedes
         añadir después, cuando te llegue.
       </p>
       <DistanceModalityPicker

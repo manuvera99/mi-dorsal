@@ -55,6 +55,12 @@ function RealSuscripcionContent() {
   const [isPortalLoading, setIsPortalLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Si el usuario ya es premium, mostramos un mensaje amable en lugar
+  // de los CTAs de upgrade. Mantenemos el bloque "Estado actual" y
+  // "Gestionar suscripción" (portal), pero ocultamos "Hazte Pro".
+  // Esto evita la fricción de ofrecer pagar por algo que ya tiene.
+  // (Sesión 9 sep 2026 — feedback tras smoke test.)
+
   // Mientras Clerk carga, mostramos un spinner ligero.
   if (!userLoaded) {
     return (
@@ -143,40 +149,62 @@ function RealSuscripcionContent() {
         />
       </section>
 
-      {/* Bloque 2: elegir/cambiar plan (botones que llaman a Stripe Checkout) */}
-      <section className="mb-8">
-        <h2 className="text-lg font-semibold mb-3">
-          {hasAccess ? "Cambiar de plan" : "Hazte Pro"}
-        </h2>
-        <p className="text-sm text-stone-600 mb-4">
-          {hasAccess
-            ? "Sube o baja de plan. El cambio se aplica desde el siguiente ciclo de cobro."
-            : "Empieza con 14 días gratis. Sin tarjeta, sin compromiso. Cancela cuando quieras."}
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <CheckoutButton
-            label="Hacerme Pro Mensual — 2,99 €/mes"
-            sublabel="Cobro inmediato. Sin compromiso."
-            loading={isCheckoutLoading === "monthly"}
-            disabled={isCheckoutLoading !== null || isPortalLoading}
-            onClick={() => startCheckout("premium_monthly")}
-            variant="primary"
-          />
-          <CheckoutButton
-            label="Probar Pro Anual — 24,99 €/año"
-            sublabel="14 días gratis sin tarjeta · ahorra 30%"
-            loading={isCheckoutLoading === "yearly"}
-            disabled={isCheckoutLoading !== null || isPortalLoading}
-            onClick={() => startCheckout("premium_yearly")}
-            variant="amber"
-          />
-        </div>
-        <p className="text-xs text-stone-500 mt-3 flex items-start gap-1.5">
-          <Shield className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-          Pagos seguros por Stripe en EUR (PSD2 / 3D Secure). Cancela
-          cuando quieras desde el portal de gestión.
-        </p>
-      </section>
+      {/* Bloque 2: elegir/cambiar plan (botones que llaman a Stripe Checkout).
+          OCULTO si el user ya es premium — no tiene sentido ofrecer upgrade
+          a alguien que ya paga. Mantenemos el portal de gestión (bloque 3)
+          para que pueda cancelar o cambiar tarjeta. */}
+      {!hasAccess && (
+        <section className="mb-8">
+          <h2 className="text-lg font-semibold mb-3">Hazte Pro</h2>
+          <p className="text-sm text-stone-600 mb-4">
+            El Pro Anual incluye 14 días gratis sin tarjeta. El Pro Mensual
+            se cobra al suscribirse. Cancela cuando quieras.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <CheckoutButton
+              label="Hacerme Pro Mensual — 2,99 €/mes"
+              sublabel="Cobro inmediato. Sin compromiso."
+              loading={isCheckoutLoading === "monthly"}
+              disabled={isCheckoutLoading !== null || isPortalLoading}
+              onClick={() => startCheckout("premium_monthly")}
+              variant="primary"
+            />
+            <CheckoutButton
+              label="Probar Pro Anual — 24,99 €/año"
+              sublabel="14 días gratis sin tarjeta · ahorra 30%"
+              loading={isCheckoutLoading === "yearly"}
+              disabled={isCheckoutLoading !== null || isPortalLoading}
+              onClick={() => startCheckout("premium_yearly")}
+              variant="amber"
+            />
+          </div>
+          <p className="text-xs text-stone-500 mt-3 flex items-start gap-1.5">
+            <Shield className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+            Pagos seguros por Stripe en EUR (PSD2 / 3D Secure). Cancela
+            cuando quieras desde el portal de gestión.
+          </p>
+        </section>
+      )}
+
+      {/* Si el user ya es premium, mostramos un mensaje amable en lugar
+          del CTA de upgrade, para que sepa que está al día. */}
+      {hasAccess && (
+        <section className="mb-8 card border-emerald-200 bg-emerald-50/50">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h2 className="text-lg font-semibold text-stone-900 mb-1">
+                Ya eres Pro
+              </h2>
+              <p className="text-sm text-stone-700">
+                Disfrutas de todas las ventajas de Pro. Si quieres cambiar
+                de plan, cancelar o ver tus facturas, usa el portal de
+                gestión más abajo.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Bloque 3: gestionar suscripción (cancelar, cambiar tarjeta, facturas) */}
       {hasAccess && (

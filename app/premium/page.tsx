@@ -132,7 +132,7 @@ const TIERS: Tier[] = [
       "Soporte prioritario 24 h",
       "Alertas, export calendario y widget (próximamente)",
     ],
-    cta: { label: "Probar 14 días gratis", href: "/cuenta/suscripcion" },
+    cta: { label: "Hacerme Pro Mensual", href: "/cuenta/suscripcion" },
   },
   {
     id: "pro-annual",
@@ -294,7 +294,7 @@ const FAQ: FaqItem[] = [
   {
     question: "¿Cuánto cuesta mi-dorsal Premium?",
     answer:
-      "Hay 2 planes Pro: Pro Mensual a 2,99 €/mes (sin compromiso, cancela cuando quieras) y Pro Anual a 24,99 €/año (equivale a 2,08 €/mes, ahorras 30%). Los dos planes tienen exactamente las mismas features — solo cambia el precio y el periodo de cobro. El Pro Anual incluye 14 días de prueba gratis sin tarjeta.",
+      "Hay 2 planes Pro: Pro Mensual a 2,99 €/mes (sin compromiso, cobro inmediato, cancela cuando quieras) y Pro Anual a 24,99 €/año (equivale a 2,08 €/mes, ahorras 30%, con 14 días de prueba gratis sin tarjeta). Los dos planes tienen exactamente las mismas features — solo cambia el precio y el periodo de cobro.",
   },
   {
     question: "¿Qué incluye Pro que no tenga Free?",
@@ -304,7 +304,7 @@ const FAQ: FaqItem[] = [
   {
     question: "¿Puedo probar Pro antes de pagar?",
     answer:
-      "Sí. Tienes 14 días de prueba gratis sin tarjeta. Si en esos 14 días decides que no, vuelves a Free automáticamente sin perder nada de lo que ya tenías.",
+      "Solo el Pro Anual tiene 14 días de prueba gratis (sin tarjeta). El Pro Mensual se cobra al suscribirse. Si en los 14 días del Pro Anual decides que no, vuelves a Free automáticamente sin perder nada de lo que ya tenías.",
   },
   {
     question: "¿Qué pasa si cancelo Pro?",
@@ -367,7 +367,7 @@ export default function PremiumPage() {
               tarjeta para probar, cancela cuando quieras.
             </p>
 
-            {/* Trust badges inline (RGPD, sin tarjeta, cancela cuando quieras) */}
+            {/* Trust badges inline (RGPD, sin tarjeta en el anual, cancela cuando quieras) */}
             <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-stone-600 mb-10">
               <span className="inline-flex items-center gap-1.5">
                 <Shield className="h-3.5 w-3.5 text-emerald-600" /> RGPD · Tus
@@ -375,7 +375,7 @@ export default function PremiumPage() {
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <Clock className="h-3.5 w-3.5 text-emerald-600" /> 14 días
-                gratis sin tarjeta
+                gratis en el Pro Anual
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <RotateCcw className="h-3.5 w-3.5 text-emerald-600" />{" "}
@@ -586,7 +586,7 @@ export default function PremiumPage() {
               </Link>
             </div>
             <p className="text-rose-200 text-xs mt-6">
-              14 días gratis sin tarjeta · Cancela en cualquier momento
+              14 días gratis en el Pro Anual · Cancela en cualquier momento
             </p>
           </div>
         </section>

@@ -631,6 +631,9 @@ function RaceDetailContent({ race, summary }: { race: any; summary: any }) {
               {/* Añadir a mi calendario (dorsal opcional) */}
               <AddToCalendarWidget
                 raceId={race._id}
+                distanceKm={race.distanceKm}
+                elevationGainM={race.elevationGainM}
+                raceFormats={race.raceFormats}
                 footerText={`${summary?.totalRatings ?? 0} corredores la han valorado`}
               />
 

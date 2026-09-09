@@ -94,11 +94,25 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
-  const stripePriceId = PRICE_ALIAS_TO_STRIPE_ID[body.priceId];
-  if (!stripePriceId) {
+  // Defensa contra BOM y otros caracteres invisibles que se cuelan
+  // al copiar/pegar las env vars en Vercel (detectado en sesión 9 sep
+  // 2026 — el BOM al inicio del price_… hacía que Stripe devolviera
+  // "No such price" aunque el ID fuera correcto). El .trim() elimina
+  // espacios y BOM al principio y al final; el check del prefijo
+  // detecta otros caracteres invisibles que .trim() no quite.
+  const rawPriceId = PRICE_ALIAS_TO_STRIPE_ID[body.priceId];
+  const stripePriceId = rawPriceId?.trim().replace(/^[\uFEFF\u200B-\u200D\u2060]+/, "");
+  if (!stripePriceId || !stripePriceId.startsWith("price_")) {
+    console.error(
+      `[stripe/checkout] priceId malformado para ${body.priceId}: ` +
+      `raw="${rawPriceId}" cleaned="${stripePriceId}"`,
+    );
     return NextResponse.json(
-      { error: "invalid_price", hint: "priceId debe ser premium_monthly o premium_yearly" },
-      { status: 400 },
+      {
+        error: "invalid_price",
+        hint: "El STRIPE_PRICE_* configurado en Vercel no parece un price_… válido. Revisa la env var (puede tener un BOM o caracteres invisibles).",
+      },
+      { status: 500 },
     );
   }
 

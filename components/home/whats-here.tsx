@@ -59,10 +59,10 @@ const CAPABILITIES: Capability[] = [
   {
     icon: Mail,
     emoji: "📬",
-    title: "Resultados oficiales por email + diploma PDF",
+    title: "Resultado oficial por email: diploma PDF + imagen para redes",
     body:
-      "Cuando el organizador publica clasificaciones, te llega un email con tu tiempo, posición, comparativa con tu predicción y un diploma descargable.",
-    example: "Tu Behobia: 1h 26′ 14″ · diploma PDF adjunto · compártelo con tu club",
+      "Cuando el organizador publica clasificaciones, te llega un email con tu tiempo, posición, comparativa con tu predicción, el diploma PDF A4 imprimible y una imagen PNG 1200×630 con tu dorsal lista para publicar en tu club o en redes.",
+    example: "Tu Behobia: 1h 26′ 14″ · diploma PDF + PNG adjunto · un clic para compartir",
   },
   {
     icon: Calendar,

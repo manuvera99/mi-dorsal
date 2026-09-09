@@ -23,7 +23,7 @@ const MOMENTS = [
   {
     icon: Trophy,
     when: "Noviembre, el día después.",
-    body: "Resultado oficial publicado: 1h 26' 14\". Nuevo PR. El diploma PDF ya está en tu buzón. Lo compartes en el grupo de WhatsApp del club. 🎉",
+    body: "Te llega un email con tu tiempo: 1h 26′ 14\". Nuevo PR en 10K. Adjuntos: el diploma PDF A4 (para enmarcar) y la imagen PNG con tu dorsal, lista para publicar en el grupo de WhatsApp del club o en tu Instagram. Un clic y compartido. 🎉",
   },
   {
     icon: Zap,
@@ -97,7 +97,7 @@ export function UseCase() {
           <EmailMockup
             label="Día D+1 · resultado oficial"
             title="🏁 Tu Behobia: 01:26:14"
-            body="Has batido tu marca en 1:52. Diploma PDF adjunto. Comparte con tu club."
+            body="Has batido tu marca en 1:52. Adjuntos: diploma PDF (para imprimir) + imagen PNG (para tu club o redes). Comparte con un clic."
             footer="mi-dorsal · Nuevo PR desbloqueado 🎉"
             highlight
           />

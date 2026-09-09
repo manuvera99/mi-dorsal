@@ -28,8 +28,8 @@ const FEATURES = [
   },
   {
     icon: Mail,
-    title: "Resultados en tu buzón",
-    body: "Cuando se publican las clasificaciones, te llega el email con tu tiempo, diploma PDF y comparativa con tu predicción. Sin volver a la web del organizador.",
+    title: "Diploma + imagen para redes, en tu buzón",
+    body: "Cuando se publican las clasificaciones, te llega un email con tu tiempo, el diploma PDF A4 imprimible y una imagen PNG con tu dorsal, lista para publicar en Instagram, WhatsApp, Strava o X. Sin volver a la web del organizador.",
     emoji: "📬",
   },
 ];

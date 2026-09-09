@@ -119,20 +119,23 @@ export function ResultBanner() {
               <span className="text-red-100/80"> · {delta}</span>
             )}
           </p>
+          <p className="text-xs text-red-100/90 mt-1.5">
+            Diploma PDF + imagen para redes adjuntos.
+          </p>
 
           <Link
-            href="/perfil"
-            className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-white hover:text-yellow-200 transition-colors"
+            href={`/resultado/${latest.myRaceId}`}
+            className="mt-3 inline-flex items-center gap-1.5 bg-white text-runner-primary font-semibold text-sm px-3 py-2 rounded-md hover:bg-yellow-50 transition-colors shadow-sm"
           >
-            Ver mi temporada
+            <Share2 className="h-4 w-4" aria-hidden="true" />
+            Compartir mi resultado
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
           <Link
-            href={`/resultado/${latest.myRaceId}`}
-            className="mt-3 ml-3 inline-flex items-center gap-1.5 text-sm font-semibold text-white/90 hover:text-white transition-colors"
+            href="/perfil"
+            className="mt-3 ml-2 inline-flex items-center gap-1.5 text-sm font-semibold text-white/90 hover:text-white transition-colors"
           >
-            <Share2 className="h-3.5 w-3.5" aria-hidden="true" />
-            Compartir mi resultado
+            Ver mi temporada
           </Link>
         </div>
 

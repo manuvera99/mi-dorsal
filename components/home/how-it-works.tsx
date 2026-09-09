@@ -27,8 +27,8 @@ const STEPS = [
   {
     number: "3",
     icon: Inbox,
-    title: "Recibe tu resultado oficial",
-    body: "Cuando la carrera publica clasificaciones, te llega el email con tu tiempo, posición y diploma PDF.",
+    title: "Recibe diploma PDF + imagen para redes",
+    body: "Cuando la carrera publica clasificaciones, te llega un email con tu tiempo, posición, el diploma PDF A4 y la imagen PNG lista para publicar en tu club o en redes.",
   },
 ];
 

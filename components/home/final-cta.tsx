@@ -31,9 +31,13 @@ export function FinalCta() {
         >
           Tu temporada empieza con un dorsal.
         </h2>
-        <p className="text-base md:text-lg text-red-50/90 mb-8 max-w-xl mx-auto">
+        <p className="text-base md:text-lg text-red-50/90 mb-3 max-w-xl mx-auto">
           Únete a los primeros corredores que ya planifican su año con mi-dorsal. Sin pagar, sin
           trampa, sin excusas.
+        </p>
+        <p className="text-sm md:text-base text-yellow-100/95 mb-8 max-w-xl mx-auto font-semibold">
+          Cuando cruces tu próxima meta, te esperamos en tu buzón con el diploma PDF y la imagen
+          para tus redes. 📬
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
           <Link

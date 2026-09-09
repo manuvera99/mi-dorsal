@@ -8,6 +8,7 @@
 2. **TrustBar** (`components/home/trust-bar.tsx`) — 4 stats con números honestos. Disclaimer visible.
 3. **Problem** (`components/home/problem.tsx`) — 3 cards con dolor del corredor popular. Tono humorístico.
 4. **HowItWorks** (`components/home/how-it-works.tsx`) — Sección oscura con 3 pasos y línea conectora.
+4b. **DiplomaAndSharePreview** (`components/home/diploma-preview.tsx`) — **Sección estrella** añadida en sep 2026. Mockups lado a lado del diploma PDF A4 y la imagen PNG 1200×630 para redes, con la promesa "al cruzar la meta, llegan los dos a tu buzón". Posicionada tras HowItWorks para capitalizar la atención del paso 3.
 5. **Features** (`components/home/features.tsx`) — 4 features en grid.
 6. **FeaturedRaces** (`components/home/featured-races.tsx`) — Carrusel de carreras con geo-personalización.
 7. **CommunityRanking** (`components/home/community-ranking.tsx`) — Top 3 con medallas.
@@ -15,6 +16,8 @@
 9. **Testimonials** (`components/home/testimonials.tsx`) — 3 cards + **disclaimer explícito de placeholders**.
 10. **FAQ** (`components/home/faq.tsx`) — 8 preguntas, acordeón accesible. El JSON-LD de la home está pre-serializado en `app/page.tsx` como string literal (ver §6.2 del stack).
 11. **FinalCta** (`components/home/final-cta.tsx`) — CTA final con dos opciones.
+
+> **Secciones extra (numeradas 4c y 5b en el código pero no en este doc para no romper la cuenta)**: entre la 4b y la 5 está `WhatsHere` ("Lo que ya está funcionando"), y entre la 5 y la 6 está `ProTeaser` (3 cards Free/Pro/Pro Anual). El orden en `app/page.tsx` es: Hero · TrustBar · Problem · HowItWorks · DiplomaAndSharePreview · WhatsHere · Features · ProTeaser · FeaturedRaces · CommunityRanking · UseCase · Testimonials · Faq · FinalCta.
 
 ## Refinamiento crítico
 

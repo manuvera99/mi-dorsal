@@ -16,6 +16,7 @@ import { Hero } from "@/components/home/hero";
 import { TrustBar } from "@/components/home/trust-bar";
 import { Problem } from "@/components/home/problem";
 import { HowItWorks } from "@/components/home/how-it-works";
+import { DiplomaAndSharePreview } from "@/components/home/diploma-preview";
 import { WhatsHere } from "@/components/home/whats-here";
 import { Features } from "@/components/home/features";
 import { ProTeaser } from "@/components/home/pro-teaser";
@@ -68,7 +69,14 @@ export default function HomePage() {
         {/* 4. CÓMO FUNCIONA */}
         <HowItWorks />
 
-        {/* 4b. LO QUE YA ESTÁ FUNCIONANDO (nuevo sep 2026) */}
+        {/* 4b. DIPLOMA + SHARE CARD — la sección estrella (nuevo sep 2026).
+            Muestra visualmente los DOS entregables que llegan al cruzar la meta:
+            el diploma PDF A4 (izquierda) y la imagen PNG 1200×630 para redes
+            (derecha). Posicionada justo tras HowItWorks para capitalizar la
+            atención del "Recibe diploma PDF + imagen para redes" del paso 3. */}
+        <DiplomaAndSharePreview />
+
+        {/* 4c. LO QUE YA ESTÁ FUNCIONANDO (nuevo sep 2026) */}
         <WhatsHere />
 
         {/* 5. FEATURES */}
@@ -163,7 +171,7 @@ const FAQ_PAGE_JSONLD = JSON.stringify({
       name: "¿Cómo sabéis mi tiempo en una carrera?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Cuando el organizador publica las clasificaciones oficiales, nuestro sistema las lee y te busca por tu dorsal. Te llega un email con tu tiempo, diploma PDF y comparativa con tu predicción.",
+        text: "Cuando el organizador publica las clasificaciones oficiales, nuestro sistema las lee y te busca por tu dorsal. Te llega un email con tu tiempo oficial, posición general y por categoría, comparativa con tu predicción, y dos archivos adjuntos: un diploma PDF A4 imprimible y una imagen PNG 1200×630 con tu dorsal, lista para compartir en tu club o en redes sociales (Instagram, WhatsApp, Strava o X).",
       },
     },
     {

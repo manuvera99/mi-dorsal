@@ -13,6 +13,7 @@
 import { internalQuery, internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
+import { getEffectiveDistance } from "../lib/prediction/effective-distance";
 
 // ===========================================================================
 // Queries/mutations internas (usadas por la action)
@@ -28,8 +29,10 @@ export const getDataForEmail = internalQuery({
     const race = await ctx.db.get(myRace.raceId);
     if (!race) return null;
 
-    // PR actual en la distancia del race (sin modificarlo)
-    const distanceM = Math.round(race.distanceKm * 1000);
+    // PR actual en la distancia EFECTIVA (la que el usuario eligió, o la
+    // principal de la carrera si no eligió ninguna), sin modificarlo.
+    const effectiveDistance = getEffectiveDistance(myRace, race);
+    const distanceM = Math.round(effectiveDistance.distanceKm * 1000);
     const currentPR = await ctx.db
       .query("personalRecords")
       .withIndex("by_user_distance_current", (q) =>
@@ -40,7 +43,7 @@ export const getDataForEmail = internalQuery({
       )
       .unique();
 
-    return { myRace, profile, race, currentPR };
+    return { myRace, profile, race, currentPR, effectiveDistance };
   },
 });
 
@@ -184,7 +187,8 @@ export const getMyRaceForPublicPage = query({
     const profile = await ctx.db.get(myRace.userId);
     const race = await ctx.db.get(myRace.raceId);
     if (!profile || !race) return null;
-    const distanceM = Math.round(race.distanceKm * 1000);
+    const effectiveDistance = getEffectiveDistance(myRace, race);
+    const distanceM = Math.round(effectiveDistance.distanceKm * 1000);
     const currentPR = await ctx.db
       .query("personalRecords")
       .withIndex("by_user_distance_current", (q) =>
@@ -212,7 +216,7 @@ export const getMyRaceForPublicPage = query({
         _id: race._id,
         name: race.name,
         slug: race.slug,
-        distanceKm: race.distanceKm,
+        distanceKm: effectiveDistance.distanceKm,
         startDate: race.startDate,
         locality: race.locality,
         resultsUrl: race.resultsUrl,

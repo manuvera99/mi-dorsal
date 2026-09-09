@@ -32,6 +32,21 @@ const isPrivateRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
+  // 0) BYPASS para webhooks externos (Stripe, Clerk legacy). Estos
+  // servicios no llevan auth y Clerk no debe procesarlos. Sin este
+  // bypass, el middleware de Clerk devuelve 401 a Stripe y se queda
+  // en bucle de reintentos cada 57 min. Sesión 9 sep 2026.
+  // El matcher del config NO soporta lookaheads (Next.js no los
+  // acepta), por eso el bypass se hace aquí en el handler.
+  const pathname = req.nextUrl.pathname;
+  if (
+    pathname === "/api/stripe/webhook" ||
+    pathname === "/api/stripe/portal" ||
+    pathname.startsWith("/api/clerk-webhook")
+  ) {
+    return NextResponse.next();
+  }
+
   // 1) Auth: rutas protegidas y admin
   if (isProtectedRoute(req) || isAdminRoute(req)) {
     const { userId } = await auth();
@@ -61,19 +76,13 @@ export default clerkMiddleware(async (auth, req) => {
 });
 
 export const config = {
-  // Ejecutar en todas las rutas excepto estáticos con extensión (favicon, css, js…)
-  // y API internos de Next. Las páginas pasan por aquí.
-  // IMPORTANTE: excluimos /api/stripe/webhook del middleware de Clerk
-  // porque es un webhook de Stripe que no lleva auth y no debe pasar
-  // por la auth check. Sin esto, Stripe recibe 401 y se queda en
-  // bucle de reintentos (sesión 9 sep 2026, debug del smoke test).
-  // El webhook de Clerk (/api/clerk-webhook) se maneja en Convex
-  // legacy y también está excluido.
+  // Ejecutar el middleware en todas las rutas excepto estáticos con
+  // extensión (favicon, css, js…) y API internos de Next.
+  // El bypass de webhooks externos (Stripe, Clerk) se hace dentro
+  // del handler porque Next.js no soporta regex con lookaheads
+  // en el matcher.
   matcher: [
     "/((?!_next|.*\\..*).*)",
-    // Matchea /api/* y /trpc/* EXCEPTO los webhooks externos.
-    // Next.js no permite capturing groups en matchers (rechaza
-    // paréntesis), por eso usamos lookaheads sin grupo: api/(?!...).
-    "/api/((?!stripe/webhook|clerk-webhook).*)",
+    "/(api|trpc)(.*)",
   ],
 };

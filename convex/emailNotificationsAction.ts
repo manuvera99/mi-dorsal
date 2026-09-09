@@ -1,5 +1,6 @@
 // =============================================================================
-// mi-dorsal — Email: sendResultFoundEmail + sendReminderEmail (actions)
+// mi-dorsal — Email: sendResultFoundEmail + sendReminderEmail +
+//                     sendResultNotFoundEmail (actions)
 // =============================================================================
 // sendResultFoundEmail se llama desde convex/crons/checkResults.ts cuando
 // un cron detecta un resultado oficial nuevo para una myRace. Es la
@@ -43,6 +44,11 @@
 // convex/crons/reminderPreRace.ts. No genera PDF ni sube nada a Storage —
 // solo renderiza y envía el email con fecha/hora/lugar/dorsal/predicción.
 // Ver su implementación más abajo para el detalle de `testOverrideTo`.
+//
+// sendResultNotFoundEmail (>=48h sin resultado scrapeado) se llama desde
+// convex/crons/resultNotFound.ts. Avisa al usuario y le ofrece meter su
+// tiempo a mano en /calendario (myRaces.setManualResult). También acepta
+// `testOverrideTo` con el mismo comportamiento que sendReminderEmail.
 // =============================================================================
 
 import { internalAction } from "./_generated/server";
@@ -53,6 +59,7 @@ import type { DiplomaProps } from "../lib/pdf/diploma";
 import type { ShareCardProps } from "../lib/share-card/render";
 import { resultFoundEmail } from "./emails/templates/resultFound";
 import { reminderEmail } from "./emails/templates/reminder";
+import { resultNotFoundEmail } from "./emails/templates/resultNotFound";
 
 /**
  * Llama a /api/internal/render-diploma (Next.js, runtime Node) para
@@ -442,6 +449,127 @@ export const sendReminderEmail = internalAction({
         userId: profile._id,
         myRaceId: myRace._id,
         type: notifType,
+        delivered: success,
+        resendMessageId: resendId,
+        error: errorMsg,
+      });
+    }
+
+    return {
+      success,
+      reason: "sent" as const,
+      resendId,
+      to: toEmail,
+      error: errorMsg,
+    };
+  },
+});
+
+// ===========================================================================
+// Action: sendResultNotFoundEmail (>=48h sin resultado scrapeado)
+// ===========================================================================
+// Llamada desde convex/crons/resultNotFound.ts. Avisa al usuario y le
+// ofrece meter su tiempo a mano (myRaces.setManualResult, vía /calendario)
+// o consultar la clasificación oficial si tenemos resultsUrl.
+//
+// `testOverrideTo` (opcional): mismo comportamiento que en
+// sendReminderEmail — redirige el envío y NO escribe en notificationLog.
+// ===========================================================================
+
+export const sendResultNotFoundEmail = internalAction({
+  args: {
+    userId: v.id("profiles"),
+    myRaceId: v.id("myRaces"),
+    raceName: v.string(),
+    raceDate: v.string(),
+    testOverrideTo: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const IS_MOCK = !process.env.RESEND_API_KEY;
+    const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://www.mi-dorsal.com").replace(/\/$/, "");
+    const isTest = !!args.testOverrideTo;
+
+    // ---------- 1. Cargar datos completos desde Convex ----------
+    const data = await ctx.runQuery(internal.emailNotificationsHelpers.getDataForEmail, {
+      myRaceId: args.myRaceId,
+    });
+    if (!data) {
+      console.warn(`[result-not-found] myRace ${args.myRaceId} not found, skipping`);
+      return { success: false, reason: "myRace_not_found" as const };
+    }
+    const { myRace, profile, race } = data;
+
+    const toEmail = args.testOverrideTo ?? profile.email;
+    if (!toEmail) {
+      console.warn(`[result-not-found] profile ${profile._id} has no email, skipping`);
+      return { success: false, reason: "no_email" as const };
+    }
+
+    // Idempotencia: se salta por completo en modo test.
+    if (!isTest) {
+      const alreadySent = await ctx.runQuery(internal.emailNotificationsHelpers.hasLogForMyRace, {
+        userId: profile._id,
+        myRaceId: myRace._id,
+        type: "result_not_found",
+      });
+      if (alreadySent) {
+        return { success: true, reason: "already_sent" as const };
+      }
+    }
+
+    // ---------- 2. Preparar datos para la plantilla ----------
+    const raceDateFormatted = race.startDate
+      ? new Date(race.startDate).toLocaleDateString("es-ES", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+        })
+      : args.raceDate;
+
+    const { subject, html, text } = resultNotFoundEmail({
+      userName: profile.displayName ?? "corredor",
+      raceName: args.raceName,
+      raceDate: raceDateFormatted,
+      classificationUrl: race.resultsUrl,
+      calendarUrl: `${APP_URL}/calendario`,
+      appUrl: APP_URL,
+    });
+
+    // ---------- 3. Enviar email ----------
+    let success = false;
+    let resendId: string | undefined;
+    let errorMsg: string | undefined;
+    const fromEmail = process.env.RESEND_FROM_EMAIL ?? "mi-dorsal <hola@mi-dorsal.com>";
+
+    if (IS_MOCK) {
+      console.log(`[result-not-found-mock] → ${toEmail} | ${subject}`);
+      success = true;
+    } else {
+      try {
+        const { Resend } = await import("resend");
+        const resend = new Resend(stripBom(process.env.RESEND_API_KEY!));
+        const result = await resend.emails.send({
+          from: stripBom(fromEmail),
+          to: toEmail,
+          subject: isTest ? `[PRUEBA] ${subject}` : subject,
+          html,
+          text,
+        });
+        resendId = result.data?.id;
+        success = true;
+      } catch (err) {
+        success = false;
+        errorMsg = String(err);
+        console.error(`[result-not-found] ${toEmail} failed:`, err);
+      }
+    }
+
+    // ---------- 4. Log (se salta en modo test) ----------
+    if (!isTest) {
+      await ctx.runMutation(internal.emailNotificationsHelpers.writeLog, {
+        userId: profile._id,
+        myRaceId: myRace._id,
+        type: "result_not_found",
         delivered: success,
         resendMessageId: resendId,
         error: errorMsg,

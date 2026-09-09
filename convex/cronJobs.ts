@@ -29,13 +29,8 @@ crons.cron(
   internal.crons.resultNotFound.resultNotFound,
 );
 
-// Weekly digest y year-review: placeholders, se cablean en Sprint 3
-crons.cron(
-  "weekly-digest",
-  "0 9 * * 1", // lunes 9am UTC
-  internal.crons.weeklyDigest.weeklyDigest,
-);
-
+// year-review: placeholder, se cablea en Sprint 3.
+// (weekly-digest se quitó — no queríamos un email semanal recurrente.)
 crons.cron(
   "year-review",
   "0 10 1 1 *", // 1 enero 10am UTC

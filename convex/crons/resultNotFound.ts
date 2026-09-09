@@ -102,7 +102,7 @@ export const resultNotFound = internalAction({
       if (profile.emailResultsEnabled === false) continue;
 
       try {
-        await ctx.runAction(internal.emails.sendResultNotFoundEmail, {
+        await ctx.runAction(internal.emailNotificationsAction.sendResultNotFoundEmail, {
           userId: profile._id,
           myRaceId: item.myRaceId as any,
           raceName: item.raceName,

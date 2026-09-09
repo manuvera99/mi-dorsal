@@ -29,7 +29,6 @@ import type * as crons_recalcStats from "../crons/recalcStats.js";
 import type * as crons_reminderPreRace from "../crons/reminderPreRace.js";
 import type * as crons_resetCoachUsage from "../crons/resetCoachUsage.js";
 import type * as crons_resultNotFound from "../crons/resultNotFound.js";
-import type * as crons_weeklyDigest from "../crons/weeklyDigest.js";
 import type * as crons_yearReview from "../crons/yearReview.js";
 import type * as dataSources from "../dataSources.js";
 import type * as detectIntervalsBackfill from "../detectIntervalsBackfill.js";
@@ -47,6 +46,7 @@ import type * as emailNotificationsHelpers from "../emailNotificationsHelpers.js
 import type * as emails_sendEmail from "../emails/sendEmail.js";
 import type * as emails_templates_reminder from "../emails/templates/reminder.js";
 import type * as emails_templates_resultFound from "../emails/templates/resultFound.js";
+import type * as emails_templates_resultNotFound from "../emails/templates/resultNotFound.js";
 import type * as feedback from "../feedback.js";
 import type * as myRaces from "../myRaces.js";
 import type * as newsletter from "../newsletter.js";
@@ -96,7 +96,6 @@ declare const fullApi: ApiFromModules<{
   "crons/reminderPreRace": typeof crons_reminderPreRace;
   "crons/resetCoachUsage": typeof crons_resetCoachUsage;
   "crons/resultNotFound": typeof crons_resultNotFound;
-  "crons/weeklyDigest": typeof crons_weeklyDigest;
   "crons/yearReview": typeof crons_yearReview;
   dataSources: typeof dataSources;
   detectIntervalsBackfill: typeof detectIntervalsBackfill;
@@ -114,6 +113,7 @@ declare const fullApi: ApiFromModules<{
   "emails/sendEmail": typeof emails_sendEmail;
   "emails/templates/reminder": typeof emails_templates_reminder;
   "emails/templates/resultFound": typeof emails_templates_resultFound;
+  "emails/templates/resultNotFound": typeof emails_templates_resultNotFound;
   feedback: typeof feedback;
   myRaces: typeof myRaces;
   newsletter: typeof newsletter;

@@ -102,7 +102,7 @@ export const reminderPreRace = internalAction({
       if (profile.emailRemindersEnabled === false) continue;
 
       try {
-        await ctx.runAction(internal.emailNotifications.sendReminderEmail, {
+        await ctx.runAction(internal.emailNotificationsAction.sendReminderEmail, {
           userId: profile._id,
           myRaceId: myRace._id,
           raceName: race.name,
@@ -133,7 +133,7 @@ export const reminderPreRace = internalAction({
       if (profile.emailRemindersEnabled === false) continue;
 
       try {
-        await ctx.runAction(internal.emailNotifications.sendReminderEmail, {
+        await ctx.runAction(internal.emailNotificationsAction.sendReminderEmail, {
           userId: profile._id,
           myRaceId: myRace._id,
           raceName: race.name,

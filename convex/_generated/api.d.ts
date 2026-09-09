@@ -45,6 +45,7 @@ import type * as emailDispatch from "../emailDispatch.js";
 import type * as emailNotificationsAction from "../emailNotificationsAction.js";
 import type * as emailNotificationsHelpers from "../emailNotificationsHelpers.js";
 import type * as emails_sendEmail from "../emails/sendEmail.js";
+import type * as emails_templates_reminder from "../emails/templates/reminder.js";
 import type * as emails_templates_resultFound from "../emails/templates/resultFound.js";
 import type * as feedback from "../feedback.js";
 import type * as myRaces from "../myRaces.js";
@@ -111,6 +112,7 @@ declare const fullApi: ApiFromModules<{
   emailNotificationsAction: typeof emailNotificationsAction;
   emailNotificationsHelpers: typeof emailNotificationsHelpers;
   "emails/sendEmail": typeof emails_sendEmail;
+  "emails/templates/reminder": typeof emails_templates_reminder;
   "emails/templates/resultFound": typeof emails_templates_resultFound;
   feedback: typeof feedback;
   myRaces: typeof myRaces;

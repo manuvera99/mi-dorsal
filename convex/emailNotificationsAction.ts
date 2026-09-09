@@ -1,9 +1,9 @@
 // =============================================================================
-// mi-dorsal — Email: sendResultFoundEmail (action)
+// mi-dorsal — Email: sendResultFoundEmail + sendReminderEmail (actions)
 // =============================================================================
-// Action que se llama desde convex/crons/checkResults.ts cuando un cron
-// detecta un resultado oficial nuevo para una myRace. Es la responsable
-// de orquestar TODO el flujo post-resultado:
+// sendResultFoundEmail se llama desde convex/crons/checkResults.ts cuando
+// un cron detecta un resultado oficial nuevo para una myRace. Es la
+// responsable de orquestar TODO el flujo post-resultado:
 //
 //   1. Lee profile + myRace + race + PR actual
 //   2. Calcula si el resultado bate el PR (sin modificarlo aún)
@@ -31,11 +31,18 @@
 //
 // Por qué este archivo NO vive en convex/actions/: Convex exige "use node"
 // para TODO archivo dentro de esa carpeta (legado — ver docs de actions),
-// y esta action ya no usa fs/path (delega en el endpoint interno de
-// Next.js), así que no necesita el runtime Node. Se referencia como
-// internal.emailNotificationsAction.sendResultFoundEmail.
+// y estas actions ya no usan fs/path (sendResultFoundEmail delega en el
+// endpoint interno de Next.js; sendReminderEmail nunca lo necesitó), así
+// que no necesitan el runtime Node. Se referencian como
+// internal.emailNotificationsAction.sendResultFoundEmail /
+// internal.emailNotificationsAction.sendReminderEmail.
 // Las queries/mutations que sirven al front (getMyRaceForDiploma,
 // getStorageUrl, etc.) viven en convex/emailNotificationsHelpers.ts.
+//
+// sendReminderEmail (7 días / 1 día antes de la carrera) se llama desde
+// convex/crons/reminderPreRace.ts. No genera PDF ni sube nada a Storage —
+// solo renderiza y envía el email con fecha/hora/lugar/dorsal/predicción.
+// Ver su implementación más abajo para el detalle de `testOverrideTo`.
 // =============================================================================
 
 import { internalAction } from "./_generated/server";
@@ -45,6 +52,7 @@ import { Id } from "./_generated/dataModel";
 import type { DiplomaProps } from "../lib/pdf/diploma";
 import type { ShareCardProps } from "../lib/share-card/render";
 import { resultFoundEmail } from "./emails/templates/resultFound";
+import { reminderEmail } from "./emails/templates/reminder";
 
 /**
  * Llama a /api/internal/render-diploma (Next.js, runtime Node) para
@@ -303,6 +311,147 @@ export const sendResultFoundEmail = internalAction({
       isPR,
       diplomaStorageId,
       shareCardStorageId,
+      error: errorMsg,
+    };
+  },
+});
+
+// ===========================================================================
+// Action: sendReminderEmail (7 días / 1 día antes de la carrera)
+// ===========================================================================
+// Llamada desde convex/crons/reminderPreRace.ts. A diferencia de
+// sendResultFoundEmail, no genera PDF ni sube nada a Storage — solo
+// renderiza y envía el email con fecha/hora/lugar/dorsal/predicción.
+//
+// `testOverrideTo` (opcional): si se pasa, el email se envía a esa
+// dirección en vez de al email del profile, y NO se escribe en
+// notificationLog (así se puede repetir la prueba sin "gastar" la
+// idempotencia real de reminder_7d/reminder_1d para ese usuario/carrera).
+// Pensado para pruebas manuales, nunca lo usa el cron.
+// ===========================================================================
+
+export const sendReminderEmail = internalAction({
+  args: {
+    userId: v.id("profiles"),
+    myRaceId: v.id("myRaces"),
+    raceName: v.string(),
+    dorsalNumber: v.optional(v.string()),
+    predictedTimeSeconds: v.optional(v.number()),
+    daysUntil: v.union(v.literal(7), v.literal(1)),
+    testOverrideTo: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const IS_MOCK = !process.env.RESEND_API_KEY;
+    const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://www.mi-dorsal.com").replace(/\/$/, "");
+    const isTest = !!args.testOverrideTo;
+
+    // ---------- 1. Cargar datos completos desde Convex ----------
+    const data = await ctx.runQuery(internal.emailNotificationsHelpers.getDataForEmail, {
+      myRaceId: args.myRaceId,
+    });
+    if (!data) {
+      console.warn(`[reminder] myRace ${args.myRaceId} not found, skipping`);
+      return { success: false, reason: "myRace_not_found" as const };
+    }
+    const { myRace, profile, race } = data;
+
+    const toEmail = args.testOverrideTo ?? profile.email;
+    if (!toEmail) {
+      console.warn(`[reminder] profile ${profile._id} has no email, skipping`);
+      return { success: false, reason: "no_email" as const };
+    }
+
+    // Idempotencia: si ya se envió este recordatorio para esta myRace, no
+    // repetir. Se salta por completo en modo test (testOverrideTo) para
+    // poder reenviar la prueba las veces que haga falta.
+    const notifType = args.daysUntil === 7 ? "reminder_7d" : "reminder_1d";
+    if (!isTest) {
+      const alreadySent = await ctx.runQuery(internal.emailNotificationsHelpers.hasLogForMyRace, {
+        userId: profile._id,
+        myRaceId: myRace._id,
+        type: notifType,
+      });
+      if (alreadySent) {
+        return { success: true, reason: "already_sent" as const };
+      }
+    }
+
+    // ---------- 2. Preparar datos para la plantilla ----------
+    const distanceM = Math.round(race.distanceKm * 1000);
+    const distanceLabel = getDistanceLabel(distanceM);
+    const raceDateFormatted = race.startDate
+      ? new Date(race.startDate).toLocaleDateString("es-ES", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+        })
+      : args.raceName;
+    const raceUrl = race.officialUrl
+      ?? race.registrationUrl
+      ?? `${APP_URL}/carreras/${race.slug ?? ""}`;
+
+    const { subject, html, text } = reminderEmail({
+      userName: profile.displayName ?? "corredor",
+      raceName: args.raceName,
+      raceDate: raceDateFormatted,
+      raceTime: race.startTime,
+      venue: race.venue ?? race.locality,
+      distanceLabel,
+      dorsalNumber: args.dorsalNumber,
+      predictedTimeFormatted: args.predictedTimeSeconds
+        ? formatHMS(args.predictedTimeSeconds)
+        : undefined,
+      daysUntil: args.daysUntil,
+      raceUrl,
+      appUrl: APP_URL,
+    });
+
+    // ---------- 3. Enviar email ----------
+    let success = false;
+    let resendId: string | undefined;
+    let errorMsg: string | undefined;
+    const fromEmail = process.env.RESEND_FROM_EMAIL ?? "mi-dorsal <hola@mi-dorsal.com>";
+
+    if (IS_MOCK) {
+      console.log(`[reminder-mock] ${notifType} → ${toEmail} | ${subject}`);
+      success = true;
+    } else {
+      try {
+        const { Resend } = await import("resend");
+        const resend = new Resend(stripBom(process.env.RESEND_API_KEY!));
+        const result = await resend.emails.send({
+          from: stripBom(fromEmail),
+          to: toEmail,
+          subject: isTest ? `[PRUEBA] ${subject}` : subject,
+          html,
+          text,
+        });
+        resendId = result.data?.id;
+        success = true;
+      } catch (err) {
+        success = false;
+        errorMsg = String(err);
+        console.error(`[reminder] ${toEmail} failed:`, err);
+      }
+    }
+
+    // ---------- 4. Log (se salta en modo test) ----------
+    if (!isTest) {
+      await ctx.runMutation(internal.emailNotificationsHelpers.writeLog, {
+        userId: profile._id,
+        myRaceId: myRace._id,
+        type: notifType,
+        delivered: success,
+        resendMessageId: resendId,
+        error: errorMsg,
+      });
+    }
+
+    return {
+      success,
+      reason: "sent" as const,
+      resendId,
+      to: toEmail,
       error: errorMsg,
     };
   },

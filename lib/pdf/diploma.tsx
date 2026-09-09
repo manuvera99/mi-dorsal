@@ -1,96 +1,82 @@
 // =============================================================================
 // mi-dorsal — Diploma PDF generator
 // =============================================================================
-// Genera un diploma PDF usando @react-pdf/renderer.
+// Genera un diploma PDF oficial de finisher usando @react-pdf/renderer.
 // =============================================================================
 
 import React from "react";
 import { Document, Page, Text, View, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 
+// ---------------------------------------------------------------------------
+// Estilos
+// ---------------------------------------------------------------------------
+
 const styles = StyleSheet.create({
   page: {
-    padding: 60,
-    backgroundColor: "#fafaf9",
+    padding: 40,
     fontFamily: "Helvetica",
   },
   border: {
-    border: "3px solid #dc2626",
+    borderWidth: 2,
+    borderColor: "#dc2626",
+    borderStyle: "solid",
     padding: 40,
-    height: "100%",
   },
   title: {
-    fontSize: 42,
-    color: "#dc2626",
-    textAlign: "center",
-    marginBottom: 8,
+    fontSize: 48,
     fontFamily: "Helvetica-Bold",
+    textAlign: "center",
+    marginTop: 20,
   },
   subtitle: {
     fontSize: 14,
-    color: "#6b7280",
+    color: "#78716c",
     textAlign: "center",
-    marginBottom: 40,
-    letterSpacing: 4,
+    letterSpacing: 3,
+    marginTop: 8,
   },
   presented: {
     fontSize: 12,
-    color: "#6b7280",
     textAlign: "center",
-    marginBottom: 8,
+    marginTop: 30,
+    color: "#78716c",
+    letterSpacing: 1,
   },
   name: {
     fontSize: 32,
-    color: "#0a0a0a",
-    textAlign: "center",
-    marginBottom: 30,
     fontFamily: "Helvetica-Bold",
+    textAlign: "center",
+    marginTop: 8,
+    color: "#0a0a0a",
   },
   description: {
     fontSize: 14,
-    color: "#374151",
     textAlign: "center",
-    marginBottom: 40,
-    lineHeight: 1.6,
+    marginTop: 24,
+    color: "#1c1917",
   },
   statsRow: {
     flexDirection: "row",
+    marginTop: 40,
     justifyContent: "space-around",
-    marginVertical: 30,
-    paddingVertical: 20,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: "#e5e7eb",
   },
   stat: {
     alignItems: "center",
   },
   statLabel: {
     fontSize: 9,
-    color: "#6b7280",
-    letterSpacing: 1,
-    marginBottom: 4,
+    color: "#78716c",
+    letterSpacing: 1.5,
   },
   statValue: {
-    fontSize: 20,
-    color: "#0a0a0a",
-    fontFamily: "Helvetica-Bold",
-  },
-  footer: {
-    marginTop: 40,
-    textAlign: "center",
-    fontSize: 10,
-    color: "#9ca3af",
-  },
-  brand: {
-    fontSize: 10,
-    color: "#dc2626",
-    textAlign: "center",
+    fontSize: 24,
     fontFamily: "Helvetica-Bold",
     marginTop: 4,
+    color: "#0a0a0a",
   },
 });
 
-interface DiplomaProps {
+export interface DiplomaProps {
   runnerName: string;
   raceName: string;
   raceDate: string;
@@ -99,6 +85,24 @@ interface DiplomaProps {
   positionOverall?: number;
   positionCategory?: number;
   dorsalNumber?: string;
+  // Props adicionales para compatibilidad con el diploma v2 (preview
+  // oficial con dorsal estilizado, PR badge, verificación). La
+  // implementación simple actual no las usa todavía, pero los call sites
+  // (app/api/diploma/route.ts, app/api/diploma/[myRaceId]/route.ts,
+  // convex/emailNotifications.ts) las pasan. Sin estas el typecheck
+  // rompe en build de Vercel.
+  // TODO: migrar la implementación del Diploma a la versión v2 completa
+  // (commit pendiente que tenía Manu en su working tree).
+  distanceLabel?: string;
+  timeSeconds?: number;
+  paceFormatted?: string;
+  totalRunners?: number;
+  isPersonalRecord?: boolean;
+  previousRecordFormatted?: string;
+  prDeltaSeconds?: number;
+  verificationId?: string;
+  appUrl?: string;
+  issuedAt?: Date;
 }
 
 export function Diploma(props: DiplomaProps) {
@@ -126,21 +130,16 @@ export function Diploma(props: DiplomaProps) {
             {props.positionOverall !== undefined && (
               <View style={styles.stat}>
                 <Text style={styles.statLabel}>POSICIÓN GENERAL</Text>
-                <Text style={styles.statValue}>#{props.positionOverall}</Text>
+                <Text style={styles.statValue}>{props.positionOverall}</Text>
               </View>
             )}
             {props.positionCategory !== undefined && (
               <View style={styles.stat}>
                 <Text style={styles.statLabel}>POSICIÓN CATEGORÍA</Text>
-                <Text style={styles.statValue}>#{props.positionCategory}</Text>
+                <Text style={styles.statValue}>{props.positionCategory}</Text>
               </View>
             )}
           </View>
-
-          <Text style={styles.footer}>
-            {new Date().toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" })}
-          </Text>
-          <Text style={styles.brand}>mi-dorsal · El hilo que te une a tu dorsal</Text>
         </View>
       </Page>
     </Document>

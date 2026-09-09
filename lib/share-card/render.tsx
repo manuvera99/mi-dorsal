@@ -40,9 +40,9 @@ export interface ShareCardProps {
   runnerName: string;
   raceName: string;
   raceDate: string; // ya formateada, ej "25 de octubre de 2025"
-  distanceLabel: string; // "5K", "10K", "Media maratón"
-  timeFormatted: string; // "1:59:25"
-  dorsalNumber: string;
+  distanceLabel?: string; // "5K", "10K", "Media maratón" — opcional para tolerar DiplomaProps v2 simple
+  timeFormatted?: string; // "1:59:25" — opcional, se calcula desde timeSeconds si falta
+  dorsalNumber?: string;
   positionOverall?: number;
   totalRunners?: number;
   positionCategory?: number;
@@ -50,7 +50,8 @@ export interface ShareCardProps {
   isPersonalRecord?: boolean;
   previousRecordFormatted?: string;
   prDeltaSeconds?: number;
-  appUrl: string; // "https://mi-dorsal.com" → se muestra como "mi-dorsal.com"
+  timeSeconds?: number;
+  appUrl?: string; // "https://mi-dorsal.com" → se muestra como "mi-dorsal.com"
 }
 
 // ---------------------------------------------------------------------------
@@ -111,7 +112,7 @@ function formatDelta(seconds: number): string {
 
 function ShareCard(props: ShareCardProps) {
   const isPR = !!props.isPersonalRecord && !!props.prDeltaSeconds && !!props.previousRecordFormatted;
-  const domain = props.appUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  const domain = (props.appUrl ?? "mi-dorsal.com").replace(/^https?:\/\//, "").replace(/\/$/, "");
 
   return (
     <div
@@ -205,7 +206,7 @@ function ShareCard(props: ShareCardProps) {
                 fontFamily: "JetBrains Mono",
               }}
             >
-              {props.distanceLabel.toUpperCase()}
+              {(props.distanceLabel ?? "—").toUpperCase()}
             </div>
           </div>
         </div>
@@ -312,7 +313,7 @@ function ShareCard(props: ShareCardProps) {
                 textTransform: "uppercase",
               }}
             >
-              Nuevo PR en {props.distanceLabel}
+              Nuevo PR en {props.distanceLabel ?? ""}
             </div>
           </div>
         ) : null}
@@ -360,7 +361,7 @@ function ShareCard(props: ShareCardProps) {
               lineHeight: 1,
             }}
           >
-            {props.timeFormatted}
+            {props.timeFormatted ?? "—"}
           </div>
         </div>
         <div

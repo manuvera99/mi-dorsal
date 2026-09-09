@@ -63,8 +63,12 @@ export default clerkMiddleware(async (auth, req) => {
 export const config = {
   // Ejecutar en todas las rutas excepto estáticos con extensión (favicon, css, js…)
   // y API internos de Next. Las páginas pasan por aquí.
+  // IMPORTANTE: excluimos /api/webhooks/* para que el middleware de Clerk
+  // no intente autenticar las llamadas de Stripe (que no llevan auth). Sin
+  // esto, Stripe recibe 401 y el webhook se queda en bucle de reintentos
+  // (sesión 9 sep 2026, debug del smoke test).
   matcher: [
     "/((?!_next|.*\\..*).*)",
-    "/(api|trpc)(.*)",
+    "/(api|trpc)((?!/webhooks/).*)",
   ],
 };

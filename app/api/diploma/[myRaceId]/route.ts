@@ -35,10 +35,25 @@ export async function GET(
     const { myRaceId: rawMyRaceId } = await params;
     const myRaceId = rawMyRaceId as Id<"myRaces">;
 
-    // 1. Leer myRace (público: la URL ya va firmada en el email al dueño)
-    const data = await fetchQuery(api.emailNotifications.getMyRaceForDiploma, {
-      myRaceId,
-    });
+    // 1. Leer myRace (público: la URL ya va firmada en el email al dueño).
+    //    Si Convex no responde o la función no está deployada, devolvemos 503
+    //    en vez de 500 para distinguir "infra caída" de "myRace inválido".
+    let data;
+    try {
+      data = await fetchQuery(api.emailNotifications.getMyRaceForDiploma, {
+        myRaceId,
+      });
+    } catch (convexErr) {
+      console.error("[diploma] Convex query failed:", convexErr);
+      return NextResponse.json(
+        {
+          error: "diploma service temporarily unavailable",
+          hint: "La función emailNotifications de Convex no responde. Ejecuta 'npx convex dev' o 'npx convex deploy' para publicar las queries.",
+        },
+        { status: 503 }
+      );
+    }
+
     if (!data) {
       return NextResponse.json({ error: "myRace not found" }, { status: 404 });
     }
@@ -50,9 +65,18 @@ export async function GET(
     }
 
     // 2. Resolver URL firmada del blob
-    const blobUrl = await fetchQuery(api.emailNotifications.getStorageUrl, {
-      storageId: data.diplomaStorageId,
-    });
+    let blobUrl;
+    try {
+      blobUrl = await fetchQuery(api.emailNotifications.getStorageUrl, {
+        storageId: data.diplomaStorageId,
+      });
+    } catch (convexErr) {
+      console.error("[diploma] Convex storage query failed:", convexErr);
+      return NextResponse.json(
+        { error: "storage service temporarily unavailable" },
+        { status: 503 }
+      );
+    }
     if (!blobUrl) {
       return NextResponse.json({ error: "blob URL expired" }, { status: 404 });
     }

@@ -36,10 +36,28 @@ export async function GET(
     const { myRaceId: rawMyRaceId } = await params;
     const myRaceId = rawMyRaceId as Id<"myRaces">;
 
-    // 1. Leer myRace
-    const data = await fetchQuery(api.emailNotifications.getMyRaceForShareCard, {
-      myRaceId,
-    });
+    // 1. Leer myRace. Si Convex no responde o la función no está
+    //    deployada, devolvemos 503 con un SVG placeholder en vez de 500
+    //    con stack trace (que es ruido en logs y rompe crawlers).
+    let data;
+    try {
+      data = await fetchQuery(api.emailNotifications.getMyRaceForShareCard, {
+        myRaceId,
+      });
+    } catch (convexErr) {
+      console.error("[share-card] Convex query failed:", convexErr);
+      return new NextResponse(
+        generatePlaceholderSvg("Servicio no disponible"),
+        {
+          status: 503,
+          headers: {
+            "Content-Type": "image/svg+xml",
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+          },
+        }
+      );
+    }
     if (!data) {
       return new NextResponse(generatePlaceholderSvg("Resultado no encontrado"), {
         status: 404,
@@ -54,9 +72,18 @@ export async function GET(
     }
 
     // 2. Resolver URL firmada
-    const blobUrl = await fetchQuery(api.emailNotifications.getStorageUrl, {
-      storageId: data.shareCardStorageId,
-    });
+    let blobUrl;
+    try {
+      blobUrl = await fetchQuery(api.emailNotifications.getStorageUrl, {
+        storageId: data.shareCardStorageId,
+      });
+    } catch (convexErr) {
+      console.error("[share-card] Convex storage query failed:", convexErr);
+      return new NextResponse(generatePlaceholderSvg("Storage no disponible"), {
+        status: 503,
+        headers: { "Content-Type": "image/svg+xml", "Cache-Control": "no-store" },
+      });
+    }
     if (!blobUrl) {
       return new NextResponse(generatePlaceholderSvg("Imagen expirada"), {
         status: 404,

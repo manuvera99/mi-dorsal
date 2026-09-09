@@ -82,3 +82,6 @@ test-*.mjs
 # Diploma / preview artifacts (se regeneran con scripts/dev/)
 /diploma-preview.html
 /diploma-preview-assets/
+
+# graphify-axet
+.graphify/

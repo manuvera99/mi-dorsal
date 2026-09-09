@@ -16,9 +16,9 @@
 //   - PricingTable de Clerk es client-side.
 // =============================================================================
 
-import { useUser } from "@clerk/nextjs";
+import { useUser, useClerk } from "@clerk/nextjs";
 import Link from "next/link";
-import { ArrowLeft, Sparkles, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Sparkles, CheckCircle2, XCircle, Loader2, ExternalLink } from "lucide-react";
 import { PricingTableSection } from "@/components/billing/pricing-table";
 import { useHasPremium } from "@/components/billing/use-has-premium";
 import { PremiumBadge } from "@/components/billing/premium-badge";
@@ -47,6 +47,7 @@ export default function SuscripcionPage() {
 
 function RealSuscripcionContent() {
   const { user, isLoaded: userLoaded } = useUser();
+  const clerk = useClerk();
   const { hasAccess, tier, status, currentPeriodEnd } = useHasPremium();
 
   // Mientras Clerk carga, mostramos un spinner ligero (no bloqueamos
@@ -105,6 +106,31 @@ function RealSuscripcionContent() {
         </p>
         <PricingTableSection />
       </section>
+
+      {/* Bloque 3: gestionar suscripción (cancelar, cambiar tarjeta, ver
+          facturas). Clerk gestiona todo esto en su propio panel — abrimos
+          `clerk.openUserProfile()` con la sección "Billing" preseleccionada
+          (vía la prop `initialActive` o el path por defecto del panel).
+          El botón solo aparece si el usuario tiene una suscripción activa
+          (free no tiene nada que gestionar). */}
+      {hasAccess && (
+        <section className="mt-8 card">
+          <h2 className="text-lg font-semibold mb-2">Gestionar suscripción</h2>
+          <p className="text-sm text-stone-600 mb-4">
+            Cambia de método de pago, descarga facturas o cancela tu plan
+            desde el panel de Clerk. Si cancelas, mantienes el acceso hasta
+            que termine el periodo que ya pagaste.
+          </p>
+          <button
+            type="button"
+            onClick={() => clerk.openUserProfile()}
+            className="inline-flex items-center gap-1.5 rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 transition-colors"
+          >
+            Abrir panel de gestión
+            <ExternalLink className="h-4 w-4" />
+          </button>
+        </section>
+      )}
     </div>
   );
 }

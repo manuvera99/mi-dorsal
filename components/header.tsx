@@ -7,7 +7,8 @@ import { SignedIn, SignedOut, UserButton, SignInButton, SignUpButton, useUser } 
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { isMockMode } from "@/lib/mock/provider";
-import { Trophy, Calendar, User, BarChart3, Home, Shield, ArrowLeftRight, Menu, X, BookOpen } from "lucide-react";
+import { PremiumBadge } from "@/components/billing/premium-badge";
+import { Trophy, Calendar, User, BarChart3, Home, Shield, ArrowLeftRight, Menu, X, BookOpen, Sparkles } from "lucide-react";
 
 type NavItem = {
   href: string;
@@ -157,6 +158,7 @@ export function Header({ mockMode = false }: { mockMode?: boolean }) {
                 </SignUpButton>
               </SignedOut>
               <SignedIn>
+                <PremiumBadge variant="badge" className="hidden sm:inline-flex" />
                 <UserButton
                   afterSignOutUrl="/"
                   appearance={{
@@ -229,6 +231,22 @@ export function Header({ mockMode = false }: { mockMode?: boolean }) {
               Admin
             </Link>
           )}
+          {/* Badge premium en el menú móvil: solo si el user está logueado
+              (en SignedOut no tendríamos el estado de billing). El propio
+              <PremiumBadge /> ya devuelve null si el user no es premium. */}
+          <SignedIn>
+            <Link
+              href="/cuenta/suscripcion"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center justify-between gap-3 px-3 py-3 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <span className="flex items-center gap-3">
+                <Sparkles className="h-5 w-5 text-amber-500" aria-hidden="true" />
+                Mi suscripción
+              </span>
+              <PremiumBadge variant="badge" />
+            </Link>
+          </SignedIn>
           <div className="my-2 border-t border-gray-100" />
           <p className="px-3 py-1 text-xs text-gray-500">
             El hilo que te une a tu dorsal.

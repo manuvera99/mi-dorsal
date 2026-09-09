@@ -97,7 +97,7 @@
 
 - **Name**: `Premium`
 - **Plan ID**: `premium_monthly` (el `premium` en el ID hace que `deriveTierFromPlanId` lo detecte automáticamente)
-- **Price**: 4,99 €
+- **Price**: **2,99 €** (pricing recomendado por `docs/plans/BUSINESS_PLAN.md` §6.4 — el 4,99 € inicial daba conversión <2 % según el modelado de sensibilidad precio)
 - **Currency**: EUR
 - **Billing interval**: Monthly
 - **Trial period**: 14 días (gratis, sin tarjeta — Clerk lo soporta nativo)
@@ -111,7 +111,7 @@
 
 - **Name**: `Premium Anual`
 - **Plan ID**: `premium_yearly`
-- **Price**: 39 € (35% descuento vs mensual: 4,99 × 12 = 59,88 €)
+- **Price**: **24,99 €** (equivale a 2,08 €/mes — 30 % descuento vs 2,99 €/mes × 12 = 35,88 €)
 - **Currency**: EUR
 - **Billing interval**: Yearly
 - **Trial period**: 14 días

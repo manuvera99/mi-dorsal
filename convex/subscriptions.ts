@@ -456,3 +456,22 @@ export const downgradeToFree = internalMutation({
     return { skipped: false, id: sub._id };
   },
 });
+
+/** Borrado físico de la fila de suscripción. Usado cuando el usuario
+ *  elimina su cuenta de Clerk (evento `user.deleted`): por RGPD, el
+ *  usuario se fue y no debe quedar rastro de su suscripción en nuestra
+ *  BD. Idempotente: si no hay fila, devuelve skipped=true. */
+export const purgeSubscriptionByClerkUserId = internalMutation({
+  args: {
+    clerkUserId: v.string(),
+  },
+  handler: async (ctx, { clerkUserId }) => {
+    const sub = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", clerkUserId))
+      .unique();
+    if (!sub) return { skipped: true };
+    await ctx.db.delete(sub._id);
+    return { skipped: false, id: sub._id };
+  },
+});

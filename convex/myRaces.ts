@@ -7,6 +7,7 @@ import { mutation, query, internalQuery } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { requireUser, getOptionalUser, raceStatusValidator, getDistanceLabel } from "./_helpers";
 import { predictForMyRace } from "../lib/prediction/predict";
+import { getEffectiveDistance } from "../lib/prediction/effective-distance";
 import { Doc, Id } from "./_generated/dataModel";
 
 /**
@@ -370,7 +371,8 @@ export const setManualResult = mutation({
     // Actualizar PR si aplica
     const race = await ctx.db.get(myRace.raceId);
     if (race) {
-      const distanceM = Math.round(race.distanceKm * 1000);
+      const effectiveDistance = getEffectiveDistance(myRace, race);
+      const distanceM = Math.round(effectiveDistance.distanceKm * 1000);
       // Verificar si mejora el PR actual
       const currentPR = await ctx.db
         .query("personalRecords")

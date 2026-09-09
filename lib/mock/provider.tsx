@@ -41,6 +41,19 @@ function distanceToCategories(distanceKm: number): string[] {
   return out;
 }
 
+function allDistanceCategories(r: {
+  distanceKm: number;
+  raceFormats?: Array<{ distanceKm: number }>;
+}): string[] {
+  const cats = new Set<string>(distanceToCategories(r.distanceKm));
+  for (const f of r.raceFormats ?? []) {
+    for (const c of distanceToCategories(f.distanceKm)) {
+      cats.add(c);
+    }
+  }
+  return Array.from(cats);
+}
+
 // Mock implementations de queries
 export const mockApi = {
   races: {
@@ -76,7 +89,9 @@ export const mockApi = {
       }
       if (args.distanceCategories && args.distanceCategories.length > 0) {
         filtered = filtered.filter((r) => {
-          const cats = distanceToCategories(r.distanceKm);
+          const cats = allDistanceCategories(
+            r as { distanceKm: number; raceFormats?: Array<{ distanceKm: number }> },
+          );
           return cats.some((c) => args.distanceCategories.includes(c));
         });
       }

@@ -386,9 +386,10 @@ export const sendReminderEmail = internalAction({
           month: "long",
         })
       : args.raceName;
-    const raceUrl = race.officialUrl
-      ?? race.registrationUrl
-      ?? `${APP_URL}/carreras/${race.slug ?? ""}`;
+    // Siempre la ficha DENTRO de mi-dorsal, nunca la web externa de la
+    // carrera (officialUrl/registrationUrl) — el CTA es "ver tu ficha",
+    // no "salir de la app".
+    const raceUrl = `${APP_URL}/carreras/${race.slug ?? ""}`;
 
     const { subject, html, text } = reminderEmail({
       userName: profile.displayName ?? "corredor",

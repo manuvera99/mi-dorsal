@@ -300,6 +300,7 @@ function ShareCard(props: ShareCardProps) {
           >
             <div
               style={{
+                display: "flex",
                 fontSize: "14px",
                 fontWeight: 700,
                 color: C.prText,
@@ -416,6 +417,7 @@ function ShareCard(props: ShareCardProps) {
               {props.totalRunners ? (
                 <div
                   style={{
+                    display: "flex",
                     fontSize: "14px",
                     color: C.muted,
                     marginLeft: "4px",

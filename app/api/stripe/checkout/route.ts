@@ -124,21 +124,47 @@ export async function POST(req: NextRequest) {
   try {
     const stripe = getStripe();
 
-    // 4) Buscar customer existente por metadata.clerkUserId (más fiable
-    //    que por email, que puede cambiar). Si no hay, crear uno nuevo
-    //    con el email del user Clerk como fallback.
+    // 4) Customer de Stripe: SIEMPRE nuevo por cada clerkUserId que
+    //    pague. No reusamos por email aunque coincida.
+    //
+    //    Razón (sesión 9 sep 2026, decisión de producto Opción 1):
+    //    vincular por email de pago (que puede ser personal, de empresa
+    //    o de un familiar) hace que varios users de mi-dorsal puedan
+    //    compartir un mismo customer de Stripe si pagan con el mismo
+    //    email. Eso es un agujero de privacidad (el user A vería las
+    //    subs del user B en el portal) y un lío de RGPD. Mejor un
+    //    customer 1:1 con clerkUserId, identificados por metadata.
+    //
+    //    Trade-off: si el user paga con dos tarjetas distintas (mismo
+    //    email), verá dos subs separadas en el portal. Es el mal menor.
     let customerId: string | undefined;
     if (userEmail) {
       const existing = await stripe.customers.list({
         email: userEmail,
         limit: 1,
       });
-      if (existing.data.length > 0) {
+      if (existing.data.length > 0 && existing.data[0].metadata?.clerkUserId === userId) {
+        // Match exacto por metadata: este customer es de ESTE user Clerk.
+        // Lo reusamos para no multiplicar customers innecesariamente.
         customerId = existing.data[0].id;
       }
+      // Si el customer con ese email NO tiene nuestro metadata, lo
+      // ignoramos y creamos uno nuevo (no es nuestro customer).
     }
 
-    // 5) Crear Checkout Session
+    // 5) Si NO hemos encontrado un customer nuestro (por metadata),
+    //    creamos uno nuevo con el metadata.clerkUserId para poder
+    //    encontrarlo en checkouts futuros. Si ya tenemos customerId,
+    //    saltamos este paso.
+    if (!customerId && userEmail) {
+      const newCustomer = await stripe.customers.create({
+        email: userEmail,
+        metadata: { clerkUserId: userId },
+      });
+      customerId = newCustomer.id;
+    }
+
+    // 6) Crear Checkout Session
     // Parámetros `fixed_by_ui` (configurados en el Checkout Studio de
     // Stripe el 9 sep 2026, ver STRIPE_INTEGRATION_TODO.md):
     //   - ui_mode: "hosted_page" (SDK 22.6.1 ≥ 21.0.0)

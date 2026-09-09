@@ -24,7 +24,7 @@
 
 ## 2. Estado actual del stack y coste base
 
-Stack confirmado en `package.json` y AGENTS.md §6.4:
+Stack confirmado en `package.json` y `docs/core/stack.md`:
 
 | Servicio | Plan actual estimado | Coste real al mes | Notas |
 |---|---|---|---|
@@ -35,14 +35,14 @@ Stack confirmado en `package.json` y AGENTS.md §6.4:
 | **OpenAI gpt-4o-mini** | Pay-per-use | **~$0-1** | Solo extracción admin + 0-5 calls/mes de coach IA mientras no hay Pro. |
 | **Stripe (via Clerk Billing)** | Sin activar | **$0** | Esqueleto listo, falta setup. |
 | **Dominio mi-dorsal.com/.es** | Comprado | **~19 €/año** | ~1,6 €/mes amortizado. |
-| **Zoho Mail free** | Pendiente (AGENTS.md §13.4) | **0 €** | 5 buzones gratis. |
+| **Zoho Mail free** | Pendiente (`docs/history/naming-decisions.md`) — el buzón `hola@mi-dorsal.com` que hoy usa `RESEND_FROM_EMAIL` no existe, riesgo de rebote en emails transaccionales | **0 €** | 5 buzones gratis. |
 | **TOTAL efectivo al mes** | | **~22-46 €/mes** | Dominio aparte. |
 
 **Insight clave**: el coste base es **ridículamente bajo** para una web app en producción. Esto se debe a:
 - Vercel Pro incluye 1 TB de bandwidth y 10M edge requests (suficiente para ~100k visitas/mes).
 - Convex free tier incluye 1M function calls (suficiente para ~5k MAU con uso moderado).
 - Clerk free sube a 50k MRU desde feb 2026 (insuperable para v1).
-- Resend free es el primer cuello: con 100 emails/día como techo, **no puedes enviar la newsletter semanal a más de 700 suscriptores sin pagar**.
+- Resend free es el primer cuello: con 100 emails/día como techo y **3.000 emails/mes en total**, la newsletter real (cron `newsletter-editorial`, mensual el día 1 — no semanal, ver `docs/core/blog-newsletter.md`) puede repartirse en los 30 días entre envíos y llegar hasta **~3.000 suscriptores** sin pagar, no los ~700 que resultarían si fuera semanal (100/día × 7 días de margen entre envíos). El límite que de verdad aprieta antes es el techo mensual total (3.000), no el diario.
 
 **Coste dominado por Vercel Pro** (fijo de $20) hasta que el bandwidth se dispare o tengas > 50k MRU.
 
@@ -316,7 +316,7 @@ Datos de industria (ProfitWell, OpenView, ProductLed en freemium fitness):
 - [ ] **Post en blog**: "Por qué Pro cuesta 2 € al mes y no 5 €" (transparencia con los datos de `aiUsageLog`).
 - [ ] Activar **AdSense** (Pata 1) si tienes >5k visitas/mes. Solicitar 1-4 semanas antes.
 - [ ] Unirse a **Awin + Daisycon** (Pata 2) y publicar 2-3 guías SEO de "mejores zapatillas para X".
-- [ ] Confirmar newsletter semanal (Pata 3) → buscar primer patrocinio a 1.500+ suscriptores.
+- [ ] Confirmar newsletter mensual (Pata 3; cadencia real del cron `newsletter-editorial`, no semanal) → buscar primer patrocinio a 1.500+ suscriptores.
 - [ ] **Objetivo fin de semana 12**: ~50-100 Pro pagando, ~150-400 €/mes MRR, ~250-500 €/mes total con las 4 patas.
 
 ### Mes 4-12: Aceleración y SEO
@@ -325,7 +325,7 @@ Datos de industria (ProfitWell, OpenView, ProductLed en freemium fitness):
 - [ ] Escalar newsletter a 2.000 suscriptores (mes 6) → 5.000 (mes 12).
 - [ ] Empezar a evaluar **Mediavine** si llegas a 50k sesiones/mes.
 - [ ] **Evaluar migración a Stripe directo** si MRR > €5.000/mes (ahorrar 0,7% de comisión de Clerk Billing).
-- [ ] **Objetivo mes 12**: 1.000-1.500 € MRR total (alineado con escenario "Bueno" de `MONETIZATION_PLAN.md`).
+- [ ] **Objetivo mes 12**: 1.000-1.500 € MRR total (alineado con escenario "Esperado" de `MONETIZATION_PLAN.md` §Estimaciones de retorno, €800-1.800/mes — no "Bueno", que proyecta €2.500-5.000/mes).
 
 ---
 
@@ -352,7 +352,7 @@ Datos de industria (ProfitWell, OpenView, ProductLed en freemium fitness):
 - **Conversión freemium nicho fitness** (ProductLed, ProfitWell, OpenView): 2-7%, asumimos 3-5% en year 1 para corredor popular español.
 - **Comparables verificados 7-8 sep 2026**: ClubRunning Plus 2 €/mes (37k usuarios), CorrerJuntos 4,99 €/mes, Strava 5-12 €/mes, Garmin Connect+ 8,99 €/mes, Runna 14,99 €/mes.
 - **Gasto medio corredor popular español** (estudio SEMED-Cinfa): 39,6 €/mes en deporte. Tu Pro a 2,99 €/mes = 7,5% de ese gasto.
-- **Datos propios del proyecto**: 374+ carreras indexadas, dominio `mi-dorsal.com` en producción, 50k MAU en Clerk son gratis hasta feb 2026, etc.
+- **Datos propios del proyecto**: 2.761 carreras indexadas (9 sep 2026, cifra creciente — corrige la cifra de 374 usada en versiones anteriores de este documento y de `MONETIZATION_PLAN.md`), dominio `mi-dorsal.com` en producción, 50k MAU en Clerk son gratis hasta feb 2026, etc.
 
 ---
 

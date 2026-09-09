@@ -4,6 +4,8 @@
 > **Propósito**: responder a "¿cuántos usuarios soporta el estado actual?" y "¿cuándo hay que ir saltando de plan?" con cifras concretas por servicio, orden de saltos, coste acumulado y fixes críticos pre-activación de monetización.
 
 > ⚠️ **Este documento NO sustituye** a `BUSINESS_PLAN.md` (rentabilidad). Es el **zoom de capacidad técnica**: qué aguanta cada servicio, dónde rompe, cuánto cuesta el siguiente paso.
+>
+> 🔴 **Discrepancia sin resolver (9 sep 2026)**: este documento afirma que Vercel está en plan **Hobby** ("verificado... OIDC token lo confirma", §1) y trata el salto a Pro como el fix #1 pendiente. `BUSINESS_PLAN.md` (mismo día, 8 sep) asume Vercel **Pro** en todos sus cálculos de coste ("Vercel Pro $20 con crédito incluido..."). No se ha podido verificar cuál es el plan real desde este entorno — `.vercel/project.json` local no incluye el plan de facturación. **Antes de actuar sobre cualquier cifra de coste de estos dos documentos, confirma el plan real en el dashboard de Vercel.** Si sigue en Hobby, el riesgo legal señalado abajo (uso comercial no permitido, choca con AdSense/Stripe) es real y prioritario.
 
 ---
 
@@ -17,7 +19,7 @@ Verificado en local + `.env.local` + `.vercel/project.json` + `convex.json`:
 | **Convex** | **Free o Starter** (no verificable desde local, no hay dashboard aquí) | 1M function calls/mes, 0,5 GB DB, 1 GB file, 20 GB-hr action, 1 GB egress; overage $2,20/M calls + $0,22/GB DB | **$0-2/mes** | 🟡 OK al tráfico actual. Saltar a Professional ($25/dev/mes) cuando se acerque a los límites. |
 | **Clerk** | **Free** (production) | 50k MRU incluidos (feb 2026) | **$0/mes** | 🟢 OK hasta 50k MAU. **No activar Clerk Billing hasta haber migrado a `pk_live_` en Vercel.** |
 | **Resend** | **Free** | 3k emails/mes con cap de **100/día** | **$0/mes** | 🟡 **Primer cuello real**: si envías newsletter a >100 suscriptores/ día, el envío se pausa sin aviso. Saltar a Pro ($20/mes) cuando actives Pro + newsletter. |
-| **OpenAI** | **Pay-per-use** | Sin techo, por uso | **~$0-1/mes** | 🟢 Barato. Pero el `RESEND_FROM_EMAIL = hola@mi-dorsal.com` que no existe puede estar **rebotando** las emails de resultados → activar Zoho Mail (AGENTS.md §13.4) **antes** de activar freemium. |
+| **OpenAI** | **Pay-per-use** | Sin techo, por uso | **~$0-1/mes** | 🟢 Barato. Pero el `RESEND_FROM_EMAIL = hola@mi-dorsal.com` que no existe puede estar **rebotando** las emails de resultados → activar Zoho Mail (`docs/history/naming-decisions.md`) **antes** de activar freemium. |
 | **Stripe (via Clerk Billing)** | **No activado** | n/a | **$0/mes** | 🟢 Skeleton listo (8 sep 2026). Activar tras validar pricing con entrevistas (ver BUSINESS_PLAN.md). |
 | **Dominio** | mi-dorsal.com (Vercel) + mi-dorsal.es (Hostinger) | n/a | **~19 €/año** | 🟢 OK. Pendiente `mi-dorsal.run` y `.app` defensivos. |
 | **Zoho Mail** | **Pendiente** | 5 buzones gratis | **0 €** | 🔴 **Bloqueante para emails transaccionales**: el `RESEND_FROM_EMAIL` configurado no tiene buzón detrás. Configurar antes de lanzar Pro. |
@@ -27,7 +29,7 @@ Verificado en local + `.env.local` + `.vercel/project.json` + `convex.json`:
 ~$0-2/mes (todo en tiers free). Pero hay 3 **trabones latentes** que te van a doler al activar monetización:
 
 1. **Vercel Hobby** no permite uso comercial → al meter AdSense o Stripe te pueden cerrar la cuenta.
-2. **Resend 100/día** → la newsletter semanal a 700+ suscriptores no se envía de un día. Necesitas Pro $20/mes el día que lances la newsletter.
+2. **Resend 100/día** → la newsletter real es mensual (cron `newsletter-editorial`, día 1 de cada mes, ver `docs/core/blog-newsletter.md` — no semanal, `weekly-digest` se eliminó del código el 9 sep 2026 por decisión explícita). Aun mensual, un envío único a >100 suscriptores en un solo día se pausa por el cap diario. Necesitas Pro $20/mes el día que lances la newsletter a más de 100 suscriptores.
 3. **Buzón hola@mi-dorsal.com no existe** → los emails transaccionales (resultados, bienvenida Pro) rebotan y tu reputación de dominio se va al suelo con cada envío.
 
 ---
@@ -242,7 +244,7 @@ Estas son las decisiones técnicas que **toman 1 día ahora y te ahorran 10× en
 - **No servir OG images dinámicos sin caché**: si generas OG images con `@vercel/og`, son caras. Considera pre-generarlas en build o en una cron.
 - **Comprimir imágenes de carreras** con `next/image` y `formats: ['image/avif', 'image/webp']` en `next.config.js`.
 - **Diploma PDF**: en vez de renderizarlo en cada descarga, **cachearlo en Vercel Blob** (~$0,02/GB/mes) o servirlo desde Convex file storage. Un diploma por usuario × 1.000 Pro = 1.000 PDFs en caché = 50 MB → $0/mes.
-- **Static Generation** de `/carreras` con `revalidate: 3600` para que no se re-renderice cada vez. El `force-dynamic` actual (AGENTS.md §3.1) **es necesario** por la geo, pero puedes servir el contenido cacheado y solo variar la pill de CCAA.
+- **Static Generation** de `/carreras` con `revalidate: 3600` para que no se re-renderice cada vez. El `force-dynamic` actual (AGENTS.md §2, regla 1: páginas con `useQuery`/geo-IP lo necesitan) **es necesario** por la geo, pero puedes servir el contenido cacheado y solo variar la pill de CCAA.
 
 ### 5.2 Convex
 
@@ -276,7 +278,7 @@ Estas son las decisiones técnicas que **toman 1 día ahora y te ahorran 10× en
 En orden de prioridad, antes de lanzar Pro / newsletter / AdSense:
 
 - [ ] **Vercel Hobby → Pro** ($20/mes). 5 min. **HOY.**
-- [ ] **Configurar Zoho Mail + crear buzón hola@mi-dorsal.com** (15 min, AGENTS.md §13.4). **HOY.**
+- [ ] **Configurar Zoho Mail + crear buzón hola@mi-dorsal.com** (15 min, `docs/history/naming-decisions.md`). **HOY.**
 - [ ] **Actualizar DNS en Hostinger** con registros MX de Zoho (5 min tras verificar dominio en Zoho). **HOY.**
 - [ ] **Resend Free → Pro** ($20/mes). 5 min. **Día 1 de activación Pro.**
 - [ ] **Validar pricing con 5-10 entrevistas** (ver BUSINESS_PLAN.md §8). **Semana 1.**
@@ -319,8 +321,8 @@ En orden de prioridad, antes de lanzar Pro / newsletter / AdSense:
   - `.vercel/project.json` (`plan: hobby` en OIDC token).
   - `convex.json` (origin: mi-dorsal.es, functions: convex/).
   - `.env.local` (CLERK_JWT, CONVEX_DEPLOYMENT, RESEND_API_KEY, RESEND_FROM_EMAIL).
-  - AGENTS.md §13.4 (Zoho Mail pendiente).
-  - AGENTS.md §6.4 (stack general).
+  - `docs/history/naming-decisions.md` (Zoho Mail pendiente).
+  - `docs/core/stack.md` (stack general).
   - `docs/MONETIZATION_FREEMIUM_TIERS.md` (costes IA ya modelados).
   - `docs/BILLING_SETUP.md` (pricing 4,99 € / 39 € vs propuesta 2,99 € / 24 €).
 

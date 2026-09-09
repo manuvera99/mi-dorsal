@@ -2,7 +2,7 @@
 
 > **Misión:** convertir mi-dorsal en un proyecto sostenible económicamente en 12-18 meses, sin traicionar la propuesta de valor para el corredor.
 >
-> **Premisa:** la app ya tiene el activo más importante — 374+ páginas de carreras indexables con SEO técnico impecable. El reto ahora es **transformar tráfico en ingresos** sin morir de un modelo único.
+> **Premisa:** la app ya tiene el activo más importante — 2.761 páginas de carreras indexables con SEO técnico impecable (cifra a 9 sep 2026, creciente — corrige la cifra de 374 con la que se escribió este documento el 4 sep). El reto ahora es **transformar tráfico en ingresos** sin morir de un modelo único.
 
 ---
 
@@ -161,7 +161,9 @@ Asunto: 5 carreras que no te puedes perder este finde en Levante [+ 1 sorpresón
 
 **Estructura freemium propuesta:**
 
-| Feature | Free | Premium (5€/mes o 39€/año) |
+> ⚠️ **Pricing superado**: esta sección usaba 5€/4,99€ de forma inconsistente en su propia redacción original. El pricing actual configurado (sin activar) en Clerk es **4,99€/mes o 39€/año**; el pricing recomendado por el modelado financiero más reciente (`docs/plans/BUSINESS_PLAN.md` §6.4) es **2,99€/mes o 24€/año**. La tabla de features de abajo sigue siendo válida; ignora la cifra de precio en su cabecera y usa la de `BUSINESS_PLAN.md`.
+
+| Feature | Free | Premium |
 |---------|------|----------------------------|
 | Ver carreras | ✅ | ✅ |
 | Calendario básico | ✅ (5 carreras) | ✅ (ilimitado) |
@@ -177,22 +179,24 @@ Asunto: 5 carreras que no te puedes perder este finde en Levante [+ 1 sorpresón
 | **Estadísticas avanzadas** (evolución PRs, comparativa con comunidad) | ❌ | ✅ |
 
 **Pricing psychology:**
-- 4.99€/mes es el "sweet spot" para apps de fitness en Europa
-- 39€/año = 35% descuento = mejora conversión 2-3x
+- Ver el análisis completo y actualizado de sensibilidad precio/conversión en `docs/plans/BUSINESS_PLAN.md` §6 — recomienda 2,99€/mes en vez del 4,99€ de esta sección, con conversión esperada 3-5% (a 4,99€ sería solo 1,5-2,5%).
+- El anual (24€/año en el pricing recomendado, o 39€/año en el configurado en Clerk) sigue siendo la palanca correcta de LTV — mejora conversión y reduce churn frente al mensual.
 - Trial de 14 días sin tarjeta (conversión 8-15%)
-- Plan familiar 9.99€/mes (5 corredores — aprovechas la dinámica de grupo)
+- Plan familiar (5 corredores) como palanca de year 2, no de lanzamiento — aprovecha la dinámica de grupo una vez validado el pricing individual
 
-**Stack técnico para el paywall:**
-- **Stripe** (lo más limpio para SaaS europeo)
-- Clerk ya lo tienes para auth, lo integra con Stripe nativamente
-- Convex: nueva tabla `subscriptions` con `userId`, `plan`, `stripeCustomerId`, `stripeSubscriptionId`, `currentPeriodEnd`, `status`
-- Webhook de Stripe → mutation en Convex para actualizar el estado
-- Componente `<Paywall>` que envuelve features premium
+**Stack técnico para el paywall — ya implementado como esqueleto** (ver `docs/core/billing-subscriptions.md`, estado "esqueleto listo, NO activado"):
+- **Clerk Billing** (no Stripe directo) — Clerk gestiona auth + billing con el mismo usuario, cero código de checkout propio, 0,7% sobre ingresos. Clerk usa Stripe por debajo, pero Manu no necesita cuenta Stripe propia ni construir el webhook de cero (esta sección original asumía una integración de Stripe directa que no es la que se implementó).
+- Convex: tabla `subscriptions` ya existe en `convex/schema.ts`, con `clerkUserId`, `clerkSubscriptionId`, `planId`, `tier`, `status`.
+- Webhook `app/api/webhooks/clerk-billing/route.ts` con verificación Svix → mutation en Convex para actualizar el estado.
+- Componente `<Paywall variant="inline|card|subtle">` (`components/billing/paywall.tsx`) que envuelve features premium — ya existe, listo para usar.
 
 **Métricas objetivo:**
-- 1000 usuarios registrados → 30-50 premium (3-5%) = €150-250/mes
-- 5000 usuarios registrados → 200-400 premium = €1000-2000/mes
-- 20000 usuarios → 1000-2000 premium = €5000-10000/mes
+
+> Nota: la conversión 3-5% de esta tabla solo es realista al pricing recomendado de 2,99€/mes. Al pricing configurado en Clerk (4,99€/mes) `BUSINESS_PLAN.md` §6.1 estima conversión real de 1,5-2,5%, que reduciría estos números casi a la mitad. Ver ese documento para el modelado completo por escenario y precio.
+
+- 1000 usuarios registrados → 30-50 premium (3-5% a 2,99€) = €90-150/mes
+- 5000 usuarios registrados → 200-400 premium = €600-1200/mes
+- 20000 usuarios → 1000-2000 premium = €3000-6000/mes
 
 **Esfuerzo:** 3-4 semanas (modelo de datos + Stripe + UI + páginas account + emails transaccionales)
 **Riesgo:** baja conversión si las features premium no aportan valor claro. Mitigación: lanzar primero el trial de 14 días, medir qué features usan los trial users, quedarse con las 3 más usadas.
@@ -202,7 +206,7 @@ Asunto: 5 carreras que no te puedes perder este finde en Levante [+ 1 sorpresón
 ## 🗺️ Roadmap por trimestres
 
 ### Q1 (mes 1-3): Fundación
-- [ ] Comprar dominio `mi-dorsal.es` y configurar DNS
+- [x] Comprar dominio `mi-dorsal.es` y configurar DNS — hecho el 4 sep 2026 (mismo día que este documento), ver `docs/history/naming-decisions.md`. Pendiente real: configurar el email corporativo Zoho Mail sobre ese dominio.
 - [ ] Solicitar AdSense (tarda 1-4 semanas en aprobar)
 - [ ] Activar `NEXT_PUBLIC_ADSENSE_CLIENT_ID` cuando aprueben
 - [ ] Unirse a Awin + Daisycon (afiliación)
@@ -213,7 +217,7 @@ Asunto: 5 carreras que no te puedes perder este finde en Levante [+ 1 sorpresón
 
 ### Q2 (mes 4-6): Crecimiento de tráfico + afiliados
 - [ ] Publicar 8-12 guías SEO más (long-tail: "zapatillas para [distancia] en [terreno]")
-- [ ] Lanzar newsletter semanal
+- [ ] Lanzar newsletter mensual (cadencia real del cron `newsletter-editorial`, día 1 de cada mes — no semanal, ver `docs/core/blog-newsletter.md`; `weekly-digest` se eliminó del código el 9 sep 2026 por decisión explícita de no enviar un email semanal)
 - [ ] Cerrar 2-3 patrocinios de newsletter
 - [ ] Empezar a medir qué productos convierten mejor (Awin dashboard)
 - [ ] Considerar Ezoic si AdSense se queda corto
@@ -298,9 +302,9 @@ Si tuviera que elegir **5 cosas que hacer HOY** para acelerar la monetización:
 
 1. **Configurar `NEXT_PUBLIC_APP_URL` y `NEXT_PUBLIC_CONVEX_URL` en Vercel** (10 min) → sin esto, AdSense ni puede validar tu dominio.
 
-2. **Crear la cuenta de Google Search Console y enviar el sitemap** (15 min) → empiezas a indexar 374+ páginas en Google. **Cada día que pasa sin esto son visitas que pierdes.**
+2. **Crear la cuenta de Google Search Console y enviar el sitemap** (15 min) → empiezas a indexar las 2.761 páginas del catálogo en Google. **Cada día que pasa sin esto son visitas que pierdes.**
 
-3. **Comprar `mi-dorsal.es`** (15 min en Namecheap/Cloudflare, ~10€/año) → bloquea AdSense y queda profesional para afiliados y patrocinios. El subdominio `*.vercel.app` mata credibilidad.
+3. ~~Comprar `mi-dorsal.es`~~ — ya hecho (4 sep 2026, `docs/history/naming-decisions.md`). Pendiente real de este punto: verificar que el DNS haya propagado del todo y configurar Zoho Mail sobre el dominio para dejar de depender de `hola@mi-dorsal.com`, que hoy no tiene buzón real.
 
 4. **Crear cuenta en Awin** (30 min) → la red de afiliados más grande de España. Te aprueba en 1-3 días. Mientras tanto, investiga qué marcas de running están.
 
@@ -326,7 +330,7 @@ La mayoría de sitios de carreras en España (Runedia, CarrerasPopulares, etc.) 
 
 Esta diferencia es la que te permite aspirar al **modelo freemium** que ninguno de ellos ha podido desplegar bien, porque su modelo de negocio (mucho tráfico AdSense) penaliza meter un paywall.
 
-**No compitas en tráfico contra Runedia. Compite en engagement y retención.** Cada usuario que vuelve cada semana a mirar su calendario es un suscriptor premium potencial a 5€/mes. 1000 de esos = €5000 MRR.
+**No compitas en tráfico contra Runedia. Compite en engagement y retención.** Cada usuario que vuelve cada semana a mirar su calendario es un suscriptor premium potencial a 2,99€/mes (pricing recomendado, ver `BUSINESS_PLAN.md` §6.4). 1000 de esos = €2990 MRR.
 
 Eso es lo que persigue este plan.
 

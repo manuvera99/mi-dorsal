@@ -213,13 +213,17 @@ export function distanceToCategories(distanceKm: number): DistanceCategory[] {
  * Inversa: filtra una lista de carreras devolviendo solo las que caen
  * en al menos una de las categorías seleccionadas.
  */
-export function filterByDistanceCategories<T extends { distanceKm: number }>(
-  races: T[],
-  categories: DistanceCategory[],
-): T[] {
+export function filterByDistanceCategories<
+  T extends { distanceKm: number; raceFormats?: Array<{ distanceKm: number }> },
+>(races: T[], categories: DistanceCategory[]): T[] {
   if (categories.length === 0) return races;
   return races.filter((r) => {
-    const cats = distanceToCategories(r.distanceKm);
-    return cats.some((c) => categories.includes(c));
+    const cats = new Set<DistanceCategory>(distanceToCategories(r.distanceKm));
+    for (const f of r.raceFormats ?? []) {
+      for (const c of distanceToCategories(f.distanceKm)) {
+        cats.add(c);
+      }
+    }
+    return categories.some((c) => cats.has(c));
   });
 }

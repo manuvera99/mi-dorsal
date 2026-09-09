@@ -7,6 +7,7 @@ import { mutation, query, internalQuery } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { requireUser, getOptionalUser, raceStatusValidator, getDistanceLabel } from "./_helpers";
 import { predictForMyRace } from "../lib/prediction/predict";
+import { getEffectiveDistance } from "../lib/prediction/effective-distance";
 import { Doc, Id } from "./_generated/dataModel";
 
 /**
@@ -74,6 +75,11 @@ export const add = mutation({
     dorsalNumber: v.optional(v.string()),
     registrationDate: v.optional(v.string()),
     notes: v.optional(v.string()),
+    selectedDistance: v.optional(v.object({
+      distanceKm: v.number(),
+      label: v.string(),
+      elevationGainM: v.optional(v.number()),
+    })),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
@@ -108,12 +114,15 @@ export const add = mutation({
       .filter((q) => q.eq(q.field("isCurrent"), true))
       .collect();
 
+    const effectiveDistanceKm = args.selectedDistance?.distanceKm ?? race.distanceKm;
+    const effectiveElevationGainM = args.selectedDistance?.elevationGainM ?? race.elevationGainM;
+
     let prediction: ReturnType<typeof predictForMyRace> | null = null;
     try {
       prediction = predictForMyRace({
         race: {
-          distanceKm: race.distanceKm,
-          elevationGainM: race.elevationGainM,
+          distanceKm: effectiveDistanceKm,
+          elevationGainM: effectiveElevationGainM,
           raceType: race.raceType,
           startDate: race.startDate,
         },
@@ -139,6 +148,9 @@ export const add = mutation({
       registrationDate: args.registrationDate,
       notes: args.notes,
       status: "planned",
+      selectedDistanceKm: args.selectedDistance?.distanceKm,
+      selectedDistanceLabel: args.selectedDistance?.label,
+      selectedElevationGainM: args.selectedDistance?.elevationGainM,
       predictedTimeSeconds: prediction?.predictedTimeSeconds,
       predictionConfidence: prediction?.confidence,
       predictionFactors: prediction?.factors,
@@ -187,6 +199,92 @@ export const update = mutation({
     if (myRace.userId !== user._id) throw new Error("Forbidden");
 
     await ctx.db.patch(id, args);
+  },
+});
+
+/**
+ * Cambia la modalidad/distancia elegida por el usuario para una carrera ya
+ * en su calendario (ej. se apuntó al 10K pero en realidad corre el 21K).
+ * Solo permitido mientras la carrera está "planned": una vez corrida, la
+ * distancia real ya quedó fijada por el resultado.
+ *
+ * Recalcula la predicción automática con la nueva distancia y SIEMPRE
+ * sobreescribe cualquier objetivo manual que hubiera (setTargetTime) — un
+ * objetivo puesto a mano para 21K no tiene sentido si el usuario cambia a
+ * 10K. El cliente debe avisar al usuario de que su objetivo se recalculó.
+ */
+export const updateDistance = mutation({
+  args: {
+    id: v.id("myRaces"),
+    selectedDistance: v.object({
+      distanceKm: v.number(),
+      label: v.string(),
+      elevationGainM: v.optional(v.number()),
+    }),
+  },
+  handler: async (ctx, { id, selectedDistance }) => {
+    const user = await requireUser(ctx);
+    const myRace = await ctx.db.get(id);
+    if (!myRace) throw new Error("Not found");
+    if (myRace.userId !== user._id) throw new Error("Forbidden");
+    if (myRace.status !== "planned") {
+      throw new Error("Solo puedes cambiar la distancia de una carrera planeada");
+    }
+
+    const race = await ctx.db.get(myRace.raceId);
+    if (!race) throw new Error("Race not found");
+
+    const prs = await ctx.db
+      .query("personalRecords")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("isCurrent"), true))
+      .collect();
+
+    let prediction: ReturnType<typeof predictForMyRace> | null = null;
+    try {
+      prediction = predictForMyRace({
+        race: {
+          distanceKm: selectedDistance.distanceKm,
+          elevationGainM: selectedDistance.elevationGainM,
+          raceType: race.raceType,
+          startDate: race.startDate,
+        },
+        userPRs: prs.map((pr) => ({
+          distanceM: pr.distanceM,
+          distanceLabel: pr.distanceLabel,
+          timeSeconds: pr.timeSeconds,
+        })),
+        expectedTempC: estimateTempForRace(race.startDate, race.locality),
+      });
+    } catch (e) {
+      console.warn(
+        `[myRaces.updateDistance] Sin predicción para myRaceId=${id}:`,
+        e instanceof Error ? e.message : e,
+      );
+    }
+
+    await ctx.db.patch(id, {
+      selectedDistanceKm: selectedDistance.distanceKm,
+      selectedDistanceLabel: selectedDistance.label,
+      selectedElevationGainM: selectedDistance.elevationGainM,
+      predictedTimeSeconds: prediction?.predictedTimeSeconds,
+      predictionConfidence: prediction?.confidence,
+      predictionFactors: prediction?.factors,
+    });
+
+    if (prediction) {
+      await ctx.db.insert("predictions", {
+        userId: user._id,
+        raceId: myRace.raceId,
+        myRaceId: id,
+        predictedTimeSeconds: prediction.predictedTimeSeconds,
+        confidence: prediction.confidence,
+        modelVersion: "daniels-vdot-v1",
+        factors: prediction.factors,
+      });
+    }
+
+    return { predictedTimeSeconds: prediction?.predictedTimeSeconds };
   },
 });
 
@@ -273,7 +371,8 @@ export const setManualResult = mutation({
     // Actualizar PR si aplica
     const race = await ctx.db.get(myRace.raceId);
     if (race) {
-      const distanceM = Math.round(race.distanceKm * 1000);
+      const effectiveDistance = getEffectiveDistance(myRace, race);
+      const distanceM = Math.round(effectiveDistance.distanceKm * 1000);
       // Verificar si mejora el PR actual
       const currentPR = await ctx.db
         .query("personalRecords")

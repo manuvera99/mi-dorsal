@@ -127,7 +127,7 @@ export const sendResultFoundEmail = internalAction({
       console.warn(`[result-found] myRace ${args.myRaceId} not found, skipping`);
       return { success: false, reason: "myRace_not_found" as const };
     }
-    const { myRace, profile, race, currentPR } = data;
+    const { myRace, profile, race, currentPR, effectiveDistance } = data;
     if (!profile.email) {
       console.warn(`[result-found] profile ${profile._id} has no email, skipping`);
       return { success: false, reason: "no_email" as const };
@@ -144,14 +144,14 @@ export const sendResultFoundEmail = internalAction({
     }
 
     // ---------- 2. Calcular PR ----------
-    const distanceM = Math.round(race.distanceKm * 1000);
+    const distanceM = Math.round(effectiveDistance.distanceKm * 1000);
     const isPR =
       currentPR != null &&
       args.timeSeconds < currentPR.timeSeconds;
     const prDeltaSeconds =
       isPR && currentPR ? currentPR.timeSeconds - args.timeSeconds : undefined;
     const previousRecordFormatted = currentPR ? formatHMS(currentPR.timeSeconds) : undefined;
-    const distanceLabel = getDistanceLabel(distanceM);
+    const distanceLabel = effectiveDistance.label;
 
     // ---------- 3. Generar diploma PDF ----------
     const issuedAt = new Date();
@@ -161,12 +161,12 @@ export const sendResultFoundEmail = internalAction({
       runnerName: profile.displayName ?? "Corredor",
       raceName: race.name,
       raceDate: args.raceDate,
-      distanceKm: race.distanceKm,
+      distanceKm: effectiveDistance.distanceKm,
       distanceLabel,
       timeFormatted: formatHMS(args.timeSeconds),
       timeSeconds: args.timeSeconds,
       dorsalNumber: myRace.dorsalNumber ?? "—",
-      paceFormatted: formatPace(args.timeSeconds, race.distanceKm),
+      paceFormatted: formatPace(args.timeSeconds, effectiveDistance.distanceKm),
       positionOverall: args.positionOverall,
       positionCategory: args.positionCategory,
       isPersonalRecord: isPR,
@@ -363,7 +363,7 @@ export const sendReminderEmail = internalAction({
       console.warn(`[reminder] myRace ${args.myRaceId} not found, skipping`);
       return { success: false, reason: "myRace_not_found" as const };
     }
-    const { myRace, profile, race } = data;
+    const { myRace, profile, race, effectiveDistance } = data;
 
     const toEmail = args.testOverrideTo ?? profile.email;
     if (!toEmail) {
@@ -387,8 +387,7 @@ export const sendReminderEmail = internalAction({
     }
 
     // ---------- 2. Preparar datos para la plantilla ----------
-    const distanceM = Math.round(race.distanceKm * 1000);
-    const distanceLabel = getDistanceLabel(distanceM);
+    const distanceLabel = effectiveDistance.label;
     const raceDateFormatted = race.startDate
       ? new Date(race.startDate).toLocaleDateString("es-ES", {
           weekday: "long",
@@ -675,17 +674,6 @@ function formatPace(timeSeconds: number, distanceKm: number): string {
   const m = Math.floor(paceSec / 60);
   const s = Math.round(paceSec % 60);
   return `${m}:${String(s).padStart(2, "0")}`;
-}
-
-function getDistanceLabel(distanceM: number): string {
-  if (distanceM === 5000) return "5K";
-  if (distanceM === 10000) return "10K";
-  if (distanceM === 15000) return "15K";
-  if (distanceM === 21097) return "Media maratón";
-  if (distanceM === 42195) return "Maratón";
-  // Fallback genérico
-  if (distanceM < 21000) return `${(distanceM / 1000).toFixed(0)}K`;
-  return `${(distanceM / 1000).toFixed(1)}K`;
 }
 
 function escapeAttr(s: string): string {

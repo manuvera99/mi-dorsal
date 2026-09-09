@@ -447,6 +447,16 @@ export default defineSchema({
       v.literal("dnf"),
     ),
     category: v.optional(v.string()),
+    // Snapshot de la modalidad/distancia que el usuario eligió al añadir
+    // la carrera (o al editarla después). Copia de datos, NO referencia a
+    // un índice de race.raceFormats — así, si el admin re-extrae o edita
+    // las modalidades de la carrera más tarde, esta inscripción no se ve
+    // afectada. undefined = usuario no eligió (carrera sin raceFormats, o
+    // fila creada antes de este cambio) → toda lectura debe caer de vuelta
+    // a race.distanceKm (ver lib/prediction/effective-distance.ts).
+    selectedDistanceKm: v.optional(v.number()),
+    selectedDistanceLabel: v.optional(v.string()),
+    selectedElevationGainM: v.optional(v.number()),
     predictedTimeSeconds: v.optional(v.number()),
     predictionConfidence: v.optional(v.union(
       v.literal("low"),

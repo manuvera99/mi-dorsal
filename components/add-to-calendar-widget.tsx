@@ -22,9 +22,19 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { Calendar, Check, ExternalLink, LogIn, Plus, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
+import {
+  buildDistanceOptions,
+  DistanceModalityPicker,
+  type DistanceOption,
+} from "@/components/distance-modality-picker";
 
 interface AddToCalendarWidgetProps {
   raceId: Id<"races">;
+  /** Distancia principal de la carrera, en km. */
+  distanceKm: number;
+  elevationGainM?: number;
+  /** Modalidades alternativas (5K/10K/21K...), si la carrera las tiene. */
+  raceFormats?: Array<{ name: string; distanceKm: number; elevationGainM?: number }>;
   /** Texto del footer ("X corredores la han valorado"). Opcional. */
   footerText?: string;
 }
@@ -35,12 +45,21 @@ interface AddToCalendarWidgetProps {
 
 const MOCK_USER_KEY = "mock-user-signed-in";
 
-function MockAddToCalendar({ raceId, footerText }: AddToCalendarWidgetProps) {
+function MockAddToCalendar({
+  raceId,
+  distanceKm,
+  elevationGainM,
+  raceFormats,
+  footerText,
+}: AddToCalendarWidgetProps) {
   const [signedIn, setSignedIn] = useState(false);
   const [dorsal, setDorsal] = useState("");
   const [saved, setSaved] = useState(false);
   const [alreadyAdded, setAlreadyAdded] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+
+  const distanceOptions = buildDistanceOptions({ distanceKm, elevationGainM, raceFormats });
+  const [selectedDistance, setSelectedDistance] = useState<DistanceOption | null>(null);
 
   const STORAGE_ADDED = `mock-myRace-${raceId}`;
 
@@ -56,6 +75,9 @@ function MockAddToCalendar({ raceId, footerText }: AddToCalendarWidgetProps) {
     localStorage.setItem(STORAGE_ADDED, "1");
     if (dorsal.trim()) {
       localStorage.setItem(`mock-myRace-${raceId}-dorsal`, dorsal.trim());
+    }
+    if (selectedDistance) {
+      localStorage.setItem(`mock-myRace-${raceId}-distance`, selectedDistance.label);
     }
     setAlreadyAdded(true);
     setSaved(true);
@@ -149,6 +171,12 @@ function MockAddToCalendar({ raceId, footerText }: AddToCalendarWidgetProps) {
         Añádela a tu calendario y te predecimos tu tiempo. El dorsal lo puedes
         añadir después, cuando te llegue.
       </p>
+      <DistanceModalityPicker
+        options={distanceOptions}
+        selected={selectedDistance}
+        onSelect={setSelectedDistance}
+        className="mb-3"
+      />
       <div className="space-y-2">
         <label className="label flex items-center justify-between">
           <span>Tu dorsal</span>
@@ -207,7 +235,13 @@ function MockAddToCalendar({ raceId, footerText }: AddToCalendarWidgetProps) {
 // REAL — Clerk + Convex
 // ---------------------------------------------------------------------------
 
-function RealAddToCalendar({ raceId, footerText }: AddToCalendarWidgetProps) {
+function RealAddToCalendar({
+  raceId,
+  distanceKm,
+  elevationGainM,
+  raceFormats,
+  footerText,
+}: AddToCalendarWidgetProps) {
   const { isSignedIn, isLoaded } = useUser();
   const toast = useToast();
   const addMutation = useMutation(api.myRaces.add);
@@ -218,6 +252,9 @@ function RealAddToCalendar({ raceId, footerText }: AddToCalendarWidgetProps) {
   const alreadyAdded = !!existing?.some(
     (m: { raceId: Id<"races"> }) => m.raceId === raceId,
   );
+
+  const distanceOptions = buildDistanceOptions({ distanceKm, elevationGainM, raceFormats });
+  const [selectedDistance, setSelectedDistance] = useState<DistanceOption | null>(null);
 
   const [dorsal, setDorsal] = useState("");
   const [saved, setSaved] = useState(false);
@@ -232,6 +269,7 @@ function RealAddToCalendar({ raceId, footerText }: AddToCalendarWidgetProps) {
       const result = await addMutation({
         raceId,
         dorsalNumber: dorsal.trim() || undefined,
+        selectedDistance: selectedDistance ?? undefined,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -349,6 +387,12 @@ function RealAddToCalendar({ raceId, footerText }: AddToCalendarWidgetProps) {
         Añádela a tu calendario y te predecimos tu tiempo. El dorsal lo puedes
         añadir después, cuando te llegue.
       </p>
+      <DistanceModalityPicker
+        options={distanceOptions}
+        selected={selectedDistance}
+        onSelect={setSelectedDistance}
+        className="mb-3"
+      />
       <div className="space-y-2">
         <label className="label flex items-center justify-between">
           <span>Tu dorsal</span>

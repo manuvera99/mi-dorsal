@@ -17,6 +17,7 @@ import { v } from "convex/values";
 import { scrapeResults, type RunnerResult } from "../scraper";
 import { Doc, Id } from "../_generated/dataModel";
 import { formatTime } from "../_helpers";
+import { getEffectiveDistance } from "../../lib/prediction/effective-distance";
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -235,7 +236,8 @@ export const checkResults = internalAction({
           // "viejo" como referencia. La próxima vez, este PR nuevo será
           // el current y ya no se mostrará como badge.
           try {
-            const distanceM = Math.round(notifData.race.distanceKm * 1000);
+            const effectiveDistance = getEffectiveDistance(notifData.myRace, notifData.race);
+            const distanceM = Math.round(effectiveDistance.distanceKm * 1000);
             const prResult = await ctx.runMutation(
               internal.personalRecords.updateIfBetter,
               {

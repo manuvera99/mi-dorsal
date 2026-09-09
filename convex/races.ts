@@ -39,6 +39,25 @@ function distanceToCategories(distanceKm: number): string[] {
 }
 
 /**
+ * Igual que distanceToCategories, pero considerando TODAS las distancias
+ * de una carrera: la principal (distanceKm) y cada raceFormats[].distanceKm.
+ * Así, filtrar por "10K" encuentra también una "Media Maratón" que tiene
+ * un raceFormat de 10K, aunque su distanceKm principal sea 21.1.
+ */
+function allDistanceCategories(race: {
+  distanceKm: number;
+  raceFormats?: Array<{ distanceKm: number }>;
+}): string[] {
+  const cats = new Set<string>(distanceToCategories(race.distanceKm));
+  for (const f of race.raceFormats ?? []) {
+    for (const c of distanceToCategories(f.distanceKm)) {
+      cats.add(c);
+    }
+  }
+  return Array.from(cats);
+}
+
+/**
  * Lista carreras con filtros opcionales. Lectura pública.
  *
  * Filtros soportados:
@@ -113,7 +132,7 @@ export const list = query({
     }
     if (args.distanceCategories && args.distanceCategories.length > 0) {
       filtered = filtered.filter((r) => {
-        const cats = distanceToCategories(r.distanceKm);
+        const cats = allDistanceCategories(r);
         return cats.some((c) => args.distanceCategories!.includes(c as never));
       });
     }

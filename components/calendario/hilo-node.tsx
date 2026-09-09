@@ -14,10 +14,20 @@
  * del hilo. Este componente solo posiciona el marker encima de esa línea.
  */
 
+import { useState } from "react";
 import Link from "next/link";
-import { Calendar, Hash, MapPin, Trophy } from "lucide-react";
+import { useMutation } from "convex/react";
+import { Calendar, Hash, MapPin, Trophy, Pencil, Loader2 } from "lucide-react";
 import { cn, formatRaceType, formatTime, formatPaceLong } from "@/lib/utils";
 import { TimePaceCalculator } from "./time-pace-calculator";
+import { api } from "@/convex/_generated/api";
+import {
+  buildDistanceOptions,
+  DistanceModalityPicker,
+  type DistanceOption,
+} from "@/components/distance-modality-picker";
+import { getEffectiveDistance } from "@/lib/prediction/effective-distance";
+import { useToast } from "@/components/ui/toast";
 
 type HiloNodeStatus = "planned" | "done" | "dns" | "dnf";
 
@@ -153,9 +163,43 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
     (myRace.status as HiloNodeStatus) || "planned";
   const s = STATUS[status];
   const race = myRace.race;
+  const effectiveDistance = race ? getEffectiveDistance(myRace, race) : null;
   // PR matching: solo si la distancia coincide exacta con la de la carrera.
-  const matchingPR = race ? findMatchingPR(race.distanceKm, userPRs) : null;
+  const matchingPR = effectiveDistance
+    ? findMatchingPR(effectiveDistance.distanceKm, userPRs)
+    : null;
   const { day, month, year } = fmtShortDate(race?.startDate);
+
+  const [editingDistance, setEditingDistance] = useState(false);
+  const [pendingDistance, setPendingDistance] = useState<DistanceOption | null>(null);
+  const [savingDistance, setSavingDistance] = useState(false);
+  const updateDistance = useMutation(api.myRaces.updateDistance);
+  const toast = useToast();
+
+  const distanceOptions = race ? buildDistanceOptions(race) : [];
+
+  const handleSaveDistance = async () => {
+    if (!pendingDistance) return;
+    setSavingDistance(true);
+    try {
+      await updateDistance({ id: myRace._id, selectedDistance: pendingDistance });
+      toast.show({
+        variant: "info",
+        title: "Distancia actualizada",
+        description: "Recalculamos tu predicción para la nueva distancia.",
+      });
+      setEditingDistance(false);
+      setPendingDistance(null);
+    } catch (e) {
+      toast.show({
+        variant: "warning",
+        title: "No se pudo cambiar la distancia",
+        description: "Inténtalo de nuevo.",
+      });
+    } finally {
+      setSavingDistance(false);
+    }
+  };
 
   // "Sombra" del tab según el estado (rojo, verde o gris) para mantener el
   // lenguaje visual del brand (consistente con la "dorsal mini" del empty state
@@ -275,11 +319,26 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
               {race.locality}
             </span>
           )}
-          {race && (
+          {race && effectiveDistance && (
             <span className="flex items-center gap-1.5">
               <Trophy className="h-3.5 w-3.5" />
-              {race.distanceKm.toFixed(race.distanceKm % 1 === 0 ? 0 : 1)} km
+              {effectiveDistance.label} (
+              {effectiveDistance.distanceKm.toFixed(
+                effectiveDistance.distanceKm % 1 === 0 ? 0 : 1,
+              )}{" "}
+              km)
               · {formatRaceType(race.raceType)}
+              {race.raceFormats && race.raceFormats.length > 0 && status === "planned" && (
+                <button
+                  type="button"
+                  onClick={() => setEditingDistance(true)}
+                  className="ml-1 inline-flex items-center rounded p-0.5 text-stone-400 hover:text-runner-primary hover:bg-stone-100"
+                  aria-label="Cambiar distancia elegida"
+                  title="Cambiar distancia elegida"
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+              )}
             </span>
           )}
         </div>
@@ -301,7 +360,8 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
           cuando añadió la carrera, o de un guardado anterior), la
           calculadora arranca con él.
         */}
-        {(race && race.distanceKm > 0) || myRace.actualTimeSeconds ? (
+        {(race && effectiveDistance && effectiveDistance.distanceKm > 0) ||
+        myRace.actualTimeSeconds ? (
           <div className="mt-4 border-t border-stone-100 pt-3">
             {matchingPR && (
               <div className="mb-3 flex items-baseline justify-between gap-2 rounded-md bg-stone-50 px-3 py-2">
@@ -310,19 +370,19 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
                 </span>
                 <span className="font-mono text-sm font-bold text-stone-700">
                   {formatTime(matchingPR.timeSeconds)}
-                  {race && race.distanceKm > 0 && (
+                  {effectiveDistance && effectiveDistance.distanceKm > 0 && (
                     <span className="ml-2 text-[11px] font-normal text-stone-500">
-                      ({formatPaceLong(matchingPR.timeSeconds / race.distanceKm)})
+                      ({formatPaceLong(matchingPR.timeSeconds / effectiveDistance.distanceKm)})
                     </span>
                   )}
                 </span>
               </div>
             )}
 
-            {race && race.distanceKm > 0 && (
+            {effectiveDistance && effectiveDistance.distanceKm > 0 && (
               <TimePaceCalculator
                 myRaceId={myRace._id}
-                distanceKm={race.distanceKm}
+                distanceKm={effectiveDistance.distanceKm}
                 initialTimeSeconds={myRace.predictedTimeSeconds}
               />
             )}
@@ -346,6 +406,43 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
             )}
           </div>
         ) : null}
+
+        {editingDistance && (
+          <div className="mt-4 border-t border-stone-100 pt-3">
+            <DistanceModalityPicker
+              options={distanceOptions}
+              selected={pendingDistance ?? effectiveDistance}
+              onSelect={setPendingDistance}
+            />
+            <div className="mt-2 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingDistance(false);
+                  setPendingDistance(null);
+                }}
+                disabled={savingDistance}
+                className="text-xs text-stone-500 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveDistance}
+                disabled={savingDistance || !pendingDistance}
+                className="rounded-md bg-runner-primary px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-white shadow-sm transition-opacity hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {savingDistance ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Guardando
+                  </span>
+                ) : (
+                  "Guardar distancia"
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </article>
     </div>
   );

@@ -49,6 +49,9 @@
 // convex/crons/resultNotFound.ts. Avisa al usuario y le ofrece meter su
 // tiempo a mano en /calendario (myRaces.setManualResult). También acepta
 // `testOverrideTo` con el mismo comportamiento que sendReminderEmail.
+// Además, cada vez que se dispara de verdad (no en modo test), manda un
+// segundo aviso a hola@mi-dorsal.com (sendAdminAlert) — es la señal de
+// que el scraper de esa carrera no está funcionando.
 // =============================================================================
 
 import { internalAction } from "./_generated/server";
@@ -576,6 +579,23 @@ export const sendResultNotFoundEmail = internalAction({
       });
     }
 
+    // ---------- 5. Avisar al admin (hola@mi-dorsal.com) ----------
+    // Cada vez que se dispara este email real (no en modo test), Manu
+    // quiere saberlo: es la señal de que el scraper de esa carrera no
+    // está funcionando y toca revisar resultsUrl a mano en /admin/races.
+    if (!isTest) {
+      await sendAdminAlert({
+        userName: profile.displayName ?? profile.email ?? "corredor",
+        userEmail: profile.email,
+        raceName: race.name,
+        raceId: race._id,
+        myRaceId: myRace._id,
+        resultsUrl: race.resultsUrl,
+        userEmailDelivered: success,
+        appUrl: APP_URL,
+      });
+    }
+
     return {
       success,
       reason: "sent" as const,
@@ -585,6 +605,58 @@ export const sendResultNotFoundEmail = internalAction({
     };
   },
 });
+
+/**
+ * Aviso interno a hola@mi-dorsal.com cuando se dispara result_not_found
+ * de verdad. Best-effort: si falla, solo loguea — nunca debe tirar abajo
+ * el flujo principal (el usuario ya recibió, o no, su email).
+ */
+async function sendAdminAlert(args: {
+  userName: string;
+  userEmail?: string;
+  raceName: string;
+  raceId: Id<"races">;
+  myRaceId: Id<"myRaces">;
+  resultsUrl?: string;
+  userEmailDelivered: boolean;
+  appUrl: string;
+}): Promise<void> {
+  const IS_MOCK = !process.env.RESEND_API_KEY;
+  const adminUrl = `${args.appUrl}/admin/races/${args.raceId}`;
+  const subject = `⚠️ Resultado no encontrado: ${args.raceName}`;
+  const html = `
+    <p>${escapeAttr(args.userName)}${args.userEmail ? ` (${escapeAttr(args.userEmail)})` : ""} no tiene resultado tras 48h en <strong>${escapeAttr(args.raceName)}</strong>.</p>
+    <p>Email al usuario: ${args.userEmailDelivered ? "enviado" : "FALLÓ al enviar"}.</p>
+    <p>resultsUrl actual: ${args.resultsUrl ? `<a href="${args.resultsUrl}">${escapeAttr(args.resultsUrl)}</a>` : "(sin resultsUrl configurada)"}</p>
+    <p><a href="${adminUrl}">Revisar carrera en el admin →</a></p>
+    <p style="color:#78716c;font-size:12px;">myRaceId: ${args.myRaceId}</p>
+  `;
+  const text = [
+    `${args.userName}${args.userEmail ? ` (${args.userEmail})` : ""} no tiene resultado tras 48h en ${args.raceName}.`,
+    `Email al usuario: ${args.userEmailDelivered ? "enviado" : "FALLÓ al enviar"}.`,
+    `resultsUrl actual: ${args.resultsUrl ?? "(sin resultsUrl configurada)"}`,
+    `Revisar: ${adminUrl}`,
+    `myRaceId: ${args.myRaceId}`,
+  ].join("\n");
+
+  if (IS_MOCK) {
+    console.log(`[admin-alert-mock] result_not_found → hola@mi-dorsal.com | ${subject}`);
+    return;
+  }
+  try {
+    const { Resend } = await import("resend");
+    const resend = new Resend(stripBom(process.env.RESEND_API_KEY!));
+    await resend.emails.send({
+      from: stripBom(process.env.RESEND_FROM_EMAIL ?? "mi-dorsal <hola@mi-dorsal.com>"),
+      to: "hola@mi-dorsal.com",
+      subject,
+      html,
+      text,
+    });
+  } catch (err) {
+    console.error("[admin-alert] failed to notify hola@mi-dorsal.com:", err);
+  }
+}
 
 // ===========================================================================
 // Helpers puros

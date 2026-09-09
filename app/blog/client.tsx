@@ -165,8 +165,8 @@ function EmptyState({ filter }: { filter: CategoryFilter }) {
       </p>
       <p className="text-sm text-gray-400">
         Estamos escribiéndolas. Si quieres que prioricemos alguna, escríbenos a{" "}
-        <a href="mailto:hola@mi-dorsal.es" className="underline">
-          hola@mi-dorsal.es
+        <a href="mailto:hola@mi-dorsal.com" className="underline">
+          hola@mi-dorsal.com
         </a>
         .
       </p>

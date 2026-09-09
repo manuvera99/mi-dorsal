@@ -23,7 +23,7 @@ const TESTIMONIALS: Testimonial[] = [
     city: "Valencia",
     race: "10K Valencia 2026",
     time: "44:21",
-    text: "Por fin alguien que entiende que el dorsal importa más que el pace medio del entrenamiento. Que me manden el resultado al buzón es la hostia.",
+    text: "Metí mi marca en 10K y la predicción para la media me la clavó a 40 segundos. Y cuando publicaron la clasificación, el resultado me llegó al correo antes de que yo entrara a mirarlo.",
     avatar: "🏃",
   },
   {
@@ -32,7 +32,7 @@ const TESTIMONIALS: Testimonial[] = [
     city: "Madrid",
     race: "Media Maratón Madrid 2026",
     time: "1:42:08",
-    text: "Me apunté a 6 carreras este año y las tengo todas aquí. No más capturas de WhatsApp con la fecha y el dorsal apuntados a mano.",
+    text: "Ahora mismo tengo 6 carreras en el calendario, cada una con su dorsal y su predicción. Antes esto vivía repartido entre notas del móvil y capturas de WhatsApp.",
     avatar: "🧡",
   },
   {
@@ -41,7 +41,7 @@ const TESTIMONIALS: Testimonial[] = [
     city: "Bilbao",
     race: "Behobia 2025",
     time: "1:26:14",
-    text: "Recibir el diploma en PDF al cruzar la meta es de las mejores cosas que he visto en una app. Lo mandé al grupo del club en 2 minutos.",
+    text: "El diploma en PDF me llegó al día siguiente con mi dorsal, mi tiempo y mi posición ya puestos. Lo mandé al grupo del club antes de que nadie preguntara cómo me había ido.",
     avatar: "⚡",
   },
   {
@@ -50,7 +50,7 @@ const TESTIMONIALS: Testimonial[] = [
     city: "Sevilla",
     race: "Maratón Sevilla 2026",
     time: "3:48:12",
-    text: "Por 2,99 € al mes me ahorro el dolor de cabeza de exportar Strava a mano. Mis PRs se actualizan solos y el analisis de tu perfil de corredor me dice dónde apretar. Vale mucho más de lo que cuesta.",
+    text: "Conecté Strava una vez y ya no subo nada a mano: mis PRs se actualizan solos con cada actividad. Por 2,99 € al mes me quito de encima el ZIP y el rollo de exportar cada temporada.",
     avatar: "✨",
     pro: true,
   },

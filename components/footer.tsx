@@ -51,8 +51,8 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <a href="mailto:hola@mi-dorsal.es" className="hover:text-runner-primary">
-                  hola@mi-dorsal.es
+                <a href="mailto:hola@mi-dorsal.com" className="hover:text-runner-primary">
+                  hola@mi-dorsal.com
                 </a>
               </li>
               <li className="text-xs text-gray-500 mt-3">

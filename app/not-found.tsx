@@ -40,8 +40,8 @@ export default function NotFound() {
 
         <div className="text-sm text-gray-500">
           <p>¿Crees que es un error?</p>
-          <a href="mailto:hola@mi-dorsal.es" className="text-runner-primary hover:underline">
-            Escríbenos a hola@mi-dorsal.es
+          <a href="mailto:hola@mi-dorsal.com" className="text-runner-primary hover:underline">
+            Escríbenos a hola@mi-dorsal.com
           </a>
         </div>
       </div>

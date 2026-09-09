@@ -28,7 +28,7 @@ const MOMENTS = [
   {
     icon: Zap,
     when: "Diciembre. Te haces Pro.",
-    body: "Conectas Strava una vez. Tus 312 actividades del 2024 entran solas, los PRs se actualizan y un analisis de tu perfil de corredor te dice dónde apretar para bajar de 1:25 en la Behobia 2027.",
+    body: "Conectas Strava una vez. Tus 312 actividades del 2024 entran solas, los PRs se actualizan y un análisis de tu perfil de corredor te dice dónde apretar para bajar de 1:25 en la Behobia 2027.",
     pro: true,
   },
 ];

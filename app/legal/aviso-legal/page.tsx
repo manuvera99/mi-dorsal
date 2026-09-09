@@ -24,7 +24,7 @@ export default function AvisoLegalPage() {
         <li><strong>Titular:</strong> [Tu nombre o razón social]</li>
         <li><strong>NIF/CIF:</strong> [Tu NIF/CIF]</li>
         <li><strong>Domicilio:</strong> [Tu domicilio social]</li>
-        <li><strong>Email de contacto:</strong> hola@mi-dorsal.es</li>
+        <li><strong>Email de contacto:</strong> hola@mi-dorsal.com</li>
       </ul>
 
       <h2>2. Objeto y ámbito de aplicación</h2>
@@ -63,7 +63,7 @@ export default function AvisoLegalPage() {
       </p>
       <p>
         Si detectas información incorrecta o desactualizada, por favor escríbenos a{" "}
-        <a href="mailto:hola@mi-dorsal.es">hola@mi-dorsal.es</a> para que podamos corregirla.
+        <a href="mailto:hola@mi-dorsal.com">hola@mi-dorsal.com</a> para que podamos corregirla.
       </p>
 
       <h2>5. Enlaces a sitios de terceros</h2>
@@ -91,7 +91,7 @@ export default function AvisoLegalPage() {
       <h2>8. Contacto</h2>
       <p>
         Para cualquier consulta relativa a este aviso legal, puedes escribirnos a{" "}
-        <a href="mailto:hola@mi-dorsal.es">hola@mi-dorsal.es</a>.
+        <a href="mailto:hola@mi-dorsal.com">hola@mi-dorsal.com</a>.
       </p>
     </article>
   );

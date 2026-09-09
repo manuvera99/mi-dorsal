@@ -54,7 +54,7 @@ const TIERS: Tier[] = [
     tagline: "Pruébalo sin compromiso. Cancela cuando quieras.",
     features: [
       "Strava OAuth en tiempo real (webhook)",
-      "Analisis de tu perfil de corredor (ilimitado)",
+      "Análisis de tu perfil de corredor (ilimitado)",
       "Re-subir Strava export sin límite",
       "Alertas y export a calendario (próximamente)",
     ],
@@ -100,7 +100,7 @@ export function ProTeaser() {
         </h2>
         <p className="text-gray-600 mt-2 max-w-2xl mx-auto">
           El 90% de los corredores usa el plan Free sin pagar nada. Pro
-          es para los que quieren Strava en tiempo real y el analisis de tu perfil de corredor
+          es para los que quieren Strava en tiempo real y el análisis de tu perfil de corredor
           sin límites.
         </p>
       </div>

@@ -1,7 +1,7 @@
 "use client";
 
 // =============================================================================
-// mi-dorsal — Tarjeta de análisis del analisis de tu perfil de corredor en /perfil
+// mi-dorsal — Tarjeta de análisis del perfil de corredor en /perfil
 // =============================================================================
 // Botón que dispara convex/actions/coachAnalysis.ts (LLM con voz de
 // entrenador experimentado), muestra el resultado cacheado en el profile

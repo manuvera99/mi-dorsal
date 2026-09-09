@@ -24,12 +24,12 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: "¿Cuánto cuesta mi-dorsal?",
     answer:
-      "El plan Free es completo y 100% gratis: catálogo, predicción VDOT, voto 8D, calendario personal, resultados por email y diploma PDF. Si quieres más, Pro Mensual cuesta 2,99 €/mes y Pro Anual 24,99 €/año (≈ 2,08 €/mes, ahorras un 30%). Pro añade Strava en tiempo real y analisis ilimitado de tu perfil de corredor. Cancela cuando quieras, sin compromiso. Pagos gestionados por Clerk Billing (Stripe) con RGPD y factura automática.",
+      "El plan Free es completo y 100% gratis: catálogo, predicción VDOT, voto 8D, calendario personal, resultados por email y diploma PDF. Si quieres más, Pro Mensual cuesta 2,99 €/mes y Pro Anual 24,99 €/año (≈ 2,08 €/mes, ahorras un 30%). Pro añade Strava en tiempo real y análisis ilimitado de tu perfil de corredor. Cancela cuando quieras, sin compromiso. Pagos gestionados por Clerk Billing (Stripe) con RGPD y factura automática.",
   },
   {
     question: "¿Qué hay gratis y qué es de pago?",
     answer:
-      "Gratis: TODO lo que hace el 90% de los corredores — catálogo, predicción de tiempo, voto 8D, calendario, PRs, resultados oficiales y un export de Strava (ZIP) por cuenta. Pro: Strava OAuth en tiempo real (webhook), re-subir Strava sin límite, analisis de tu perfil de corredor sin restricción y soporte prioritario 24 h. En roadmap para Pro: planificador de temporada, alertas personalizadas, export a Google/Apple Calendar y widget público.",
+      "Gratis: TODO lo que hace el 90% de los corredores — catálogo, predicción de tiempo, voto 8D, calendario, PRs, resultados oficiales y un export de Strava (ZIP) por cuenta. Pro: Strava OAuth en tiempo real (webhook), re-subir Strava sin límite, análisis de tu perfil de corredor sin restricción y soporte prioritario 24 h. En roadmap para Pro: planificador de temporada, alertas personalizadas, export a Google/Apple Calendar y widget público.",
   },
   {
     question: "¿De dónde sacáis las carreras?",

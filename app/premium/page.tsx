@@ -52,7 +52,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://mi-dorsal.com";
 export const metadata: Metadata = {
   title: "mi-dorsal Premium — Más de tu temporada de carreras",
   description:
-    "Sincronización Strava en tiempo real, entrenador IA ilimitado, planificación de temporada y alertas personalizadas. Desde 2,99 €/mes. Sin compromiso, cancela cuando quieras.",
+    "Sincronización Strava en tiempo real, analisis ilimitado, planificación de temporada y alertas personalizadas. Desde 2,99 €/mes. Sin compromiso, cancela cuando quieras.",
   alternates: { canonical: "/premium" },
   openGraph: {
     title: "mi-dorsal Premium",
@@ -121,7 +121,7 @@ const TIERS: Tier[] = [
       "Todo lo de Free, y además:",
       "Sincronización Strava OAuth (sync en tiempo real)",
       "Re-subir export de Strava ilimitado",
-      "Entrenador IA con voz de club (sin límite)",
+      "Analisis de tu perfil de corredor (sin límite)",
       "Planificador inteligente de temporada",
       "Alertas personalizadas (tu zona, tu distancia)",
       "Comparativa con la comunidad",
@@ -181,7 +181,7 @@ const PLAN_FEATURES: PlanFeature[] = [
 
   // Predicciones (siempre free, coste $0)
   { category: "Predicciones y análisis", label: "Predicción de tiempo (Daniels VDOT)", free: "Ilimitadas", premium: "Ilimitadas + alta confianza" },
-  { category: "Predicciones y análisis", label: "Entrenador IA con voz de club", free: "1 al mes", premium: "Ilimitado" },
+  { category: "Predicciones y análisis", label: "Analisis de tu perfil de corredor", free: "1 al mes", premium: "Ilimitado" },
   { category: "Predicciones y análisis", label: "Planificación inteligente de temporada", free: false, premium: true },
   { category: "Predicciones y análisis", label: "Estadísticas avanzadas de tus PRs", free: false, premium: true },
   { category: "Predicciones y análisis", label: "Compararte con la comunidad", free: false, premium: true },
@@ -296,7 +296,7 @@ const FAQ: FaqItem[] = [
   {
     question: "¿Qué incluye Pro que no tenga Free?",
     answer:
-      "Sincronización Strava OAuth (sync en tiempo real, consume la API de Strava), entrenador IA ilimitado, alertas personalizadas, planificación de temporada, comparativa con la comunidad, export a Google/Apple Calendar y widget público para tu blog. Lo básico (catálogo, predicciones, PRs, export ZIP, calendario) es siempre free.",
+      "Sincronización Strava OAuth (sync en tiempo real, consume la API de Strava), analisis ilimitado, alertas personalizadas, planificación de temporada, comparativa con la comunidad, export a Google/Apple Calendar y widget público para tu blog. Lo básico (catálogo, predicciones, PRs, export ZIP, calendario) es siempre free.",
   },
   {
     question: "¿Puedo probar Pro antes de pagar?",

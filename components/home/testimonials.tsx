@@ -59,7 +59,7 @@ const TESTIMONIALS: Testimonial[] = [
     city: "Sevilla",
     race: "Maratón Sevilla 2026",
     time: "3:48:12",
-    text: "Por 2,99 € al mes me ahorro el dolor de cabeza de exportar Strava a mano. Mis PRs se actualizan solos y el entrenador IA me dice dónde apretar. Vale mucho más de lo que cuesta.",
+    text: "Por 2,99 € al mes me ahorro el dolor de cabeza de exportar Strava a mano. Mis PRs se actualizan solos y el analisis de tu perfil de corredor me dice dónde apretar. Vale mucho más de lo que cuesta.",
     avatar: "✨",
     pro: true,
   },

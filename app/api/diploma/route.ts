@@ -21,12 +21,12 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs"; // @react-pdf requiere Node, no Edge
 
 export async function GET(req: NextRequest) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const mode = searchParams.get("mode") ?? "demo";
+  const { searchParams } = new URL(req.url);
+  const mode = searchParams.get("mode") ?? "demo";
 
-    // MODO DEMO: datos hardcodeados (los del PDF de Chip Levante que Manu pasó)
-    if (mode === "demo") {
+  // MODO DEMO: datos hardcodeados (los del PDF de Chip Levante que Manu pasó)
+  if (mode === "demo") {
+    try {
       const buf = await renderDiploma({
         runnerName: "Juan Manuel Vera Bernabeu",
         raceName: "XX Media Maratón Ciudad de Alicante",
@@ -56,16 +56,25 @@ export async function GET(req: NextRequest) {
           "Cache-Control": "private, no-store",
         },
       });
+    } catch (err) {
+      // pdfkit (vía @react-pdf/renderer) falla en serverless porque no
+      // encuentra las fuentes estándar. Devolvemos un 503 en lugar de 500
+      // para que sea explícito: "no disponible ahora, no error de código".
+      console.error("[diploma] PDF generation failed:", err);
+      return NextResponse.json(
+        {
+          error: "PDF generation temporarily unavailable in this environment",
+          hint: "El diploma se renderiza en cliente; la generación PDF vía React-PDF no está operativa en Vercel Lambda. Usa la vista previa HTML en /diploma-preview.html o la sección DiplomaPreview de la home.",
+        },
+        { status: 503 }
+      );
     }
-
-    // MODO myRaceId: producción (TODO)
-    const myRaceId = searchParams.get("myRaceId");
-    if (!myRaceId) {
-      return NextResponse.json({ error: "Missing myRaceId or mode=demo" }, { status: 400 });
-    }
-    return NextResponse.json({ error: "myRaceId mode not implemented yet" }, { status: 501 });
-  } catch (err) {
-    console.error("[diploma] Error generating PDF:", err);
-    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
+
+  // MODO myRaceId: producción (TODO)
+  const myRaceId = searchParams.get("myRaceId");
+  if (!myRaceId) {
+    return NextResponse.json({ error: "Missing myRaceId or mode=demo" }, { status: 400 });
+  }
+  return NextResponse.json({ error: "myRaceId mode not implemented yet" }, { status: 501 });
 }

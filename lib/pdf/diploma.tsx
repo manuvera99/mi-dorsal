@@ -18,9 +18,38 @@
 // =============================================================================
 
 import React from "react";
-import { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
+import { Document, Page, Text, View, Image, StyleSheet, Font, renderToBuffer } from "@react-pdf/renderer";
 import { readFileSync } from "fs";
 import { join } from "path";
+
+// ---------------------------------------------------------------------------
+// Fuentes: registramos Inter (métrica-compatible con Helvetica) como
+// "Helvetica" / "Helvetica-Bold" para que los estilos existentes sigan
+// funcionando sin tocar nombres. Esto evita el bug de @react-pdf en
+// Vercel Lambda donde pdfkit no encuentra las fuentes estándar en el
+// filesystem del Lambda.
+// ---------------------------------------------------------------------------
+
+(function registerFonts() {
+  const fontsDir = join(process.cwd(), "lib", "pdf", "fonts");
+  const regPath = join(fontsDir, "Inter-Regular.ttf");
+  const boldPath = join(fontsDir, "Inter-Bold.ttf");
+  const regB64 = readFileSync(regPath).toString("base64");
+  const boldB64 = readFileSync(boldPath).toString("base64");
+  Font.register({
+    family: "Helvetica",
+    fonts: [
+      { src: `data:font/ttf;base64,${regB64}`, fontWeight: "normal" },
+      { src: `data:font/ttf;base64,${boldB64}`, fontWeight: "bold" },
+    ],
+  });
+  // Re-registramos "Helvetica-Bold" como family para que `fontFamily: "Helvetica-Bold"`
+  // siga funcionando en los StyleSheet.
+  Font.register({
+    family: "Helvetica-Bold",
+    src: `data:font/ttf;base64,${boldB64}`,
+  });
+})();
 
 // ---------------------------------------------------------------------------
 // Assets: cargamos el logo como base64 para que funcione en cualquier

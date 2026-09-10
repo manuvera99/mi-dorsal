@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * ProTeaser — teaser del plan Pro en la home.
  *
@@ -12,11 +14,19 @@
  * La fuente de verdad del pricing es /premium/page.tsx. Si cambian
  * los precios, hay que tocar AMBOS archivos (o refactorizarlo a un
  * componente compartido — pendiente).
+ *
+ * Se oculta entera si el usuario ya es Pro (bug corregido sesión 10 sep
+ * 2026: el fix anterior envolvió este componente en un dynamic(ssr:false)
+ * desde client-only-islands.tsx para poder cargarlo en cliente, pero
+ * nunca se tocó ESTE archivo para que comprobara useHasPremium — seguía
+ * mostrándose siempre, a todo el mundo, incluidos usuarios premium).
  */
 
 import Link from "next/link";
 import { Check, ArrowRight, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useHasPremium } from "@/components/billing/use-has-premium";
+import { isMockMode } from "@/lib/mock/provider";
 
 interface Tier {
   id: "free" | "pro-monthly" | "pro-annual";
@@ -85,6 +95,21 @@ const BADGE_COLORS = {
 };
 
 export function ProTeaser() {
+  // Mock mode: no hay Clerk/Convex providers montados (lib/mock/provider.tsx),
+  // useHasPremium no se puede llamar sin crashear. No hay estado real de
+  // suscripción que consultar, así que se muestra siempre (comportamiento
+  // anterior sin cambios en mock).
+  const useMock = isMockMode();
+  return useMock ? <ProTeaserSection /> : <RealProTeaser />;
+}
+
+function RealProTeaser() {
+  const { hasAccess } = useHasPremium();
+  if (hasAccess) return null;
+  return <ProTeaserSection />;
+}
+
+function ProTeaserSection() {
   return (
     <section className="py-8 md:py-12" aria-labelledby="pro-teaser-title">
       <div className="text-center mb-8 md:mb-10">

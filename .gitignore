@@ -85,3 +85,70 @@ test-*.mjs
 
 # graphify-axet
 .graphify/
+
+# ============================================================================
+# AI coding assistants / IDE-specific state (sep 2026)
+# Cada IDE/agent tira su carpeta de config al abrir el repo. Ninguna es
+# código del proyecto, todas se regeneran al volver a abrir el IDE.
+# Si añades un IDE nuevo, mételo en la lista correspondiente.
+# ============================================================================
+
+# MiniMax / Mavis (este runtime) — carpeta raíz y lock file
+.minimax/
+skills-lock.json
+agent/
+data/
+skills/
+
+# Otros IDEs / coding assistants (orden alfabético)
+.adal/
+.agents/
+.aider-desk/
+.augment/
+.autohand/
+.bob/
+.claude/
+.codeartsdoer/
+.codebuddy/
+.codemaker/
+.codestudio/
+.commandcode/
+.continue/
+.cortex/
+.crush/
+.devin/
+.forge/
+.fx/
+.goose/
+.grok/
+.hermes/
+.iflow/
+.inferencesh/
+.jazz/
+.junie/
+.kimchi/
+.kiro/
+.kode/
+.lingma/
+.mcpjam/
+.moxby/
+.mux/
+.neovate/
+.ona/
+.openhands/
+.pi/
+.pochi/
+.posit/
+.qoder/
+.qwen/
+.reasonix/
+.roo/
+.rovodev/
+.tabnine/
+.terramind/
+.tinycloud/
+.trae/
+.vibe/
+.windsurf/
+.zcode/
+.zencoder/

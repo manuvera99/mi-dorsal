@@ -66,14 +66,15 @@ const TIERS: Tier[] = [
     price: "24,99 €",
     period: "/ año",
     highlight: "2,08 € / mes",
-    badge: { label: "Más popular", color: "amber" },
-    tagline: "Para el corredor que planifica toda la temporada.",
+    badge: { label: "14 días gratis", color: "amber" },
+    tagline: "Prueba Pro 14 días gratis, sin tarjeta.",
     features: [
+      "14 días de prueba gratis (sin tarjeta)",
       "Todo lo de Pro Mensual",
       "Ahorras un 30% (≈ 11 € al año)",
       "Prioridad en features nuevas",
     ],
-    cta: { label: "Hacerme Pro anual", href: "/premium" },
+    cta: { label: "Probar 14 días gratis", href: "/premium" },
     emphasis: true,
   },
 ];

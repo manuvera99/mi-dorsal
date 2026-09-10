@@ -72,7 +72,6 @@ const TIERS: Tier[] = [
       "Todo lo de Pro Mensual",
       "Ahorras un 30% (≈ 11 € al año)",
       "Prioridad en features nuevas",
-      'Badge de "fundador" en tu perfil',
     ],
     cta: { label: "Hacerme Pro anual", href: "/premium" },
     emphasis: true,

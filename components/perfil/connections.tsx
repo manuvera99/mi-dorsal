@@ -144,14 +144,27 @@ export function ConnectionsSection() {
           </div>
         )}
 
-        {/* Uploader (solo si no hay upload activo, o si lo hay, muestra su estado) */}
-        {!oauthStatus?.connected && (
-          <StravaExportUploader
-            activeUploadId={activeUploadId}
-            onUploadComplete={setActiveUploadId}
-            onClearActive={() => setActiveUploadId(null)}
-            onDeleted={() => setActiveUploadId(null)}
-          />
+        {/* Uploader (solo si no hay upload activo, o si lo hay, muestra su estado).
+            Free ya agotó su única subida gratis → mostramos el upsell a Pro
+            en vez de la drop-zone (evita que suba el ZIP y choque con el
+            error de la mutation). */}
+        {!oauthStatus?.connected && summary?.canUploadExport === false && !activeUploadId ? (
+          <PremiumFeatureLock
+            feature="Re-subir tu export de Strava"
+            description="En Free puedes subir tu export una vez. Con Pro puedes re-subirlo sin límite (ej. tras cambiar de dispositivo o para traer actividades nuevas)."
+            variant="inline"
+          >
+            {null}
+          </PremiumFeatureLock>
+        ) : (
+          !oauthStatus?.connected && (
+            <StravaExportUploader
+              activeUploadId={activeUploadId}
+              onUploadComplete={setActiveUploadId}
+              onClearActive={() => setActiveUploadId(null)}
+              onDeleted={() => setActiveUploadId(null)}
+            />
+          )
         )}
       </div>
 

@@ -146,7 +146,6 @@ const TIERS: Tier[] = [
       "Todo lo de Pro Mensual, y además:",
       "Equivale a 2,08 €/mes (pagas una vez al año)",
       "Prioridad en features nuevas",
-      "Badge de “fundador” en tu perfil",
     ],
     cta: { label: "Hacerme Pro anual", href: "/cuenta/suscripcion" },
     highlighted: true,

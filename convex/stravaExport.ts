@@ -18,6 +18,7 @@ import { requireUser, getOptionalUser } from "./_helpers";
 import { getDistanceLabel } from "./_helpers";
 import { parseStravaProfileRow, type StravaProfileRow, isRunningSportType } from "./activities/normalize";
 import { detectIntervalsFromSplits } from "../lib/training/detect-intervals";
+import { hasPremiumAccess } from "./subscriptions";
 
 // Wrapper local: si stravaSportType es undefined (actividad legada sin
 // el campo), asumimos running (la mayoría de las actividades son runs).
@@ -513,6 +514,25 @@ export const createUploadAndStart = mutation({
       throw new Error("El archivo es demasiado pequeño para ser un export de Strava");
     }
 
+    // Gate free vs Pro (sesión 10 sep 2026, cumple lo prometido en /premium):
+    // free solo puede subir el export de Strava UNA vez por cuenta; Pro
+    // puede re-subir sin límite (ej. tras cambiar de dispositivo o para
+    // traer actividades nuevas). Contamos uploads previos que llegaron a
+    // "done" — un intento fallido no debe consumir la única subida gratis.
+    const isPremium = await hasPremiumAccess(ctx, user.clerkUserId);
+    if (!isPremium) {
+      const previousUploads = await ctx.db
+        .query("uploads")
+        .withIndex("by_user", (q) => q.eq("userId", user._id))
+        .filter((q) => q.eq(q.field("status"), "done"))
+        .collect();
+      if (previousUploads.length > 0) {
+        throw new Error(
+          "Ya has subido tu export de Strava. En el plan Free solo puedes hacerlo una vez — hazte Pro para re-subir sin límite.",
+        );
+      }
+    }
+
     const uploadId = await ctx.db.insert("uploads", {
       userId: user._id,
       source: "strava-export",
@@ -585,6 +605,22 @@ export const getMyStravaSummary = query({
     const fromExport = allActivities.filter((a) => a.provider === "strava-export").length;
     const fromOAuth = allActivities.filter((a) => a.provider === "strava").length;
 
+    // Gate free vs Pro para re-subir el export (ver createUploadAndStart).
+    // Lo calculamos aquí también para que la UI pueda mostrar el upsell
+    // ANTES de que el usuario intente subir y choque con el error de la
+    // mutation — mejor UX que un mensaje de error tras arrastrar el ZIP.
+    const isPremium = await hasPremiumAccess(ctx, user.clerkUserId);
+    let hasUsedFreeUpload = false;
+    if (!isPremium) {
+      const previousUploads = await ctx.db
+        .query("uploads")
+        .withIndex("by_user", (q) => q.eq("userId", user._id))
+        .filter((q) => q.eq(q.field("status"), "done"))
+        .collect();
+      hasUsedFreeUpload = previousUploads.length > 0;
+    }
+    const canUploadExport = isPremium || !hasUsedFreeUpload;
+
     // Carreras detectadas (con matchedRaceId)
     const racesMatched = new Set(
       allActivities
@@ -622,6 +658,8 @@ export const getMyStravaSummary = query({
       // Rango de actividades
       oldestActivityAt,
       newestActivityAt,
+      // Gate free vs Pro (re-subir export)
+      canUploadExport,
     };
   },
 });

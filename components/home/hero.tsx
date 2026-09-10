@@ -28,6 +28,7 @@ import {
   Lock,
 } from "lucide-react";
 import { RegionSwitcher } from "@/components/region-switcher";
+import { ProBadgeIsland } from "./client-only-islands";
 
 export function Hero() {
   return (
@@ -58,15 +59,9 @@ export function Hero() {
             Para corredores populares de toda España
           </p>
 
-          {/* Badge Pro: refleja el lanzamiento real del plan de pago */}
-          <Link
-            href="/premium"
-            className="inline-flex items-center gap-1.5 bg-yellow-300/95 text-runner-dark text-xs font-bold rounded-full px-3 py-1 mb-5 hover:bg-yellow-200 transition-colors"
-          >
-            <Sparkles className="h-3 w-3 text-runner-primary" aria-hidden="true" />
-            Nuevo · Pro desde 2,99 €/mes
-            <ArrowRight className="h-3 w-3" aria-hidden="true" />
-          </Link>
+          {/* Badge Pro: refleja el lanzamiento real del plan de pago.
+              Se oculta si el usuario ya es Pro (ver ProBadgeIsland). */}
+          <ProBadgeIsland />
 
           <h1
             id="hero-title"

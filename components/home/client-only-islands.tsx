@@ -44,3 +44,23 @@ export const WelcomeOverlayIsland = dynamic(
     ),
   { ssr: false, loading: () => null }
 );
+
+// ProBadge: badge "Nuevo · Pro desde 2,99 €/mes" del hero. Usa
+// useHasPremium (useQuery de Convex) para ocultarse si el usuario ya
+// es Pro (bug corregido sesión 10 sep 2026 — antes se mostraba siempre,
+// incluso a usuarios premium). Mismo motivo de ssr:false que los demás
+// islands: el prerender ISR de la home no tiene providers de Convex
+// montados. loading: null (igual que ResultBannerIsland/WelcomeOverlayIsland)
+// — no aparece nada hasta que el cliente resuelve el estado real.
+export const ProBadgeIsland = dynamic(
+  () => import("./pro-badge").then((m) => m.ProBadge),
+  { ssr: false, loading: () => null }
+);
+
+// ProTeaser: sección de 3 cards de precios ("Empieza gratis. Mejora
+// cuando lo necesites") en la home. Mismo bug y mismo fix que
+// ProBadgeIsland — se oculta entera si el usuario ya es Pro.
+export const ProTeaserIsland = dynamic(
+  () => import("./pro-teaser").then((m) => m.ProTeaser),
+  { ssr: false, loading: () => null }
+);

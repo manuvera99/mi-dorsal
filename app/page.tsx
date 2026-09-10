@@ -19,7 +19,6 @@ import { HowItWorks } from "@/components/home/how-it-works";
 import { DiplomaAndSharePreview } from "@/components/home/diploma-preview";
 import { WhatsHere } from "@/components/home/whats-here";
 import { Features } from "@/components/home/features";
-import { ProTeaser } from "@/components/home/pro-teaser";
 import {
   FeaturedRacesLazy,
   CommunityRankingLazy,
@@ -31,6 +30,7 @@ import {
 import {
   ResultBannerIsland,
   WelcomeOverlayIsland,
+  ProTeaserIsland,
 } from "@/components/home/client-only-islands";
 
 // Revalidar cada 5 minutos. La home es la misma para todos los usuarios de
@@ -82,8 +82,10 @@ export default function HomePage() {
         {/* 5. FEATURES */}
         <Features />
 
-        {/* 5b. TEASER DEL PLAN PRO (nuevo sep 2026) */}
-        <ProTeaser />
+        {/* 5b. TEASER DEL PLAN PRO (nuevo sep 2026). Se oculta si el
+            usuario ya es Pro (bug corregido sesión 10 sep 2026 — ver
+            ProTeaserIsland en client-only-islands.tsx). */}
+        <ProTeaserIsland />
 
         {/* 6. CARRERAS DESTACADAS (lazy: ssr:false, ahorra ~12 KB del HTML inicial) */}
         <FeaturedRacesLazy />

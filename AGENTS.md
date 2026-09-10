@@ -14,7 +14,8 @@
 - **Tagline**: "El hilo que te une a tu dorsal." — **Tuteo siempre**, tono cercano con humor sutil de corredor. Ver `docs/history/brand-identity.md`.
 - **Cobertura**: toda España (expandido sep 2026, antes solo Levante). **No escribir copy que limite a Levante/Valencia/Alicante/Murcia/Castellón.**
 - **Estado**: MVP funcional en producción desde 4 sep 2026. Auth Clerk, DB Convex, deploy Vercel.
-- **Mapa técnico completo**: `docs/ARCHITECTURE.md` (stack, 23 tablas, 9 crons, flujos críticos, API routes) — léelo si necesitas la vista de pájaro del sistema entero.
+- **Hoja de ruta viva (pendientes + futuras features)**: `docs/ROADMAP.md` — fuente única para marcar tareas como completadas o añadir nuevas. Léelo siempre antes de planificar trabajo.
+- **Mapa técnico completo**: `docs/ARCHITECTURE.md` (stack, 24 tablas, 7 crons, flujos críticos, API routes) — léelo si necesitas la vista de pájaro del sistema entero.
 
 ---
 
@@ -52,6 +53,7 @@
 | Panel `/admin/*` (cualquier subruta) | `docs/core/admin-panel.md` |
 | SEO / metadata / Schema.org / AdSense | `docs/core/seo.md` |
 | Anti-patrones (antes de cualquier cambio dudoso) | `docs/core/anti-patterns.md` |
+| **¿Qué tareas hay pendientes / qué se hace ahora?** | `docs/ROADMAP.md` (hoja de ruta viva) |
 | Tono de voz / copy / vocabulario preferido-evitado | `docs/core/brand-voice.md` |
 | Branding / paleta de color / tipografía / logo | `docs/history/brand-identity.md` |
 | Naming / dominios / marca legal (OEPM) | `docs/history/naming-decisions.md` |
@@ -62,7 +64,7 @@
 | Runbook ya ejecutado de Strava OAuth (repetir setup) | `docs/history/strava-oauth-setup.md` |
 | Análisis histórico superado del backend (4 sep 2026) | `docs/history/analisis-backend-dorsales.md` — **no citar como estado actual** |
 | Activar Clerk Billing en producción (runbook) | `docs/BILLING_SETUP.md` |
-| Roadmap / pendientes / próximas iteraciones | `docs/optional/future-iterations.md` |
+| **Roadmap / pendientes / próximas iteraciones (fuente única)** | `docs/ROADMAP.md` (legacy: `docs/optional/future-iterations.md`) |
 | Monetización, DorsalSwap, marketing, infra a escala (**planes de negocio, no código**) | `docs/plans/*` — normalmente NO hace falta para programar |
 | Mapa completo del sistema (stack, 23 tablas, 9 crons, flujos, API routes) | `docs/ARCHITECTURE.md` |
 

@@ -1,14 +1,46 @@
+"use client";
+
 /**
  * FinalCTA — el último empujón antes de que el visitante se vaya.
  *
  * Bloque grande con fondo runner-primary, texto blanco. Una sola frase,
  * un solo botón. El segundo CTA es discreto para los que no están listos.
+ *
+ * Es un CTA de REGISTRO ("Empieza gratis" → /sign-up), no de upgrade a
+ * Pro — no tiene sentido para NINGÚN usuario ya logueado (free o
+ * premium), ya tiene cuenta. Se oculta entera si hay sesión activa (bug
+ * reportado sesión 10 sep 2026, tras corregir los upsells de Pro del
+ * hero y el teaser de precios — este bloque tenía el mismo problema
+ * pero por un motivo distinto: nunca comprobó sesión, ni de premium ni
+ * de free).
+ *
+ * Ya se monta vía FinalCtaLazy (dynamic ssr:false, ver lazy-sections.tsx),
+ * así que useUser() es seguro aquí sin necesitar un island propio — el
+ * ISR de la home nunca intenta prerenderizar este componente server-side.
  */
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
+import { isMockMode } from "@/lib/mock/provider";
 
 export function FinalCta() {
+  // Mock mode: no hay ClerkProvider real montado, useUser crashearía.
+  // Sin sesión real que detectar, se muestra siempre (comportamiento
+  // anterior sin cambios en mock).
+  if (isMockMode()) return <FinalCtaSection />;
+  return <RealFinalCta />;
+}
+
+function RealFinalCta() {
+  const { isLoaded, isSignedIn } = useUser();
+  // Mientras carga, no mostramos nada — evita el parpadeo de "aparece
+  // y luego desaparece" para usuarios logueados.
+  if (!isLoaded || isSignedIn) return null;
+  return <FinalCtaSection />;
+}
+
+function FinalCtaSection() {
   return (
     <section
       className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-runner-primary via-red-600 to-rose-700 text-white px-6 py-12 md:px-12 md:py-16 text-center"

@@ -64,3 +64,13 @@ export const ProTeaserIsland = dynamic(
   () => import("./pro-teaser").then((m) => m.ProTeaser),
   { ssr: false, loading: () => null }
 );
+
+// HowItWorksCta: botón "Empieza tu temporada gratis" al final de
+// <HowItWorks>. Es un CTA de registro (no de upgrade a Pro) — se oculta
+// para cualquier usuario ya logueado, sea free o premium (bug reportado
+// sesión 10 sep 2026). <HowItWorks> en sí sigue siendo Server Component
+// estático (contenido SEO); solo este botón necesita el island.
+export const HowItWorksCtaIsland = dynamic(
+  () => import("./how-it-works-cta").then((m) => m.HowItWorksCta),
+  { ssr: false, loading: () => null }
+);

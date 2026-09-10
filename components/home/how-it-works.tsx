@@ -8,8 +8,7 @@
  */
 
 import { Search, Hash, Inbox } from "lucide-react";
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { HowItWorksCtaIsland } from "./client-only-islands";
 
 const STEPS = [
   {
@@ -75,14 +74,9 @@ export function HowItWorks() {
         })}
       </ol>
 
+      {/* Se oculta si el usuario ya tiene sesión (ver HowItWorksCtaIsland) */}
       <div className="text-center mt-10">
-        <Link
-          href="/sign-up"
-          className="inline-flex items-center gap-2 bg-white text-gray-900 font-semibold px-6 py-3 rounded-md hover:bg-red-50 transition-colors"
-        >
-          Empieza tu temporada gratis
-          <ArrowRight className="h-4 w-4" aria-hidden="true" />
-        </Link>
+        <HowItWorksCtaIsland />
       </div>
     </section>
   );

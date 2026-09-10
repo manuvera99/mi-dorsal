@@ -28,7 +28,7 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -79,13 +79,24 @@ const PRICE_ALIAS_TO_STRIPE_ID: Record<CheckoutRequest["priceId"], string | unde
 // -----------------------------------------------------------------------------
 export async function POST(req: NextRequest) {
   // 1) Auth con Clerk
-  const { userId, sessionClaims } = await auth();
+  const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+
+  // Bug encontrado en auditoría (sesión 10 sep 2026): antes se leía
+  // sessionClaims?.email, pero el session token de Clerk NO incluye el
+  // email por defecto (hace falta "Customize session token" en el
+  // dashboard, que no está configurado — confirmado contra la doc
+  // oficial de Clerk). userEmail era casi seguro siempre undefined en
+  // producción, así que el reuso de customer por metadata.clerkUserId
+  // nunca se activaba y cada pago creaba un customer nuevo sin email.
+  // Fix: pedir el email a la Backend API de Clerk, que no depende de
+  // qué claims lleve el JWT de sesión.
+  const clerkUser = await (await clerkClient()).users.getUser(userId);
   const userEmail =
-    (sessionClaims?.email as string | undefined) ??
-    (sessionClaims?.email_address as string | undefined);
+    clerkUser.emailAddresses.find((e) => e.id === clerkUser.primaryEmailAddressId)
+      ?.emailAddress ?? clerkUser.emailAddresses[0]?.emailAddress;
 
   // 2) Parsear body
   let body: CheckoutRequest;
@@ -171,11 +182,6 @@ export async function POST(req: NextRequest) {
     //   - allow_promotion_codes: false (decisión del Studio)
     //   - billing_address_collection: "auto" (recogida opcional)
     //   - phone_number_collection, automatic_tax: explícitamente off
-    //   - payment_method_collection: "if_required" para mensual sin
-    //     trial (el Studio decía "always" pero eso solo tiene sentido
-    //     si hay trial o si queremos cobrar al cliente sin avisar).
-    //     Para el anual con trial sí lo queremos "always" para guardar
-    //     tarjeta y poder renovar al final del trial.
     //   - submit_type: "auto" (deja que Stripe elija según el contenido)
     //   - integration_identifier, origin_context: metadata para los
     //     analytics internos de Stripe
@@ -183,13 +189,23 @@ export async function POST(req: NextRequest) {
     // tanto NO se reemplazan (regla 6 del Studio): mode (subscription),
     // success_url, cancel_url, line_items.
     //
-    // Diferencia mensual vs anual (sesión 9 sep 2026):
-    //   - Mensual: SIN trial. Cobro inmediato al suscribirse. Stripe
-    //     solo pide método de pago si es estrictamente necesario.
-    //   - Anual: CON trial 14 días sin tarjeta. Stripe pide método de
-    //     pago al final del trial (porque "always" en trial_mode).
-    //     Decisión de producto: el anual es compromiso mayor → el trial
-    //     reduce la fricción de "pago upfront 25€".
+    // Diferencia mensual vs anual (corregido sesión 10 sep 2026 — bug de
+    // coherencia encontrado en auditoría: la web PROMETE "14 días gratis
+    // sin tarjeta" en /premium, /cuenta/suscripcion y el teaser de home,
+    // pero el código anterior ponía payment_method_collection: "always"
+    // para el anual, que según la doc oficial de Stripe (Checkout Sessions
+    // → payment_method_collection) obliga a introducir la tarjeta ANTES
+    // de empezar el trial, no solo al final. Era justo lo contrario de
+    // lo prometido):
+    //   - Mensual: SIN trial. Cobro inmediato, sí pide tarjeta (if_required
+    //     igualmente resuelve a "always" cuando hay importe a cobrar ya).
+    //   - Anual: CON trial 14 días. payment_method_collection: "if_required"
+    //     → Stripe NO pide tarjeta en el checkout (cumple lo prometido).
+    //     trial_settings.end_behavior.missing_payment_method: "cancel"
+    //     → si el trial termina y el usuario nunca añadió tarjeta (desde
+    //     el portal o el email de recordatorio de Stripe), la sub se
+    //     cancela limpia en vez de quedar en un estado ambiguo o intentar
+    //     cobrar sin método de pago.
     const isAnnual = body.priceId === "premium_yearly";
     const session = await stripe.checkout.sessions.create({
       // ── fixed_by_ui ──────────────────────────────────────────────
@@ -198,10 +214,12 @@ export async function POST(req: NextRequest) {
       phone_number_collection: { enabled: false },
       automatic_tax: { enabled: false },
       allow_promotion_codes: false,
-      // Override del Studio: "always" para anual (con trial, queremos
-      // guardar tarjeta), "if_required" para mensual (sin trial, cobro
-      // upfront — no necesitamos tarjeta forzada).
-      payment_method_collection: isAnnual ? "always" : "if_required",
+      // Con trial (anual): if_required → no pide tarjeta ahora, coincide
+      // con lo que promete la web. Sin trial (mensual): if_required
+      // también, pero como hay importe a cobrar de inmediato, Stripe la
+      // pide igualmente — el resultado práctico es "always" sin tener
+      // que fijarlo a mano.
+      payment_method_collection: "if_required",
       submit_type: "auto",
       integration_identifier: "hosted_web_0001",
       origin_context: "web",
@@ -221,7 +239,14 @@ export async function POST(req: NextRequest) {
       subscription_data: {
         // Solo el anual tiene trial (14 días sin tarjeta). El mensual
         // cobra al instante.
-        ...(isAnnual ? { trial_period_days: 14 } : {}),
+        ...(isAnnual
+          ? {
+              trial_period_days: 14,
+              trial_settings: {
+                end_behavior: { missing_payment_method: "cancel" },
+              },
+            }
+          : {}),
         metadata: {
           clerkUserId: userId,    // también en la sub para redundancia
         },

@@ -42,7 +42,7 @@ Estos parámetros fueron configurados en el Checkout Studio de Stripe el 9 sep 2
 | `phone_number_collection.enabled` | `false` | No pedimos teléfono. |
 | `automatic_tax.enabled` | `false` | Sin tax automático (lo gestionarás tú si lo necesitas en el futuro con Stripe Tax). |
 | `allow_promotion_codes` | `false` | **Cambio importante**: antes era `true`. Si quieres permitir códigos promo, vuelve a activarlo. |
-| `payment_method_collection` | `always` (anual) / `if_required` (mensual) | **Override del Studio**: el anual con trial SÍ guarda tarjeta (`always`). El mensual sin trial no necesita forzar tarjeta (`if_required`). Si quieres volver al "always" del Studio para ambos, edita el endpoint `/api/stripe/checkout`. |
+| `payment_method_collection` | `if_required` (ambos planes) | **Corregido sesión 10 sep 2026**: el valor anterior (`always` para el anual) obligaba a introducir tarjeta ANTES de empezar el trial, contradiciendo el "14 días gratis sin tarjeta" que promete la web en `/premium`, `/cuenta/suscripcion` y el teaser de home. Con `if_required`, el anual no pide tarjeta al suscribirse; el mensual la pide igual porque cobra de inmediato (hay importe a cobrar ya). `subscription_data.trial_settings.end_behavior.missing_payment_method: "cancel"` cancela limpio el trial anual si el usuario nunca añade tarjeta. |
 | `submit_type` | `auto` | Stripe decide según el contenido del carrito. |
 | `integration_identifier` | `hosted_web_0001` | Metadata para los analytics internos de Stripe. |
 | `origin_context` | `web` | Metadata para los analytics internos de Stripe. |

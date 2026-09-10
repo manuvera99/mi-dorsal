@@ -476,6 +476,31 @@ export const purgeSubscriptionByClerkUserId = internalMutation({
   },
 });
 
+/** Action pública — entrypoint del webhook `app/api/webhooks/clerk-users`.
+ *
+ * Bug encontrado en auditoría (sesión 10 sep 2026): el webhook llamaba
+ * directamente a `internal.subscriptions.purgeSubscriptionByClerkUserId`
+ * vía `ConvexHttpClient`, pero Convex rechaza llamadas públicas a
+ * funciones `internal*` (verificado en vivo contra el deployment: falla
+ * con "Server Error"). El borrado RGPD al eliminar cuenta nunca se
+ * ejecutaba. Mismo patrón que `handleClerkBillingEvent`/`handleStripeEvent`:
+ * una `action` pública sin auth de usuario que delega en la mutation
+ * interna real. */
+export const purgeSubscriptionOnUserDeleted = action({
+  args: {
+    clerkUserId: v.string(),
+  },
+  handler: async (ctx, { clerkUserId }) => {
+    if (!clerkUserId) {
+      throw new Error("purgeSubscriptionOnUserDeleted: clerkUserId vacío");
+    }
+    return await ctx.runMutation(
+      internal.subscriptions.purgeSubscriptionByClerkUserId,
+      { clerkUserId },
+    );
+  },
+});
+
 // ---------------------------------------------------------------------------
 // STRIPE — entrypoint para el webhook de Stripe
 // ---------------------------------------------------------------------------
@@ -575,7 +600,20 @@ export const upsertFromStripeEvent = internalMutation({
       ? (subscription.status as (typeof KNOWN_STATUSES)[number])
       : "active";
 
-    const tier = "premium" as const; // todas las sub de Stripe son premium
+    // Bug encontrado en auditoría (sesión 10 sep 2026): antes `tier` era
+    // SIEMPRE "premium", incluso tras `customer.subscription.deleted`
+    // (status "canceled") o cuando el trial termina sin tarjeta y Stripe
+    // pausa/cancela la sub (ver trial_settings.end_behavior en el
+    // checkout). El feature gating no se veía afectado porque
+    // `hasPremiumAccess` ya corta el acceso por `status`, pero
+    // `getSubscriptionStats` (métricas admin) contaba para siempre a
+    // estos usuarios como premium, inflando cualquier informe de churn.
+    // Estados terminales → tier "free" para que las métricas reflejen
+    // la realidad. "past_due"/"trialing"/"active" siguen siendo premium
+    // (dan o pueden recuperar acceso); "paused" se deja como premium
+    // porque el usuario puede reanudar la misma sub añadiendo tarjeta.
+    const TERMINAL_STATUSES = new Set(["canceled", "incomplete_expired", "unpaid"]);
+    const tier = TERMINAL_STATUSES.has(normalizedStatus) ? ("free" as const) : ("premium" as const);
 
     const existing = await ctx.db
       .query("subscriptions")

@@ -24,7 +24,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { ConvexHttpClient } from "convex/browser";
-import { internal } from "@/convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 
 // Forzamos nodejs runtime: svix.Webhook usa crypto nativo de Node.
 export const runtime = "nodejs";
@@ -95,8 +95,14 @@ export async function POST(request: NextRequest) {
           "[clerk-users/webhook] user.deleted sin data.id, se ignora.",
         );
       } else {
-        const result = await convex.mutation(
-          internal.subscriptions.purgeSubscriptionByClerkUserId,
+        // Bug corregido (sesión 10 sep 2026): antes se llamaba directo
+        // a la internal mutation vía ConvexHttpClient, lo que Convex
+        // rechaza siempre para funciones `internal*` (verificado en vivo:
+        // "Server Error"). El borrado RGPD nunca se ejecutaba. Ahora
+        // pasa por la action pública `purgeSubscriptionOnUserDeleted`,
+        // que sí es invocable desde fuera de Convex.
+        const result = await convex.action(
+          api.subscriptions.purgeSubscriptionOnUserDeleted,
           { clerkUserId: userId },
         );
         console.log(

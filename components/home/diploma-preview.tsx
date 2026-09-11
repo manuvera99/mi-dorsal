@@ -31,12 +31,14 @@
  *
  * NO interactivo. Sirve para visualizar la promesa. El CTA del diploma
  * lleva a diploma-preview.html (A4 imprimible de muestra); el del sticker
- * lleva a /premium (el editor real requiere una carrera concreta, que no
- * existe en el contexto de un visitante anónimo en la home).
+ * (StickerEditorCta, componente cliente aparte) decide destino según si
+ * el usuario ya es premium: /mi-sticker para elegir carrera y entrar al
+ * editor, o /premium si aún no tiene acceso.
  */
 
 import Link from "next/link";
 import { Award, Download, FileText, Sparkles, Mail } from "lucide-react";
+import { StickerEditorCta } from "./sticker-editor-cta";
 
 export function DiplomaAndSharePreview() {
   return (
@@ -369,12 +371,9 @@ export function DiplomaAndSharePreview() {
               <Sparkles className="h-3.5 w-3.5 text-runner-primary" aria-hidden="true" />
               Descarga en PNG o mándatelo por email
             </p>
-            <Link
-              href="/premium"
-              className="inline-flex items-center gap-1.5 text-runner-primary font-semibold hover:underline"
-            >
+            <StickerEditorCta className="inline-flex items-center gap-1.5 text-runner-primary font-semibold hover:underline">
               Personalizar el mío
-            </Link>
+            </StickerEditorCta>
           </div>
         </article>
       </div>

@@ -158,10 +158,12 @@ export const attachCustomSticker = mutation({
       throw new Error("Forbidden: esta myRace pertenece a otro usuario");
     }
 
-    if (myRace.customStickerStorageId) {
-      await ctx.storage.delete(myRace.customStickerStorageId);
-    }
+    const previousStorageId = myRace.customStickerStorageId;
 
     await ctx.db.patch(myRaceId, { customStickerStorageId: storageId as Id<"_storage"> });
+
+    if (previousStorageId) {
+      await ctx.storage.delete(previousStorageId);
+    }
   },
 });

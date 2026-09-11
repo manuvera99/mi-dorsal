@@ -34,6 +34,11 @@ export interface CarrerasFilters {
   organizer?: string;
   distanceCategories?: DistanceCategory[];
   /**
+   * Si es `true`, solo se muestran carreras con `homologated: true`
+   * (circuito homologado según lo declara la web oficial del organizador).
+   */
+  homologated?: boolean;
+  /**
    * Si es `true`, el catálogo incluye también carreras pasadas.
    * Por defecto (`false` / `undefined`) solo se muestran carreras con
    * `startDate >= hoy` (fecha local del cliente).

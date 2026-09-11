@@ -24,12 +24,14 @@ interface AdvancedFiltersProps {
     raceType?: string;
     organizer?: string;
     distanceCategories?: DistanceCategory[];
+    homologated?: boolean;
   };
   onChange: (patch: {
     province?: string;
     raceType?: string;
     organizer?: string;
     distanceCategories?: DistanceCategory[];
+    homologated?: boolean;
   }) => void;
 }
 
@@ -41,7 +43,8 @@ export function AdvancedFilters({ filters, onChange }: AdvancedFiltersProps) {
     (filters.province ? 1 : 0) +
     (filters.raceType ? 1 : 0) +
     (filters.organizer ? 1 : 0) +
-    (filters.distanceCategories?.length ?? 0);
+    (filters.distanceCategories?.length ?? 0) +
+    (filters.homologated ? 1 : 0);
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white">
@@ -137,7 +140,17 @@ export function AdvancedFilters({ filters, onChange }: AdvancedFiltersProps) {
             />
           </div>
 
-          {(filters.province || filters.raceType || filters.organizer || filters.distanceCategories?.length) && (
+          <label className="flex items-center gap-2 text-sm text-runner-dark cursor-pointer">
+            <input
+              type="checkbox"
+              className="rounded border-gray-300"
+              checked={filters.homologated === true}
+              onChange={(e) => onChange({ homologated: e.target.checked || undefined })}
+            />
+            Solo carreras homologadas
+          </label>
+
+          {(filters.province || filters.raceType || filters.organizer || filters.distanceCategories?.length || filters.homologated) && (
             <button
               type="button"
               onClick={() =>
@@ -146,6 +159,7 @@ export function AdvancedFilters({ filters, onChange }: AdvancedFiltersProps) {
                   raceType: undefined,
                   organizer: undefined,
                   distanceCategories: undefined,
+                  homologated: undefined,
                 })
               }
               className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700"

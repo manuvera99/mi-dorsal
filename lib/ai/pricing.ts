@@ -126,6 +126,21 @@ export const MODEL_PRICING: ModelPricing[] = [
     note: "MiniMax M3 vía Maverick (gratis). Actualizar si pasan a tier de pago.",
   },
 
+  // -------- Brave Search (no es un LLM, pero reutiliza aiUsageLog) --------
+  // Brave Search cobra $5 por 1000 requests (no por tokens). Para reutilizar
+  // el mismo mecanismo de coste basado en tokens sin inventar una tabla
+  // paralela, modelamos "1 búsqueda" = 1000 "tokens de input" a $5/MTok:
+  // 1000 tok * $5/1_000_000 = $0.005/request ≈ $5/1000 requests. Ver
+  // lib/ai/resolve-race-url.ts, que siempre pasa promptTokens=1000,
+  // completionTokens=0 a logAiUsage para esta fuente.
+  {
+    model: "brave-search",
+    inputUsdPerMTok: 5.0,
+    outputUsdPerMTok: 0,
+    lastChecked: "2026-09-11",
+    note: "Brave Search API — $5/1000 requests. No es un LLM real; ver comentario arriba sobre cómo se modela el coste.",
+  },
+
   // -------- Google --------
   {
     model: "gemini-1.5-pro",

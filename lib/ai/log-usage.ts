@@ -54,7 +54,8 @@ export type AiFunctionLabel =
   | "extract_race"
   | "extract_race_deep"
   | "analyze_source"
-  | "coach_analysis";
+  | "coach_analysis"
+  | "resolve_race_url";
 
 export interface LogAiUsageInput {
   functionLabel: AiFunctionLabel | string;

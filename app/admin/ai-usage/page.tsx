@@ -127,6 +127,11 @@ const FUNCTION_LABEL: Record<string, { label: string; emoji: string; color: stri
     emoji: "🧠",
     color: "bg-purple-100 text-purple-700",
   },
+  resolve_race_url: {
+    label: "Resolver URL rota",
+    emoji: "🔎",
+    color: "bg-teal-100 text-teal-700",
+  },
 };
 
 const WINDOW_OPTIONS = [7, 30, 90] as const;

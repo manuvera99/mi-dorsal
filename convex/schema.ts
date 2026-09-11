@@ -198,6 +198,10 @@ export default defineSchema({
       v.literal("obstacle"),
     ),
     homologated: v.optional(v.boolean()),
+    // Frase textual detectada en la web oficial que justifica `homologated`
+    // (no hay listado oficial de terceros consultable — es "según lo que
+    // declara el organizador", no una verificación cruzada real).
+    homologationNote: v.optional(v.string()),
 
     // Fechas y lugar
     startDate: v.optional(v.string()),
@@ -373,6 +377,12 @@ export default defineSchema({
       v.literal("medium"),
       v.literal("low"),
     )),
+
+    // officialUrl resuelta vía búsqueda web (Brave Search + verificación LLM)
+    // cuando la URL original de la fuente estaba muerta. Trazabilidad para
+    // poder auditar/depurar resultados dudosos después.
+    officialUrlResolvedAt: v.optional(v.number()),
+    officialUrlResolvedFrom: v.optional(v.string()),
 
     // -------- CROSS-SOURCE MERGE (Fase anti-duplicados) --------
     // Lista de IDs de carreras que se consolidaron en esta (merge cross-source).
@@ -1363,6 +1373,10 @@ export default defineSchema({
   //   - "extract_race_deep"   → lib/ai/extract-race-deep.ts
   //   - "analyze_source"      → lib/ai/analyze-source.ts
   //   - "coach_analysis"      → lib/ai/coach-analysis.ts
+  //   - "resolve_race_url"    → lib/ai/resolve-race-url.ts (Brave Search +
+  //                            verificación LLM; model="brave-search" para
+  //                            la parte de búsqueda, modelo real del LLM
+  //                            para la parte de verificación)
   // ---------------------------------------------------------------------------
   aiUsageLog: defineTable({
     /** Cuándo se hizo la llamada (timestamp unix ms). */

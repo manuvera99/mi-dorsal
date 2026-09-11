@@ -90,6 +90,7 @@ function RealCarreras() {
     search: filters.search,
     organizer: filters.organizer,
     distanceCategories: filters.distanceCategories as any,
+    homologated: filters.homologated,
     fromDate,
   });
   const top = useQuery(api.ratings.topRaces, { limit: 10, fromDate });
@@ -250,6 +251,7 @@ function CarrerasShell({
       !!filters.raceType ||
       !!filters.month ||
       !!filters.organizer ||
+      !!filters.homologated ||
       (filters.distanceCategories?.length ?? 0) > 0;
     let list = !hasActiveFilters
       ? racesAfterDistance.filter((r) => !featuredIds.has(r._id))
@@ -295,7 +297,8 @@ function CarrerasShell({
     (filters.raceType ? 1 : 0) +
     (filters.month ? 1 : 0) +
     (filters.organizer ? 1 : 0) +
-    (filters.distanceCategories?.length ?? 0);
+    (filters.distanceCategories?.length ?? 0) +
+    (filters.homologated ? 1 : 0);
 
   const totalWithCoords = races.filter(
     (r) => typeof r.latitude === "number" && typeof r.longitude === "number"

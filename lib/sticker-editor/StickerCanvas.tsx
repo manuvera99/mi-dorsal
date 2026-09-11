@@ -11,13 +11,30 @@
 
 "use client";
 
-import { useRef } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import type { StickerElementLayout } from "./templates";
 import type { StickerData, StickerFieldId } from "./fields";
 import { usePointerDrag } from "./usePointerDrag";
 
 export const CANVAS_WIDTH = 1080;
 export const CANVAS_HEIGHT = 1920;
+
+// Distancia (normalizada 0-1) dentro de la cual un elemento se "engancha"
+// al centro horizontal/vertical del lienzo al arrastrarlo. 0.02 ≈ 22px
+// lógicos — suficientemente permisivo para atrapar el gesto sin que el
+// usuario tenga que ser milimétrico.
+const CENTER_SNAP_THRESHOLD = 0.02;
+
+// Margen mínimo (en px lógicos) entre el borde inferior del último
+// elemento visible y el logo, y alto aproximado reservado para el logo
+// (icono + wordmark), usados para calcular dónde centrarlo en el hueco
+// restante del lienzo.
+const LOGO_MIN_MARGIN_PX = 36;
+const LOGO_HEIGHT_PX = 56;
+const LOGO_BOTTOM_PADDING_PX = 24;
+// Fracción de fallback si todavía no se ha medido ningún elemento visible
+// (primer render) o no hay ninguno visible.
+const DEFAULT_CONTENT_BOTTOM_FRACTION = 0.55;
 
 const PALETTE = {
   accent: "#16a34a",
@@ -54,6 +71,78 @@ export function StickerCanvas({
   const scaleRatio = displayWidth / CANVAS_WIDTH;
   const displayHeight = CANVAS_HEIGHT * scaleRatio;
 
+  // Líneas guía de centrado, activas mientras se arrastra un elemento que
+  // cae dentro del umbral de "engancharse" al centro horizontal/vertical
+  // del lienzo. `null` = línea no visible en ese eje.
+  const [snapLines, setSnapLines] = useState<{ x: boolean; y: boolean }>({ x: false, y: false });
+
+  // Bottom real (px lógicos, 0-1920) del elemento visible más bajo, medido
+  // desde el DOM (cada dato tiene alto distinto: tiempo hero es más alto
+  // que un badge de PR). Se usa para anclar el logo justo debajo del
+  // último dato, en vez de siempre pegado al fondo del lienzo. Se
+  // re-mide cada vez que cambian los elementos (posición, tamaño,
+  // visibilidad) vía useLayoutEffect + los refs que cada elemento
+  // registra en `elementNodesRef`.
+  const elementNodesRef = useRef<Map<StickerFieldId, HTMLDivElement>>(new Map());
+  const [contentBottomPx, setContentBottomPx] = useState<number>(
+    CANVAS_HEIGHT * DEFAULT_CONTENT_BOTTOM_FRACTION,
+  );
+
+  const registerElementNode = useCallback((fieldId: StickerFieldId, node: HTMLDivElement | null) => {
+    if (node) {
+      elementNodesRef.current.set(fieldId, node);
+    } else {
+      elementNodesRef.current.delete(fieldId);
+    }
+  }, []);
+
+  const visibleElements = elements.filter((el) => el.visible);
+
+  // Recalcula el bottom del contenido cada vez que la lista de elementos
+  // visibles, sus posiciones o sus escalas cambian. useLayoutEffect (no
+  // useEffect) para medir el DOM ya pintado antes del siguiente paint,
+  // evitando parpadeo del logo al moverse el último elemento.
+  useLayoutEffect(() => {
+    if (visibleElements.length === 0) {
+      setContentBottomPx(CANVAS_HEIGHT * DEFAULT_CONTENT_BOTTOM_FRACTION);
+      return;
+    }
+    const canvasNode = canvasRef.current;
+    if (!canvasNode) return;
+    const canvasRect = canvasNode.getBoundingClientRect();
+    // getBoundingClientRect ya viene en px de PANTALLA (post-scaleRatio) —
+    // hay que dividir por scaleRatio para volver a px LÓGICOS (0-1920),
+    // que es el sistema de coordenadas en el que vive todo lo demás
+    // (element.x/y, CANVAS_HEIGHT, etc).
+    let maxBottom = 0;
+    for (const el of visibleElements) {
+      const node = elementNodesRef.current.get(el.fieldId);
+      if (!node) continue;
+      const rect = node.getBoundingClientRect();
+      const bottomLogical = (rect.bottom - canvasRect.top) / scaleRatio;
+      if (bottomLogical > maxBottom) maxBottom = bottomLogical;
+    }
+    setContentBottomPx(maxBottom > 0 ? maxBottom : CANVAS_HEIGHT * DEFAULT_CONTENT_BOTTOM_FRACTION);
+    // Dependemos de un JSON.stringify de las posiciones/escalas porque
+    // los propios objetos `elements` cambian de referencia en cada drag
+    // frame — necesitamos recalcular en cada uno de esos frames para que
+    // el logo siga al último elemento en tiempo real mientras se arrastra,
+    // no solo al soltar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    JSON.stringify(visibleElements.map((e) => [e.fieldId, e.x, e.y, e.scale])),
+    scaleRatio,
+  ]);
+
+  // Centro vertical del logo: justo debajo del último elemento visible
+  // (con un margen mínimo), pero sin bajar de un tope cerca del fondo del
+  // lienzo — así nunca se solapa con el contenido si éste ocupa casi todo
+  // el alto disponible, ni se sale por debajo del lienzo.
+  const logoCenterY = Math.min(
+    CANVAS_HEIGHT - LOGO_BOTTOM_PADDING_PX - LOGO_HEIGHT_PX / 2,
+    contentBottomPx + LOGO_MIN_MARGIN_PX + LOGO_HEIGHT_PX / 2,
+  );
+
   return (
     <div
       data-sticker-checkerboard
@@ -80,30 +169,71 @@ export function StickerCanvas({
           fontFamily: "Inter, system-ui, sans-serif",
         }}
       >
-        {elements
-          .filter((el) => el.visible)
-          .map((el) => (
-            <StickerElementView
-              key={el.fieldId}
-              element={el}
-              data={data}
-              isSelected={selectedFieldId === el.fieldId}
-              onSelect={() => onSelect(el.fieldId)}
-              onMove={(x, y) => onMove(el.fieldId, x, y)}
-              onResize={(scale) => onResize(el.fieldId, scale)}
-              dragContainerRef={canvasRef}
-            />
-          ))}
+        {visibleElements.map((el) => (
+          <StickerElementView
+            key={el.fieldId}
+            element={el}
+            data={data}
+            isSelected={selectedFieldId === el.fieldId}
+            onSelect={() => onSelect(el.fieldId)}
+            onMove={(x, y) => onMove(el.fieldId, x, y)}
+            onResize={(scale) => onResize(el.fieldId, scale)}
+            onSnapChange={setSnapLines}
+            dragContainerRef={canvasRef}
+            registerNode={registerElementNode}
+          />
+        ))}
+
+        {/* Líneas guía de centrado — solo visibles mientras se arrastra un
+            elemento que cae dentro del umbral de snap. No forman parte
+            del PNG exportado en un sentido estricto (viven dentro de
+            canvasRef), pero solo se renderizan durante el drag activo, y
+            un drag activo nunca coincide con el momento de exportar, así
+            que nunca aparecen en el PNG real. */}
+        {snapLines.x && (
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: 0,
+              bottom: 0,
+              width: "2px",
+              backgroundColor: "#4ade80",
+              transform: "translateX(-1px)",
+              pointerEvents: "none",
+              zIndex: 50,
+            }}
+          />
+        )}
+        {snapLines.y && (
+          <div
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: 0,
+              right: 0,
+              height: "2px",
+              backgroundColor: "#4ade80",
+              transform: "translateY(-1px)",
+              pointerEvents: "none",
+              zIndex: 50,
+            }}
+          />
+        )}
 
         {/* Logo mi-dorsal — siempre visible, no forma parte de `elements`
             (no se puede ocultar, mover ni redimensionar). Va dentro del
-            nodo capturado por html-to-image, así que sí sale en el PNG. */}
+            nodo capturado por html-to-image, así que sí sale en el PNG.
+            Anclado justo debajo del último dato visible (con un margen
+            mínimo), no siempre pegado al fondo — así no queda un hueco
+            grande entre el contenido y el logo cuando hay pocos datos. */}
         <div
           style={{
             position: "absolute",
-            bottom: "48px",
+            top: `${logoCenterY}px`,
             left: 0,
             right: 0,
+            transform: "translateY(-50%)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -142,7 +272,9 @@ function StickerElementView({
   onSelect,
   onMove,
   onResize,
+  onSnapChange,
   dragContainerRef,
+  registerNode,
 }: {
   element: StickerElementLayout;
   data: StickerData;
@@ -150,12 +282,22 @@ function StickerElementView({
   onSelect: () => void;
   onMove: (x: number, y: number) => void;
   onResize: (scale: number) => void;
+  /** Se llama en cada frame de un drag de MOVER (no de resize) con qué
+   *  líneas guía deben mostrarse — `{x: true}` cuando el elemento cae
+   *  dentro del umbral de enganche al centro horizontal del lienzo,
+   *  `{y: true}` para el centro vertical. Se llama con `{x:false,
+   *  y:false}` al soltar. */
+  onSnapChange: (lines: { x: boolean; y: boolean }) => void;
   /** El lienzo completo (1080x1920 lógico, escalado visualmente con CSS
    *  transform), NO el propio elemento — el delta de arrastre debe
    *  normalizarse contra el tamaño del lienzo, no contra un elemento que
    *  cambia de tamaño mientras lo redimensionas (eso crearía un bucle de
    *  feedback: el delta cambiaría de escala en cada frame de resize). */
   dragContainerRef: React.RefObject<HTMLDivElement | null>;
+  /** Registra/desregistra el nodo DOM de este elemento en el mapa que
+   *  StickerCanvas usa para medir dónde cae el borde inferior real del
+   *  contenido (para anclar el logo justo debajo). */
+  registerNode: (fieldId: StickerFieldId, node: HTMLDivElement | null) => void;
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -170,12 +312,35 @@ function StickerElementView({
   const elementRef = useRef(element);
   elementRef.current = element;
 
-  const moveDrag = usePointerDrag(dragContainerRef, (deltaX, deltaY) => {
-    const current = elementRef.current;
-    const nextX = Math.min(1, Math.max(0, current.x + deltaX));
-    const nextY = Math.min(1, Math.max(0, current.y + deltaY));
-    onMove(nextX, nextY);
-  });
+  const setWrapperRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      wrapperRef.current = node;
+      registerNode(element.fieldId, node);
+    },
+    [element.fieldId, registerNode],
+  );
+
+  const moveDrag = usePointerDrag(
+    dragContainerRef,
+    (deltaX, deltaY) => {
+      const current = elementRef.current;
+      let nextX = Math.min(1, Math.max(0, current.x + deltaX));
+      let nextY = Math.min(1, Math.max(0, current.y + deltaY));
+
+      // Snap al centro: si la nueva posición cae dentro del umbral del
+      // centro del lienzo en cualquiera de los dos ejes, se "engancha"
+      // exactamente a 0.5 en ese eje (en vez de dejar que quede a medio
+      // píxel del centro) y se enciende la línea guía correspondiente.
+      const snapX = Math.abs(nextX - 0.5) < CENTER_SNAP_THRESHOLD;
+      const snapY = Math.abs(nextY - 0.5) < CENTER_SNAP_THRESHOLD;
+      if (snapX) nextX = 0.5;
+      if (snapY) nextY = 0.5;
+      onSnapChange({ x: snapX, y: snapY });
+
+      onMove(nextX, nextY);
+    },
+    () => onSnapChange({ x: false, y: false }),
+  );
 
   const resizeDrag = usePointerDrag(dragContainerRef, (deltaX) => {
     const current = elementRef.current;
@@ -185,7 +350,7 @@ function StickerElementView({
 
   return (
     <div
-      ref={wrapperRef}
+      ref={setWrapperRef}
       onPointerDown={(e) => {
         onSelect();
         moveDrag.onPointerDown(e);

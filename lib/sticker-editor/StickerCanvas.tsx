@@ -19,16 +19,17 @@ import { usePointerDrag } from "./usePointerDrag";
 export const CANVAS_WIDTH = 1080;
 export const CANVAS_HEIGHT = 1920;
 
-// Distancia (normalizada 0-1) dentro de la cual un elemento se "engancha"
-// al centro horizontal/vertical del lienzo al arrastrarlo. 0.02 ≈ 22px
-// lógicos — suficientemente permisivo para atrapar el gesto sin que el
-// usuario tenga que ser milimétrico.
-const CENTER_SNAP_THRESHOLD = 0.02;
-
-// Igual que CENTER_SNAP_THRESHOLD pero para el enganche entre el CENTRO
-// de un elemento y el centro de OTRO elemento visible (alineación mutua,
-// no solo contra el centro del lienzo). Mismo umbral relativo.
-const ELEMENT_ALIGN_THRESHOLD = 0.02;
+// Margen (en px LÓGICOS, mismo valor absoluto en ambos ejes) dentro del
+// cual un elemento se "engancha" al centro del lienzo o al centro de otro
+// elemento al arrastrarlo. Se usa tanto para el snap al centro del lienzo
+// como para la alineación entre elementos — un solo valor en px evita que
+// el eje Y (lienzo de 1920px) tenga un umbral casi el doble de grande que
+// el eje X (1080px) si se expresara como fracción 0-1 fija. Valor bajo
+// (10px) a propósito: con un umbral más alto el elemento se queda "pegado"
+// al punto de enganche y cuesta mucho volver a moverlo desde ahí.
+const SNAP_THRESHOLD_PX = 10;
+const SNAP_THRESHOLD_X = SNAP_THRESHOLD_PX / CANVAS_WIDTH;
+const SNAP_THRESHOLD_Y = SNAP_THRESHOLD_PX / CANVAS_HEIGHT;
 
 // Margen mínimo (en px lógicos) entre el borde inferior del último
 // elemento visible y el logo, y alto aproximado reservado para el logo
@@ -357,8 +358,8 @@ function StickerElementView({
       // Snap al centro del LIENZO: si la nueva posición cae dentro del
       // umbral del centro en cualquiera de los dos ejes, se "engancha"
       // exactamente a 0.5 en ese eje.
-      let snapX: number | null = Math.abs(nextX - 0.5) < CENTER_SNAP_THRESHOLD ? 0.5 : null;
-      let snapY: number | null = Math.abs(nextY - 0.5) < CENTER_SNAP_THRESHOLD ? 0.5 : null;
+      let snapX: number | null = Math.abs(nextX - 0.5) < SNAP_THRESHOLD_X ? 0.5 : null;
+      let snapY: number | null = Math.abs(nextY - 0.5) < SNAP_THRESHOLD_Y ? 0.5 : null;
 
       // Snap contra OTROS elementos: si el centro del lienzo no atrapó
       // ya este eje, comprobamos si este elemento se alinea con el
@@ -369,10 +370,10 @@ function StickerElementView({
       if (snapX === null || snapY === null) {
         for (const other of allElementsRef.current) {
           if (other.fieldId === current.fieldId) continue;
-          if (snapX === null && Math.abs(nextX - other.x) < ELEMENT_ALIGN_THRESHOLD) {
+          if (snapX === null && Math.abs(nextX - other.x) < SNAP_THRESHOLD_X) {
             snapX = other.x;
           }
-          if (snapY === null && Math.abs(nextY - other.y) < ELEMENT_ALIGN_THRESHOLD) {
+          if (snapY === null && Math.abs(nextY - other.y) < SNAP_THRESHOLD_Y) {
             snapY = other.y;
           }
         }
@@ -399,6 +400,15 @@ function StickerElementView({
       onPointerDown={(e) => {
         onSelect();
         moveDrag.onPointerDown(e);
+      }}
+      onClick={(e) => {
+        // El "click" (evento separado, disparado tras el pointerup) sigue
+        // burbujeando hasta el contenedor del lienzo aunque el pointerdown
+        // ya haya hecho stopPropagation — sin esto, el contenedor exterior
+        // (onClick={() => onSelect(null)}, para deseleccionar al clicar el
+        // fondo) deseleccionaba el elemento justo después de seleccionarlo,
+        // así que el panel de Visible/Tamaño nunca llegaba a quedarse fijo.
+        e.stopPropagation();
       }}
       style={{
         position: "absolute",
@@ -478,7 +488,9 @@ function StickerFieldContent({
         <div style={panelStyle}>
           <div style={labelStyle}>Pace</div>
           <div style={{ fontSize: "40px", fontWeight: 700, fontFamily: "JetBrains Mono", color: PALETTE.ink }}>
-            {data.paceFormatted ?? "—"} /km
+            {/* data.paceFormatted (formatPace) ya incluye el sufijo " /km" —
+                no añadirlo aquí de nuevo o sale duplicado ("M:SS /km /km"). */}
+            {data.paceFormatted ?? "—"}
           </div>
         </div>
       );
@@ -541,7 +553,10 @@ function StickerFieldContent({
     case "distance":
       return (
         <div style={panelStyle}>
-          <div style={{ fontSize: "28px", fontWeight: 700, color: PALETTE.ink }}>{data.distanceLabel ?? "—"}</div>
+          <div style={labelStyle}>Distancia</div>
+          <div style={{ fontSize: "40px", fontWeight: 700, fontFamily: "JetBrains Mono", color: PALETTE.ink }}>
+            {data.distanceLabel ?? "—"}
+          </div>
         </div>
       );
     case "routeMap":

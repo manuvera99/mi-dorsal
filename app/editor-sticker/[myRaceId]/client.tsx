@@ -18,7 +18,7 @@ import { isMockMode } from "@/lib/mock/provider";
 import { useToast } from "@/components/ui/toast";
 import { formatTime, formatPace, formatDate } from "@/lib/utils";
 import Link from "next/link";
-import { ArrowLeft, Download, Loader2, Mail } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Mail, RotateCcw } from "lucide-react";
 
 import { StickerCanvas, CANVAS_WIDTH } from "@/lib/sticker-editor/StickerCanvas";
 import { TemplatePanel } from "@/lib/sticker-editor/TemplatePanel";
@@ -67,6 +67,18 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
   const [mobileSheet, setMobileSheet] = useState<"templates" | "properties" | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
+  // Snapshot del estado con el que arrancó el editor (plantilla propia si
+  // existía, o "classic" si no) — para poder volver ahí con el botón
+  // "Reset". Se congela la PRIMERA vez que editorData resuelve; no se
+  // vuelve a tocar aunque el usuario guarde una plantilla nueva a mitad
+  // de sesión (reset siempre vuelve a como estaba AL ABRIR el editor,
+  // no al último guardado).
+  const initialStateRef = useRef<{
+    templateId: StickerTemplateId;
+    usingCustomTemplate: boolean;
+    elements: StickerElementLayout[];
+  } | null>(null);
+
   // Gate premium: mismo patrón que app/admin/layout.tsx (useEffect +
   // router.push tras confirmar que la query resolvió, nunca redirect()
   // de servidor).
@@ -77,12 +89,47 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
     }
   }, [useMock, isLoaded, hasAccess, router]);
 
-  // Precarga inicial: plantilla propia si existe, si no "classic".
+  // Precarga inicial: plantilla propia si existe, si no "classic". Solo
+  // se ejecuta una vez (initialStateRef.current sirve de guarda) — sin
+  // eso, cada vez que editorData?.customStickerTemplate cambia de
+  // referencia (ej. tras guardar una plantilla nueva a mitad de sesión)
+  // esto pisaría los cambios en curso del usuario con la plantilla recién
+  // guardada.
   useEffect(() => {
-    if (!editorData?.customStickerTemplate) return;
-    setUsingCustomTemplate(true);
-    setElements(editorData.customStickerTemplate.elements as StickerElementLayout[]);
-  }, [editorData?.customStickerTemplate]);
+    if (!editorData || initialStateRef.current) return;
+    const initialElements = editorData.customStickerTemplate
+      ? (editorData.customStickerTemplate.elements as StickerElementLayout[])
+      : STICKER_TEMPLATES.classic.elements;
+    if (editorData.customStickerTemplate) {
+      setUsingCustomTemplate(true);
+      setElements(initialElements);
+    }
+    initialStateRef.current = {
+      templateId: "classic",
+      usingCustomTemplate: !!editorData.customStickerTemplate,
+      elements: initialElements,
+    };
+  }, [editorData]);
+
+  function handleReset() {
+    const initial = initialStateRef.current;
+    if (!initial) return;
+    setTemplateId(initial.templateId);
+    setUsingCustomTemplate(initial.usingCustomTemplate);
+    setElements(initial.elements);
+    setSelectedFieldId(null);
+  }
+
+  function handleResetClick() {
+    // Confirmación nativa: es una acción destructiva (descarta cualquier
+    // cambio de posición/tamaño/campos añadidos hecho en esta sesión de
+    // edición) y no hay deshacer — mejor preguntar antes que perder
+    // trabajo del usuario por un click accidental.
+    if (window.confirm("¿Deshacer todos los cambios y volver al estado inicial del editor?")) {
+      handleReset();
+      toast.show({ title: "Editor reiniciado", variant: "success" });
+    }
+  }
 
   const data: StickerData | null = useMemo(() => {
     if (!editorData) return null;
@@ -282,6 +329,14 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
           {editorData.race.name}
         </Link>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleResetClick}
+            title="Deshacer todos los cambios y volver al estado inicial"
+            className="btn-secondary flex items-center gap-1.5 text-sm"
+          >
+            <RotateCcw className="h-4 w-4" />
+            <span className="hidden sm:inline">Reset</span>
+          </button>
           <button
             onClick={handleEmailSticker}
             disabled={isEmailing}

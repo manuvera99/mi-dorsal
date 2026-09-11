@@ -95,6 +95,7 @@ export default defineSchema({
         x: v.number(),
         y: v.number(),
         scale: v.number(),
+        bgOpacity: v.optional(v.number()),
       })),
     })),
     // Preferencias

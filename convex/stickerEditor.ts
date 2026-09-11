@@ -94,6 +94,7 @@ export const saveCustomTemplate = mutation({
         x: v.number(),
         y: v.number(),
         scale: v.number(),
+        bgOpacity: v.optional(v.number()),
       }),
     ),
   },

@@ -97,8 +97,14 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
   // guardada.
   useEffect(() => {
     if (!editorData || initialStateRef.current) return;
+    // bgOpacity es v.optional en Convex (plantillas guardadas antes de que
+    // existiera este campo no lo tienen) — se normaliza a 1 (opaco, el
+    // comportamiento previo) al cargar.
     const initialElements = editorData.customStickerTemplate
-      ? (editorData.customStickerTemplate.elements as StickerElementLayout[])
+      ? (editorData.customStickerTemplate.elements as StickerElementLayout[]).map((el) => ({
+          ...el,
+          bgOpacity: el.bgOpacity ?? 1,
+        }))
       : STICKER_TEMPLATES.classic.elements;
     if (editorData.customStickerTemplate) {
       setUsingCustomTemplate(true);
@@ -174,7 +180,12 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
   function handleSelectCustomTemplate() {
     if (!editorData?.customStickerTemplate) return;
     setUsingCustomTemplate(true);
-    setElements(editorData.customStickerTemplate.elements as StickerElementLayout[]);
+    setElements(
+      (editorData.customStickerTemplate.elements as StickerElementLayout[]).map((el) => ({
+        ...el,
+        bgOpacity: el.bgOpacity ?? 1,
+      })),
+    );
     setSelectedFieldId(null);
   }
 
@@ -186,10 +197,19 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
     setElements((prev) => prev.map((el) => (el.fieldId === fieldId ? { ...el, scale } : el)));
   }
 
+  function handleChangeBgOpacity(fieldId: StickerFieldId, bgOpacity: number) {
+    setElements((prev) => prev.map((el) => (el.fieldId === fieldId ? { ...el, bgOpacity } : el)));
+  }
+
   function handleToggleVisible(fieldId: StickerFieldId) {
     setElements((prev) =>
       prev.map((el) => (el.fieldId === fieldId ? { ...el, visible: !el.visible } : el)),
     );
+  }
+
+  function handleDeleteField(fieldId: StickerFieldId) {
+    setElements((prev) => prev.filter((el) => el.fieldId !== fieldId));
+    setSelectedFieldId((current) => (current === fieldId ? null : current));
   }
 
   function handleAddField(fieldId: StickerFieldId) {
@@ -211,6 +231,7 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
           x: col === 0 ? 0.35 : 0.65,
           y: Math.min(0.9, 0.65 + row * 0.08),
           scale: 1,
+          bgOpacity: 1,
         },
       ]);
     }
@@ -385,6 +406,7 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
             onSelect={setSelectedFieldId}
             onMove={handleMove}
             onResize={handleResize}
+            onDelete={handleDeleteField}
             displayWidth={Math.min(320, CANVAS_WIDTH)}
             canvasRef={canvasRef}
           />
@@ -397,6 +419,7 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
             activeFieldIds={activeFieldIds}
             onToggleVisible={handleToggleVisible}
             onScaleChange={handleResize}
+            onBgOpacityChange={handleChangeBgOpacity}
             onAddField={handleAddField}
           />
         </aside>
@@ -453,6 +476,7 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
                 activeFieldIds={activeFieldIds}
                 onToggleVisible={handleToggleVisible}
                 onScaleChange={handleResize}
+                onBgOpacityChange={handleChangeBgOpacity}
                 onAddField={(fieldId) => {
                   handleAddField(fieldId);
                   setMobileSheet(null);

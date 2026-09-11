@@ -1,9 +1,9 @@
 // =============================================================================
 // scripts/test-sticker-templates.ts
 // =============================================================================
-// Test de STICKER_TEMPLATES y applyTemplate: verifica que cada plantilla
-// tiene coordenadas válidas (0-1) y que cambiar de plantilla conserva los
-// campos activos del usuario.
+// Test de STICKER_TEMPLATES y applyTemplate: verifica que la plantilla
+// tiene coordenadas válidas (0-1) y que aplicarla conserva los campos
+// activos del usuario.
 // =============================================================================
 
 import {
@@ -23,9 +23,9 @@ function check(condition: boolean, label: string) {
   }
 }
 
-console.log("=== STICKER_TEMPLATES: 2-3 plantillas con coordenadas válidas ===");
+console.log("=== STICKER_TEMPLATES: coordenadas válidas ===");
 const templateIds = Object.keys(STICKER_TEMPLATES) as StickerTemplateId[];
-check(templateIds.length >= 2 && templateIds.length <= 3, `entre 2 y 3 plantillas (hay ${templateIds.length})`);
+check(templateIds.length === 1, `exactamente 1 plantilla (hay ${templateIds.length})`);
 
 for (const id of templateIds) {
   const template = STICKER_TEMPLATES[id];
@@ -41,16 +41,14 @@ for (const id of templateIds) {
   check(fieldIds.includes("pace"), `${id}: incluye 'pace'`);
 }
 
-console.log("\n=== applyTemplate: conserva campos activos al cambiar de plantilla ===");
-const templateAIds = Object.keys(STICKER_TEMPLATES) as StickerTemplateId[];
-const fromId = templateAIds[0];
-const toId = templateAIds[1];
+console.log("\n=== applyTemplate: conserva campos activos ===");
+const onlyId = (Object.keys(STICKER_TEMPLATES) as StickerTemplateId[])[0];
 
-// Simula que el usuario activó "dorsal" además de lo default de la plantilla origen.
-const activeFields: StickerFieldId[] = [...STICKER_TEMPLATES[fromId].elements.map((e) => e.fieldId), "dorsal"];
-const result = applyTemplate(toId, activeFields);
+// Simula que el usuario activó "dorsal" además de lo default de la plantilla.
+const activeFields: StickerFieldId[] = [...STICKER_TEMPLATES[onlyId].elements.map((e) => e.fieldId), "dorsal"];
+const result = applyTemplate(onlyId, activeFields);
 
-check(result.elements.some((e) => e.fieldId === "dorsal"), "'dorsal' sigue presente tras cambiar de plantilla");
+check(result.elements.some((e) => e.fieldId === "dorsal"), "'dorsal' sigue presente tras aplicar la plantilla");
 check(
   result.elements.every((e) => e.visible === activeFields.includes(e.fieldId)),
   "visible=true solo para los fieldId que estaban activos",

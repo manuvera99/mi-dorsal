@@ -25,6 +25,7 @@
 | Monetización (4 patas) | 🟡 Sin ingresos. AdSense sin solicitar | 4 sep 2026 |
 | SEO + descubrimiento | 🟠 2.761 páginas indexables, **sitemap no enviado a GSC** | 10 sep 2026 |
 | Multi-distancia en carreras | 🟡 Plan aprobado, **0/7 tasks hechas** | 9 sep 2026 |
+| Clubs + ranking por temporada (Pro) | 🟡 Plan aprobado, **0/15 tasks hechas** | 10 sep 2026 |
 
 **Tracción**: ~200 usuarios registrados, ~60 MAU, 2.761 carreras en catálogo, 0 Pro pagando.
 
@@ -184,6 +185,7 @@
 - [ ] Widget público "carreras que corro" para blogs/web externa
 - [ ] Comparativa con comunidad (percentiles por edad, distancia, zona)
 - [ ] Alertas personalizadas gratuitas (1-2 básicas, el resto Pro)
+- [ ] **Sprint 4 "Clubs"** — comunidad Pro + ranking por temporada. Plan completo en `docs/plans/CLUBS_RANKING_PLAN.md` (decisión 10 sep 2026: todo Pro desde día 1).
 
 ### 3.2 Cron `weekly-digest` y `year-review`
 
@@ -228,6 +230,63 @@
 - [ ] Dashboard en `/admin` que muestre uso Pro vs Free (churn, MRR estimado)
 - [ ] Revisar `aiUsageLog` mensualmente para detectar abuso del coach IA
 - [ ] Configurar alertas cuando `costEur/mes > $50` con <100 Pro (señal de abuso)
+
+---
+
+## 🏃 Sprint 4 — Clubs + Ranking por temporada (Q4 2026, post-Stripe)
+
+> **Nuevo. Aprobado el 10 sep 2026.** Plan completo: `docs/plans/CLUBS_RANKING_PLAN.md`.
+> **Decisión clave:** todo Pro desde el día 1 (crear, unirse, invitar, podium interno, retos). Lectura pública del catálogo y del ranking sigue siendo gratis (SEO + adquisición).
+> **Diferenciador:** el ranking cuenta solo dorsales con resultado oficial (`resultStatus: "finished"`). Nadie en el nicho español lo hace.
+> **Prerrequisito:** Sprint 1.1 (Stripe activo) y Sprint 1.3 (UX paywall) cerrados. Antes no, porque todo va detrás de `<Paywall>`.
+> **Status: 0/15 tasks hechas.**
+
+### C1 (semana 1-2): Schema + lectura pública
+
+- [ ] Tablas nuevas en `convex/schema.ts`: `clubs`, `club_memberships`, `club_invitations`, `club_season_stats`
+- [ ] `convex/lib/premium.ts`: helper `assertPremium(ctx)` (reutilizable por todos los sprints siguientes)
+- [ ] `convex/clubs.ts`: queries `list`, `getBySlug`, `searchByName`, `getRanking(year, region)`; mutations `create`, `updateShield`, `updateDescription` (capitán)
+- [ ] `convex/clubsSeason.ts`: `getClubStats(clubId, year)`, `getSeasonRanking(year, region?)`
+- [ ] Páginas: `/clubs` (catálogo), `/clubs/[slug]` (ficha), `/ranking/clubes` (público)
+- [ ] Seed inicial: 5-10 clubs reales (los que ya salen en la newsletter de Levante)
+- [ ] **Feature flag**: lectura abierta a todos, escritura solo Pro. `<Paywall>` desde el día 1
+- [ ] Anti-patrón: `export const dynamic = "force-dynamic"` en páginas con `useQuery`
+
+### C2 (semana 3): Membresía + invitaciones
+
+- [ ] `convex/clubsMembership.ts`: `joinPublicClub`, `leaveClub`, `acceptInvitation`, `declineInvitation`, `inviteToClub` (capitán)
+- [ ] `convex/clubsInvitation.ts`: `listMine`, `create`, `expireOld` (cron diario)
+- [ ] Página `/cuenta/club` (Pro): mi club, miembros, invitaciones pendientes, botón "salir"
+- [ ] Notificación in-app cuando te invitan
+- [ ] Email transaccional "Te han invitado al club X" (Resend, template nuevo — solo si invitado es Pro)
+- [ ] `<Paywall>` aplicado a todo lo anterior
+
+### C3 (semana 4-5): Ranking + cron
+
+- [ ] `convex/crons/clubSeasonRollup.ts`: action diaria 04:00 UTC que recalcula `club_season_stats` (idempotente)
+- [ ] Página `/clubs/[slug]/ranking` (Pro): podium, ranking interno, "evolución últimos 30 días"
+- [ ] Páginas `/ranking/clubes/[year]` y `/ranking/clubes/[year]/[region]` (públicas, archivo histórico)
+- [ ] `<ClubShield size="sm|md|lg">` componente (reutilizable en home, header, ranking, widgets)
+- [ ] OG dinámico para `/clubs/[slug]` con escudo + km temporada
+- [ ] JSON-LD pre-serializado: `SportsOrganization` (ficha) + `ItemList` (ranking)
+
+### C4 (semana 6-7): Retos de club + pulido
+
+- [ ] Tablas `club_challenges` y `club_challenge_progress` en schema
+- [ ] Mutations para crear reto (capitán) y registrar progreso
+- [ ] Vista "Retos activos del club" en `/cuenta/club` (Pro)
+- [ ] "Badge del mes" (cron): club con mejor ratio km / miembros activos
+- [ ] Widget público iframe: "Así va nuestro club" (escudo + km temporada + posición regional)
+- [ ] Dropdown filtro CCAA en `/ranking/clubes` → **portal a `document.body`** (mismo patrón que `RegionSwitcher`)
+
+### C5 (semana 8): lanzamiento + docs
+
+- [ ] Post en blog "Historias de dorsal": "Cómo medimos la temporada de tu club" (transparencia, anti-agregador)
+- [ ] Email a la lista: "Llega el club a mi-dorsal" (con los 5-10 clubs semilla como ejemplo)
+- [ ] Landing `/pro` actualizada con la nueva sección "Clubs y ranking"
+- [ ] `docs/core/clubs.md`: cómo se calcula el ranking, qué cuenta, qué no
+- [ ] `docs/optional/clubs-ops.md`: moderación de clubs nuevos, validaciones, anti-spam
+- [ ] Mover tasks C1-C5 a "Historial" cuando se cierren
 
 ---
 

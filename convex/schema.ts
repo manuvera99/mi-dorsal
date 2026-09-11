@@ -1287,6 +1287,38 @@ export default defineSchema({
     .index("by_suggestion", ["suggestionId"]),
 
   // ---------------------------------------------------------------------------
+  // 19b. CLUB_MEMBERSHIPS — pertenencia de un corredor a un club (Sprint 4)
+  // ---------------------------------------------------------------------------
+  // Tabla de relación profile↔club. La capa nueva de "comunidad de clubs"
+  // se apoya aquí:
+  //   - El corredor se "une" a un club del catálogo (mutation joinClub, Pro).
+  //   - La query getMyMembership devuelve su club activo (si lo tiene).
+  //   - El ranking de temporada (C3) sumará dorsales finalizados de los
+  //     miembros activos (leftAt = undefined).
+  //
+  // Reglas:
+  //   - Un corredor puede estar como máximo en 1 club activo. Si quiere
+  //     cambiarse, primero leaveClub (setea leftAt) y luego joinClub.
+  //   - leftAt se setea en vez de borrar la fila para mantener histórico
+  //     de "estuvo en este club hasta X" (futuro: trofeos de antigüedad).
+  //   - joinedAt es la fecha del alta, dorsalNumber es opcional (display).
+  // ---------------------------------------------------------------------------
+  clubMemberships: defineTable({
+    clubCatalogId: v.id("clubsCatalog"),
+    profileId: v.id("profiles"),
+    joinedAt: v.number(),
+    // null/undefined = sigue activo. Si se setea, es el momento en que
+    // salió del club.
+    leftAt: v.optional(v.number()),
+    // Dorsal favorito del club (opcional, solo display en el podium del
+    // club). Útil para el "dorsal del club" del runner.
+    dorsalNumber: v.optional(v.string()),
+  })
+    .index("by_club", ["clubCatalogId"])
+    .index("by_profile", ["profileId"])
+    .index("by_club_active", ["clubCatalogId", "leftAt"]),
+
+  // ---------------------------------------------------------------------------
   // 20. AI_USAGE_LOG — registro de cada llamada a un LLM
   // ---------------------------------------------------------------------------
   // Una fila por cada llamada a OpenAI/MiniMax/Claude/etc. desde lib/ai/*.

@@ -150,10 +150,18 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
           : undefined,
       positionOverall: editorData.myRace.actualPosition,
       positionCategory: editorData.myRace.actualPositionCategory,
+      // currentPR es el PR ACTUAL para esta distancia (isCurrent=true) —
+      // si esta misma carrera fue la que lo estableció, myRaces.ts insertó
+      // ese PR con el MISMO timeSeconds que actualTimeSeconds (no uno
+      // menor). Con "<" estricto, actualTimeSeconds nunca es menor que sí
+      // mismo, así que isPersonalRecord salía siempre false justo en el
+      // caso en que debía ser true. "<=" cubre el caso real (igual =
+      // esta carrera lo estableció) sin dejar de excluir carreras que NO
+      // batieron el PR (donde actualTimeSeconds > currentPR.timeSeconds).
       isPersonalRecord:
         editorData.currentPR != null &&
         editorData.myRace.actualTimeSeconds != null &&
-        editorData.myRace.actualTimeSeconds < editorData.currentPR.timeSeconds,
+        editorData.myRace.actualTimeSeconds <= editorData.currentPR.timeSeconds,
       dorsalNumber: editorData.myRace.dorsalNumber,
       raceName: editorData.race.name,
       raceDate: formatDate(editorData.race.startDate),

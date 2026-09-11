@@ -11,7 +11,12 @@ jobs:
   ingest:
     name: Ingest desde todas las fuentes
     runs-on: ubuntu-latest
-    timeout-minutes: 30  # los scrapers pueden tardar (RFEA, FEDME, etc.)
+    # 45 min (antes 30): con el nuevo step de deploy Convex (0/9) +
+    # unificación de JSONs (6.5/9) + geocoding de más carreras nuevas
+    # cada noche, 30 min se quedaba corto y cancelaba el geocoding final
+    # a mitad (confirmado 2026-09-11, run 34602490190: "exceeded the
+    # maximum execution time of 30m0s" en el paso 9/9).
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4

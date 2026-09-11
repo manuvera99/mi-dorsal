@@ -36,7 +36,7 @@ export const FIELD_CATALOG: Record<StickerFieldId, StickerFieldDef> = {
   dorsal: { label: "Dorsal", defaultScale: 1 },
   raceNameDate: { label: "Nombre carrera + fecha", defaultScale: 1 },
   runnerName: { label: "Tu nombre", defaultScale: 1 },
-  distance: { label: "Distancia", defaultScale: 1 },
+  distance: { label: "Distancia (km)", defaultScale: 1 },
   routeMap: { label: "Silueta de la ruta", defaultScale: 1 },
 };
 
@@ -57,6 +57,9 @@ export interface StickerData {
   raceName?: string;
   raceDate?: string;
   runnerName?: string;
+  /** Distancia formateada en km exactos, ej. "21,098km" (coma decimal, 3
+   *  decimales, sin redondeo previo) — no la etiqueta corta "10K"/"Media
+   *  maratón" que se usa en el resto de la app. */
   distanceLabel?: string;
   routeSvgPath?: string;
 }

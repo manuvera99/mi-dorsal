@@ -152,7 +152,10 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
       raceName: editorData.race.name,
       raceDate: formatDate(editorData.race.startDate),
       runnerName: editorData.runnerName,
-      distanceLabel: editorData.race.distanceLabel,
+      // Formato "21,100km" (coma decimal, 3 decimales, sin espacio antes
+      // de "km") en vez de la etiqueta corta "10K"/"Media maratón" — valor
+      // exacto de distanceKm, sin redondear previamente.
+      distanceLabel: `${editorData.race.distanceKm.toFixed(3).replace(".", ",")}km`,
       routeSvgPath,
     };
   }, [editorData]);

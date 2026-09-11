@@ -28,8 +28,10 @@ export interface StickerTemplate {
 }
 
 // "Classic": todo centrado verticalmente, apilado — mismo espíritu que
-// el story-sticker.tsx fijo actual (pr badge, tiempo hero, pace+posición
-// en fila).
+// el story-sticker.tsx fijo actual (pr badge, tiempo hero, pace+distancia
+// en fila). Distancia en vez de posición: casi todo el mundo tiene
+// distancia (cualquier carrera), mientras que posición general depende
+// de si el cronometrador la publica.
 const CLASSIC: StickerTemplate = {
   id: "classic",
   label: "Clásica",
@@ -37,7 +39,7 @@ const CLASSIC: StickerTemplate = {
     { fieldId: "pr", visible: true, x: 0.5, y: 0.32, scale: 1 },
     { fieldId: "time", visible: true, x: 0.5, y: 0.42, scale: 1 },
     { fieldId: "pace", visible: true, x: 0.35, y: 0.52, scale: 1 },
-    { fieldId: "position", visible: true, x: 0.65, y: 0.52, scale: 1 },
+    { fieldId: "distance", visible: true, x: 0.65, y: 0.52, scale: 1 },
   ],
 };
 

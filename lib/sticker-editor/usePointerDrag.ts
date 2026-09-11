@@ -11,7 +11,7 @@
 
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 export interface PointerDragHandlers {
   /** Poner en onPointerDown del elemento arrastrable. */
@@ -30,6 +30,23 @@ export function usePointerDrag(
   onDragEnd?: () => void,
 ): PointerDragHandlers {
   const startRef = useRef<{ x: number; y: number } | null>(null);
+  // pointerId del drag activo — filtra eventos de otros punteros (multi-touch,
+  // o eventos de otra instancia del hook) para que no contaminen este drag.
+  const activePointerIdRef = useRef<number | null>(null);
+  // Función para retirar los listeners de window del drag en curso, si hay
+  // uno. Se guarda en un ref para poder invocarla también desde el efecto
+  // de desmontaje, no solo desde handleUp.
+  const cleanupRef = useRef<(() => void) | null>(null);
+
+  // Limpieza si el componente se desmonta a mitad de un drag (ej. el
+  // usuario cambia de plantilla mientras arrastra un elemento) — sin esto,
+  // los listeners de window quedarían huérfanos indefinidamente porque
+  // "pointerup" nunca llega a disparar.
+  useEffect(() => {
+    return () => {
+      cleanupRef.current?.();
+    };
+  }, []);
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -39,8 +56,18 @@ export function usePointerDrag(
       if (!container) return;
       const rect = container.getBoundingClientRect();
       startRef.current = { x: e.clientX, y: e.clientY };
+      activePointerIdRef.current = e.pointerId;
+
+      const cleanup = () => {
+        startRef.current = null;
+        activePointerIdRef.current = null;
+        window.removeEventListener("pointermove", handleMove);
+        window.removeEventListener("pointerup", handleUp);
+        cleanupRef.current = null;
+      };
 
       const handleMove = (moveEvent: PointerEvent) => {
+        if (moveEvent.pointerId !== activePointerIdRef.current) return;
         if (!startRef.current) return;
         const deltaX = (moveEvent.clientX - startRef.current.x) / rect.width;
         const deltaY = (moveEvent.clientY - startRef.current.y) / rect.height;
@@ -48,13 +75,13 @@ export function usePointerDrag(
         startRef.current = { x: moveEvent.clientX, y: moveEvent.clientY };
       };
 
-      const handleUp = () => {
-        startRef.current = null;
-        window.removeEventListener("pointermove", handleMove);
-        window.removeEventListener("pointerup", handleUp);
+      const handleUp = (upEvent: PointerEvent) => {
+        if (upEvent.pointerId !== activePointerIdRef.current) return;
+        cleanup();
         onDragEnd?.();
       };
 
+      cleanupRef.current = cleanup;
       window.addEventListener("pointermove", handleMove);
       window.addEventListener("pointerup", handleUp);
     },

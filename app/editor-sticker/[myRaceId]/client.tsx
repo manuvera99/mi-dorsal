@@ -97,6 +97,19 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
   // guardada.
   useEffect(() => {
     if (!editorData || initialStateRef.current) return;
+    // El badge "pr" de la plantilla Clásica viene visible=true sin
+    // condición (a diferencia de time/pace/distance, que SIEMPRE tienen
+    // dato real) — si esta carrera no es realmente un PR (mismo cálculo
+    // que isPersonalRecord en `data` más abajo), hay que forzarlo a
+    // oculto en la carga inicial. Sin esto, el badge aparecía visible al
+    // abrir el editor pero, tras ocultarlo/borrarlo una vez, ya no podía
+    // volver a añadirse desde "+ Añadir dato" (esa lista SÍ respeta la
+    // condición real vía getAvailableFields) — parecía un bug de borrado
+    // cuando en realidad el badge nunca debió mostrarse desde el inicio.
+    const isRealPR =
+      editorData.currentPR != null &&
+      editorData.myRace.actualTimeSeconds != null &&
+      editorData.myRace.actualTimeSeconds <= editorData.currentPR.timeSeconds;
     // bgOpacity es v.optional en Convex (plantillas guardadas antes de que
     // existiera este campo no lo tienen) — se normaliza a 1 (opaco, el
     // comportamiento previo) al cargar.
@@ -105,7 +118,9 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
           ...el,
           bgOpacity: el.bgOpacity ?? 1,
         }))
-      : STICKER_TEMPLATES.classic.elements;
+      : STICKER_TEMPLATES.classic.elements.map((el) =>
+          el.fieldId === "pr" && !isRealPR ? { ...el, visible: false } : el,
+        );
     if (editorData.customStickerTemplate) {
       setUsingCustomTemplate(true);
       setElements(initialElements);

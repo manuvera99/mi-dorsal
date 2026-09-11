@@ -81,13 +81,17 @@ export function PropertiesPanel({
               <label className="text-xs font-medium text-stone-600 mb-1 block">
                 Transparencia del fondo
               </label>
+              {/* El slider representa CANTIDAD DE TRANSPARENCIA (a tope =
+                  totalmente transparente), lo contrario de bgOpacity (a
+                  tope = opaco) — se invierte al leer/escribir para que la
+                  UI coincida con lo que dice la etiqueta. */}
               <input
                 type="range"
                 min={0}
                 max={1}
                 step={0.05}
-                value={selectedElement.bgOpacity}
-                onChange={(e) => onBgOpacityChange(selectedElement.fieldId, Number(e.target.value))}
+                value={1 - selectedElement.bgOpacity}
+                onChange={(e) => onBgOpacityChange(selectedElement.fieldId, 1 - Number(e.target.value))}
                 className="w-full"
               />
             </div>

@@ -10,11 +10,12 @@
 // =============================================================================
 
 import { toBlob } from "html-to-image";
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from "./StickerCanvas";
 
 export async function exportStickerToBlob(canvasNode: HTMLElement): Promise<Blob> {
   const blob = await toBlob(canvasNode, {
-    width: 1080,
-    height: 1920,
+    width: CANVAS_WIDTH,
+    height: CANVAS_HEIGHT,
     backgroundColor: undefined, // mantiene transparencia
     pixelRatio: 1,
   });

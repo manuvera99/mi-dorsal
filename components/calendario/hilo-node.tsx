@@ -17,7 +17,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useMutation } from "convex/react";
-import { Calendar, Hash, MapPin, Trophy, Pencil, Loader2 } from "lucide-react";
+import { Calendar, Hash, MapPin, Trophy, Pencil, Loader2, Sparkles } from "lucide-react";
 import { cn, formatRaceType, formatTime, formatPaceLong } from "@/lib/utils";
 import { TimePaceCalculator } from "./time-pace-calculator";
 import { api } from "@/convex/_generated/api";
@@ -402,6 +402,18 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
                     </span>
                   )}
                 </span>
+              </div>
+            )}
+
+            {myRace.actualTimeSeconds && (
+              <div className="mt-3">
+                <Link
+                  href={`/editor-sticker/${myRace._id}`}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-runner-primary hover:underline"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Personalizar sticker
+                </Link>
               </div>
             )}
           </div>

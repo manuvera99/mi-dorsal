@@ -25,6 +25,11 @@ export const CANVAS_HEIGHT = 1920;
 // usuario tenga que ser milimétrico.
 const CENTER_SNAP_THRESHOLD = 0.02;
 
+// Igual que CENTER_SNAP_THRESHOLD pero para el enganche entre el CENTRO
+// de un elemento y el centro de OTRO elemento visible (alineación mutua,
+// no solo contra el centro del lienzo). Mismo umbral relativo.
+const ELEMENT_ALIGN_THRESHOLD = 0.02;
+
 // Margen mínimo (en px lógicos) entre el borde inferior del último
 // elemento visible y el logo, y alto aproximado reservado para el logo
 // (icono + wordmark), usados para calcular dónde centrarlo en el hueco
@@ -71,10 +76,17 @@ export function StickerCanvas({
   const scaleRatio = displayWidth / CANVAS_WIDTH;
   const displayHeight = CANVAS_HEIGHT * scaleRatio;
 
-  // Líneas guía de centrado, activas mientras se arrastra un elemento que
-  // cae dentro del umbral de "engancharse" al centro horizontal/vertical
-  // del lienzo. `null` = línea no visible en ese eje.
-  const [snapLines, setSnapLines] = useState<{ x: boolean; y: boolean }>({ x: false, y: false });
+  // Líneas guía activas mientras se arrastra un elemento: puede haber una
+  // vertical (eje "x", enganche al centro horizontal del LIENZO o al
+  // centro horizontal de OTRO elemento) y/o una horizontal (eje "y",
+  // mismo criterio en vertical) simultáneamente. `pos` es la posición
+  // normalizada (0-1) en la que dibujar la línea — para el centro del
+  // lienzo siempre es 0.5, pero para alineación entre elementos es la
+  // posición del elemento con el que se alinea.
+  const [guideLines, setGuideLines] = useState<{
+    x: number | null;
+    y: number | null;
+  }>({ x: null, y: null });
 
   // Bottom real (px lógicos, 0-1920) del elemento visible más bajo, medido
   // desde el DOM (cada dato tiene alto distinto: tiempo hero es más alto
@@ -173,28 +185,31 @@ export function StickerCanvas({
           <StickerElementView
             key={el.fieldId}
             element={el}
+            allVisibleElements={visibleElements}
             data={data}
             isSelected={selectedFieldId === el.fieldId}
             onSelect={() => onSelect(el.fieldId)}
             onMove={(x, y) => onMove(el.fieldId, x, y)}
             onResize={(scale) => onResize(el.fieldId, scale)}
-            onSnapChange={setSnapLines}
+            onGuideLinesChange={setGuideLines}
             dragContainerRef={canvasRef}
             registerNode={registerElementNode}
           />
         ))}
 
-        {/* Líneas guía de centrado — solo visibles mientras se arrastra un
-            elemento que cae dentro del umbral de snap. No forman parte
-            del PNG exportado en un sentido estricto (viven dentro de
-            canvasRef), pero solo se renderizan durante el drag activo, y
-            un drag activo nunca coincide con el momento de exportar, así
-            que nunca aparecen en el PNG real. */}
-        {snapLines.x && (
+        {/* Líneas guía — solo visibles mientras se arrastra un elemento
+            que cae dentro del umbral de enganche, sea contra el centro
+            del LIENZO (guideLines.x/y === 0.5) o contra el centro de
+            OTRO elemento (guideLines.x/y === esa posición). No forman
+            parte del PNG exportado en un sentido estricto (viven dentro
+            de canvasRef), pero solo se renderizan durante el drag activo,
+            y un drag activo nunca coincide con el momento de exportar,
+            así que nunca aparecen en el PNG real. */}
+        {guideLines.x != null && (
           <div
             style={{
               position: "absolute",
-              left: "50%",
+              left: `${guideLines.x * 100}%`,
               top: 0,
               bottom: 0,
               width: "2px",
@@ -205,11 +220,11 @@ export function StickerCanvas({
             }}
           />
         )}
-        {snapLines.y && (
+        {guideLines.y != null && (
           <div
             style={{
               position: "absolute",
-              top: "50%",
+              top: `${guideLines.y * 100}%`,
               left: 0,
               right: 0,
               height: "2px",
@@ -267,27 +282,31 @@ export function StickerCanvas({
 
 function StickerElementView({
   element,
+  allVisibleElements,
   data,
   isSelected,
   onSelect,
   onMove,
   onResize,
-  onSnapChange,
+  onGuideLinesChange,
   dragContainerRef,
   registerNode,
 }: {
   element: StickerElementLayout;
+  /** Todos los elementos visibles (incluido `element`), para poder
+   *  comparar su centro contra el de los demás y detectar alineación
+   *  mutua, no solo contra el centro del lienzo. */
+  allVisibleElements: StickerElementLayout[];
   data: StickerData;
   isSelected: boolean;
   onSelect: () => void;
   onMove: (x: number, y: number) => void;
   onResize: (scale: number) => void;
-  /** Se llama en cada frame de un drag de MOVER (no de resize) con qué
-   *  líneas guía deben mostrarse — `{x: true}` cuando el elemento cae
-   *  dentro del umbral de enganche al centro horizontal del lienzo,
-   *  `{y: true}` para el centro vertical. Se llama con `{x:false,
-   *  y:false}` al soltar. */
-  onSnapChange: (lines: { x: boolean; y: boolean }) => void;
+  /** Se llama en cada frame de un drag de MOVER (no de resize) con la
+   *  posición (0-1) en la que dibujar cada línea guía, o `null` si esa
+   *  línea no debe mostrarse. Se llama con `{x: null, y: null}` al
+   *  soltar. */
+  onGuideLinesChange: (lines: { x: number | null; y: number | null }) => void;
   /** El lienzo completo (1080x1920 lógico, escalado visualmente con CSS
    *  transform), NO el propio elemento — el delta de arrastre debe
    *  normalizarse contra el tamaño del lienzo, no contra un elemento que
@@ -312,6 +331,14 @@ function StickerElementView({
   const elementRef = useRef(element);
   elementRef.current = element;
 
+  // Mismo motivo que elementRef: necesitamos la lista más reciente de
+  // elementos visibles dentro del closure de onDelta (que se crea una
+  // sola vez por el ciclo de vida del hook usePointerDrag, no en cada
+  // render), para comparar contra sus posiciones ACTUALES, no las que
+  // había cuando el usuario empezó a arrastrar.
+  const allElementsRef = useRef(allVisibleElements);
+  allElementsRef.current = allVisibleElements;
+
   const setWrapperRef = useCallback(
     (node: HTMLDivElement | null) => {
       wrapperRef.current = node;
@@ -327,19 +354,37 @@ function StickerElementView({
       let nextX = Math.min(1, Math.max(0, current.x + deltaX));
       let nextY = Math.min(1, Math.max(0, current.y + deltaY));
 
-      // Snap al centro: si la nueva posición cae dentro del umbral del
-      // centro del lienzo en cualquiera de los dos ejes, se "engancha"
-      // exactamente a 0.5 en ese eje (en vez de dejar que quede a medio
-      // píxel del centro) y se enciende la línea guía correspondiente.
-      const snapX = Math.abs(nextX - 0.5) < CENTER_SNAP_THRESHOLD;
-      const snapY = Math.abs(nextY - 0.5) < CENTER_SNAP_THRESHOLD;
-      if (snapX) nextX = 0.5;
-      if (snapY) nextY = 0.5;
-      onSnapChange({ x: snapX, y: snapY });
+      // Snap al centro del LIENZO: si la nueva posición cae dentro del
+      // umbral del centro en cualquiera de los dos ejes, se "engancha"
+      // exactamente a 0.5 en ese eje.
+      let snapX: number | null = Math.abs(nextX - 0.5) < CENTER_SNAP_THRESHOLD ? 0.5 : null;
+      let snapY: number | null = Math.abs(nextY - 0.5) < CENTER_SNAP_THRESHOLD ? 0.5 : null;
+
+      // Snap contra OTROS elementos: si el centro del lienzo no atrapó
+      // ya este eje, comprobamos si este elemento se alinea con el
+      // centro (x o y) de cualquier otro elemento visible. El centro del
+      // lienzo tiene prioridad porque es el punto de alineación más
+      // "intencional" — dos elementos que casualmente están cerca uno
+      // de otro sin que ninguno esté cerca del centro es menos relevante.
+      if (snapX === null || snapY === null) {
+        for (const other of allElementsRef.current) {
+          if (other.fieldId === current.fieldId) continue;
+          if (snapX === null && Math.abs(nextX - other.x) < ELEMENT_ALIGN_THRESHOLD) {
+            snapX = other.x;
+          }
+          if (snapY === null && Math.abs(nextY - other.y) < ELEMENT_ALIGN_THRESHOLD) {
+            snapY = other.y;
+          }
+        }
+      }
+
+      if (snapX !== null) nextX = snapX;
+      if (snapY !== null) nextY = snapY;
+      onGuideLinesChange({ x: snapX, y: snapY });
 
       onMove(nextX, nextY);
     },
-    () => onSnapChange({ x: false, y: false }),
+    () => onGuideLinesChange({ x: null, y: null }),
   );
 
   const resizeDrag = usePointerDrag(dragContainerRef, (deltaX) => {

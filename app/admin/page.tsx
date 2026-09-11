@@ -5,6 +5,7 @@ import { api } from "@/convex/_generated/api";
 import { isMockMode } from "@/lib/mock/provider";
 import Link from "next/link";
 import { Trophy, Users, ThumbsUp, MessageSquare, Calendar, MapPin, Loader2 } from "lucide-react";
+import { StatCard } from "@/components/admin/stat-card";
 
 type AdminStats = {
   computedAt: number;
@@ -139,39 +140,6 @@ function RealDashboard() {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  sub,
-  icon: Icon,
-  color,
-}: {
-  label: string;
-  value: string | number;
-  sub?: string;
-  icon: any;
-  color: "orange" | "blue" | "green" | "purple";
-}) {
-  const colors: Record<string, string> = {
-    orange: "bg-orange-100 text-orange-700",
-    blue: "bg-blue-100 text-blue-700",
-    green: "bg-green-100 text-green-700",
-    purple: "bg-purple-100 text-purple-700",
-  };
-  return (
-    <div className="bg-white rounded-lg border p-5">
-      <div className="flex items-start justify-between mb-3">
-        <div className={`p-2 rounded-md ${colors[color]}`}>
-          <Icon className="h-4 w-4" />
-        </div>
-      </div>
-      <div className="text-2xl font-bold">{value}</div>
-      <div className="text-sm text-gray-600 mt-0.5">{label}</div>
-      {sub && <div className="text-xs text-gray-400 mt-1">{sub}</div>}
     </div>
   );
 }

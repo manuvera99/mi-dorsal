@@ -50,6 +50,7 @@ export default function EditRacePage() {
         officialUrl: race.officialUrl ?? "",
         registrationUrl: race.registrationUrl ?? "",
         resultsUrl: race.resultsUrl ?? "",
+        photosUrl: race.photosUrl ?? "",
         organizer: race.organizer ?? "",
         isPublished: race.isPublished ?? false,
         isFeatured: race.isFeatured ?? false,
@@ -73,6 +74,7 @@ export default function EditRacePage() {
         officialUrl: race.officialUrl ?? "",
         registrationUrl: race.registrationUrl ?? "",
         resultsUrl: race.resultsUrl ?? "",
+        photosUrl: race.photosUrl ?? "",
         organizer: race.organizer ?? "",
         isPublished: race.isPublished ?? false,
         isFeatured: race.isFeatured ?? false,
@@ -120,6 +122,7 @@ export default function EditRacePage() {
           officialUrl: form.officialUrl || undefined,
           registrationUrl: form.registrationUrl || undefined,
           resultsUrl: form.resultsUrl || undefined,
+          photosUrl: form.photosUrl || undefined,
           organizer: form.organizer || undefined,
           isPublished: form.isPublished,
           isFeatured: form.isFeatured,
@@ -385,6 +388,11 @@ export default function EditRacePage() {
           </Field>
           <Field label="URL resultados">
             <input type="url" value={form.resultsUrl} onChange={(e) => set("resultsUrl", e.target.value)} className="input" />
+          </Field>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Field label="URL fotos (avisa a los inscritos al guardar)">
+            <input type="url" value={form.photosUrl} onChange={(e) => set("photosUrl", e.target.value)} className="input" />
           </Field>
         </div>
         <div className="flex items-center gap-6 pt-2 border-t">

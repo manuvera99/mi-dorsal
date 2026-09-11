@@ -748,10 +748,18 @@ export const systemUpsert = mutation({
       }
       // dataSourceId: si la nueva fuente es más prioritaria, sobrescribir
       if (args.dataSourceId && args.dataSourceId !== existing.dataSourceId) {
-        const priority = ["RFEA", "FEDME", "ITRA", "Sportmaniacs", "Runedia", "Manual"];
+        // Orden de confianza de mayor a menor. "Agenda Sureste" (Correbirras)
+        // no estaba en esta lista (bug de auditoría 2026-09-11): su indexOf
+        // daba -1 y por tanto nunca ganaba el desempate frente a ninguna
+        // otra fuente, aunque debería tener prioridad propia. "Manual" va
+        // última a propósito: es la fuente MENOS prioritaria para decidir
+        // qué dataSourceId queda, pero justo por eso más abajo protegemos
+        // sus campos de ser sobrescritos por un re-ingest automático.
+        const priority = ["RFEA", "FEDME", "ITRA", "Sportmaniacs", "Agenda Sureste", "Runedia", "Manual"];
         const existingSrc = await ctx.db.get(existing.dataSourceId as any);
         const newSrc = await ctx.db.get(args.dataSourceId);
-        const existingIdx = priority.indexOf((existingSrc as any)?.name ?? "");
+        const existingName = (existingSrc as any)?.name ?? "";
+        const existingIdx = priority.indexOf(existingName);
         const newIdx = priority.indexOf((newSrc as any)?.name ?? "");
         if (newIdx !== -1 && (existingIdx === -1 || newIdx < existingIdx)) {
           // La nueva es más prioritaria → guardar la vieja en additional
@@ -761,6 +769,28 @@ export const systemUpsert = mutation({
           }
           patch.dataSourceId = args.dataSourceId;
           patch.additionalDataSourceIds = additional;
+
+          // Además de rellenar huecos (loop de arriba), cuando la fuente
+          // entrante es MÁS prioritaria dejamos que "mejore" un dato ya
+          // presente pero potencialmente peor (ej. Sportmaniacs pone
+          // distanceKm=10 de relleno, RFEA llega después con el dato real).
+          // Nunca tocamos estos campos si la existente es "Manual" — un
+          // dato curado a mano por el admin no debe perderse en un
+          // re-ingest automático.
+          if (existingName !== "Manual") {
+            const upgradableFields = [
+              "distanceKm",
+              "elevationGainM",
+              "priceEur",
+              "raceType",
+              "homologated",
+            ] as const;
+            for (const field of upgradableFields) {
+              const incoming = (args as any)[field];
+              if (incoming === null || incoming === undefined || incoming === "") continue;
+              patch[field] = incoming;
+            }
+          }
         } else {
           // La existente es más prioritaria → solo añadir la nueva a additional
           const additional: string[] = (existing as any).additionalDataSourceIds ?? [];

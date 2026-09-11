@@ -17,7 +17,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useMutation } from "convex/react";
-import { Calendar, Hash, MapPin, Trophy, Pencil, Loader2, Sparkles } from "lucide-react";
+import { Calendar, Hash, MapPin, Trophy, Pencil, Loader2, Sparkles, Radio } from "lucide-react";
 import { cn, formatRaceType, formatTime, formatPaceLong } from "@/lib/utils";
 import { TimePaceCalculator } from "./time-pace-calculator";
 import { api } from "@/convex/_generated/api";
@@ -27,6 +27,7 @@ import {
   type DistanceOption,
 } from "@/components/distance-modality-picker";
 import { getEffectiveDistance } from "@/lib/prediction/effective-distance";
+import { isAutoTrackable } from "@/lib/results-tracking";
 import { useToast } from "@/components/ui/toast";
 
 type HiloNodeStatus = "planned" | "done" | "dns" | "dnf";
@@ -168,6 +169,7 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
   const matchingPR = effectiveDistance
     ? findMatchingPR(effectiveDistance.distanceKm, userPRs)
     : null;
+  const trackable = race ? isAutoTrackable(race) : false;
   const { day, month, year } = fmtShortDate(race?.startDate);
 
   const [editingDistance, setEditingDistance] = useState(false);
@@ -281,6 +283,15 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
             {isNext && status === "planned" && (
               <span className="rounded bg-runner-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
                 Tu próxima
+              </span>
+            )}
+            {status === "planned" && trackable && (
+              <span
+                className="inline-flex items-center gap-1 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700"
+                title="Detectamos tu resultado oficial automáticamente cuando se publique"
+              >
+                <Radio className="h-2.5 w-2.5" aria-hidden="true" />
+                Automático
               </span>
             )}
           </div>

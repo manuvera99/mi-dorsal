@@ -14,12 +14,13 @@ import {
 } from "@/components/race-detail-sections";
 import { AddToCalendarWidget } from "@/components/add-to-calendar-widget";
 import { ReportRaceErrorDialog } from "@/components/feedback/report-race-error-dialog";
+import { isAutoTrackable } from "@/lib/results-tracking";
 import {
   MapPin, Calendar, Mountain, ExternalLink, FileText, Plus, Check,
   Globe, Mail, Phone, Clock, Users, Tag, Trophy, DollarSign, Share2,
   Instagram, Facebook, Twitter, Youtube, Award, AlertCircle, Download,
   Navigation, Car, ShowerHead, Shirt, Medal, Coffee, Camera, Heart,
-  Activity, Timer, TrendingUp
+  Activity, Timer, TrendingUp, Radio
 } from "lucide-react";
 
 function MockRaceDetail({ slug }: { slug: string }) {
@@ -120,6 +121,14 @@ function RaceDetailContent({ race, summary }: { race: any; summary: any }) {
             {isSoldOut && (
               <span className="bg-red-900/90 text-white text-xs font-bold px-2.5 py-1 rounded-full">
                 ¡AGOTADA!
+              </span>
+            )}
+            {isAutoTrackable(race) && (
+              <span
+                className="bg-sky-500/90 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1"
+                title="Detectamos tu resultado oficial automáticamente cuando se publique"
+              >
+                <Radio className="h-3 w-3" /> Resultado automático
               </span>
             )}
           </div>

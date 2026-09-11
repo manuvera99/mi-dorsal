@@ -384,6 +384,17 @@ export default defineSchema({
     officialUrlResolvedAt: v.optional(v.number()),
     officialUrlResolvedFrom: v.optional(v.string()),
 
+    // Cache de UUIDs reales de eventos Sportmaniacs para el adapter de
+    // resultados (evita re-parsear el HTML en cada check). Escrito por
+    // el trabajo paralelo de result-tracking (worktree
+    // result-tracking-badge, no mergeado aún) — placeholder aquí solo
+    // para no romper la validación de schema mientras esa rama no llega.
+    sportmaniacsEventIds: v.optional(v.array(v.object({
+      eventId: v.string(),
+      name: v.optional(v.string()),
+      distanceKm: v.optional(v.number()),
+    }))),
+
     // -------- CROSS-SOURCE MERGE (Fase anti-duplicados) --------
     // Lista de IDs de carreras que se consolidaron en esta (merge cross-source).
     mergedFromIds: v.optional(v.array(v.string())),

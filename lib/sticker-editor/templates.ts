@@ -73,11 +73,23 @@ export const STICKER_TEMPLATES: Record<StickerTemplateId, StickerTemplate> = {
 
 /**
  * Posición/escala default de un fieldId cuando el usuario lo añade con
- * "+ Añadir dato" y esa plantilla no lo incluye por defecto. Simplemente
- * lo centra en el tercio inferior libre — el usuario lo reposiciona.
+ * "+ Añadir dato" y esa plantilla no lo incluye por defecto. `offsetIndex`
+ * escalona cada campo nuevo añadido en la misma tanda para que no se
+ * amonate exactamente en el mismo punto (0.5, 0.65) — cada uno cae un
+ * poco más abajo y alternando left/right, y el usuario sigue pudiendo
+ * arrastrarlo desde ahí.
  */
-function defaultPositionFor(fieldId: StickerFieldId): { x: number; y: number; scale: number } {
-  return { x: 0.5, y: 0.65, scale: FIELD_CATALOG[fieldId].defaultScale };
+function defaultPositionFor(
+  fieldId: StickerFieldId,
+  offsetIndex: number = 0,
+): { x: number; y: number; scale: number } {
+  const row = Math.floor(offsetIndex / 2);
+  const col = offsetIndex % 2;
+  return {
+    x: col === 0 ? 0.35 : 0.65,
+    y: Math.min(0.9, 0.65 + row * 0.08),
+    scale: FIELD_CATALOG[fieldId].defaultScale,
+  };
 }
 
 /**
@@ -100,13 +112,15 @@ export function applyTemplate(
     visible: activeFieldIds.includes(el.fieldId),
   }));
 
+  let addedCount = 0;
   for (const fieldId of activeFieldIds) {
     if (!baseFieldIds.has(fieldId)) {
       elements.push({
         fieldId,
         visible: true,
-        ...defaultPositionFor(fieldId),
+        ...defaultPositionFor(fieldId, addedCount),
       });
+      addedCount++;
     }
   }
 

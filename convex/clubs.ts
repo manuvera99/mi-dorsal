@@ -64,18 +64,26 @@ function clubSlug(name: string): string {
 }
 
 /** Cuenta los miembros activos de un club. Una membresía es activa si
- *  leftAt es undefined o null. */
+ *  leftAt es undefined o null.
+ *
+ *  ANTES (versión rota): hacía `ctx.db.query("clubMemberships").collect()`
+ *  por cada club. Para N clubs, eso son N collects — Convex tiene un
+ *  límite de ~4096 ops/función y reventaba con el catálogo real (ya
+ *  había ~150 clubs en clubsCatalog).
+ *
+ *  AHORA: usa el índice `by_club` (clubCatalogId) → una sola query
+ *  indexada por club. Toma un límite alto (5000) por si un club crece
+ *  mucho en el futuro. Filtrar `leftAt == null` se hace en JS sobre un
+ *  set ya acotado al club. */
 async function countActiveMembers(
   ctx: ClubCtx,
   clubCatalogId: Id<"clubsCatalog">,
 ): Promise<number> {
-  // Listamos todas las membresías del club y filtramos en JS: a fecha de
-  // C1 esperamos < 100 miembros por club, el escaneo en memoria es
-  // aceptable. Si crece, cambiar a query con índice `by_club_active`.
-  const all = await ctx.db.query("clubMemberships").collect();
-  return all.filter(
-    (m) => m.clubCatalogId === clubCatalogId && m.leftAt == null,
-  ).length;
+  const memberships = await ctx.db
+    .query("clubMemberships")
+    .withIndex("by_club", (q) => q.eq("clubCatalogId", clubCatalogId))
+    .take(5000);
+  return memberships.filter((m) => m.leftAt == null).length;
 }
 
 // ---------------------------------------------------------------------------
@@ -159,10 +167,15 @@ export const getBySlug = query({
     // Capitán = creador del club (no hay rol "capitán" en C1).
     const captain = await ctx.db.get(club.createdBy);
 
-    // Miembros activos (top 5 por joinedAt asc — los más "antiguos" primero)
-    const memberships = await ctx.db.query("clubMemberships").collect();
+    // Miembros activos (top 5 por joinedAt asc — los más "antiguos" primero).
+    // Usa el índice by_club (no collect global como en la versión rota)
+    // y limita a 5000 para protegerse de clubs gigantes en el futuro.
+    const memberships = await ctx.db
+      .query("clubMemberships")
+      .withIndex("by_club", (q) => q.eq("clubCatalogId", club._id))
+      .take(5000);
     const activeMemberships = memberships
-      .filter((m) => m.clubCatalogId === club._id && m.leftAt == null)
+      .filter((m) => m.leftAt == null)
       .sort((a, b) => a.joinedAt - b.joinedAt)
       .slice(0, 5);
 
@@ -228,10 +241,13 @@ export const getMyMembership = query({
   handler: async (ctx) => {
     const profile = await getOptionalUser(ctx);
     if (!profile) return null;
-    const all = await ctx.db.query("clubMemberships").collect();
-    const active = all.find(
-      (m) => m.profileId === profile._id && m.leftAt == null,
-    );
+    // Usa el índice by_profile (no collect global). Un usuario solo puede
+    // estar en 1 club activo (regla de joinClub) → .first() y basta.
+    const active = await ctx.db
+      .query("clubMemberships")
+      .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
+      .filter((q) => q.eq(q.field("leftAt"), undefined))
+      .first();
     if (!active) return null;
     const club = await ctx.db.get(active.clubCatalogId);
     if (!club) return null;
@@ -281,11 +297,14 @@ export const joinClub = mutation({
       throw new Error("Club no encontrado o inactivo");
     }
 
-    // El usuario no debe estar ya en otro club activo
-    const allMemberships = await ctx.db.query("clubMemberships").collect();
-    const existing = allMemberships.find(
-      (m) => m.profileId === profile._id && m.leftAt == null,
-    );
+    // El usuario no debe estar ya en otro club activo. Índice by_profile
+    // + filtro por leftAt undefined (no collect global como en la versión
+    // rota que podía reventar el límite de ops).
+    const existing = await ctx.db
+      .query("clubMemberships")
+      .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
+      .filter((q) => q.eq(q.field("leftAt"), undefined))
+      .first();
     if (existing) {
       throw new Error(
         "Ya perteneces a un club. Sal del actual antes de unirte a otro.",
@@ -329,10 +348,11 @@ export const leaveClub = mutation({
     if (!isPremium) {
       throw new Error("Salir de un club requiere Dorsal Pro.");
     }
-    const allMemberships = await ctx.db.query("clubMemberships").collect();
-    const active = allMemberships.find(
-      (m) => m.profileId === profile._id && m.leftAt == null,
-    );
+    const active = await ctx.db
+      .query("clubMemberships")
+      .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
+      .filter((q) => q.eq(q.field("leftAt"), undefined))
+      .first();
     if (!active) return { skipped: true, reason: "not_in_club" as const };
 
     await ctx.db.patch(active._id, { leftAt: Date.now() });

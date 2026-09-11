@@ -119,6 +119,12 @@ export interface ExtractedRaceDeep {
     ageMax?: number;
   }>;
 
+  // Homologación del recorrido (RFEA/AIMS/World Athletics). No hay listado
+  // oficial de terceros consultable por API — este dato es "según lo que
+  // declara la propia web del organizador", no una verificación cruzada.
+  homologated?: boolean;
+  homologationNote?: string;
+
   // Metadata de la extracción
   confidence: "high" | "medium" | "low";
   notes?: string;
@@ -234,6 +240,8 @@ CAMPOS A EXTRAER (usa null si NO encuentras el dato; NUNCA inventes datos que no
   "categories": [
     { "name": string, "gender": "M" | "F" | "mixto" | null, "ageMin": number | null, "ageMax": number | null }
   ],
+  "homologated": boolean | null,
+  "homologationNote": string | null,
   "confidence": "high" | "medium" | "low",
   "notes": string | null
 }
@@ -268,6 +276,15 @@ parking: true). Solo null si NO se menciona.
 
 Para "categories" — si la web menciona "Senior M/F", "Sub-23", "Máster 35-44", "Veteranos" etc.,
 rellena al menos las obvias. Si la web no menciona ninguna, deja null.
+
+Para "homologated" — true SOLO si la web menciona EXPLÍCITAMENTE que el recorrido está
+homologado/certificado (ej: "recorrido homologado por la RFEA", "certificado AIMS",
+"medición oficial", "circuito certificado World Athletics", número de certificado). false
+si la web declara explícitamente que NO lo está o que no aplica (ej: carrera de obstáculos,
+trail sin medición formal, "recorrido no homologado"). null si la web no dice nada al
+respecto — NUNCA lo infieras del tipo de carrera o de la fuente. "homologationNote": si
+homologated no es null, copia la frase textual exacta (o casi) que lo indica, max 200
+caracteres; si es null, deja también null.
 
 Para "galleryUrls" — si no hay galería visible, pon null (mejor null que una URL rota del logo
 de la cabecera). El imageUrl del campo raíz (description corta) NO va aquí.
@@ -511,6 +528,8 @@ function sanitize(r: any): ExtractedRaceDeep {
   if (r?.prizes) out.prizes = String(r.prizes).slice(0, 1000);
   if (typeof r?.soldOut === "boolean") out.soldOut = r.soldOut;
   if (typeof r?.trophies === "boolean") out.trophies = r.trophies;
+  if (typeof r?.homologated === "boolean") out.homologated = r.homologated;
+  if (r?.homologationNote) out.homologationNote = String(r.homologationNote).slice(0, 200);
   if (typeof r?.maxParticipants === "number" && r.maxParticipants > 0) {
     out.maxParticipants = r.maxParticipants;
   }
@@ -663,7 +682,7 @@ const PATCH_SCALAR_FIELDS = [
   "gpxUrl", "mapImageUrl", "profileImageUrl",
   "registrationOpenDate", "registrationCloseDate",
   "socialInstagram", "socialFacebook", "socialTwitter", "socialYoutube",
-  "prizes",
+  "prizes", "homologationNote",
 ] as const;
 
 export function buildExtractionPatch(
@@ -688,6 +707,10 @@ export function buildExtractionPatch(
   }
   if (typeof data.soldOut === "boolean") patch.soldOut = data.soldOut;
   if (typeof data.trophies === "boolean") patch.trophies = data.trophies;
+  // Solo pisamos homologated si el LLM detectó algo explícito (no null) —
+  // nunca sobrescribimos un true/false ya puesto a mano por un admin o
+  // por RFEA con un "no sabemos" del LLM.
+  if (typeof data.homologated === "boolean") patch.homologated = data.homologated;
   if (data.courseType) patch.courseType = data.courseType;
   if (data.confidence) patch.extractionConfidence = data.confidence;
 

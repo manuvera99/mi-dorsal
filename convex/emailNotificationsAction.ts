@@ -66,6 +66,25 @@ import { reminderEmail } from "./emails/templates/reminder";
 import { resultNotFoundEmail } from "./emails/templates/resultNotFound";
 
 /**
+ * Este archivo corre en el runtime V8 isolate de Convex (sin "use node",
+ * a propósito — ver nota arriba), que no expone el global `Buffer` de
+ * Node.js. Usamos `atob`/`btoa` (Web APIs estándar, sí disponibles aquí)
+ * para convertir entre base64 y `Uint8Array`.
+ */
+function base64ToBytes(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+/**
  * Llama a /api/internal/render-diploma (Next.js, runtime Node) para
  * generar el PDF+PNG. Ver nota arriba sobre por qué no se genera in-process.
  */
@@ -73,7 +92,7 @@ async function renderViaInternalApi(
   diploma: DiplomaProps,
   shareCard: ShareCardProps,
   storySticker: StoryStickerProps,
-): Promise<{ pdfBuffer: Buffer; pngBuffer: Buffer; stickerBuffer: Buffer }> {
+): Promise<{ pdfBytes: Uint8Array; pngBytes: Uint8Array; stickerBytes: Uint8Array }> {
   const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://www.mi-dorsal.com").replace(/\/$/, "");
   const secret = process.env.INTERNAL_API_SECRET;
   if (!secret) {
@@ -98,9 +117,9 @@ async function renderViaInternalApi(
     storyStickerBase64: string;
   };
   return {
-    pdfBuffer: Buffer.from(diplomaBase64, "base64"),
-    pngBuffer: Buffer.from(shareCardBase64, "base64"),
-    stickerBuffer: Buffer.from(storyStickerBase64, "base64"),
+    pdfBytes: base64ToBytes(diplomaBase64),
+    pngBytes: base64ToBytes(shareCardBase64),
+    stickerBytes: base64ToBytes(storyStickerBase64),
   };
 }
 
@@ -192,20 +211,22 @@ export const sendResultFoundEmail = internalAction({
       distanceKm: diplomaProps.distanceKm,
       isPersonalRecord: diplomaProps.isPersonalRecord,
     };
-    const { pdfBuffer, pngBuffer, stickerBuffer } = await renderViaInternalApi(
+    const { pdfBytes, pngBytes, stickerBytes } = await renderViaInternalApi(
       diplomaProps,
       cardProps,
       stickerProps,
     );
 
     // ---------- 5. Subir a Convex Storage ----------
-    // `body: new Uint8Array(buf)` evita el lío de tipos Buffer vs BodyInit
-    // en TS estricto (Buffer extends Uint8Array pero fetch espera BodyInit).
+    // `as any`: fetch acepta Uint8Array en runtime, pero su tipo genérico
+    // (Uint8Array<ArrayBufferLike>) no encaja exactamente con BodyInit bajo
+    // lib DOM estricta (el build de Next/Vercel sí la usa, a diferencia del
+    // tsconfig de Convex — que además no declara BodyInit al no tener DOM).
     const diplomaUploadUrl = await ctx.storage.generateUploadUrl();
     const diplomaUploadRes = await fetch(diplomaUploadUrl, {
       method: "POST",
       headers: { "Content-Type": "application/pdf" },
-      body: new Uint8Array(pdfBuffer),
+      body: pdfBytes as any,
     });
     if (!diplomaUploadRes.ok) {
       throw new Error(`Diploma upload failed: ${diplomaUploadRes.status}`);
@@ -217,7 +238,7 @@ export const sendResultFoundEmail = internalAction({
     const cardUploadRes = await fetch(cardUploadUrl, {
       method: "POST",
       headers: { "Content-Type": "image/png" },
-      body: new Uint8Array(pngBuffer),
+      body: pngBytes as any,
     });
     if (!cardUploadRes.ok) {
       throw new Error(`Share card upload failed: ${cardUploadRes.status}`);
@@ -229,7 +250,7 @@ export const sendResultFoundEmail = internalAction({
     const stickerUploadRes = await fetch(stickerUploadUrl, {
       method: "POST",
       headers: { "Content-Type": "image/png" },
-      body: new Uint8Array(stickerBuffer),
+      body: stickerBytes as any,
     });
     if (!stickerUploadRes.ok) {
       throw new Error(`Story sticker upload failed: ${stickerUploadRes.status}`);
@@ -294,7 +315,7 @@ export const sendResultFoundEmail = internalAction({
 
     if (IS_MOCK) {
       console.log(
-        `[result-found-mock] → ${profile.email} | ${subject} | diploma=${(pdfBuffer.length / 1024).toFixed(1)}KB card=${(pngBuffer.length / 1024).toFixed(1)}KB`,
+        `[result-found-mock] → ${profile.email} | ${subject} | diploma=${(pdfBytes.length / 1024).toFixed(1)}KB card=${(pngBytes.length / 1024).toFixed(1)}KB`,
       );
       success = true;
     } else {
@@ -313,11 +334,11 @@ export const sendResultFoundEmail = internalAction({
           attachments: [
             {
               filename: `mi-dorsal-${verificationId}.pdf`,
-              content: pdfBuffer.toString("base64"),
+              content: bytesToBase64(pdfBytes),
             },
             {
               filename: `mi-dorsal-${verificationId}.png`,
-              content: pngBuffer.toString("base64"),
+              content: bytesToBase64(pngBytes),
               content_id: INLINE_CID,
             },
           ] as any,

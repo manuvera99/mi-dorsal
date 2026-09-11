@@ -314,6 +314,22 @@ export default defineSchema({
     chiplevanteEmpresa: v.optional(v.string()),
     chiplevanteCarreraIds: v.optional(v.array(v.string())),
 
+    // -------- SPORTMANIACS ADAPTER (scraper de resultados) --------
+    // Una carrera de sportmaniacs.com puede tener varias modalidades
+    // (un <div class="event-card" data-event-id="{uuid}"> por modalidad en
+    // la página pública /es/races/{slug}), cada una con su propio UUID de
+    // evento y su propia tabla de resultados independiente. El UUID que
+    // devuelve el catálogo (api-aws.sportmaniacs.com/api/races) NO es este
+    // UUID — es el de la carrera-evento contenedora, no acepta el endpoint
+    // de resultados. Cacheamos aquí los UUIDs reales la primera vez que se
+    // descubren (backfill) para no volver a parsear el HTML en cada check.
+    // Solo se usan cuando scraperAdapter === "sportmaniacs".
+    sportmaniacsEventIds: v.optional(v.array(v.object({
+      eventId: v.string(),
+      name: v.optional(v.string()),
+      distanceKm: v.optional(v.number()),
+    }))),
+
     // Hashtags / SEO
     hashtags: v.optional(v.array(v.string())),
     // FK opcional a la fuente de datos (RFEA, FEDME, etc.)
@@ -383,17 +399,6 @@ export default defineSchema({
     // poder auditar/depurar resultados dudosos después.
     officialUrlResolvedAt: v.optional(v.number()),
     officialUrlResolvedFrom: v.optional(v.string()),
-
-    // Cache de UUIDs reales de eventos Sportmaniacs para el adapter de
-    // resultados (evita re-parsear el HTML en cada check). Escrito por
-    // el trabajo paralelo de result-tracking (worktree
-    // result-tracking-badge, no mergeado aún) — placeholder aquí solo
-    // para no romper la validación de schema mientras esa rama no llega.
-    sportmaniacsEventIds: v.optional(v.array(v.object({
-      eventId: v.string(),
-      name: v.optional(v.string()),
-      distanceKm: v.optional(v.number()),
-    }))),
 
     // -------- CROSS-SOURCE MERGE (Fase anti-duplicados) --------
     // Lista de IDs de carreras que se consolidaron en esta (merge cross-source).

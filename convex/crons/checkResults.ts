@@ -14,7 +14,12 @@
 import { internalAction, internalMutation, internalQuery } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
-import { scrapeResults, type RunnerResult } from "../scraper";
+import {
+  scrapeResults,
+  discoverSportmaniacsEventIds,
+  type RunnerResult,
+  type SportmaniacsEventRef,
+} from "../scraper";
 import { Doc, Id } from "../_generated/dataModel";
 import { formatTime } from "../_helpers";
 import { getEffectiveDistance } from "../../lib/prediction/effective-distance";
@@ -28,7 +33,15 @@ type Item = {
   raceId: string;
   dorsalNumber: string;
   resultsUrl: string | undefined;
+  // Preferimos sourceUrl a officialUrl para el discovery de sportmaniacs:
+  // otras sesiones (homologación) sobrescriben officialUrl con la web
+  // propia del organizador cuando existe, dejándolo con una URL que NO es
+  // de sportmaniacs.com. sourceUrl (el enlace al dataSource original) sí
+  // se mantiene siempre apuntando a sportmaniacs.com para este adapter —
+  // verificado 2026-09-11 contra las 2379 carreras del catálogo.
+  sportmaniacsDiscoveryUrl: string | undefined;
   scraperAdapter: string | undefined;
+  sportmaniacsEventIds: SportmaniacsEventRef[] | undefined;
   userId: string;
   raceName: string;
   raceDate: string | undefined;
@@ -107,12 +120,27 @@ export const getRacesToCheck = internalQuery({
         continue;
       }
 
+      // sourceUrl es la URL real de sportmaniacs.com para este adapter;
+      // officialUrl puede haber sido sobrescrito con la web del organizador
+      // por otra sesión (homologación) — solo lo usamos si sourceUrl no
+      // sirve (no es de sportmaniacs.com).
+      const sourceUrl = (race as any).sourceUrl as string | undefined;
+      const officialUrl = race.officialUrl ?? undefined;
+      const sportmaniacsDiscoveryUrl =
+        sourceUrl?.includes("sportmaniacs.com")
+          ? sourceUrl
+          : officialUrl?.includes("sportmaniacs.com")
+            ? officialUrl
+            : undefined;
+
       const item: Item = {
         myRaceId: myRace._id,
         raceId: race._id,
         dorsalNumber: myRace.dorsalNumber,
         resultsUrl: race.resultsUrl ?? undefined,
+        sportmaniacsDiscoveryUrl,
         scraperAdapter: (race as any).scraperAdapter ?? undefined,
+        sportmaniacsEventIds: (race as any).sportmaniacsEventIds ?? undefined,
         userId: myRace.userId,
         raceName: race.name,
         raceDate: race.startDate,
@@ -162,25 +190,60 @@ export const checkResults = internalAction({
     let skippedNoUrl = 0;
     let skippedNoDorsal = 0;
     let scrapeErrors = 0;
+    let eventIdsDiscovered = 0;
 
     for (const { item } of races) {
       if (!item.dorsalNumber) {
         skippedNoDorsal++;
         continue;
       }
-      if (!item.resultsUrl) {
-        // No podemos scrapear sin URL. Marcamos como intentado para no
-        // machacar el log con warnings en cada cron. El admin puede
-        // re-activarlo cambiando el estado a "planned" desde el panel admin.
+
+      let sportmaniacsEventIds = item.sportmaniacsEventIds;
+
+      // Fallback de descubrimiento: si el backfill masivo (script offline)
+      // aún no cacheó los eventIds de esta carrera — típicamente porque se
+      // corrió antes de que sportmaniacs activara la página de resultados
+      // con event-card, algo que pasa con carreras muy próximas en fecha —
+      // intentamos parsear sportmaniacsDiscoveryUrl aquí mismo, una vez por
+      // check. Si sportmaniacs ya lo publicó, lo cacheamos y seguimos con
+      // el scrape normal en la misma pasada; si no, seguimos sin poder
+      // chequear esta carrera y lo reintentaremos en el siguiente cron.
+      if (
+        item.scraperAdapter === "sportmaniacs" &&
+        !sportmaniacsEventIds?.length &&
+        item.sportmaniacsDiscoveryUrl
+      ) {
+        const discovered = await discoverSportmaniacsEventIds(item.sportmaniacsDiscoveryUrl);
+        if (discovered.length > 0) {
+          sportmaniacsEventIds = discovered;
+          eventIdsDiscovered++;
+          await ctx.runMutation(internal.crons.checkResults.cacheSportmaniacsEventIds, {
+            raceId: item.raceId as Id<"races">,
+            sportmaniacsEventIds: discovered,
+          });
+        }
+      }
+
+      // Sportmaniacs no necesita resultsUrl para scrapear (usa
+      // sportmaniacsEventIds, cacheados por el backfill o descubiertos
+      // arriba) — solo el resto de adapters lo requieren.
+      const hasSportmaniacsIds =
+        item.scraperAdapter === "sportmaniacs" && !!sportmaniacsEventIds?.length;
+      if (!item.resultsUrl && !hasSportmaniacsIds) {
+        // No podemos scrapear sin URL (ni sin eventIds cacheados/descubiertos).
+        // Marcamos como intentado para no machacar el log con warnings en
+        // cada cron. Se reintentará en el siguiente check (getRacesToCheck
+        // no marca resultScrapedAt hasta encontrar un resultado).
         skippedNoUrl++;
         continue;
       }
 
       try {
         const result = await scrapeResults(
-          item.resultsUrl,
+          item.resultsUrl ?? "",
           item.dorsalNumber,
           item.scraperAdapter,
+          { sportmaniacsEventIds },
         );
 
         if (!result) {
@@ -274,7 +337,7 @@ export const checkResults = internalAction({
     }
 
     console.log(
-      `[check-results] Resumen: ${foundCount} resultados nuevos, ${scrapeErrors} errores, ${skippedNoUrl} sin URL, ${skippedNoDorsal} sin dorsal`,
+      `[check-results] Resumen: ${foundCount} resultados nuevos, ${scrapeErrors} errores, ${skippedNoUrl} sin URL, ${skippedNoDorsal} sin dorsal, ${eventIdsDiscovered} sportmaniacsEventIds descubiertos al vuelo`,
     );
   },
 });
@@ -282,6 +345,28 @@ export const checkResults = internalAction({
 // ---------------------------------------------------------------------------
 // Mutations internas
 // ---------------------------------------------------------------------------
+
+/**
+ * Cachea los sportmaniacsEventIds descubiertos al vuelo por
+ * `discoverSportmaniacsEventIds` (fallback del cron cuando el backfill
+ * masivo offline aún no los tenía). Mismo campo que puebla
+ * `scripts/backfill-sportmaniacs-event-ids.ts`.
+ */
+export const cacheSportmaniacsEventIds = internalMutation({
+  args: {
+    raceId: v.id("races"),
+    sportmaniacsEventIds: v.array(
+      v.object({
+        eventId: v.string(),
+        name: v.optional(v.string()),
+        distanceKm: v.optional(v.number()),
+      }),
+    ),
+  },
+  handler: async (ctx, { raceId, sportmaniacsEventIds }) => {
+    await ctx.db.patch(raceId, { sportmaniacsEventIds });
+  },
+});
 
 export const cacheResult = internalMutation({
   args: {

@@ -10,7 +10,7 @@
 "use client";
 
 import { STICKER_TEMPLATES, type StickerTemplateId } from "./templates";
-import { Sparkles, Save } from "lucide-react";
+import { Sparkles, Save, Check } from "lucide-react";
 
 interface TemplatePanelProps {
   activeTemplateId: StickerTemplateId;
@@ -40,12 +40,13 @@ export function TemplatePanel({
         <button
           key={id}
           onClick={() => onSelectTemplate(id)}
-          className={`text-left px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+          className={`text-left px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors flex items-center gap-1.5 ${
             activeTemplateId === id
               ? "border-runner-primary bg-red-50 text-runner-primary"
               : "border-stone-200 bg-white text-stone-700 hover:bg-stone-50"
           }`}
         >
+          {activeTemplateId === id && <Check className="h-3.5 w-3.5" />}
           {STICKER_TEMPLATES[id].label}
         </button>
       ))}

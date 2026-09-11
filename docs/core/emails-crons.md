@@ -19,7 +19,7 @@
 
 **Antes de añadir o acelerar un cron**: revisar si hace `Promise.all` + `.collect()` sobre tablas grandes (races, profiles, activities...) — eso quema bandwidth de Convex rápido. Ver `docs/optional/convex-upgrade.md`.
 
-## Sistema de emails (7 tipos vía `notificationLog`)
+## Sistema de emails (8 tipos vía `notificationLog`)
 
 Todos pasan por `convex/emailDispatch.ts → dispatchAndLog` — **única función que llama a Resend**. No hardcodear envíos fuera de aquí.
 
@@ -32,6 +32,7 @@ Todos pasan por `convex/emailDispatch.ts → dispatchAndLog` — **única funci�
 | `result_not_found` | Cron result-not-found, 48h tras carrera | Activo |
 | `weekly_digest` | Cron weekly-digest | Placeholder, sin cablear |
 | `year_review` | Cron year-review | Placeholder, sin cablear |
+| `photos_available` | `races.adminUpdate`, al pegar `photosUrl` por primera vez | Activo. Primer uso real de `dispatchAndLog` (no cron, no adjuntos) |
 
 El envío mensual de **newsletter editorial** (blog) es un flujo aparte, no pasa por `notificationLog` — ver `docs/core/blog-newsletter.md`.
 

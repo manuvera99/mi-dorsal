@@ -59,6 +59,7 @@ import type * as ratings from "../ratings.js";
 import type * as runnerType from "../runnerType.js";
 import type * as scraper from "../scraper.js";
 import type * as stats from "../stats.js";
+import type * as stickerEditor from "../stickerEditor.js";
 import type * as stravaExport from "../stravaExport.js";
 import type * as stravaExportIngestHelpers from "../stravaExportIngestHelpers.js";
 import type * as stravaInitialSyncHelpers from "../stravaInitialSyncHelpers.js";
@@ -126,6 +127,7 @@ declare const fullApi: ApiFromModules<{
   runnerType: typeof runnerType;
   scraper: typeof scraper;
   stats: typeof stats;
+  stickerEditor: typeof stickerEditor;
   stravaExport: typeof stravaExport;
   stravaExportIngestHelpers: typeof stravaExportIngestHelpers;
   stravaInitialSyncHelpers: typeof stravaInitialSyncHelpers;

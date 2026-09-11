@@ -50,6 +50,7 @@ export function usePointerDrag(
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
+      cleanupRef.current?.();
       e.preventDefault();
       e.stopPropagation();
       const container = containerRef.current;

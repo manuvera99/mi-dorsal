@@ -29,6 +29,11 @@
 //                        cuando el HEAD probe detecta la URL muerta (por
 //                        defecto SÍ se intenta si BRAVE_SEARCH_API_KEY está
 //                        configurado — ver lib/ai/resolve-race-url.ts)
+//   --include-past       Incluye también carreras con startDate anterior a
+//                        hoy (por defecto SOLO se procesan carreras de hoy
+//                        en adelante — a un corredor no le importa el dato
+//                        de una carrera que ya pasó, y procesarlas gasta
+//                        tiempo/cuota de IA y búsqueda sin ningún beneficio)
 //
 // BACKFILL de las ~2200 carreras con officialUrl muerta (mayormente
 // Sportmaniacs, ver auditoría 2026-09-11): usar --rebroken (para reprocesar
@@ -56,6 +61,7 @@ const delayMs = Number(args.find((a) => a.startsWith("--delay="))?.split("=")[1]
 const skipProbe = args.includes("--skip-probe");
 const reBroken = args.includes("--rebroken");
 const resolveBroken = !args.includes("--no-resolve-broken");
+const includePast = args.includes("--include-past");
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 
@@ -66,8 +72,15 @@ if (!convexUrl) {
 
 const client = new ConvexHttpClient(convexUrl);
 
-const UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+// Bug encontrado en auditoría 2026-09-11: el User-Agent de Chrome falso
+// (comentado abajo, ya no se usa) hace que Facebook devuelva 400 a un
+// HEAD, marcando como "rota" una URL que en realidad está viva — confirmado
+// con curl real contra varias fichas de Facebook usadas como officialUrl.
+// El fetch real de extracción (lib/ai/extract-race-deep.ts) usa este mismo
+// User-Agent "mi-dorsal/1.0" y SÍ funciona contra esas mismas URLs. Usamos
+// el mismo aquí para que el probe y la extracción vean lo mismo.
+//   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+const UA = "Mozilla/5.0 (compatible; mi-dorsal/1.0; +https://mi-dorsal.es)";
 
 /**
  * HEAD pre-check: si la URL devuelve 404/410/5xx, devolvemos 'broken'.
@@ -96,12 +109,23 @@ async function main() {
   console.log("=".repeat(70));
   console.log("Deep extract all races (MiniMax M3)");
   console.log("=".repeat(70));
-  console.log("Flags:", { limit, onlyMissing, priority, delayMs, skipProbe, reBroken, resolveBroken });
+  console.log("Flags:", { limit, onlyMissing, priority, delayMs, skipProbe, reBroken, resolveBroken, includePast });
 
   const all = await client.query(api.races.systemListAll, { onlyWithOfficialUrl: true });
   console.log(`Encontradas ${all.length} carreras con officialUrl`);
 
   let toProcess = all;
+
+  // Por defecto, solo futuras (startDate >= hoy). Las carreras sin
+  // startDate se mantienen (no podemos saber si son futuras o pasadas,
+  // mejor procesarlas que descartarlas silenciosamente).
+  if (!includePast) {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const before = toProcess.length;
+    toProcess = toProcess.filter((r: any) => !r.startDate || r.startDate >= todayIso);
+    console.log(`Solo futuras (>= ${todayIso}): ${toProcess.length} (descartadas ${before - toProcess.length} pasadas)`);
+  }
+
   if (onlyMissing) {
     toProcess = all.filter((r: any) => !r.extractedAt);
     console.log(`Solo sin extraer: ${toProcess.length}`);

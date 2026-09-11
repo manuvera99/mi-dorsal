@@ -12,8 +12,7 @@
 // =============================================================================
 
 import { ImageResponse } from "@vercel/og";
-import { readFileSync } from "fs";
-import { join } from "path";
+import { getFonts } from "./fonts";
 
 // ---------------------------------------------------------------------------
 // Tokens (alineados con diploma.tsx y app/globals.css)
@@ -54,37 +53,6 @@ export interface ShareCardProps {
   prDeltaSeconds?: number;
   timeSeconds?: number;
   appUrl?: string; // "https://mi-dorsal.com" → se muestra como "mi-dorsal.com"
-}
-
-// ---------------------------------------------------------------------------
-// Carga de fuentes (Inter + JetBrains Mono desde disco local)
-// ---------------------------------------------------------------------------
-// Las TTF están en lib/pdf/fonts/ y se incluyen en el bundle de Vercel
-// mediante next.config.js outputFileTracingIncludes (mismo patrón que
-// diploma.tsx). Cargamos desde disco para evitar latencia de red y
-// dependencias de terceros en tiempo de generación.
-// ---------------------------------------------------------------------------
-
-let _fontsCache: ReturnType<typeof loadFonts> | null = null;
-
-function loadFonts() {
-  const fontsDir = join(process.cwd(), "lib", "pdf", "fonts");
-  const interRegular = readFileSync(join(fontsDir, "Inter-Regular.ttf"));
-  const interBold = readFileSync(join(fontsDir, "Inter-Bold.ttf"));
-  const jetRegular = readFileSync(join(fontsDir, "JetBrainsMono-Regular.ttf"));
-  const jetBold = readFileSync(join(fontsDir, "JetBrainsMono-Bold.ttf"));
-
-  return [
-    { name: "Inter", data: interRegular, weight: 400 as const, style: "normal" as const },
-    { name: "Inter", data: interBold, weight: 700 as const, style: "normal" as const },
-    { name: "JetBrains Mono", data: jetRegular, weight: 400 as const, style: "normal" as const },
-    { name: "JetBrains Mono", data: jetBold, weight: 700 as const, style: "normal" as const },
-  ];
-}
-
-function getFonts() {
-  if (!_fontsCache) _fontsCache = loadFonts();
-  return _fontsCache;
 }
 
 // ---------------------------------------------------------------------------

@@ -26,6 +26,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { renderDiploma, DiplomaProps } from "@/lib/pdf/diploma";
 import { renderShareCard, ShareCardProps } from "@/lib/share-card/render";
+import { renderStorySticker, StoryStickerProps } from "@/lib/share-card/story-sticker";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -37,16 +38,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { diploma: DiplomaProps; shareCard: ShareCardProps };
+  let body: { diploma: DiplomaProps; shareCard: ShareCardProps; storySticker: StoryStickerProps };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (!body?.diploma || !body?.shareCard) {
+  if (!body?.diploma || !body?.shareCard || !body?.storySticker) {
     return NextResponse.json(
-      { error: "Missing diploma or shareCard in body" },
+      { error: "Missing diploma, shareCard or storySticker in body" },
       { status: 400 },
     );
   }
@@ -58,14 +59,16 @@ export async function POST(req: NextRequest) {
       issuedAt: body.diploma.issuedAt ? new Date(body.diploma.issuedAt) : undefined,
     };
 
-    const [pdfBuffer, pngBuffer] = await Promise.all([
+    const [pdfBuffer, pngBuffer, stickerBuffer] = await Promise.all([
       renderDiploma(diplomaProps),
       renderShareCard(body.shareCard),
+      renderStorySticker(body.storySticker),
     ]);
 
     return NextResponse.json({
       diplomaBase64: pdfBuffer.toString("base64"),
       shareCardBase64: pngBuffer.toString("base64"),
+      storyStickerBase64: stickerBuffer.toString("base64"),
     });
   } catch (err) {
     console.error("[render-diploma] Error:", err);

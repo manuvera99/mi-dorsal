@@ -60,6 +60,7 @@ import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import type { DiplomaProps } from "../lib/pdf/diploma";
 import type { ShareCardProps } from "../lib/share-card/render";
+import type { StoryStickerProps } from "../lib/share-card/story-sticker";
 import { resultFoundEmail } from "./emails/templates/resultFound";
 import { reminderEmail } from "./emails/templates/reminder";
 import { resultNotFoundEmail } from "./emails/templates/resultNotFound";
@@ -71,7 +72,8 @@ import { resultNotFoundEmail } from "./emails/templates/resultNotFound";
 async function renderViaInternalApi(
   diploma: DiplomaProps,
   shareCard: ShareCardProps,
-): Promise<{ pdfBuffer: Buffer; pngBuffer: Buffer }> {
+  storySticker: StoryStickerProps,
+): Promise<{ pdfBuffer: Buffer; pngBuffer: Buffer; stickerBuffer: Buffer }> {
   const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://www.mi-dorsal.com").replace(/\/$/, "");
   const secret = process.env.INTERNAL_API_SECRET;
   if (!secret) {
@@ -84,19 +86,21 @@ async function renderViaInternalApi(
       "Content-Type": "application/json",
       "x-internal-secret": secret,
     },
-    body: JSON.stringify({ diploma, shareCard }),
+    body: JSON.stringify({ diploma, shareCard, storySticker }),
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     throw new Error(`render-diploma endpoint failed: ${res.status} ${detail}`);
   }
-  const { diplomaBase64, shareCardBase64 } = (await res.json()) as {
+  const { diplomaBase64, shareCardBase64, storyStickerBase64 } = (await res.json()) as {
     diplomaBase64: string;
     shareCardBase64: string;
+    storyStickerBase64: string;
   };
   return {
     pdfBuffer: Buffer.from(diplomaBase64, "base64"),
     pngBuffer: Buffer.from(shareCardBase64, "base64"),
+    stickerBuffer: Buffer.from(storyStickerBase64, "base64"),
   };
 }
 
@@ -177,12 +181,22 @@ export const sendResultFoundEmail = internalAction({
       issuedAt,
       myRaceId: myRace._id,
     };
-    // ---------- 4. Generar diploma PDF + share card PNG ----------
+    // ---------- 4. Generar diploma PDF + share card PNG + story sticker ----------
     // (vía el endpoint interno de Next.js — ver nota al inicio del archivo)
     const cardProps: ShareCardProps = {
       ...diplomaProps,
     };
-    const { pdfBuffer, pngBuffer } = await renderViaInternalApi(diplomaProps, cardProps);
+    const stickerProps: StoryStickerProps = {
+      timeFormatted: diplomaProps.timeFormatted,
+      paceFormatted: diplomaProps.paceFormatted,
+      distanceKm: diplomaProps.distanceKm,
+      isPersonalRecord: diplomaProps.isPersonalRecord,
+    };
+    const { pdfBuffer, pngBuffer, stickerBuffer } = await renderViaInternalApi(
+      diplomaProps,
+      cardProps,
+      stickerProps,
+    );
 
     // ---------- 5. Subir a Convex Storage ----------
     // `body: new Uint8Array(buf)` evita el lío de tipos Buffer vs BodyInit
@@ -211,11 +225,24 @@ export const sendResultFoundEmail = internalAction({
     const cardBlob = (await cardUploadRes.json()) as { storageId: string };
     const shareCardStorageId = cardBlob.storageId as Id<"_storage">;
 
+    const stickerUploadUrl = await ctx.storage.generateUploadUrl();
+    const stickerUploadRes = await fetch(stickerUploadUrl, {
+      method: "POST",
+      headers: { "Content-Type": "image/png" },
+      body: new Uint8Array(stickerBuffer),
+    });
+    if (!stickerUploadRes.ok) {
+      throw new Error(`Story sticker upload failed: ${stickerUploadRes.status}`);
+    }
+    const stickerBlob = (await stickerUploadRes.json()) as { storageId: string };
+    const storyStickerStorageId = stickerBlob.storageId as Id<"_storage">;
+
     // Persistir storage IDs en myRace para descargas futuras
     await ctx.runMutation(internal.emailNotificationsHelpers.attachStorageIds, {
       myRaceId: myRace._id,
       diplomaStorageId,
       shareCardStorageId,
+      storyStickerStorageId,
     });
 
     // ---------- 6. Renderizar email ----------
@@ -321,6 +348,7 @@ export const sendResultFoundEmail = internalAction({
       isPR,
       diplomaStorageId,
       shareCardStorageId,
+      storyStickerStorageId,
       error: errorMsg,
     };
   },

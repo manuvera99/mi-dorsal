@@ -30,6 +30,7 @@ import {
   TrendingDown,
   Check,
   Sparkles,
+  Instagram,
 } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
@@ -86,8 +87,10 @@ export function ResultadoClient({ myRaceId }: { myRaceId: string }) {
   const pageUrl = `${APP_URL}/resultado/${myRaceId}`;
   const pngUrl = `${APP_URL}/api/result/${myRaceId}/share-card.png`;
   const pdfUrl = `${APP_URL}/api/diploma/${myRaceId}`;
+  const stickerUrl = `${APP_URL}/api/result/${myRaceId}/story-sticker.png`;
   const hasCard = !!myRace.shareCardStorageId;
   const hasDiploma = !!myRace.diplomaStorageId;
+  const hasSticker = !!myRace.storyStickerStorageId;
 
   const isPR =
     currentPR != null && actualTimeSeconds < currentPR.timeSeconds;
@@ -255,6 +258,16 @@ export function ResultadoClient({ myRaceId }: { myRaceId: string }) {
             >
               <Download className="h-4 w-4" />
               Diploma PDF
+            </a>
+          )}
+          {hasSticker && (
+            <a
+              href={stickerUrl}
+              download={`mi-dorsal-story-${myRaceId}.png`}
+              className="btn bg-white border border-runner-primary text-runner-primary hover:bg-red-50 inline-flex items-center gap-1.5"
+            >
+              <Instagram className="h-4 w-4" />
+              Descargar para Stories
             </a>
           )}
           <Link

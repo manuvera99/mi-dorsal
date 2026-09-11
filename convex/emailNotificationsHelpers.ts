@@ -78,11 +78,13 @@ export const attachStorageIds = internalMutation({
     myRaceId: v.id("myRaces"),
     diplomaStorageId: v.id("_storage"),
     shareCardStorageId: v.id("_storage"),
+    storyStickerStorageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.myRaceId, {
       diplomaStorageId: args.diplomaStorageId,
       shareCardStorageId: args.shareCardStorageId,
+      storyStickerStorageId: args.storyStickerStorageId,
     });
   },
 });
@@ -163,6 +165,22 @@ export const getMyRaceForShareCard = query({
 });
 
 /**
+ * Devuelve los datos mínimos del myRace para servir el story sticker PNG
+ * (1080x1920, fondo transparente, para Stories).
+ */
+export const getMyRaceForStorySticker = query({
+  args: { myRaceId: v.id("myRaces") },
+  handler: async (ctx, { myRaceId }) => {
+    const myRace = await ctx.db.get(myRaceId);
+    if (!myRace) return null;
+    return {
+      _id: myRace._id,
+      storyStickerStorageId: myRace.storyStickerStorageId,
+    };
+  },
+});
+
+/**
  * Resuelve la URL firmada de un blob de Convex Storage. Expira en ~1h por
  * defecto (Convex la regenera cada vez). Esto está bien porque los
  * endpoints OG son cacheados por Vercel/CDN durante 1 año, así que solo
@@ -207,6 +225,7 @@ export const getMyRaceForPublicPage = query({
         actualPositionCategory: myRace.actualPositionCategory,
         diplomaStorageId: myRace.diplomaStorageId,
         shareCardStorageId: myRace.shareCardStorageId,
+        storyStickerStorageId: myRace.storyStickerStorageId,
       },
       profile: {
         _id: profile._id,

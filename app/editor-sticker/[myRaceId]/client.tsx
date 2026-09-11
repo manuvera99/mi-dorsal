@@ -46,7 +46,10 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
 
   const editorData = useMock
     ? null
-    : useQuery(api.stickerEditor.getEditorData, { myRaceId: myRaceId as Id<"myRaces"> });
+    : useQuery(
+        api.stickerEditor.getEditorData,
+        isLoaded && hasAccess ? { myRaceId: myRaceId as Id<"myRaces"> } : "skip",
+      );
   const saveCustomTemplate = useMutation(api.stickerEditor.saveCustomTemplate);
   const generateUploadUrl = useMutation(api.stickerEditor.generateUploadUrl);
   const attachCustomSticker = useMutation(api.stickerEditor.attachCustomSticker);

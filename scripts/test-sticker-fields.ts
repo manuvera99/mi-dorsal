@@ -63,6 +63,9 @@ check(fullAvailable.includes("pr"), "incluye 'pr' cuando isPersonalRecord=true")
 check(fullAvailable.includes("routeMap"), "incluye 'routeMap' cuando hay routeSvgPath");
 check(fullAvailable.includes("dorsal"), "incluye 'dorsal' cuando hay dorsalNumber");
 check(fullAvailable.includes("positionCategory"), "incluye 'positionCategory' cuando hay dato");
+check(fullAvailable.includes("raceNameDate"), "incluye 'raceNameDate' cuando hay raceName Y raceDate");
+check(fullAvailable.includes("runnerName"), "incluye 'runnerName' cuando hay dato");
+check(fullAvailable.includes("distance"), "incluye 'distance' cuando hay distanceLabel");
 
 console.log("\n=== getAvailableFields con datos mínimos ===");
 const minimalAvailable = getAvailableFields(MINIMAL_DATA);
@@ -72,6 +75,31 @@ check(!minimalAvailable.includes("routeMap"), "NO incluye 'routeMap' sin polylin
 check(!minimalAvailable.includes("dorsal"), "NO incluye 'dorsal' sin dorsalNumber");
 check(!minimalAvailable.includes("position"), "NO incluye 'position' sin positionOverall");
 check(!minimalAvailable.includes("positionCategory"), "NO incluye 'positionCategory' sin dato");
+
+console.log("\n=== getAvailableFields: boundary case raceNameDate (AND-logic) ===");
+// Test case 1: raceName present, raceDate absent → raceNameDate should NOT be included
+const dataWithNameOnly: StickerData = {
+  timeFormatted: "1:59:25",
+  paceFormatted: "5:40",
+  raceName: "Maratón de Valencia",
+  raceDate: undefined, // Missing raceDate
+  runnerName: "Manu Vera",
+  distanceLabel: "Maratón",
+};
+const availableNameOnly = getAvailableFields(dataWithNameOnly);
+check(!availableNameOnly.includes("raceNameDate"), "NO incluye 'raceNameDate' si solo hay raceName (falta raceDate)");
+
+// Test case 2: raceName absent, raceDate present → raceNameDate should NOT be included
+const dataWithDateOnly: StickerData = {
+  timeFormatted: "1:59:25",
+  paceFormatted: "5:40",
+  raceName: undefined, // Missing raceName
+  raceDate: "25 de octubre de 2025",
+  runnerName: "Manu Vera",
+  distanceLabel: "Maratón",
+};
+const availableDateOnly = getAvailableFields(dataWithDateOnly);
+check(!availableDateOnly.includes("raceNameDate"), "NO incluye 'raceNameDate' si solo hay raceDate (falta raceName)");
 
 console.log(`\n${failures === 0 ? "✓ TODOS PASAN" : `✗ ${failures} FALLO(S)`}`);
 process.exit(failures === 0 ? 0 : 1);

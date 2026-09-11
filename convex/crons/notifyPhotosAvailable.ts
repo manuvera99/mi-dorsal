@@ -82,40 +82,49 @@ export const notifyPhotosAvailable = internalAction({
 
     let sent = 0;
     let skipped = 0;
+    let errorCount = 0;
 
     for (const runner of runners) {
-      const alreadySent = await ctx.runQuery(internal.emailDispatch.hasLog, {
-        userId: runner.userId,
-        myRaceId: runner.myRaceId,
-        type: "photos_available",
-      });
-      if (alreadySent) {
-        skipped++;
-        continue;
+      try {
+        const alreadySent = await ctx.runQuery(internal.emailDispatch.hasLog, {
+          userId: runner.userId,
+          myRaceId: runner.myRaceId,
+          type: "photos_available",
+        });
+        if (alreadySent) {
+          skipped++;
+          continue;
+        }
+
+        const { subject, html, text } = photosAvailableEmail({
+          userName: runner.displayName ?? "corredor",
+          raceName: race.name,
+          raceDate: raceDateFormatted,
+          photosUrl: race.photosUrl,
+          appUrl,
+        });
+
+        await ctx.runAction(internal.emailDispatch.dispatchAndLog, {
+          to: runner.email,
+          subject,
+          html,
+          text,
+          userId: runner.userId,
+          myRaceId: runner.myRaceId,
+          type: "photos_available",
+        });
+        sent++;
+      } catch (err) {
+        errorCount++;
+        console.error(
+          `[photos-available] Error notificando a ${runner.email} para raceId=${raceId}:`,
+          err,
+        );
       }
-
-      const { subject, html, text } = photosAvailableEmail({
-        userName: runner.displayName ?? "corredor",
-        raceName: race.name,
-        raceDate: raceDateFormatted,
-        photosUrl: race.photosUrl,
-        appUrl,
-      });
-
-      await ctx.runAction(internal.emailDispatch.dispatchAndLog, {
-        to: runner.email,
-        subject,
-        html,
-        text,
-        userId: runner.userId,
-        myRaceId: runner.myRaceId,
-        type: "photos_available",
-      });
-      sent++;
     }
 
     console.log(
-      `[photos-available] raceId=${raceId}: ${sent} emails enviados, ${skipped} ya notificados`,
+      `[photos-available] raceId=${raceId}: ${sent} emails enviados, ${skipped} ya notificados, ${errorCount} errores`,
     );
   },
 });

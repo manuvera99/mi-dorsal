@@ -167,3 +167,21 @@ export const attachCustomSticker = mutation({
     }
   },
 });
+
+/**
+ * Devuelve los datos mínimos del myRace para servir el sticker
+ * personalizado PNG. Pública (sin auth) — mismo criterio que
+ * getMyRaceForShareCard/getMyRaceForStorySticker en
+ * emailNotificationsHelpers.ts: el endpoint de descarga es público.
+ */
+export const getMyRaceForCustomSticker = query({
+  args: { myRaceId: v.id("myRaces") },
+  handler: async (ctx, { myRaceId }) => {
+    const myRace = await ctx.db.get(myRaceId);
+    if (!myRace) return null;
+    return {
+      _id: myRace._id,
+      customStickerStorageId: myRace.customStickerStorageId,
+    };
+  },
+});

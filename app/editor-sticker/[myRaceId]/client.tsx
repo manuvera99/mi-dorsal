@@ -62,6 +62,14 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isEmailing, setIsEmailing] = useState(false);
+  // Override local del nombre mostrado en el sticker — el usuario puede
+  // querer un apodo, las iniciales, o corregir su nombre de perfil sin
+  // cambiar `displayName` en su cuenta. null = usar editorData.runnerName
+  // (el valor de perfil) sin modificar. Solo vive en esta sesión de
+  // edición, no se persiste aparte del propio customStickerTemplate (que
+  // no guarda texto, solo layout) — por eso se resetea a null en cada
+  // apertura del editor, igual que el resto del estado no persistido.
+  const [runnerNameOverride, setRunnerNameOverride] = useState<string | null>(null);
   // Bottom sheet activo en móvil (spec: "Responsive real" — paneles ocultos
   // por defecto en <768px, se abren a demanda). null = ningún sheet abierto.
   const [mobileSheet, setMobileSheet] = useState<"templates" | "properties" | null>(null);
@@ -137,6 +145,7 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
     setUsingCustomTemplate(initial.usingCustomTemplate);
     setElements(initial.elements);
     setSelectedFieldId(null);
+    setRunnerNameOverride(null);
   }
 
   function handleResetClick() {
@@ -178,14 +187,14 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
       dorsalNumber: editorData.myRace.dorsalNumber,
       raceName: editorData.race.name,
       raceDate: formatDate(editorData.race.startDate),
-      runnerName: editorData.runnerName,
+      runnerName: runnerNameOverride ?? editorData.runnerName,
       // Formato "21,100km" (coma decimal, 3 decimales, sin espacio antes
       // de "km") en vez de la etiqueta corta "10K"/"Media maratón" — valor
       // exacto de distanceKm, sin redondear previamente.
       distanceLabel: `${editorData.race.distanceKm.toFixed(3).replace(".", ",")}km`,
       routeSvgPath,
     };
-  }, [editorData]);
+  }, [editorData, runnerNameOverride]);
 
   const availableFieldIds = useMemo(() => (data ? getAvailableFields(data) : []), [data]);
   const activeFieldIds = useMemo(() => elements.filter((e) => e.visible).map((e) => e.fieldId), [elements]);
@@ -419,7 +428,12 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
           />
         </aside>
 
-        <div className="flex-1 flex items-center justify-center">
+        {/* items-start (no items-center): con items-center, el lienzo
+            (más bajo que el alto disponible en pantallas grandes) quedaba
+            centrado verticalmente en TODO el espacio del layout, dejando
+            un hueco en blanco grande por encima. pt-2 en vez del centrado
+            vertical implícito lo sube pegado casi al header. */}
+        <div className="flex-1 flex items-start justify-center pt-2">
           <StickerCanvas
             elements={elements}
             data={data}
@@ -428,7 +442,7 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
             onMove={handleMove}
             onResize={handleResize}
             onDelete={handleDeleteField}
-            displayWidth={Math.min(320, CANVAS_WIDTH)}
+            displayWidth={Math.min(380, CANVAS_WIDTH)}
             canvasRef={canvasRef}
           />
         </div>
@@ -442,6 +456,8 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
             onScaleChange={handleResize}
             onBgOpacityChange={handleChangeBgOpacity}
             onAddField={handleAddField}
+            runnerName={data.runnerName ?? ""}
+            onRunnerNameChange={setRunnerNameOverride}
           />
         </aside>
       </div>
@@ -502,6 +518,8 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
                   handleAddField(fieldId);
                   setMobileSheet(null);
                 }}
+                runnerName={data.runnerName ?? ""}
+                onRunnerNameChange={setRunnerNameOverride}
               />
             )}
           </div>

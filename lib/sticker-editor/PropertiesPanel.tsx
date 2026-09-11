@@ -3,7 +3,9 @@
 // =============================================================================
 // Dos secciones SIEMPRE visibles, no mutuamente excluyentes:
 //   - Propiedades del elemento seleccionado (si hay uno): toggle "Mostrar",
-//     slider de tamaño.
+//     slider de tamaño, slider de transparencia del fondo, y (solo para
+//     "runnerName") un input de texto para editar el nombre mostrado sin
+//     tocar el nombre de perfil real.
 //   - Lista de campos disponibles NO visibles todavía, con botón "+ Añadir"
 //     por cada uno (spec: "Sin datos para un campo" — `availableFieldIds`
 //     ya viene filtrado por getAvailableFields, así que este componente no
@@ -26,6 +28,11 @@ interface PropertiesPanelProps {
   onScaleChange: (fieldId: StickerFieldId, scale: number) => void;
   onBgOpacityChange: (fieldId: StickerFieldId, bgOpacity: number) => void;
   onAddField: (fieldId: StickerFieldId) => void;
+  /** Nombre actualmente mostrado en el sticker (perfil o el override que
+   *  ya haya escrito el usuario en esta sesión) — solo se usa/muestra
+   *  cuando el elemento seleccionado es "runnerName". */
+  runnerName: string;
+  onRunnerNameChange: (value: string) => void;
 }
 
 export function PropertiesPanel({
@@ -36,6 +43,8 @@ export function PropertiesPanel({
   onScaleChange,
   onBgOpacityChange,
   onAddField,
+  runnerName,
+  onRunnerNameChange,
 }: PropertiesPanelProps) {
   const notYetVisible = availableFieldIds.filter((id) => !activeFieldIds.includes(id));
 
@@ -46,6 +55,21 @@ export function PropertiesPanel({
           <div className="text-xs font-semibold uppercase tracking-wider text-stone-500">
             {FIELD_CATALOG[selectedElement.fieldId].label}
           </div>
+          {selectedElement.fieldId === "runnerName" && (
+            <div>
+              <label className="text-xs font-medium text-stone-600 mb-1 block">
+                Nombre a mostrar
+              </label>
+              <input
+                type="text"
+                value={runnerName}
+                onChange={(e) => onRunnerNameChange(e.target.value)}
+                placeholder="Tu nombre"
+                maxLength={40}
+                className="w-full rounded-md border border-stone-300 px-2 py-1.5 text-sm"
+              />
+            </div>
+          )}
           <button
             onClick={() => onToggleVisible(selectedElement.fieldId)}
             className="btn-secondary flex items-center gap-1.5 justify-center text-sm"

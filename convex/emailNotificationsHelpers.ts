@@ -59,6 +59,7 @@ export const hasLogForMyRace = internalQuery({
       v.literal("result_not_found"),
       v.literal("weekly_digest"),
       v.literal("year_review"),
+      v.literal("photos_available"),
     ),
   },
   handler: async (ctx, { userId, myRaceId, type }) => {
@@ -99,6 +100,7 @@ export const writeLog = internalMutation({
       v.literal("result_not_found"),
       v.literal("weekly_digest"),
       v.literal("year_review"),
+      v.literal("photos_available"),
     ),
     delivered: v.boolean(),
     resendMessageId: v.optional(v.string()),

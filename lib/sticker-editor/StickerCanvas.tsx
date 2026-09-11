@@ -94,6 +94,42 @@ export function StickerCanvas({
               dragContainerRef={canvasRef}
             />
           ))}
+
+        {/* Logo mi-dorsal — siempre visible, no forma parte de `elements`
+            (no se puede ocultar, mover ni redimensionar). Va dentro del
+            nodo capturado por html-to-image, así que sí sale en el PNG. */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: "48px",
+            left: 0,
+            right: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px",
+            pointerEvents: "none",
+          }}
+        >
+          <div
+            style={{
+              width: "28px",
+              height: "28px",
+              backgroundColor: PALETTE.primary,
+              borderRadius: "7px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <div style={{ color: "white", fontSize: "17px", fontWeight: 700, fontFamily: "JetBrains Mono", lineHeight: 1 }}>
+              m
+            </div>
+          </div>
+          <div style={{ fontSize: "20px", fontWeight: 700, color: "white", letterSpacing: "-0.2px", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
+            mi-dorsal
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -123,14 +159,27 @@ function StickerElementView({
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
 
+  // `elementRef` se actualiza en cada render para que los closures de
+  // `onDelta` de abajo siempre lean la posición/escala MÁS RECIENTE, no la
+  // que había justo antes de empezar el drag. Sin esto, cada pointermove
+  // durante un mismo gesto de arrastre calculaba `element.x + delta` sobre
+  // el `element` capturado en el render anterior al mousedown — el
+  // elemento apenas se movía (o saltaba de forma errática) porque nunca
+  // acumulaba el desplazamiento, solo aplicaba el último delta incremental
+  // sobre la posición original.
+  const elementRef = useRef(element);
+  elementRef.current = element;
+
   const moveDrag = usePointerDrag(dragContainerRef, (deltaX, deltaY) => {
-    const nextX = Math.min(1, Math.max(0, element.x + deltaX));
-    const nextY = Math.min(1, Math.max(0, element.y + deltaY));
+    const current = elementRef.current;
+    const nextX = Math.min(1, Math.max(0, current.x + deltaX));
+    const nextY = Math.min(1, Math.max(0, current.y + deltaY));
     onMove(nextX, nextY);
   });
 
   const resizeDrag = usePointerDrag(dragContainerRef, (deltaX) => {
-    const nextScale = Math.min(3, Math.max(0.3, element.scale + deltaX * 2));
+    const current = elementRef.current;
+    const nextScale = Math.min(3, Math.max(0.3, current.scale + deltaX * 2));
     onResize(nextScale);
   });
 

@@ -11,14 +11,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { isMockMode } from "@/lib/mock/provider";
 import { useToast } from "@/components/ui/toast";
 import { formatTime, formatPace, formatDate } from "@/lib/utils";
 import Link from "next/link";
-import { ArrowLeft, Download, Loader2 } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Mail } from "lucide-react";
 
 import { StickerCanvas, CANVAS_WIDTH } from "@/lib/sticker-editor/StickerCanvas";
 import { TemplatePanel } from "@/lib/sticker-editor/TemplatePanel";
@@ -26,7 +26,7 @@ import { PropertiesPanel } from "@/lib/sticker-editor/PropertiesPanel";
 import { STICKER_TEMPLATES, applyTemplate, type StickerTemplateId, type StickerElementLayout } from "@/lib/sticker-editor/templates";
 import { getAvailableFields, type StickerData, type StickerFieldId } from "@/lib/sticker-editor/fields";
 import { decodePolyline, polylineToSvgPath } from "@/lib/sticker-editor/polyline";
-import { exportStickerToBlob, downloadBlob } from "@/lib/sticker-editor/export";
+import { exportStickerToBlob, downloadBlob, blobToBase64 } from "@/lib/sticker-editor/export";
 
 export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
   const useMock = isMockMode();
@@ -53,6 +53,7 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
   const saveCustomTemplate = useMutation(api.stickerEditor.saveCustomTemplate);
   const generateUploadUrl = useMutation(api.stickerEditor.generateUploadUrl);
   const attachCustomSticker = useMutation(api.stickerEditor.attachCustomSticker);
+  const emailCustomSticker = useAction(api.stickerEditor.emailCustomSticker);
 
   const [templateId, setTemplateId] = useState<StickerTemplateId>("classic");
   const [usingCustomTemplate, setUsingCustomTemplate] = useState(false);
@@ -60,6 +61,7 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
   const [selectedFieldId, setSelectedFieldId] = useState<StickerFieldId | null>(null);
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isEmailing, setIsEmailing] = useState(false);
   // Bottom sheet activo en móvil (spec: "Responsive real" — paneles ocultos
   // por defecto en <768px, se abren a demanda). null = ningún sheet abierto.
   const [mobileSheet, setMobileSheet] = useState<"templates" | "properties" | null>(null);
@@ -145,7 +147,22 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
     if (existing) {
       handleToggleVisible(fieldId);
     } else {
-      setElements((prev) => [...prev, { fieldId, visible: true, x: 0.5, y: 0.65, scale: 1 }]);
+      // Escalona cada campo añadido para que no caiga siempre en el mismo
+      // punto exacto (0.5, 0.65) que los anteriores — evita que se
+      // amontonen visualmente antes de que el usuario los arrastre.
+      const addedCount = elements.length;
+      const row = Math.floor(addedCount / 2);
+      const col = addedCount % 2;
+      setElements((prev) => [
+        ...prev,
+        {
+          fieldId,
+          visible: true,
+          x: col === 0 ? 0.35 : 0.65,
+          y: Math.min(0.9, 0.65 + row * 0.08),
+          scale: 1,
+        },
+      ]);
     }
     setSelectedFieldId(fieldId);
   }
@@ -201,6 +218,25 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
     }
   }
 
+  async function handleEmailSticker() {
+    if (!canvasRef.current || !editorData) return;
+    setIsEmailing(true);
+    try {
+      const blob = await exportStickerToBlob(canvasRef.current);
+      const pngBase64 = await blobToBase64(blob);
+      await emailCustomSticker({
+        myRaceId: myRaceId as Id<"myRaces">,
+        raceName: editorData.race.name,
+        pngBase64,
+      });
+      toast.show({ title: "Sticker enviado a tu email", variant: "success" });
+    } catch (e: any) {
+      toast.show({ title: "No se pudo enviar el sticker por email", description: e?.message, variant: "warning" });
+    } finally {
+      setIsEmailing(false);
+    }
+  }
+
   if (useMock) {
     return (
       <div className="p-8 text-center text-stone-500">
@@ -245,14 +281,24 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
           <ArrowLeft className="h-4 w-4" />
           {editorData.race.name}
         </Link>
-        <button
-          onClick={handleExport}
-          disabled={isExporting}
-          className="btn-primary flex items-center gap-1.5 text-sm disabled:opacity-50"
-        >
-          {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-          Descargar PNG
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleEmailSticker}
+            disabled={isEmailing}
+            className="btn-secondary flex items-center gap-1.5 text-sm disabled:opacity-50"
+          >
+            {isEmailing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+            <span className="hidden sm:inline">Enviarme por email</span>
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={isExporting}
+            className="btn-primary flex items-center gap-1.5 text-sm disabled:opacity-50"
+          >
+            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            Descargar PNG
+          </button>
+        </div>
       </header>
 
       {/* Layout: 3 columnas fijas en desktop (md+). En móvil, el lienzo

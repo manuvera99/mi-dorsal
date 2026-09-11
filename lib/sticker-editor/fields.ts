@@ -68,12 +68,22 @@ export interface StickerData {
  * Devuelve la lista de fieldId que tienen dato real para esta carrera.
  * "time" y "pace" se consideran siempre disponibles (son el corazón del
  * sticker); el resto solo se ofrece si hay valor.
+ *
+ * "pr" es un caso especial: a diferencia de time/dorsal/distance, no
+ * renderiza ningún dato dinámico — es un texto fijo ("🎉 Nuevo PR"), así
+ * que SIEMPRE está disponible para añadir a mano, igual que time/pace.
+ * `isPersonalRecord` solo decide si aparece visible POR DEFECTO al abrir
+ * el editor (ver client.tsx) — nunca si el usuario puede añadirlo/
+ * quitarlo manualmente. Bloquearlo detrás de isPersonalRecord causaba
+ * que, si la detección automática decía "no" por cualquier motivo (ej.
+ * una carrera posterior superó ese PR, así que ya no es el "actual"),
+ * el usuario no pudiera volver a añadir el badge nunca más tras ocultarlo
+ * o borrarlo — aunque supiera que sí fue un PR en su momento.
  */
 export function getAvailableFields(data: StickerData): StickerFieldId[] {
-  const available: StickerFieldId[] = ["time", "pace"];
+  const available: StickerFieldId[] = ["time", "pace", "pr"];
   if (data.positionOverall != null) available.push("position");
   if (data.positionCategory != null) available.push("positionCategory");
-  if (data.isPersonalRecord) available.push("pr");
   if (data.dorsalNumber) available.push("dorsal");
   if (data.raceName && data.raceDate) available.push("raceNameDate");
   if (data.runnerName) available.push("runnerName");

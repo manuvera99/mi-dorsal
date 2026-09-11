@@ -98,14 +98,12 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
   useEffect(() => {
     if (!editorData || initialStateRef.current) return;
     // El badge "pr" de la plantilla Clásica viene visible=true sin
-    // condición (a diferencia de time/pace/distance, que SIEMPRE tienen
-    // dato real) — si esta carrera no es realmente un PR (mismo cálculo
-    // que isPersonalRecord en `data` más abajo), hay que forzarlo a
-    // oculto en la carga inicial. Sin esto, el badge aparecía visible al
-    // abrir el editor pero, tras ocultarlo/borrarlo una vez, ya no podía
-    // volver a añadirse desde "+ Añadir dato" (esa lista SÍ respeta la
-    // condición real vía getAvailableFields) — parecía un bug de borrado
-    // cuando en realidad el badge nunca debió mostrarse desde el inicio.
+    // condición — si esta carrera no es realmente un PR (mismo cálculo
+    // que isPersonalRecord en `data` más abajo), lo forzamos a oculto en
+    // la carga inicial (el usuario puede reactivarlo a mano desde
+    // "+ Añadir dato" si sabe que sí fue un PR pero la detección
+    // automática no lo marca — ver comentario en getAvailableFields en
+    // fields.ts sobre por qué "pr" está SIEMPRE en esa lista).
     const isRealPR =
       editorData.currentPR != null &&
       editorData.myRace.actualTimeSeconds != null &&

@@ -756,7 +756,14 @@ export const systemUpsert = mutation({
         // qué dataSourceId queda, pero justo por eso más abajo protegemos
         // sus campos de ser sobrescritos por un re-ingest automático.
         const priority = ["RFEA", "FEDME", "ITRA", "Sportmaniacs", "Agenda Sureste", "Runedia", "Manual"];
-        const existingSrc = await ctx.db.get(existing.dataSourceId as any);
+        // Bug preexistente (previo a esta auditoría): ctx.db.get(undefined)
+        // lanza "Must provide arg 1 `id` to `get`" — pasaba siempre que la
+        // carrera existente no tenía dataSourceId asignado todavía (común
+        // en carreras antiguas o creadas antes de que existiera esta FK).
+        // Confirmado en logs reales del workflow 2026-09-11 (RFEA fallaba
+        // con este error en re-ingests). Guardamos con un if en vez de
+        // pasar undefined a .get().
+        const existingSrc = existing.dataSourceId ? await ctx.db.get(existing.dataSourceId as any) : null;
         const newSrc = await ctx.db.get(args.dataSourceId);
         const existingName = (existingSrc as any)?.name ?? "";
         const existingIdx = priority.indexOf(existingName);

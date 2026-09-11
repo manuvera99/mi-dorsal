@@ -84,6 +84,7 @@ export const list = query({
     search: v.optional(v.string()),
     organizer: v.optional(v.string()),
     distanceCategories: v.optional(v.array(distanceCategoryValidator)),
+    homologated: v.optional(v.boolean()),
     fromDate: v.optional(v.string()), // "YYYY-MM-DD"
     limit: v.optional(v.number()),
   },
@@ -135,6 +136,9 @@ export const list = query({
         const cats = allDistanceCategories(r);
         return cats.some((c) => args.distanceCategories!.includes(c as never));
       });
+    }
+    if (args.homologated) {
+      filtered = filtered.filter((r) => r.homologated === true);
     }
 
     // Ordenar por fecha

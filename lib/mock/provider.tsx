@@ -95,6 +95,9 @@ export const mockApi = {
           return cats.some((c) => args.distanceCategories.includes(c));
         });
       }
+      if (args.homologated) {
+        filtered = filtered.filter((r) => (r as { homologated?: boolean }).homologated === true);
+      }
       filtered.sort((a, b) => (a.startDate ?? "").localeCompare(b.startDate ?? ""));
       return args.limit ? filtered.slice(0, args.limit) : filtered;
     },

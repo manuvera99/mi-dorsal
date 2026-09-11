@@ -29,6 +29,7 @@ import {
   Hash,
   TrendingDown,
   Check,
+  Sparkles,
 } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
@@ -72,11 +73,14 @@ export function ResultadoClient({ myRaceId }: { myRaceId: string }) {
   }
 
   const { myRace, profile, race, currentPR } = data;
+  // Ya validado arriba (!data.myRace.actualTimeSeconds → early return), pero
+  // TS no propaga esa narrowing a través de la desestructuración anidada.
+  const actualTimeSeconds = myRace.actualTimeSeconds!;
   const distanceM = Math.round(race.distanceKm * 1000);
   const distanceLabel = formatDistanceLabel(distanceM);
-  const timeFormatted = formatTime(myRace.actualTimeSeconds);
+  const timeFormatted = formatTime(actualTimeSeconds);
   const paceFormatted = formatPace(
-    myRace.actualTimeSeconds / Math.max(race.distanceKm, 0.001),
+    actualTimeSeconds / Math.max(race.distanceKm, 0.001),
   );
   const runnerName = profile.displayName ?? "Corredor";
   const pageUrl = `${APP_URL}/resultado/${myRaceId}`;
@@ -86,9 +90,9 @@ export function ResultadoClient({ myRaceId }: { myRaceId: string }) {
   const hasDiploma = !!myRace.diplomaStorageId;
 
   const isPR =
-    currentPR != null && myRace.actualTimeSeconds < currentPR.timeSeconds;
+    currentPR != null && actualTimeSeconds < currentPR.timeSeconds;
   const prDeltaSeconds = isPR && currentPR
-    ? currentPR.timeSeconds - myRace.actualTimeSeconds
+    ? currentPR.timeSeconds - actualTimeSeconds
     : 0;
   const prDeltaFormatted = formatDelta(prDeltaSeconds);
 
@@ -253,6 +257,13 @@ export function ResultadoClient({ myRaceId }: { myRaceId: string }) {
               Diploma PDF
             </a>
           )}
+          <Link
+            href={`/editor-sticker/${myRaceId}`}
+            className="btn bg-white border border-runner-primary text-runner-primary hover:bg-red-50 inline-flex items-center gap-1.5"
+          >
+            <Sparkles className="h-4 w-4" />
+            Personalizar sticker
+          </Link>
           <button
             onClick={handleShare}
             className="btn bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 inline-flex items-center gap-1.5"

@@ -17,7 +17,7 @@
 10. **FAQ** (`components/home/faq.tsx`) — 8 preguntas, acordeón accesible. El JSON-LD de la home está pre-serializado en `app/page.tsx` como string literal (ver §6.2 del stack).
 11. **FinalCta** (`components/home/final-cta.tsx`) — CTA final con dos opciones.
 
-> **Secciones extra (numeradas 4c y 5b en el código pero no en este doc para no romper la cuenta)**: entre la 4b y la 5 está `WhatsHere` ("Lo que ya está funcionando"), y entre la 5 y la 6 está `ProTeaser` (3 cards Free/Pro/Pro Anual). El orden en `app/page.tsx` es: Hero · TrustBar · Problem · HowItWorks · DiplomaAndSharePreview · WhatsHere · Features · ProTeaser · FeaturedRaces · CommunityRanking · UseCase · Testimonials · Faq · FinalCta.
+> **Secciones extra (numeradas 4c, 4d y 5b en el código pero no en este doc para no romper la cuenta)**: entre la 4b y la 5 están `StickerEditorTeaser` ("El sticker de tu resultado, a tu manera" — reclamo del editor premium `/editor-sticker`, sep 2026) y `WhatsHere` ("Lo que ya está funcionando"), y entre la 5 y la 6 está `ProTeaser` (3 cards Free/Pro/Pro Anual). El orden en `app/page.tsx` es: Hero · TrustBar · Problem · HowItWorks · DiplomaAndSharePreview · StickerEditorTeaser · WhatsHere · Features · ProTeaser · FeaturedRaces · CommunityRanking · UseCase · Testimonials · Faq · FinalCta.
 
 ## Refinamiento crítico
 

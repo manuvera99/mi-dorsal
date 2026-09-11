@@ -1,36 +1,42 @@
 /**
  * DiplomaAndSharePreview — la sección estrella "lo que llega cuando cruzas la meta".
  *
- * Muestra los DOS entregables que el usuario recibe al publicarse los resultados
- * oficiales de su carrera, visualizados lado a lado en desktop:
+ * Muestra DOS cosas relacionadas con el resultado oficial de una carrera,
+ * visualizadas lado a lado en desktop:
  *
- *   IZQUIERDA — Diploma PDF A4 (ya existía, replica visual de convex/pdf/diploma.tsx)
- *               Para imprimir, enmarcar, llevar a la oficina o regalar.
+ *   IZQUIERDA — Diploma PDF A4 (replica visual de convex/pdf/diploma.tsx)
+ *               Adjunto automático en el email de resultado. Para
+ *               imprimir, enmarcar, llevar a la oficina o regalar.
  *
- *   DERECHA  — Share card PNG 1200x630 (NUEVO, replica visual de
- *               lib/share-card/render.tsx)
- *               Lista para descargar y publicar en Instagram, WhatsApp,
- *               Strava o X. Es la misma imagen que va inline en el email
- *               de resultado y que sirve como og:image al compartir la
- *               URL pública del resultado.
+ *   DERECHA  — Sticker vertical personalizable (replica visual de
+ *               lib/sticker-editor/StickerCanvas.tsx y su plantilla
+ *               "classic" en lib/sticker-editor/templates.ts).
+ *               A diferencia del diploma (fijo, automático), este es el
+ *               reclamo de la feature premium /editor-sticker: el usuario
+ *               mueve, redimensiona y elige qué datos mostrar, y lo
+ *               exporta en PNG transparente o se lo manda por email.
  *
  * La sección es declarativa (no hace fetches ni genera imágenes en runtime
- * — solo muestra el mockup). Los activos reales se generan por el cron
- * `check-results` y se sirven desde:
- *   - /api/diploma/[myRaceId]     → PDF A4 imprimible
- *   - /api/result/[myRaceId]/share-card.png → PNG 1200x630 para RRSS
+ * — solo muestra el mockup, ninguna de las dos mitades importa el
+ * componente real). El diploma real se genera por el cron `check-results`
+ * y se sirve desde /api/diploma/[myRaceId]; el sticker real se edita en
+ * /editor-sticker/{myRaceId} (ver app/editor-sticker/[myRaceId]/client.tsx)
+ * y se exporta client-side con html-to-image (lib/sticker-editor/export.ts).
  *
  * Posición en la home: 4b (entre HowItWorks y WhatsHere) para que el
  * visitante, tras leer "recibe tu resultado oficial con diploma PDF",
- * vea inmediatamente QUÉ recibe.
+ * vea inmediatamente QUÉ recibe. Justo después va la sección 4d
+ * (components/home/sticker-editor-teaser.tsx), que retoma este mismo
+ * sticker para explicar la feature premium con más detalle y su CTA.
  *
- * NO interactivo. Sirve para visualizar la promesa. Los CTAs llevan al
- * diploma-preview.html (A4 imprimible de muestra) y al generador real
- * explicado en /perfil.
+ * NO interactivo. Sirve para visualizar la promesa. El CTA del diploma
+ * lleva a diploma-preview.html (A4 imprimible de muestra); el del sticker
+ * lleva a /premium (el editor real requiere una carrera concreta, que no
+ * existe en el contexto de un visitante anónimo en la home).
  */
 
 import Link from "next/link";
-import { Award, Download, FileText, Share2, ImageDown, Mail } from "lucide-react";
+import { Award, Download, FileText, Sparkles, Mail } from "lucide-react";
 
 export function DiplomaAndSharePreview() {
   return (
@@ -253,7 +259,12 @@ export function DiplomaAndSharePreview() {
         </article>
 
         {/* ============================================================ */}
-        {/* DERECHA — Share card PNG 1200x630 para RRSS                    */}
+        {/* DERECHA — Sticker vertical personalizable (editor Pro)         */}
+        {/* Mockup Tailwind (mismo patrón que el diploma de la izquierda,  */}
+        {/* no importa StickerCanvas real — ver cabecera del archivo).    */}
+        {/* Colores y layout replican lib/sticker-editor/StickerCanvas.tsx */}
+        {/* y la plantilla "classic" de lib/sticker-editor/templates.ts:   */}
+        {/* badge PR arriba, tiempo hero, fila pace+distancia debajo.      */}
         {/* ============================================================ */}
         <article className="flex flex-col">
           <header className="flex items-center gap-2 mb-3 px-1">
@@ -261,177 +272,108 @@ export function DiplomaAndSharePreview() {
               className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-runner-primary text-white"
               aria-hidden="true"
             >
-              <Share2 className="h-4 w-4" />
+              <Sparkles className="h-4 w-4" />
             </span>
             <div className="flex-1 min-w-0">
               <h3 className="text-base md:text-lg font-bold text-runner-dark leading-tight">
-                Imagen PNG para tus redes
+                Tu sticker, a tu gusto
               </h3>
-              <p className="text-xs text-gray-500">Lista para Instagram, WhatsApp, Strava o X</p>
+              <p className="text-xs text-gray-500">Mueve, redimensiona y elige qué mostrar</p>
             </div>
-            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-runner-warm text-runner-primary border border-runner-primary/30 px-2 py-0.5">
-              <ImageDown className="h-3 w-3" aria-hidden="true" />
-              Adjunta en el email
+            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5">
+              <Sparkles className="h-3 w-3" aria-hidden="true" />
+              Editor Pro
             </span>
           </header>
 
-          {/* Share card mockup 1200x630 (aspect ratio aprox 1.905:1) */}
+          {/* Sticker mockup vertical 1080x1920 (aspect ratio 9:16), con
+              checkerboard sutil de fondo igual que el editor real
+              (transparencia = el sticker se exporta sin fondo). */}
           <div
-            className="relative w-full overflow-hidden rounded-2xl border border-gray-200 shadow-xl bg-runner-warm"
-            style={{ aspectRatio: "1200 / 630" }}
+            className="relative w-full max-w-[280px] mx-auto overflow-hidden rounded-2xl border border-gray-200 shadow-xl"
+            style={{
+              aspectRatio: "1080 / 1920",
+              backgroundImage:
+                "repeating-conic-gradient(#e5e5e5 0% 25%, #f5f5f5 0% 50%)",
+              backgroundSize: "16px 16px",
+            }}
             role="img"
-            aria-label="Share card para redes sociales. Dorsal 2501, Behobia-San Sebastián 12 nov 2026, tiempo oficial 01:26:14, posición 521 de 14.820, pace 4:18 por kilómetro, badge Nuevo PR en 10K"
+            aria-label="Sticker personalizable con badge Nuevo PR, tiempo oficial 01:26:14, pace 4:18 por kilómetro y distancia 10 kilómetros, listo para exportar en PNG transparente"
           >
-            <div className="absolute inset-0 flex flex-row">
-              {/* COL IZQ 40% — dorsal estilizado */}
-              <div className="w-[40%] flex items-center justify-center bg-runner-warm p-3 md:p-5">
-                <div
-                  className="relative w-full max-w-[180px] md:max-w-[220px] aspect-[8/11] rounded-lg shadow-2xl flex flex-col items-center justify-center text-white"
-                  style={{
-                    background:
-                      "linear-gradient(180deg, #dc2626 0%, #b91c1c 100%)",
-                    boxShadow:
-                      "0 12px 32px rgba(220,38,38,.35), 0 2px 6px rgba(0,0,0,.10)",
-                  }}
-                >
-                  <p className="text-[10px] md:text-xs font-bold tracking-[3px] opacity-85 uppercase mb-1">
-                    Dorsal
-                  </p>
-                  <p
-                    className="font-mono text-5xl md:text-7xl font-extrabold tracking-tighter leading-none"
-                    style={{ fontFamily: "JetBrains Mono, monospace" }}
-                  >
-                    2501
-                  </p>
-                  <div
-                    className="absolute -bottom-3 -right-3 bg-white text-runner-dark w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center font-mono font-extrabold text-sm md:text-base shadow-lg border-2 border-runner-primary"
-                    style={{ transform: "rotate(6deg)" }}
-                  >
-                    10<span className="text-[10px] opacity-70 ml-0.5">K</span>
-                  </div>
-                </div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 md:gap-4 px-4">
+              {/* Badge PR */}
+              <div className="inline-flex items-center rounded-full bg-green-100 px-3 py-1">
+                <span className="text-[10px] md:text-xs font-bold text-green-700 tracking-wide">
+                  🎉 Nuevo PR
+                </span>
               </div>
 
-              {/* COL DER 60% — datos */}
-              <div className="w-[60%] flex flex-col p-3 md:p-5 bg-runner-warm">
-                {/* Brand header */}
-                <div className="flex items-center justify-between mb-2 md:mb-3">
-                  <div className="flex items-center gap-1.5">
-                    <div
-                      className="w-5 h-5 md:w-6 md:h-6 rounded bg-runner-primary flex items-center justify-center"
-                      aria-hidden="true"
-                    >
-                      <span
-                        className="text-white text-[11px] md:text-xs font-bold leading-none"
-                        style={{ fontFamily: "JetBrains Mono, monospace" }}
-                      >
-                        m
-                      </span>
-                    </div>
-                    <span
-                      className="text-sm md:text-base font-bold text-runner-dark"
-                      style={{ letterSpacing: "-0.3px" }}
-                    >
-                      mi-dorsal
-                    </span>
-                  </div>
-                  <span className="text-[9px] md:text-[10px] text-gray-500 tracking-[1.5px] uppercase font-semibold">
-                    Resultado oficial
-                  </span>
-                </div>
-
-                {/* PR badge */}
-                <div className="self-start mb-2 inline-flex items-center gap-1 bg-green-50 border-2 border-emerald-600 rounded-full px-2 py-0.5">
-                  <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-wider text-emerald-800">
-                    🎉 Nuevo PR en 10K
-                  </span>
-                </div>
-
-                {/* Race name */}
-                <h4 className="text-sm md:text-lg font-bold text-runner-dark leading-tight mb-0.5 line-clamp-2">
-                  Behobia-San Sebastián
-                </h4>
-                <p className="text-[10px] md:text-xs text-gray-500 mb-2 tracking-wider">
-                  12 nov 2026
+              {/* Panel tiempo hero */}
+              <div className="flex flex-col items-center rounded-2xl bg-white/90 px-4 py-3 md:px-5 md:py-4">
+                <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-[2px] text-stone-500 mb-1">
+                  Tu tiempo oficial
                 </p>
-
-                {/* TIME HERO */}
-                <div
-                  className="text-3xl md:text-5xl font-extrabold font-mono text-emerald-600 leading-none tracking-tighter"
+                <p
+                  className="text-2xl md:text-3xl font-bold leading-none text-green-600"
                   style={{ fontFamily: "JetBrains Mono, monospace" }}
                 >
                   01:26:14
-                </div>
-                <p className="text-[9px] md:text-[10px] text-gray-500 tracking-[2px] uppercase mt-1 mb-2 font-semibold">
-                  Tu tiempo oficial
                 </p>
+              </div>
 
-                {/* Stats 3 col */}
-                <div className="grid grid-cols-3 gap-1.5 md:gap-2 mb-auto">
-                  <div className="bg-white border border-gray-200 rounded-md px-1.5 py-1.5 md:px-2 md:py-2">
-                    <p className="text-[8px] md:text-[9px] text-gray-500 tracking-wider uppercase font-semibold leading-tight">
-                      Pos. gral
-                    </p>
-                    <p
-                      className="text-xs md:text-sm font-bold text-runner-dark font-mono leading-tight mt-0.5"
-                      style={{ fontFamily: "JetBrains Mono, monospace" }}
-                    >
-                      521
-                    </p>
-                  </div>
-                  <div className="bg-white border border-gray-200 rounded-md px-1.5 py-1.5 md:px-2 md:py-2">
-                    <p className="text-[8px] md:text-[9px] text-gray-500 tracking-wider uppercase font-semibold leading-tight">
-                      Pos. cat
-                    </p>
-                    <p
-                      className="text-xs md:text-sm font-bold text-runner-dark font-mono leading-tight mt-0.5"
-                      style={{ fontFamily: "JetBrains Mono, monospace" }}
-                    >
-                      97
-                    </p>
-                  </div>
-                  <div className="bg-white border border-gray-200 rounded-md px-1.5 py-1.5 md:px-2 md:py-2">
-                    <p className="text-[8px] md:text-[9px] text-gray-500 tracking-wider uppercase font-semibold leading-tight">
-                      Pace
-                    </p>
-                    <p
-                      className="text-xs md:text-sm font-bold text-runner-dark font-mono leading-tight mt-0.5"
-                      style={{ fontFamily: "JetBrains Mono, monospace" }}
-                    >
-                      4:18<span className="text-[9px] text-gray-500 font-sans">/km</span>
-                    </p>
-                  </div>
-                </div>
-
-                {/* Footer */}
-                <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-gray-200">
-                  <p className="text-[9px] md:text-[10px] text-gray-500 italic">
-                    El hilo que te une a tu dorsal
+              {/* Fila pace + distancia */}
+              <div className="flex gap-2 md:gap-3">
+                <div className="flex flex-col items-center rounded-2xl bg-white/90 px-3 py-2 md:px-4 md:py-2.5">
+                  <p className="text-[7px] md:text-[8px] font-bold uppercase tracking-[2px] text-stone-500 mb-0.5">
+                    Pace
                   </p>
-                  <p className="text-[9px] md:text-[10px] text-gray-400 font-mono">
-                    mi-dorsal.com
+                  <p
+                    className="text-sm md:text-base font-bold text-stone-800"
+                    style={{ fontFamily: "JetBrains Mono, monospace" }}
+                  >
+                    4:18 /km
+                  </p>
+                </div>
+                <div className="flex flex-col items-center rounded-2xl bg-white/90 px-3 py-2 md:px-4 md:py-2.5">
+                  <p className="text-[7px] md:text-[8px] font-bold uppercase tracking-[2px] text-stone-500 mb-0.5">
+                    Distancia
+                  </p>
+                  <p
+                    className="text-sm md:text-base font-bold text-stone-800"
+                    style={{ fontFamily: "JetBrains Mono, monospace" }}
+                  >
+                    10,000km
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Esquina "PNG · 1200×630" para que se vea que es el formato de share image */}
-            <div className="absolute top-2 right-2 bg-runner-dark/80 text-white text-[9px] font-mono px-1.5 py-0.5 rounded">
-              PNG · 1200×630
+            {/* Logo mi-dorsal anclado hacia el final, igual que el real */}
+            <div className="absolute bottom-6 left-0 right-0 flex items-center justify-center gap-1.5">
+              <div className="w-5 h-5 rounded bg-runner-primary flex items-center justify-center">
+                <span
+                  className="text-white text-[10px] font-bold leading-none"
+                  style={{ fontFamily: "JetBrains Mono, monospace" }}
+                >
+                  m
+                </span>
+              </div>
+              <span className="text-xs font-bold text-white" style={{ textShadow: "0 1px 3px rgba(0,0,0,.5)" }}>
+                mi-dorsal
+              </span>
             </div>
           </div>
 
           <div className="mt-3 flex items-center justify-between gap-3 text-xs text-gray-500 px-1">
             <p className="inline-flex items-center gap-1.5">
-              <Mail className="h-3.5 w-3.5 text-runner-primary" aria-hidden="true" />
-              Llega adjunta en el email, lista para reenviar
+              <Sparkles className="h-3.5 w-3.5 text-runner-primary" aria-hidden="true" />
+              Descarga en PNG o mándatelo por email
             </p>
             <Link
-              href="/diploma-preview.html?sample=share"
+              href="/premium"
               className="inline-flex items-center gap-1.5 text-runner-primary font-semibold hover:underline"
             >
-              <ImageDown className="h-3.5 w-3.5" aria-hidden="true" />
-              Ver ejemplo PNG
+              Personalizar el mío
             </Link>
           </div>
         </article>

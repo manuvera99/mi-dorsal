@@ -65,6 +65,14 @@ export const ProTeaserIsland = dynamic(
   { ssr: false, loading: () => null }
 );
 
+// StickerEditorTeaser: sección 4d que anuncia el editor de sticker
+// personalizable como feature Pro. Mismo patrón que ProTeaserIsland
+// (useHasPremium via Convex) — se oculta si el usuario ya es Pro.
+export const StickerEditorTeaserIsland = dynamic(
+  () => import("./sticker-editor-teaser").then((m) => m.StickerEditorTeaser),
+  { ssr: false, loading: () => null }
+);
+
 // HowItWorksCta: botón "Empieza tu temporada gratis" al final de
 // <HowItWorks>. Es un CTA de registro (no de upgrade a Pro) — se oculta
 // para cualquier usuario ya logueado, sea free o premium (bug reportado

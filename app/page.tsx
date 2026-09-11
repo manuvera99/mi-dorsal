@@ -31,6 +31,7 @@ import {
   ResultBannerIsland,
   WelcomeOverlayIsland,
   ProTeaserIsland,
+  StickerEditorTeaserIsland,
 } from "@/components/home/client-only-islands";
 
 // Revalidar cada 5 minutos. La home es la misma para todos los usuarios de
@@ -75,6 +76,12 @@ export default function HomePage() {
             (derecha). Posicionada justo tras HowItWorks para capitalizar la
             atención del "Recibe diploma PDF + imagen para redes" del paso 3. */}
         <DiplomaAndSharePreview />
+
+        {/* 4d. TEASER DEL EDITOR DE STICKER (nuevo sep 2026). Continúa la
+            narrativa de DiplomaAndSharePreview: "así te llega
+            automáticamente" → "así lo personalizas tú (Pro)". Se oculta
+            si el usuario ya es Pro (ver StickerEditorTeaserIsland). */}
+        <StickerEditorTeaserIsland />
 
         {/* 4c. LO QUE YA ESTÁ FUNCIONANDO (nuevo sep 2026) */}
         <WhatsHere />

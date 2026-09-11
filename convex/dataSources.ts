@@ -8,6 +8,7 @@ import { v } from "convex/values";
 import { mutation, query, action } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { requireAdmin, getOptionalUser } from "./_helpers";
+import { internal } from "./_generated/api";
 
 // Scrape command names (deben coincidir con scripts/ingest-*.ts y scripts/scrape-*.ts)
 export const SCRAPER_SCRIPTS: Record<string, string> = {
@@ -40,6 +41,40 @@ export const list = query({
       }),
     );
     return result.sort((a, b) => a.name.localeCompare(b.name));
+  },
+});
+
+/**
+ * Resumen para los KPIs del panel /admin/races: cuántas carreras hay en
+ * total y cuántas se crearon en la última sincronización de cada fuente
+ * (suma de `lastSyncCreatedCount` de las 7 fuentes — no la ejecución
+ * completa del cron como concepto aparte, ya que no existe una fila que
+ * agrupe todas las fuentes de una misma corrida; ver auditoría 2026-09-11).
+ * `totalRaces` es el conteo real de la tabla `races` (no la suma
+ * denormalizada por fuente, que puede quedar desactualizada si alguna
+ * sync no se registró — ver `dataSources.totalRaces`).
+ */
+export const getIngestSummary = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const [races, sources] = await Promise.all([
+      ctx.db.query("races").collect(),
+      ctx.db.query("dataSources").collect(),
+    ]);
+    const newInLastRun = sources.reduce(
+      (sum, s) => sum + (s.lastSyncCreatedCount ?? 0),
+      0,
+    );
+    const mostRecentSyncAt = sources.reduce(
+      (max, s) => Math.max(max, s.lastSyncAt ?? 0),
+      0,
+    );
+    return {
+      totalRaces: races.length,
+      newInLastRun,
+      mostRecentSyncAt: mostRecentSyncAt || undefined,
+    };
   },
 });
 
@@ -239,9 +274,11 @@ export const finishSync = mutation({
     dataSourceId: v.id("dataSources"),
     status: v.union(v.literal("success"), v.literal("error")),
     raceCount: v.optional(v.number()),
+    createdCount: v.optional(v.number()),
+    updatedCount: v.optional(v.number()),
     error: v.optional(v.string()),
   },
-  handler: async (ctx, { syncId, dataSourceId, status, raceCount, error }) => {
+  handler: async (ctx, { syncId, dataSourceId, status, raceCount, createdCount, updatedCount, error }) => {
     await requireAdmin(ctx);
     const now = Date.now();
     const sync = await ctx.db.get(syncId);
@@ -253,6 +290,8 @@ export const finishSync = mutation({
       durationMs,
       status,
       raceCount,
+      createdCount,
+      updatedCount,
       error,
     });
 
@@ -268,6 +307,8 @@ export const finishSync = mutation({
         lastSyncAt: now,
         lastSyncDurationMs: durationMs,
         lastSyncRaceCount: raceCount,
+        lastSyncCreatedCount: createdCount,
+        lastSyncUpdatedCount: updatedCount,
         lastSyncError: error,
         totalRaces: races.length,
         totalSyncs: (source.totalSyncs ?? 0) + 1,
@@ -412,9 +453,11 @@ export const systemFinishSync = mutation({
     dataSourceId: v.id("dataSources"),
     status: v.union(v.literal("success"), v.literal("error")),
     raceCount: v.optional(v.number()),
+    createdCount: v.optional(v.number()),
+    updatedCount: v.optional(v.number()),
     error: v.optional(v.string()),
   },
-  handler: async (ctx, { syncId, dataSourceId, status, raceCount, error }) => {
+  handler: async (ctx, { syncId, dataSourceId, status, raceCount, createdCount, updatedCount, error }) => {
     const now = Date.now();
     const sync = await ctx.db.get(syncId);
     if (!sync) return;
@@ -425,6 +468,8 @@ export const systemFinishSync = mutation({
       durationMs,
       status,
       raceCount,
+      createdCount,
+      updatedCount,
       error,
     });
 
@@ -438,6 +483,8 @@ export const systemFinishSync = mutation({
         lastSyncAt: now,
         lastSyncDurationMs: durationMs,
         lastSyncRaceCount: raceCount,
+        lastSyncCreatedCount: createdCount,
+        lastSyncUpdatedCount: updatedCount,
         lastSyncError: error,
         totalRaces: races.length,
         totalSyncs: (source.totalSyncs ?? 0) + 1,
@@ -492,6 +539,8 @@ export const systemUpdate = mutation({
  *   await client.mutation(api.dataSources.recordIngestSync, {
  *     dataSourceSlug: "rfea",
  *     raceCount: 123,
+ *     createdCount: 20,
+ *     updatedCount: 103,
  *     durationMs: 4500,
  *     status: "success",
  *     triggeredBy: "github-action-daily-ingest",
@@ -501,6 +550,8 @@ export const recordIngestSync = mutation({
   args: {
     dataSourceSlug: v.string(),
     raceCount: v.number(),
+    createdCount: v.optional(v.number()),
+    updatedCount: v.optional(v.number()),
     durationMs: v.number(),
     status: v.union(v.literal("success"), v.literal("error")),
     triggeredBy: v.optional(v.string()),
@@ -533,6 +584,8 @@ export const recordIngestSync = mutation({
       durationMs: args.durationMs,
       status: args.status,
       raceCount: args.raceCount,
+      createdCount: args.createdCount,
+      updatedCount: args.updatedCount,
       error: args.error,
       triggeredBy,
     });
@@ -542,6 +595,8 @@ export const recordIngestSync = mutation({
       lastSyncAt: now,
       lastSyncDurationMs: args.durationMs,
       lastSyncRaceCount: args.raceCount,
+      lastSyncCreatedCount: args.createdCount,
+      lastSyncUpdatedCount: args.updatedCount,
       lastSyncError: args.error,
       totalSyncs: (source.totalSyncs ?? 0) + 1,
       status: args.status === "success" ? "active" : "error",
@@ -564,5 +619,142 @@ export const getDataSourceIdBySlug = query({
       .withIndex("by_slug", (q) => q.eq("slug", slug))
       .unique();
     return source?._id ?? null;
+  },
+});
+
+// ============================================================================
+// RESUMEN POR EMAIL — se envía al terminar el ingest nocturno completo
+// (llamado por scripts/ingest-to-convex.ts, que es el último paso que
+// registra sync en la ejecución del workflow daily-ingest.yml).
+// ============================================================================
+
+const TYPE_LABELS_INGEST = {
+  success: { label: "OK", emoji: "✅", color: "#16a34a" },
+  error: { label: "Con errores", emoji: "⚠️", color: "#dc2626" },
+} as const;
+
+function escapeHtmlIngest(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
+ * sendIngestSummaryEmail: envía al admin un resumen de TODA la ejecución
+ * nocturna del ingest — no solo la parte que ve el caller. Lee el estado
+ * de "última sync" de las 7 fuentes directamente de `dataSources` (mismo
+ * dato que ya usa getIngestSummary para el KPI del panel), en vez de que
+ * el caller le pase sus propios números: así el email cubre también
+ * Sportmaniacs/Agenda Sureste, que corren en pasos anteriores del mismo
+ * workflow y no son visibles para scripts/ingest-to-convex.ts (que solo
+ * procesa RFEA/FEDME/ITRA/Runedia).
+ *
+ * Se llama al final del workflow daily-ingest.yml (tras el step de
+ * ingest-to-convex, que es el último que registra sync). Sin auth: mismo
+ * modelo de seguridad que recordIngestSync — solo se ejecuta desde la
+ * GitHub Action o la terminal del admin con CONVEX_DEPLOY_KEY.
+ *
+ * Reutiliza internal.emails.sendEmail.sendEmail, el mismo mecanismo que
+ * ya usa convex/feedback.ts para notificar al admin — no se introduce
+ * ninguna infraestructura de email nueva.
+ */
+export const sendIngestSummaryEmail = mutation({
+  args: {
+    totalDurationMs: v.optional(v.number()),
+  },
+  handler: async (ctx, { totalDurationMs }) => {
+    const [races, sources] = await Promise.all([
+      ctx.db.query("races").collect(),
+      ctx.db.query("dataSources").collect(),
+    ]);
+
+    const perSource = sources
+      .map((s) => ({
+        name: s.name,
+        created: s.lastSyncCreatedCount ?? 0,
+        updated: s.lastSyncUpdatedCount ?? 0,
+        hasError: !!s.lastSyncError,
+        error: s.lastSyncError,
+      }))
+      .filter((p) => p.created + p.updated > 0 || p.hasError);
+
+    const totalCreated = perSource.reduce((s, p) => s + p.created, 0);
+    const totalUpdated = perSource.reduce((s, p) => s + p.updated, 0);
+    const sourcesWithError = perSource.filter((p) => p.hasError);
+    const status = sourcesWithError.length > 0 ? "error" : "success";
+    const typeInfo = TYPE_LABELS_INGEST[status];
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.mi-dorsal.com";
+    const adminUrl = `${baseUrl}/admin/races`;
+
+    const rows = perSource
+      .sort((a, b) => b.created - a.created)
+      .map(
+        (p) => `
+      <tr>
+        <td style="padding:6px 10px;border-bottom:1px solid #e7e5e4;font-size:13px;">${escapeHtmlIngest(p.name)}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #e7e5e4;font-size:13px;text-align:right;color:#16a34a;">${p.created}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #e7e5e4;font-size:13px;text-align:right;color:#78716c;">${p.updated}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #e7e5e4;font-size:13px;${p.hasError ? "color:#dc2626;font-weight:600;" : "color:#a8a29e;"}">${p.hasError ? escapeHtmlIngest(p.error ?? "error") : "—"}</td>
+      </tr>`,
+      )
+      .join("");
+
+    const durationLine =
+      totalDurationMs !== undefined
+        ? `<p style="margin:16px 0 0;font-size:12px;color:#a8a29e;">Duración: ${(totalDurationMs / 1000).toFixed(1)}s</p>`
+        : "";
+
+    const html = `
+<!DOCTYPE html>
+<html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fafaf9;padding:24px;color:#0a0a0a;">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;border:1px solid #e7e5e4;">
+    <div style="background:${typeInfo.color};color:#fff;padding:16px 20px;">
+      <h1 style="margin:0;font-size:18px;">${typeInfo.emoji} Ingest de carreras: ${typeInfo.label}</h1>
+    </div>
+    <div style="padding:20px;">
+      <p style="margin:0 0 12px;font-size:14px;color:#1c1917;">
+        <strong>${totalCreated}</strong> carreras nuevas · <strong>${totalUpdated}</strong> actualizadas
+        ${sourcesWithError.length > 0 ? `· <strong style="color:#dc2626;">${sourcesWithError.length} fuente${sourcesWithError.length === 1 ? "" : "s"} con error</strong>` : ""}
+        · ${races.length} carreras totales en catálogo.
+      </p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:8px;">
+        <thead>
+          <tr>
+            <th style="padding:6px 10px;text-align:left;font-size:11px;color:#78716c;text-transform:uppercase;">Fuente</th>
+            <th style="padding:6px 10px;text-align:right;font-size:11px;color:#78716c;text-transform:uppercase;">Nuevas</th>
+            <th style="padding:6px 10px;text-align:right;font-size:11px;color:#78716c;text-transform:uppercase;">Act.</th>
+            <th style="padding:6px 10px;text-align:left;font-size:11px;color:#78716c;text-transform:uppercase;">Error</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      ${durationLine}
+      <a href="${adminUrl}" style="display:inline-block;margin-top:16px;background:#0a0a0a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;">Ver panel de carreras →</a>
+    </div>
+  </div>
+</body></html>`;
+
+    const text = `${typeInfo.emoji} Ingest de carreras: ${typeInfo.label}
+
+${totalCreated} nuevas · ${totalUpdated} actualizadas${sourcesWithError.length > 0 ? ` · ${sourcesWithError.length} fuentes con error` : ""} · ${races.length} carreras totales.
+
+${perSource
+  .map((p) => `  ${p.name}: +${p.created} nuevas, ${p.updated} actualizadas${p.hasError ? ` — ERROR: ${p.error}` : ""}`)
+  .join("\n")}
+${totalDurationMs !== undefined ? `\nDuración: ${(totalDurationMs / 1000).toFixed(1)}s` : ""}
+Ver panel: ${adminUrl}`;
+
+    await ctx.scheduler.runAfter(0, internal.emails.sendEmail.sendEmail, {
+      to: process.env.ADMIN_NOTIFICATION_EMAIL || "hola@mi-dorsal.com",
+      subject: `${typeInfo.emoji} Ingest de carreras: +${totalCreated} nuevas${sourcesWithError.length > 0 ? ` (${sourcesWithError.length} errores)` : ""}`,
+      html,
+      text,
+    });
+
+    return { ok: true, totalCreated, totalUpdated, errorCount: sourcesWithError.length };
   },
 });

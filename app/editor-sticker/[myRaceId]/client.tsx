@@ -176,6 +176,10 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
           headers: { "Content-Type": "image/png" },
           body: blob,
         });
+        if (!uploadRes.ok) {
+          const text = await uploadRes.text().catch(() => "");
+          throw new Error(`Upload failed: ${uploadRes.status} ${uploadRes.statusText} ${text}`);
+        }
         const { storageId } = await uploadRes.json();
         await attachCustomSticker({ myRaceId: myRaceId as Id<"myRaces">, storageId });
         toast.show({ title: "Sticker descargado y guardado", variant: "success" });
@@ -257,6 +261,7 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
         <aside className="hidden md:block md:w-40 flex-shrink-0">
           <TemplatePanel
             activeTemplateId={templateId}
+            isCustomTemplateActive={usingCustomTemplate}
             hasCustomTemplate={!!editorData.customStickerTemplate}
             onSelectTemplate={handleSelectTemplate}
             onSelectCustomTemplate={handleSelectCustomTemplate}
@@ -321,6 +326,7 @@ export function EditorStickerClient({ myRaceId }: { myRaceId: string }) {
             {mobileSheet === "templates" ? (
               <TemplatePanel
                 activeTemplateId={templateId}
+                isCustomTemplateActive={usingCustomTemplate}
                 hasCustomTemplate={!!editorData.customStickerTemplate}
                 onSelectTemplate={(id) => {
                   handleSelectTemplate(id);

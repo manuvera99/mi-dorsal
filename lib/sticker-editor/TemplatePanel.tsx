@@ -14,6 +14,7 @@ import { Sparkles, Save, Check } from "lucide-react";
 
 interface TemplatePanelProps {
   activeTemplateId: StickerTemplateId;
+  isCustomTemplateActive: boolean;
   hasCustomTemplate: boolean;
   onSelectTemplate: (id: StickerTemplateId) => void;
   onSelectCustomTemplate: () => void;
@@ -23,6 +24,7 @@ interface TemplatePanelProps {
 
 export function TemplatePanel({
   activeTemplateId,
+  isCustomTemplateActive,
   hasCustomTemplate,
   onSelectTemplate,
   onSelectCustomTemplate,
@@ -41,12 +43,12 @@ export function TemplatePanel({
           key={id}
           onClick={() => onSelectTemplate(id)}
           className={`text-left px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors flex items-center gap-1.5 ${
-            activeTemplateId === id
+            activeTemplateId === id && !isCustomTemplateActive
               ? "border-runner-primary bg-red-50 text-runner-primary"
               : "border-stone-200 bg-white text-stone-700 hover:bg-stone-50"
           }`}
         >
-          {activeTemplateId === id && <Check className="h-3.5 w-3.5" />}
+          {activeTemplateId === id && !isCustomTemplateActive && <Check className="h-3.5 w-3.5" />}
           {STICKER_TEMPLATES[id].label}
         </button>
       ))}
@@ -57,10 +59,12 @@ export function TemplatePanel({
         className={`text-left px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors flex items-center gap-1.5 ${
           !hasCustomTemplate
             ? "border-dashed border-stone-300 text-stone-400 cursor-not-allowed"
-            : "border-stone-200 bg-white text-stone-700 hover:bg-stone-50"
+            : isCustomTemplateActive
+              ? "border-runner-primary bg-red-50 text-runner-primary"
+              : "border-stone-200 bg-white text-stone-700 hover:bg-stone-50"
         }`}
       >
-        <Sparkles className="h-3.5 w-3.5" />
+        {isCustomTemplateActive ? <Check className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
         Mi plantilla
       </button>
 

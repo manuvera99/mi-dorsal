@@ -43,7 +43,7 @@
 | Home / `app/page.tsx` | `docs/core/home-structure.md` |
 | `/carreras` (catálogo, ficha, filtros) | `docs/core/carreras-page.md` |
 | Geolocalización / CCAA / `RegionSwitcher` | `docs/core/geo-system.md` |
-| Deploy / CI / build roto en Vercel | `docs/core/deploy-checklist.md` |
+| Deploy / CI / build roto en Vercel / entorno de PRE (`mi-dorsal.vercel.app`) | `docs/core/deploy-checklist.md` |
 | Stack, convenciones de código, error TS2589 | `docs/core/stack.md` |
 | Base de datos / nueva tabla / campo en Convex | `docs/core/database-schema.md` + `convex/schema.ts` (fuente real) |
 | Emails transaccionales / crons / `notificationLog` | `docs/core/emails-crons.md` |
@@ -53,6 +53,7 @@
 | Panel `/admin/*` (cualquier subruta) | `docs/core/admin-panel.md` |
 | SEO / metadata / Schema.org / AdSense | `docs/core/seo.md` |
 | Anti-patrones (antes de cualquier cambio dudoso) | `docs/core/anti-patterns.md` |
+| Trabajar varias sesiones/ramas en paralelo (git worktrees) | `docs/core/dev-worktrees.md` |
 | **¿Qué tareas hay pendientes / qué se hace ahora?** | `docs/ROADMAP.md` (hoja de ruta viva) |
 | Tono de voz / copy / vocabulario preferido-evitado | `docs/core/brand-voice.md` |
 | Branding / paleta de color / tipografía / logo | `docs/history/brand-identity.md` |

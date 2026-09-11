@@ -1373,6 +1373,10 @@ export default defineSchema({
   //   - "extract_race_deep"   → lib/ai/extract-race-deep.ts
   //   - "analyze_source"      → lib/ai/analyze-source.ts
   //   - "coach_analysis"      → lib/ai/coach-analysis.ts
+  //   - "resolve_race_url"    → lib/ai/resolve-race-url.ts (Brave Search +
+  //                            verificación LLM; model="brave-search" para
+  //                            la parte de búsqueda, modelo real del LLM
+  //                            para la parte de verificación)
   // ---------------------------------------------------------------------------
   aiUsageLog: defineTable({
     /** Cuándo se hizo la llamada (timestamp unix ms). */

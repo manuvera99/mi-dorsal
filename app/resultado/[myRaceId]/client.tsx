@@ -29,6 +29,7 @@ import {
   Hash,
   TrendingDown,
   Check,
+  Sparkles,
 } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
@@ -253,6 +254,13 @@ export function ResultadoClient({ myRaceId }: { myRaceId: string }) {
               Diploma PDF
             </a>
           )}
+          <Link
+            href={`/editor-sticker/${myRaceId}`}
+            className="btn bg-white border border-runner-primary text-runner-primary hover:bg-red-50 inline-flex items-center gap-1.5"
+          >
+            <Sparkles className="h-4 w-4" />
+            Personalizar sticker
+          </Link>
           <button
             onClick={handleShare}
             className="btn bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 inline-flex items-center gap-1.5"

@@ -82,6 +82,21 @@ export default defineSchema({
     garminUserId: v.optional(v.string()),
     garminAccessToken: v.optional(v.string()),
     garminRefreshToken: v.optional(v.string()),
+    // Plantilla propia del editor de sticker (premium). 1 sola por
+    // usuario — se sobrescribe al guardar una nueva. baseTemplateId
+    // identifica de qué plantilla predefinida partió (solo informativo,
+    // no se usa para resolver el layout: los `elements` ya son
+    // autocontenidos).
+    customStickerTemplate: v.optional(v.object({
+      baseTemplateId: v.string(),
+      elements: v.array(v.object({
+        fieldId: v.string(),
+        visible: v.boolean(),
+        x: v.number(),
+        y: v.number(),
+        scale: v.number(),
+      })),
+    })),
     // Preferencias
     preferredLocale: v.optional(v.string()),
     emailResultsEnabled: v.optional(v.boolean()),
@@ -477,6 +492,15 @@ export default defineSchema({
     // convex/emailNotificationsAction.sendResultFoundEmail al publicar
     // resultado.
     shareCardStorageId: v.optional(v.id("_storage")),
+    // Story sticker PNG (1080x1920, fondo transparente). Pre-generado en
+    // el mismo pipeline, para descargar y usar como overlay en Stories de
+    // Instagram/TikTok. No se envía por email (solo diploma + share card).
+    storyStickerStorageId: v.optional(v.id("_storage")),
+    // Story sticker PERSONALIZADO (editor premium). PNG exportado
+    // client-side desde /editor-sticker/{myRaceId}. Se sobrescribe con
+    // cada nueva exportación (attachCustomSticker borra el blob anterior).
+    // Independiente de storyStickerStorageId (el fijo automático).
+    customStickerStorageId: v.optional(v.id("_storage")),
   })
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])

@@ -29,6 +29,7 @@ import {
   ArrowRight,
   FileText,
 } from "lucide-react";
+import { StatCard } from "@/components/admin/stat-card";
 
 type Status = "pending" | "approved" | "rejected" | "created";
 
@@ -112,11 +113,11 @@ function RealSuggestions() {
 
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-          <StatCard label="Total" value={stats.total} icon={Inbox} color="gray" />
-          <StatCard label="Pendientes" value={stats.pending} icon={Clock} color="amber" />
-          <StatCard label="Aprobadas" value={stats.approved} icon={Check} color="blue" />
-          <StatCard label="Rechazadas" value={stats.rejected} icon={X} color="gray" />
-          <StatCard label="Creadas" value={stats.created} icon={Sparkles} color="green" />
+          <StatCard label="Total" value={stats.total} icon={Inbox} color="gray" size="sm" />
+          <StatCard label="Pendientes" value={stats.pending} icon={Clock} color="amber" size="sm" />
+          <StatCard label="Aprobadas" value={stats.approved} icon={Check} color="blue" size="sm" />
+          <StatCard label="Rechazadas" value={stats.rejected} icon={X} color="gray" size="sm" />
+          <StatCard label="Creadas" value={stats.created} icon={Sparkles} color="green" size="sm" />
         </div>
       )}
 
@@ -331,36 +332,6 @@ function RealSuggestions() {
           </ul>
         )}
       </div>
-    </div>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  color,
-}: {
-  label: string;
-  value: number;
-  icon: any;
-  color: "gray" | "amber" | "blue" | "green";
-}) {
-  const colors: Record<string, string> = {
-    gray: "bg-gray-100 text-gray-700",
-    amber: "bg-amber-100 text-amber-700",
-    blue: "bg-blue-100 text-blue-700",
-    green: "bg-green-100 text-green-700",
-  };
-  return (
-    <div className="bg-white rounded-lg border p-3">
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-xs text-gray-500">{label}</span>
-        <div className={`p-1 rounded ${colors[color]}`}>
-          <Icon className="h-3 w-3" />
-        </div>
-      </div>
-      <div className="text-2xl font-bold">{value}</div>
     </div>
   );
 }

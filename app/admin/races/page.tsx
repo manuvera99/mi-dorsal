@@ -5,10 +5,11 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { isMockMode } from "@/lib/mock/provider";
 import Link from "next/link";
-import { Plus, Search, Edit2, Trash2, Loader2, MapPin, Calendar, Sparkles, Zap, CheckCircle2, AlertCircle } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, Loader2, MapPin, Calendar, Sparkles, Zap, CheckCircle2, AlertCircle, Trophy } from "lucide-react";
 import { PROVINCE_LIST, formatRaceType } from "@/lib/utils";
 import { deepExtractAndApplyAction } from "./[id]/actions";
 import { SourceBadge } from "@/components/admin/source-badge";
+import { StatCard } from "@/components/admin/stat-card";
 
 function MockRacesList() {
   return (
@@ -36,6 +37,7 @@ function RealRacesList() {
     isPublished: published === "all" ? undefined : published === "yes",
   });
   const sources = useQuery(api.dataSources.listPublic);
+  const ingestSummary = useQuery(api.dataSources.getIngestSummary);
   const toggleMutation = useMutation(api.races.adminToggle);
   const deleteMutation = useMutation(api.races.adminDelete);
   const migrateMutation = useMutation(api.dataSources.migrateRacesToSources);
@@ -83,6 +85,23 @@ function RealRacesList() {
   return (
     <div className="p-8">
       <Header />
+
+      <div className="grid grid-cols-2 gap-3 mb-6">
+        <StatCard
+          label="Carreras totales"
+          value={ingestSummary === undefined ? "…" : ingestSummary.totalRaces}
+          icon={Trophy}
+          color="blue"
+          size="sm"
+        />
+        <StatCard
+          label="Nuevas (última sync)"
+          value={ingestSummary === undefined ? "…" : ingestSummary.newInLastRun}
+          icon={Sparkles}
+          color="green"
+          size="sm"
+        />
+      </div>
 
       <div className="bg-white rounded-lg border p-4 mb-4 flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[200px]">

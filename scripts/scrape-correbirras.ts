@@ -179,6 +179,7 @@ async function main() {
   console.log(`\nSubiendo ${races.length} carreras (idempotente)...\n`);
   let created = 0, updated = 0, failed = 0, errors: string[] = [];
   const sourceId = cbSrc!._id;
+  const uploadT0 = Date.now();
   for (const r of races) {
     const f = parseFecha(r.fecha);
     const h = parseHora(r.hora_time ?? r.hora);
@@ -216,6 +217,25 @@ async function main() {
   }
   console.log(`\n\n✅ ${created} creadas, ${updated} actualizadas, ${failed} fallaron`);
   if (errors.length) console.log("Errores:", errors);
+
+  // Registrar el sync (para que el admin dashboard vea "última sync: hace
+  // Xh, +N carreras" y el desglose creadas/actualizadas).
+  try {
+    const durationMs = Date.now() - uploadT0;
+    const status: "success" | "error" = failed > created + updated ? "error" : "success";
+    await client.mutation(api.dataSources.recordIngestSync, {
+      dataSourceSlug: "correbirras",
+      raceCount: created + updated,
+      createdCount: created,
+      updatedCount: updated,
+      durationMs,
+      status,
+      triggeredBy: "github-action-daily-ingest",
+      error: failed > 0 ? `${failed} carreras fallaron` : undefined,
+    });
+  } catch (err) {
+    console.error("  ✗ error registrando sync:", err);
+  }
 }
 
 main().catch((e) => {

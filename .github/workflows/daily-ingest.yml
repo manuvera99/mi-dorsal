@@ -11,7 +11,12 @@ jobs:
   ingest:
     name: Ingest desde todas las fuentes
     runs-on: ubuntu-latest
-    timeout-minutes: 30  # los scrapers pueden tardar (RFEA, FEDME, etc.)
+    # 45 min (antes 30): con el nuevo step de deploy Convex (0/9) +
+    # unificación de JSONs (6.5/9) + geocoding de más carreras nuevas
+    # cada noche, 30 min se quedaba corto y cancelaba el geocoding final
+    # a mitad (confirmado 2026-09-11, run 34602490190: "exceeded the
+    # maximum execution time of 30m0s" en el paso 9/9).
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
@@ -26,10 +31,31 @@ jobs:
         run: npm ci
 
       # ------------------------------------------------------------------
+      # 0/9 Deploy Convex — garantiza que el backend real (funciones +
+      # schema) está sincronizado con este commit ANTES de ingestar.
+      # Sin este paso, un `git push` a convex/*.ts sin `npx convex deploy`
+      # manual deja el backend desincronizado y el ingest de esa noche
+      # falla en silencio (ArgumentValidationError / "Could not find public
+      # function" — nos pasó varias noches seguidas, ver 2026-09-11).
+      # Sin continue-on-error: si el deploy falla, todo el job debe fallar
+      # (ingestar contra un backend desincronizado es peor que no ingestar).
+      # ------------------------------------------------------------------
+
+      - name: 0/9 Deploy Convex (sincroniza backend con este commit)
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+        run: |
+          if [ -z "$CONVEX_DEPLOY_KEY" ]; then
+            echo "❌ CONVEX_DEPLOY_KEY no configurado como secret en GitHub"
+            exit 1
+          fi
+          npx convex deploy
+
+      # ------------------------------------------------------------------
       # Scripts nuevos (suben DIRECTO a Convex vía systemUpsert idempotente)
       # ------------------------------------------------------------------
 
-      - name: 1/8 Ingest Sportmaniacs (API REST, 25k carreras)
+      - name: 1/9 Ingest Sportmaniacs (API REST, 25k carreras)
         env:
           NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
         run: |
@@ -37,7 +63,7 @@ jobs:
           npm run ingest:sportmaniacs -- --upload 2>&1 | tail -30 || echo "⚠️  Sportmaniacs failed, continuing"
         continue-on-error: true
 
-      - name: 2/8 Ingest Agenda Sureste (Supabase REST, ~200 carreras)
+      - name: 2/9 Ingest Agenda Sureste (Supabase REST, ~200 carreras)
         env:
           NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
         run: |
@@ -50,31 +76,52 @@ jobs:
       # ingest:to-convex los une y sube via systemUpsert
       # ------------------------------------------------------------------
 
-      - name: 3/8 Ingest RFEA (PDF + scraping)
+      - name: 3/9 Ingest RFEA (PDF + scraping)
         run: |
           echo "=== RFEA (Real Federación Española de Atletismo) ==="
           npm run ingest:rfea 2>&1 | tail -20 || echo "⚠️  RFEA failed, continuing"
         continue-on-error: true
 
-      - name: 4/8 Ingest FEDME (scraping HTML)
+      - name: 4/9 Ingest FEDME (scraping HTML)
         run: |
           echo "=== FEDME (Federación Deportes de Montaña) ==="
           npm run ingest:fedme 2>&1 | tail -20 || echo "⚠️  FEDME failed, continuing"
         continue-on-error: true
 
-      - name: 5/8 Ingest ITRA (scraping, 503 parcial)
+      - name: 5/9 Ingest ITRA (scraping, 503 parcial)
         run: |
           echo "=== ITRA (International Trail Running) ==="
           npm run ingest:itra 2>&1 | tail -20 || echo "⚠️  ITRA failed, continuing"
         continue-on-error: true
 
-      - name: 6/8 Ingest Runedia (scraping HTML)
+      - name: 6/9 Ingest Runedia (scraping HTML)
         run: |
           echo "=== Runedia (Mundo Deportivo) ==="
           npm run ingest:runedia 2>&1 | tail -20 || echo "⚠️  Runedia failed, continuing"
         continue-on-error: true
 
-      - name: 7/8 Push JSONs a Convex (RFEA/FEDME/ITRA/Runedia)
+      # ------------------------------------------------------------------
+      # Unificar los JSON individuales (rfea/fedme/itra/runedia-races.json,
+      # recién generados por los steps 3-6 de ESTA ejecución) en
+      # all-races.json. Sin este step, ingest:to-convex subía el
+      # all-races.json que hubiera en el repo — potencialmente de días
+      # atrás — ignorando los datos recién scrapeados (bug encontrado en
+      # auditoría 2026-09-11: all-races.json llevaba fosilizado desde el
+      # 2 de septiembre).
+      # ------------------------------------------------------------------
+
+      - name: 6.5/9 Unificar JSONs scrapeados (rfea+fedme+itra+runedia → all-races.json)
+        run: |
+          echo "=== Unificar JSONs en all-races.json ==="
+          npx tsx scripts/ingest-all.ts 2>&1 | tail -30 || echo "⚠️  Unificación falló, continuing"
+        continue-on-error: true
+
+      # Este step también envía el email de resumen al admin al terminar
+      # (dataSources.sendIngestSummaryEmail, disparado desde
+      # scripts/ingest-to-convex.ts) — es el último paso que registra sync
+      # de todas las fuentes, así que es el punto correcto para el resumen
+      # de la corrida completa (Sportmaniacs y Agenda Sureste incluidos).
+      - name: 7/9 Push JSONs a Convex (RFEA/FEDME/ITRA/Runedia) + email resumen
         env:
           CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
           NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
@@ -92,14 +139,14 @@ jobs:
             npm run ingest:to-convex 2>&1 | tail -30 || echo "⚠️  to-convex failed"
 
       # ------------------------------------------------------------------
-      # 8/8 Deep Extract IA — enriquece carreras con officialUrl.
+      # 8/9 Deep Extract IA — enriquece carreras con officialUrl.
       # Modo priority: procesa primero las que NO tienen extractedAt,
       # luego las que les faltan longDescription/altimetryData/raceFormats.
       # --limit=30 procesa 30 carreras por noche (cubre 375 en ~13 días).
       # Si los secrets de IA no están, falla gracefully y sigue.
       # ------------------------------------------------------------------
 
-      - name: 8/8 Deep Extract IA (MiniMax M3, 30 carreras prioritarias)
+      - name: 8/9 Deep Extract IA (MiniMax M3, 30 carreras prioritarias)
         env:
           NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

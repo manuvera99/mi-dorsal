@@ -643,7 +643,9 @@ export default defineSchema({
     // Última sincronización
     lastSyncAt: v.optional(v.number()),
     lastSyncDurationMs: v.optional(v.number()),
-    lastSyncRaceCount: v.optional(v.number()),
+    lastSyncRaceCount: v.optional(v.number()),          // total (creadas+actualizadas)
+    lastSyncCreatedCount: v.optional(v.number()),       // solo carreras nuevas
+    lastSyncUpdatedCount: v.optional(v.number()),       // solo carreras ya existentes
     lastSyncError: v.optional(v.string()),
     // Acumulado
     totalRaces: v.optional(v.number()),         // carreras actuales en BBDD con esta fuente
@@ -667,7 +669,9 @@ export default defineSchema({
       v.literal("success"),
       v.literal("error"),
     ),
-    raceCount: v.optional(v.number()),
+    raceCount: v.optional(v.number()),           // total (creadas+actualizadas)
+    createdCount: v.optional(v.number()),        // solo carreras nuevas
+    updatedCount: v.optional(v.number()),        // solo carreras ya existentes
     error: v.optional(v.string()),
     triggeredBy: v.optional(v.string()),         // "admin:user_id" o "cron"
   })

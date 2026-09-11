@@ -53,8 +53,14 @@ const SOURCE_NAME_TO_SLUG: Record<UnifiedRace["source"], string> = {
   Runedia: "runedia",
 };
 
-function inferProvince(location: string, source: string): string {
-  if (!location) return "valencia";
+// 2026-09-11: eliminado el fallback silencioso a "valencia" cuando la
+// localidad no matchea el mapa (mismo bug ya corregido en
+// convex/races.ts systemUpsert el 7 sept — este script client-side lo
+// seguía teniendo, enmascarando carreras mal ubicadas). Ahora devuelve
+// undefined y el caller salta la carrera en vez de subirla con una
+// provincia inventada.
+function inferProvince(location: string): string | undefined {
+  if (!location) return undefined;
   const loc = location.toLowerCase();
   const map: Record<string, string> = {
     "valencia": "valencia", "castellón": "castellon", "castelló": "castellon", "alicante": "alicante", "albacete": "albacete",
@@ -68,7 +74,7 @@ function inferProvince(location: string, source: string): string {
   for (const [key, value] of Object.entries(map)) {
     if (loc.includes(key)) return value;
   }
-  return "valencia"; // fallback
+  return undefined;
 }
 
 function inferRaceType(t: string): "road" | "trail" | "mixed" | "obstacle" {
@@ -123,15 +129,25 @@ async function main() {
   let failed = 0;
   const t0 = Date.now();
 
+  let skippedNoProvince = 0;
   for (const r of races) {
     try {
+      const province = inferProvince(r.location);
+      if (!province) {
+        // No forzamos un fallback: sin provincia resoluble, no subimos la
+        // carrera (ver comentario en inferProvince). Se queda pendiente
+        // de revisión manual desde /admin/races/new.
+        skippedNoProvince++;
+        process.stdout.write("p");
+        continue;
+      }
       const dataSourceId = await getDataSourceId(r.source);
       // systemUpsert: idempotente. Si ya existe (mismo officialUrl o
       // mismo nombre+fecha), actualiza los campos vacíos. Si no, crea.
       const res: any = await client.mutation(api.races.systemUpsert, {
         name: r.name,
         locality: r.location,
-        province: inferProvince(r.location, "") as any,
+        province: province as any,
         distanceKm: r.distance ?? (r.type === "trail" ? 21 : 10),
         elevationGainM: r.elevation,
         raceType: inferRaceType(r.type),
@@ -171,6 +187,7 @@ async function main() {
 
   console.log(`\n\n[ingest-to-convex] ✅ ${success} carreras procesadas (created+updated)`);
   if (failed > 0) console.log(`[ingest-to-convex] ⚠️  ${failed} carreras fallaron`);
+  if (skippedNoProvince > 0) console.log(`[ingest-to-convex] ⚠️  ${skippedNoProvince} carreras saltadas por provincia no resoluble (revisar a mano)`);
   console.log(`[ingest-to-convex] Duración total: ${(totalDurationMs / 1000).toFixed(1)}s`);
   console.log(`[ingest-to-convex] Verifica en https://dashboard.convex.dev`);
   console.log(`[ingest-to-convex] Re-ejecuta este script y verás solo "u" (updates) si no hay carreras nuevas.`);
@@ -196,6 +213,8 @@ async function main() {
       await client.mutation(api.dataSources.recordIngestSync, {
         dataSourceSlug: slug,
         raceCount: totalForSource,
+        createdCount: stat.created,
+        updatedCount: stat.updated,
         durationMs: sourceDuration,
         status,
         triggeredBy: "github-action-daily-ingest",
@@ -208,6 +227,22 @@ async function main() {
     } catch (err) {
       console.error(`  ✗ ${sourceName} (${slug}): error registrando sync:`, err);
     }
+  }
+
+  // -------------------------------------------------------------------
+  // Email de resumen al admin. Este script corre como el último paso del
+  // workflow que registra sync (7/9 en daily-ingest.yml, después de
+  // Sportmaniacs y Agenda Sureste en los pasos 1/9 y 2/9) — por eso es el
+  // punto correcto para disparar el resumen de TODA la corrida nocturna,
+  // no solo de las 4 fuentes que procesa este script.
+  // -------------------------------------------------------------------
+  try {
+    await client.mutation(api.dataSources.sendIngestSummaryEmail, {
+      totalDurationMs,
+    });
+    console.log(`\n[ingest-to-convex] 📧 Email de resumen enviado al admin.`);
+  } catch (err) {
+    console.error(`\n[ingest-to-convex] ⚠️  No se pudo enviar el email de resumen:`, err);
   }
 }
 

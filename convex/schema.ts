@@ -211,6 +211,7 @@ export default defineSchema({
     officialUrl: v.optional(v.string()),          // web oficial de la prueba
     registrationUrl: v.optional(v.string()),      // link directo a inscripción
     resultsUrl: v.optional(v.string()),            // link a resultados del cronometrador
+    photosUrl: v.optional(v.string()),             // link a la galería de fotos del proveedor (pegado a mano por el admin)
     rulesUrl: v.optional(v.string()),              // reglamento
 
     // URL dentro de la fuente de datos (ej. la ficha de la carrera en RFEA/Sportmaniacs)
@@ -566,6 +567,7 @@ export default defineSchema({
       v.literal("result_not_found"),
       v.literal("weekly_digest"),
       v.literal("year_review"),
+      v.literal("photos_available"),
     ),
     relatedRaceId: v.optional(v.id("races")),
     relatedMyRaceId: v.optional(v.id("myRaces")),

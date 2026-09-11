@@ -82,6 +82,18 @@ En Windows, `git worktree remove` puede fallar con `Filename too long` por rutas
 
 Antes de mergear una rama de worktree a `master`, pásala primero por el entorno de PRE (`mi-dorsal.vercel.app`, branch `pre`) — ver `docs/core/deploy-checklist.md`. Flujo: `feature/x` → merge a `pre` → verificar en `mi-dorsal.vercel.app` → merge `pre` a `master` → deploy a producción.
 
+## ⚠️ Antes de `vercel deploy` desde un worktree
+
+Un worktree nuevo NO está enlazado al proyecto real de Vercel — `vercel deploy` sin enlazar crea un **proyecto nuevo fantasma** con el nombre de la carpeta del worktree (ej. `deploy-verify-master`), sin ninguna variable de entorno configurada, y el build fallará ahí sin afectar a producción real (que sigue intacta). Antes de cualquier deploy desde un worktree:
+
+```bash
+vercel link --yes --project mi-dorsal
+```
+
+Esto sobrescribe `.env.local` con un `VERCEL_OIDC_TOKEN` nuevo — no pasa nada, ese archivo no se usa para el build de `vercel deploy` (las env vars reales vienen del dashboard del proyecto).
+
+Si ya creaste un proyecto fantasma por error: `vercel remove <nombre-fantasma> --yes` para borrarlo.
+
 ## Checklist antes de abrir PR desde un worktree
 
 Igual que en el checkout principal (`docs/core/deploy-checklist.md`):

@@ -49,7 +49,6 @@ const PALETTE = {
   muted: "#78716c",
   prBg: "#dcfce7",
   prText: "#15803d",
-  panelBg: "rgba(255, 255, 255, 0.92)",
 };
 
 interface StickerCanvasProps {
@@ -59,6 +58,7 @@ interface StickerCanvasProps {
   onSelect: (fieldId: StickerFieldId | null) => void;
   onMove: (fieldId: StickerFieldId, x: number, y: number) => void;
   onResize: (fieldId: StickerFieldId, scale: number) => void;
+  onDelete: (fieldId: StickerFieldId) => void;
   /** Tamaño visual en pantalla (px). El lienzo lógico sigue siendo 1080x1920. */
   displayWidth: number;
   canvasRef: React.RefObject<HTMLDivElement | null>;
@@ -71,6 +71,7 @@ export function StickerCanvas({
   onSelect,
   onMove,
   onResize,
+  onDelete,
   displayWidth,
   canvasRef,
 }: StickerCanvasProps) {
@@ -171,109 +172,123 @@ export function StickerCanvas({
       }}
       onClick={() => onSelect(null)}
     >
+      {/* Wrapper de escala PURAMENTE visual — el transform vive aquí, FUERA
+          de canvasRef. Si el transform estuviera en el propio canvasRef (como
+          estaba antes), html-to-image capturaría el nodo ya escalado al
+          ~30% (displayWidth/CANVAS_WIDTH) dentro de un lienzo de salida de
+          1080x1920, dejando el contenido real encogido en la esquina
+          superior izquierda del PNG en vez de ocupar todo el lienzo. */}
       <div
-        ref={canvasRef}
         style={{
           width: CANVAS_WIDTH,
           height: CANVAS_HEIGHT,
           transform: `scale(${scaleRatio})`,
           transformOrigin: "top left",
-          position: "relative",
-          fontFamily: "Inter, system-ui, sans-serif",
         }}
       >
-        {visibleElements.map((el) => (
-          <StickerElementView
-            key={el.fieldId}
-            element={el}
-            allVisibleElements={visibleElements}
-            data={data}
-            isSelected={selectedFieldId === el.fieldId}
-            onSelect={() => onSelect(el.fieldId)}
-            onMove={(x, y) => onMove(el.fieldId, x, y)}
-            onResize={(scale) => onResize(el.fieldId, scale)}
-            onGuideLinesChange={setGuideLines}
-            dragContainerRef={canvasRef}
-            registerNode={registerElementNode}
-          />
-        ))}
-
-        {/* Líneas guía — solo visibles mientras se arrastra un elemento
-            que cae dentro del umbral de enganche, sea contra el centro
-            del LIENZO (guideLines.x/y === 0.5) o contra el centro de
-            OTRO elemento (guideLines.x/y === esa posición). No forman
-            parte del PNG exportado en un sentido estricto (viven dentro
-            de canvasRef), pero solo se renderizan durante el drag activo,
-            y un drag activo nunca coincide con el momento de exportar,
-            así que nunca aparecen en el PNG real. */}
-        {guideLines.x != null && (
-          <div
-            style={{
-              position: "absolute",
-              left: `${guideLines.x * 100}%`,
-              top: 0,
-              bottom: 0,
-              width: "2px",
-              backgroundColor: "#4ade80",
-              transform: "translateX(-1px)",
-              pointerEvents: "none",
-              zIndex: 50,
-            }}
-          />
-        )}
-        {guideLines.y != null && (
-          <div
-            style={{
-              position: "absolute",
-              top: `${guideLines.y * 100}%`,
-              left: 0,
-              right: 0,
-              height: "2px",
-              backgroundColor: "#4ade80",
-              transform: "translateY(-1px)",
-              pointerEvents: "none",
-              zIndex: 50,
-            }}
-          />
-        )}
-
-        {/* Logo mi-dorsal — siempre visible, no forma parte de `elements`
-            (no se puede ocultar, mover ni redimensionar). Va dentro del
-            nodo capturado por html-to-image, así que sí sale en el PNG.
-            Anclado justo debajo del último dato visible (con un margen
-            mínimo), no siempre pegado al fondo — así no queda un hueco
-            grande entre el contenido y el logo cuando hay pocos datos. */}
         <div
+          ref={canvasRef}
           style={{
-            position: "absolute",
-            top: `${logoCenterY}px`,
-            left: 0,
-            right: 0,
-            transform: "translateY(-50%)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "8px",
-            pointerEvents: "none",
+            width: CANVAS_WIDTH,
+            height: CANVAS_HEIGHT,
+            position: "relative",
+            fontFamily: "Inter, system-ui, sans-serif",
           }}
         >
+          {visibleElements.map((el) => (
+            <StickerElementView
+              key={el.fieldId}
+              element={el}
+              allVisibleElements={visibleElements}
+              data={data}
+              isSelected={selectedFieldId === el.fieldId}
+              onSelect={() => onSelect(el.fieldId)}
+              onMove={(x, y) => onMove(el.fieldId, x, y)}
+              onResize={(scale) => onResize(el.fieldId, scale)}
+              onDelete={() => onDelete(el.fieldId)}
+              onGuideLinesChange={setGuideLines}
+              dragContainerRef={canvasRef}
+              registerNode={registerElementNode}
+            />
+          ))}
+
+          {/* Líneas guía — solo visibles mientras se arrastra un elemento
+              que cae dentro del umbral de enganche, sea contra el centro
+              del LIENZO (guideLines.x/y === 0.5) o contra el centro de
+              OTRO elemento (guideLines.x/y === esa posición). No forman
+              parte del PNG exportado en un sentido estricto (viven dentro
+              de canvasRef), pero solo se renderizan durante el drag activo,
+              y un drag activo nunca coincide con el momento de exportar,
+              así que nunca aparecen en el PNG real. */}
+          {guideLines.x != null && (
+            <div
+              style={{
+                position: "absolute",
+                left: `${guideLines.x * 100}%`,
+                top: 0,
+                bottom: 0,
+                width: "2px",
+                backgroundColor: "#4ade80",
+                transform: "translateX(-1px)",
+                pointerEvents: "none",
+                zIndex: 50,
+              }}
+            />
+          )}
+          {guideLines.y != null && (
+            <div
+              style={{
+                position: "absolute",
+                top: `${guideLines.y * 100}%`,
+                left: 0,
+                right: 0,
+                height: "2px",
+                backgroundColor: "#4ade80",
+                transform: "translateY(-1px)",
+                pointerEvents: "none",
+                zIndex: 50,
+              }}
+            />
+          )}
+
+          {/* Logo mi-dorsal — siempre visible, no forma parte de `elements`
+              (no se puede ocultar, mover ni redimensionar). Va dentro del
+              nodo capturado por html-to-image, así que sí sale en el PNG.
+              Anclado justo debajo del último dato visible (con un margen
+              mínimo), no siempre pegado al fondo — así no queda un hueco
+              grande entre el contenido y el logo cuando hay pocos datos. */}
           <div
             style={{
-              width: "28px",
-              height: "28px",
-              backgroundColor: PALETTE.primary,
-              borderRadius: "7px",
+              position: "absolute",
+              top: `${logoCenterY}px`,
+              left: 0,
+              right: 0,
+              transform: "translateY(-50%)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              gap: "8px",
+              pointerEvents: "none",
             }}
           >
-            <div style={{ color: "white", fontSize: "17px", fontWeight: 700, fontFamily: "JetBrains Mono", lineHeight: 1 }}>
-              m
+            <div
+              style={{
+                width: "28px",
+                height: "28px",
+                backgroundColor: PALETTE.primary,
+                borderRadius: "7px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <div style={{ color: "white", fontSize: "17px", fontWeight: 700, fontFamily: "JetBrains Mono", lineHeight: 1 }}>
+                m
+              </div>
             </div>
-          </div>
-          <div style={{ fontSize: "20px", fontWeight: 700, color: "white", letterSpacing: "-0.2px", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
-            mi-dorsal
+            <div style={{ fontSize: "20px", fontWeight: 700, color: "white", letterSpacing: "-0.2px", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
+              mi-dorsal
+            </div>
           </div>
         </div>
       </div>
@@ -289,6 +304,7 @@ function StickerElementView({
   onSelect,
   onMove,
   onResize,
+  onDelete,
   onGuideLinesChange,
   dragContainerRef,
   registerNode,
@@ -303,6 +319,7 @@ function StickerElementView({
   onSelect: () => void;
   onMove: (x: number, y: number) => void;
   onResize: (scale: number) => void;
+  onDelete: () => void;
   /** Se llama en cada frame de un drag de MOVER (no de resize) con la
    *  posición (0-1) en la que dibujar cada línea guía, o `null` si esa
    *  línea no debe mostrarse. Se llama con `{x: null, y: null}` al
@@ -421,45 +438,95 @@ function StickerElementView({
         touchAction: "none",
       }}
     >
-      <StickerFieldContent fieldId={element.fieldId} data={data} />
+      <StickerFieldContent fieldId={element.fieldId} data={data} bgOpacity={element.bgOpacity} />
       {isSelected && (
-        <div
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            resizeDrag.onPointerDown(e);
-          }}
-          style={{
-            position: "absolute",
-            right: "-16px",
-            bottom: "-16px",
-            width: "32px",
-            height: "32px",
-            borderRadius: "50%",
-            backgroundColor: "#4ade80",
-            border: "3px solid white",
-            cursor: "nwse-resize",
-            touchAction: "none",
-          }}
-        />
+        <>
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            style={{
+              position: "absolute",
+              left: "-16px",
+              top: "-16px",
+              width: "32px",
+              height: "32px",
+              borderRadius: "50%",
+              backgroundColor: "#dc2626",
+              border: "3px solid white",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "white",
+              fontSize: "16px",
+              fontWeight: 700,
+              lineHeight: 1,
+              padding: 0,
+            }}
+            aria-label="Eliminar elemento"
+          >
+            ×
+          </button>
+          <div
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              resizeDrag.onPointerDown(e);
+            }}
+            style={{
+              position: "absolute",
+              right: "-16px",
+              bottom: "-16px",
+              width: "32px",
+              height: "32px",
+              borderRadius: "50%",
+              backgroundColor: "#4ade80",
+              border: "3px solid white",
+              cursor: "nwse-resize",
+              touchAction: "none",
+            }}
+          />
+        </>
       )}
     </div>
   );
 }
 
+/** Convierte un color hex ("#rrggbb") a "rgba(r, g, b, alpha)", para poder
+ *  aplicar la transparencia elegida por el usuario (bgOpacity) sobre un
+ *  color de fondo sólido definido en PALETTE. */
+function withOpacity(hex: string, alpha: number): string {
+  const clean = hex.replace("#", "");
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 /** Renderiza el contenido visual de cada fieldId. Sin lógica de posición
- *  (eso vive en el wrapper) — solo el "cómo se ve" cada dato. */
+ *  (eso vive en el wrapper) — solo el "cómo se ve" cada dato. `bgOpacity`
+ *  (0-1, elegido por el usuario con el slider de "Transparencia del
+ *  fondo") solo afecta al rectángulo/pastilla de fondo, nunca al texto. */
 function StickerFieldContent({
   fieldId,
   data,
+  bgOpacity,
 }: {
   fieldId: StickerFieldId;
   data: StickerData;
+  bgOpacity: number;
 }) {
   const panelStyle: React.CSSProperties = {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    backgroundColor: PALETTE.panelBg,
+    // bgOpacity=1 (default) reproduce el mismo blanco semi-translúcido de
+    // siempre (0.92, no 1.0 puro) — bgOpacity solo actúa como multiplicador
+    // hacia 0 (transparente total) desde ahí, nunca sube por encima de 0.92.
+    backgroundColor: withOpacity("#ffffff", 0.92 * bgOpacity),
     borderRadius: "24px",
     padding: "24px 40px",
     whiteSpace: "nowrap",
@@ -518,7 +585,7 @@ function StickerFieldContent({
         <div
           style={{
             display: "flex",
-            backgroundColor: PALETTE.prBg,
+            backgroundColor: withOpacity(PALETTE.prBg, bgOpacity),
             borderRadius: "999px",
             padding: "12px 28px",
           }}
@@ -530,7 +597,7 @@ function StickerFieldContent({
       );
     case "dorsal":
       return (
-        <div style={{ ...panelStyle, backgroundColor: PALETTE.primary }}>
+        <div style={{ ...panelStyle, backgroundColor: withOpacity(PALETTE.primary, bgOpacity) }}>
           <div style={{ ...labelStyle, color: "rgba(255,255,255,0.85)" }}>Dorsal</div>
           <div style={{ fontSize: "72px", fontWeight: 700, fontFamily: "JetBrains Mono", color: "white" }}>
             {data.dorsalNumber ?? "—"}

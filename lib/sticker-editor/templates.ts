@@ -1,17 +1,17 @@
 // =============================================================================
 // mi-dorsal — Plantillas predefinidas del editor de sticker
 // =============================================================================
-// 3 layouts de partida sobre el lienzo lógico 1080x1920 (coordenadas
-// normalizadas 0-1). El usuario elige una al abrir el editor; puede
-// cambiar de plantilla más adelante sin perder qué campos tenía activos
-// (ver applyTemplate). Reutilizan la paleta de lib/share-card/render.tsx
+// Layout de partida sobre el lienzo lógico 1080x1920 (coordenadas
+// normalizadas 0-1). El usuario parte de esta plantilla al abrir el
+// editor y puede mover/redimensionar/añadir campos libremente desde ahí
+// (ver applyTemplate). Reutiliza la paleta de lib/share-card/render.tsx
 // a nivel visual (eso vive en StickerCanvas.tsx, no aquí — este módulo
 // solo define layout, no estilo).
 // =============================================================================
 
 import { FIELD_CATALOG, type StickerFieldId } from "./fields";
 
-export type StickerTemplateId = "classic" | "minimal" | "bold";
+export type StickerTemplateId = "classic";
 
 export interface StickerElementLayout {
   fieldId: StickerFieldId;
@@ -19,6 +19,11 @@ export interface StickerElementLayout {
   x: number;
   y: number;
   scale: number;
+  /** Opacidad (0-1) del fondo del panel del elemento — 1 = opaco (default),
+   *  0 = completamente transparente. No afecta al texto/valor, solo al
+   *  rectángulo de fondo. Campos sin panel de fondo propio (routeMap) la
+   *  ignoran. */
+  bgOpacity: number;
 }
 
 export interface StickerTemplate {
@@ -36,41 +41,15 @@ const CLASSIC: StickerTemplate = {
   id: "classic",
   label: "Clásica",
   elements: [
-    { fieldId: "pr", visible: true, x: 0.5, y: 0.32, scale: 1 },
-    { fieldId: "time", visible: true, x: 0.5, y: 0.42, scale: 1 },
-    { fieldId: "pace", visible: true, x: 0.35, y: 0.52, scale: 1 },
-    { fieldId: "distance", visible: true, x: 0.65, y: 0.52, scale: 1 },
-  ],
-};
-
-// "Minimal": solo el tiempo, grande, en el tercio superior, sin badges.
-const MINIMAL: StickerTemplate = {
-  id: "minimal",
-  label: "Minimal",
-  elements: [
-    { fieldId: "time", visible: true, x: 0.5, y: 0.25, scale: 1.15 },
-    { fieldId: "pace", visible: true, x: 0.5, y: 0.35, scale: 0.85 },
-  ],
-};
-
-// "Bold": tiempo arriba, dorsal grande abajo, ruta como fondo decorativo
-// en el centro (si hay dato).
-const BOLD: StickerTemplate = {
-  id: "bold",
-  label: "Bold",
-  elements: [
-    { fieldId: "time", visible: true, x: 0.5, y: 0.2, scale: 1.1 },
-    { fieldId: "pace", visible: true, x: 0.5, y: 0.3, scale: 0.8 },
-    { fieldId: "routeMap", visible: true, x: 0.5, y: 0.5, scale: 1 },
-    { fieldId: "dorsal", visible: true, x: 0.5, y: 0.78, scale: 1 },
-    { fieldId: "position", visible: true, x: 0.5, y: 0.88, scale: 0.9 },
+    { fieldId: "pr", visible: true, x: 0.5, y: 0.32, scale: 1, bgOpacity: 1 },
+    { fieldId: "time", visible: true, x: 0.5, y: 0.42, scale: 1, bgOpacity: 1 },
+    { fieldId: "pace", visible: true, x: 0.35, y: 0.52, scale: 1, bgOpacity: 1 },
+    { fieldId: "distance", visible: true, x: 0.65, y: 0.52, scale: 1, bgOpacity: 1 },
   ],
 };
 
 export const STICKER_TEMPLATES: Record<StickerTemplateId, StickerTemplate> = {
   classic: CLASSIC,
-  minimal: MINIMAL,
-  bold: BOLD,
 };
 
 /**
@@ -84,13 +63,14 @@ export const STICKER_TEMPLATES: Record<StickerTemplateId, StickerTemplate> = {
 function defaultPositionFor(
   fieldId: StickerFieldId,
   offsetIndex: number = 0,
-): { x: number; y: number; scale: number } {
+): { x: number; y: number; scale: number; bgOpacity: number } {
   const row = Math.floor(offsetIndex / 2);
   const col = offsetIndex % 2;
   return {
     x: col === 0 ? 0.35 : 0.65,
     y: Math.min(0.9, 0.65 + row * 0.08),
     scale: FIELD_CATALOG[fieldId].defaultScale,
+    bgOpacity: 1,
   };
 }
 

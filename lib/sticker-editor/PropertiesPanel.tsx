@@ -24,6 +24,7 @@ interface PropertiesPanelProps {
   activeFieldIds: StickerFieldId[];
   onToggleVisible: (fieldId: StickerFieldId) => void;
   onScaleChange: (fieldId: StickerFieldId, scale: number) => void;
+  onBgOpacityChange: (fieldId: StickerFieldId, bgOpacity: number) => void;
   onAddField: (fieldId: StickerFieldId) => void;
 }
 
@@ -33,6 +34,7 @@ export function PropertiesPanel({
   activeFieldIds,
   onToggleVisible,
   onScaleChange,
+  onBgOpacityChange,
   onAddField,
 }: PropertiesPanelProps) {
   const notYetVisible = availableFieldIds.filter((id) => !activeFieldIds.includes(id));
@@ -72,6 +74,24 @@ export function PropertiesPanel({
               className="w-full"
             />
           </div>
+          {/* routeMap (silueta de la ruta) no tiene panel de fondo — solo
+              el trazado SVG — así que el slider no le afecta y se oculta. */}
+          {selectedElement.fieldId !== "routeMap" && (
+            <div>
+              <label className="text-xs font-medium text-stone-600 mb-1 block">
+                Transparencia del fondo
+              </label>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={selectedElement.bgOpacity}
+                onChange={(e) => onBgOpacityChange(selectedElement.fieldId, Number(e.target.value))}
+                className="w-full"
+              />
+            </div>
+          )}
         </div>
       )}
 

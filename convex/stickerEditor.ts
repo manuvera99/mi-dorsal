@@ -10,11 +10,12 @@
 // =============================================================================
 
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, action } from "./_generated/server";
 import { requireUser } from "./_helpers";
 import { hasPremiumAccess } from "./subscriptions";
 import { getEffectiveDistance } from "../lib/prediction/effective-distance";
 import { Id } from "./_generated/dataModel";
+import { api } from "./_generated/api";
 
 /**
  * Datos completos para montar el editor: carrera + corredor + PR + mapa de
@@ -183,5 +184,71 @@ export const getMyRaceForCustomSticker = query({
       _id: myRace._id,
       customStickerStorageId: myRace.customStickerStorageId,
     };
+  },
+});
+
+/**
+ * Envía el sticker personalizado (ya exportado client-side a PNG) al
+ * email de la cuenta del usuario actual, como adjunto. No genera nada
+ * server-side — recibe el PNG en base64 tal cual lo produjo
+ * html-to-image en el navegador (mismo buffer que se descarga y se sube
+ * a Storage vía attachCustomSticker).
+ */
+export const emailCustomSticker = action({
+  args: {
+    myRaceId: v.id("myRaces"),
+    raceName: v.string(),
+    pngBase64: v.string(),
+  },
+  handler: async (ctx, { myRaceId, raceName, pngBase64 }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    // hasPremiumAccess() necesita QueryCtx/MutationCtx (ctx.db directo),
+    // no disponible dentro de una action — reutilizamos la query pública
+    // ya existente, que hace la misma comprobación vía ctx.runQuery.
+    const premiumStatus = await ctx.runQuery(api.subscriptions.getMyPremiumStatus, {});
+    if (!premiumStatus.hasAccess) {
+      throw new Error("Esta función requiere una cuenta Premium");
+    }
+
+    const profile = await ctx.runQuery(api.users.getProfileByClerkId, {
+      clerkUserId: identity.subject,
+    });
+    if (!profile) throw new Error("Perfil no encontrado");
+    const email = profile.email;
+    if (!email) {
+      throw new Error("Tu cuenta no tiene un email verificado para recibir el envío");
+    }
+
+    const isMock = !process.env.RESEND_API_KEY;
+    if (isMock) {
+      console.log(`[sticker-email-mock] Would send to ${email} for myRace ${myRaceId}`);
+      return { success: true, mocked: true };
+    }
+
+    const { Resend } = await import("resend");
+    const resend = new Resend(process.env.RESEND_API_KEY!);
+    const fromEmail = process.env.RESEND_FROM_EMAIL ?? "mi-dorsal <hola@mi-dorsal.com>";
+
+    const result = await resend.emails.send({
+      from: fromEmail,
+      to: email,
+      subject: `Tu sticker de ${raceName} — mi-dorsal`,
+      html: `<p>Aquí tienes tu sticker personalizado de <strong>${raceName}</strong>, listo para subir a tus Stories de Instagram/TikTok.</p><p>— El equipo de mi-dorsal</p>`,
+      text: `Aquí tienes tu sticker personalizado de ${raceName}, listo para subir a tus Stories de Instagram/TikTok.`,
+      attachments: [
+        {
+          filename: `mi-dorsal-sticker-${myRaceId}.png`,
+          content: pngBase64,
+        },
+      ] as any,
+    });
+
+    if (result.error) {
+      throw new Error(`Resend error: ${result.error.message}`);
+    }
+
+    return { success: true, id: result.data?.id };
   },
 });

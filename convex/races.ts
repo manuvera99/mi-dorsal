@@ -7,7 +7,7 @@ import { query, mutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Doc } from "./_generated/dataModel";
 import { provinceValidator, raceTypeValidator, slugify, requireAdmin } from "./_helpers";
-import { normalizeName, tokenize, jaccard, localitiesCompatible } from "./duplicateMatching";
+import { normalizeName, tokenize, jaccard, localitiesCompatible, findExistingMatch, MatchCandidate } from "./duplicateMatching";
 
 /**
  * Distancias canónicas (alineadas con `lib/utils.ts` `DISTANCE_CATEGORY_LIST`).
@@ -741,10 +741,14 @@ export const systemUpsert = mutation({
       }
     }
 
-    // 2. Buscar por nombre + fecha + localidad
+    // 2. Buscar por nombre + fecha + localidad, y 3. por nombre + fecha (sin
+    // localidad). dateMatches se reutiliza abajo en los pasos 4-5 (structural
+    // + fuzzy) para no lanzar una query adicional — sigue siendo el mismo
+    // índice real by_date, acotado a esta fecha exacta, no toda la tabla.
+    let dateMatches: Doc<"races">[] = [];
     if (!existing && args.startDate) {
       const nameKey = norm(args.name);
-      const dateMatches = await ctx.db
+      dateMatches = await ctx.db
         .query("races")
         .withIndex("by_date", (q) => q.eq("startDate", args.startDate!))
         .collect();
@@ -752,9 +756,31 @@ export const systemUpsert = mutation({
       if (locKey) {
         existing = dateMatches.find((c) => norm(c.name) === nameKey && norm(c.locality) === locKey) ?? null;
       }
-      // 3. Buscar por nombre + fecha (sin localidad)
       if (!existing) {
         existing = dateMatches.find((c) => norm(c.name) === nameKey) ?? null;
+      }
+    }
+
+    // 4-5. Structural + fuzzy cruzando fuentes (2026-09-12): antes de crear
+    // una carrera nueva, comprobar si otra fuente ya describe la misma
+    // carrera con un nombre distinto (misma fecha+provincia+distancia, o
+    // nombre suficientemente similar). Mismo matching que ya usa el panel
+    // /admin/duplicates (adminFindDuplicates) — spec en
+    // docs/superpowers/specs/2026-09-12-prevenir-duplicados-ingest-design.md.
+    // Reutiliza dateMatches (ya cargado arriba, mismo índice by_date) — sin
+    // query adicional.
+    if (!existing && args.startDate && dateMatches.length > 0) {
+      const candidate: MatchCandidate = {
+        name: args.name,
+        startDate: args.startDate,
+        province: args.province,
+        locality: args.locality,
+        distanceKm: args.distanceKm,
+        scraperAdapter: args.scraperAdapter,
+      };
+      const match = findExistingMatch(candidate, dateMatches);
+      if (match) {
+        existing = match.race;
       }
     }
 

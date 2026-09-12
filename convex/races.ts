@@ -720,17 +720,23 @@ export const systemUpsert = mutation({
     };
 
     // 1. Buscar por officialUrl específico
+    // Fix 2026-09-12: antes hacía .collect() de TODA la tabla races (vía un
+    // índice "by_data_source" usado solo como truco, con filtro real en
+    // memoria) en cada llamada — con ~2800 carreras (~3 MB) y decenas de
+    // upserts por noche desde el cron de ingesta, esto quemaba varios GB/mes
+    // de database bandwidth solo en esta función (el plan Starter incluye
+    // 1 GB/mes). Ahora usa el índice real by_official_url — coste O(matches),
+    // no O(tabla completa).
     let existing: Doc<"races"> | null = null;
     if (args.officialUrl && !isHomepageUrl(args.officialUrl)) {
       const matches = await ctx.db
         .query("races")
-        .withIndex("by_data_source" as any) // índice genérico, filtro manual
+        .withIndex("by_official_url", (q) => q.eq("officialUrl", args.officialUrl))
         .collect();
-      const filtered = matches.filter((r) => r.officialUrl === args.officialUrl);
-      if (filtered.length === 1) existing = filtered[0];
-      else if (filtered.length > 1) {
+      if (matches.length === 1) existing = matches[0];
+      else if (matches.length > 1) {
         // Hay varias con el mismo URL (no debería pasar, pero por si acaso): coge la más antigua
-        existing = filtered.sort((a, b) => (a._creationTime ?? 0) - (b._creationTime ?? 0))[0];
+        existing = matches.sort((a, b) => (a._creationTime ?? 0) - (b._creationTime ?? 0))[0];
       }
     }
 

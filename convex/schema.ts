@@ -415,6 +415,7 @@ export default defineSchema({
     .index("by_published_date", ["isPublished", "startDate"])
     .index("by_data_source", ["dataSourceId"])
     .index("by_race_type", ["raceType"])
+    .index("by_official_url", ["officialUrl"])
     .searchIndex("search_races", {
       searchField: "name",
       filterFields: ["province", "raceType", "isPublished"],

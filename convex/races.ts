@@ -7,6 +7,7 @@ import { query, mutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Doc } from "./_generated/dataModel";
 import { provinceValidator, raceTypeValidator, slugify, requireAdmin } from "./_helpers";
+import { normalizeName, tokenize, jaccard, localitiesCompatible } from "./duplicateMatching";
 
 /**
  * Distancias canónicas (alineadas con `lib/utils.ts` `DISTANCE_CATEGORY_LIST`).
@@ -1085,35 +1086,6 @@ export const adminFindDuplicates = query({
 
     const all = await ctx.db.query("races").collect();
 
-    // === Normalización ===
-    const stripOrdinals = (s: string) =>
-      s.replace(/\b\d{1,3}[ºª°]\b/g, " ")
-        .replace(/\b(X{0,3})(IX|IV|V?I{1,3}|X{1,2})\b/g, " ");
-
-    const stripYear = (s: string) =>
-      s.replace(/\b(19|20)\d{2}\b/g, " ")
-        .replace(/\b(edici[oó]n|ed\.?)\b/gi, " ");
-
-    const normalizeName = (s: string) =>
-      stripYear(stripOrdinals(s))
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-z0-9]+/g, " ")
-        .trim()
-        .replace(/\s+/g, " ");
-
-    const tokenize = (s: string): Set<string> =>
-      new Set(normalizeName(s).split(" ").filter((t) => t.length > 1));
-
-    const jaccard = (a: Set<string>, b: Set<string>): number => {
-      if (a.size === 0 || b.size === 0) return 0;
-      let inter = 0;
-      for (const t of a) if (b.has(t)) inter++;
-      const union = a.size + b.size - inter;
-      return union === 0 ? 0 : inter / union;
-    };
-
     // === Dedupe de grupos (un mismo par puede aparecer en varios detectores) ===
     type Group = {
       key: string;
@@ -1171,14 +1143,6 @@ export const adminFindDuplicates = query({
       if (!byStructural.has(k)) byStructural.set(k, []);
       byStructural.get(k)!.push(r);
     }
-    const normLocality = (s: string | undefined) =>
-      (s ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-    const localitiesCompatible = (a: string | undefined, b: string | undefined) => {
-      const na = normLocality(a);
-      const nb = normLocality(b);
-      if (!na || !nb) return true; // si una falta, no descartar
-      return na === nb || na.includes(nb) || nb.includes(na);
-    };
     for (const [, list] of byStructural) {
       if (list.length < 2) continue;
       // Dedupe de fuente: si todas son del mismo source, el detector 1 ya las cogió

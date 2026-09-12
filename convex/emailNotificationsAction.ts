@@ -92,7 +92,12 @@ function bytesToBase64(bytes: Uint8Array): string {
 async function renderViaInternalApi(
   diploma: DiplomaProps,
   storySticker: StoryStickerProps,
-): Promise<{ pdfBytes: Uint8Array; stickerBytes: Uint8Array; stickerEmailBytes: Uint8Array }> {
+): Promise<{
+  pdfBytes: Uint8Array;
+  diplomaImageBytes: Uint8Array;
+  stickerBytes: Uint8Array;
+  stickerEmailBytes: Uint8Array;
+}> {
   const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://www.mi-dorsal.com").replace(/\/$/, "");
   const secret = process.env.INTERNAL_API_SECRET;
   if (!secret) {
@@ -111,13 +116,20 @@ async function renderViaInternalApi(
     const detail = await res.text().catch(() => "");
     throw new Error(`render-diploma endpoint failed: ${res.status} ${detail}`);
   }
-  const { diplomaBase64, storyStickerBase64, storyStickerEmailBase64 } = (await res.json()) as {
+  const {
+    diplomaBase64,
+    diplomaImageBase64,
+    storyStickerBase64,
+    storyStickerEmailBase64,
+  } = (await res.json()) as {
     diplomaBase64: string;
+    diplomaImageBase64: string;
     storyStickerBase64: string;
     storyStickerEmailBase64: string;
   };
   return {
     pdfBytes: base64ToBytes(diplomaBase64),
+    diplomaImageBytes: base64ToBytes(diplomaImageBase64),
     stickerBytes: base64ToBytes(storyStickerBase64),
     stickerEmailBytes: base64ToBytes(storyStickerEmailBase64),
   };
@@ -208,7 +220,7 @@ export const sendResultFoundEmail = internalAction({
       distanceKm: diplomaProps.distanceKm,
       isPersonalRecord: diplomaProps.isPersonalRecord,
     };
-    const { pdfBytes, stickerBytes, stickerEmailBytes } = await renderViaInternalApi(diplomaProps, stickerProps);
+    const { pdfBytes, diplomaImageBytes, stickerBytes, stickerEmailBytes } = await renderViaInternalApi(diplomaProps, stickerProps);
 
     // ---------- 5. Subir a Convex Storage ----------
     // `as any`: fetch acepta Uint8Array en runtime, pero su tipo genérico
@@ -226,6 +238,21 @@ export const sendResultFoundEmail = internalAction({
     }
     const diplomaBlob = (await diplomaUploadRes.json()) as { storageId: string };
     const diplomaStorageId = diplomaBlob.storageId as Id<"_storage">;
+
+    // Diploma PNG (842x595 A4 landscape). Preview para incrustar inline en
+    // el email. El diplomaStorageId (PDF) sigue siendo la fuente de verdad
+    // oficial y el archivo adjunto.
+    const diplomaPreviewUploadUrl = await ctx.storage.generateUploadUrl();
+    const diplomaPreviewUploadRes = await fetch(diplomaPreviewUploadUrl, {
+      method: "POST",
+      headers: { "Content-Type": "image/png" },
+      body: diplomaImageBytes as any,
+    });
+    if (!diplomaPreviewUploadRes.ok) {
+      throw new Error(`Diploma preview upload failed: ${diplomaPreviewUploadRes.status}`);
+    }
+    const diplomaPreviewBlob = (await diplomaPreviewUploadRes.json()) as { storageId: string };
+    const diplomaPreviewStorageId = diplomaPreviewBlob.storageId as Id<"_storage">;
 
     const stickerUploadUrl = await ctx.storage.generateUploadUrl();
     const stickerUploadRes = await fetch(stickerUploadUrl, {
@@ -258,6 +285,7 @@ export const sendResultFoundEmail = internalAction({
     await ctx.runMutation(internal.emailNotificationsHelpers.attachStorageIds, {
       myRaceId: myRace._id,
       diplomaStorageId,
+      diplomaPreviewStorageId,
       storyStickerStorageId,
       storyStickerEmailStorageId,
     });
@@ -294,16 +322,25 @@ export const sendResultFoundEmail = internalAction({
       ...predictionBlock,
     });
 
-    // Inyectar el inline cid: del sticker en el HTML. Se hace aquí porque
-    // el template no conoce el cid (mantenemos el template puro). El cid
-    // apunta a la variante "email" (fondo crema + textos oscuros), que ya
-    // es legible sobre fondo claro por sí misma — el template ya no
-    // necesita envolverla en un panel oscuro artificial.
-    const INLINE_CID = "sticker@mi-dorsal";
-    const htmlWithInline = html.replace(
-      /<!--SHARE_CARD_INLINE-->/g,
-      `<img src="cid:${INLINE_CID}" alt="Tu resultado en ${escapeAttr(race.name)}" width="240" style="display:block;max-width:100%;height:auto;" />`,
-    );
+    // Inyectar los inline cid: de las dos imágenes del email. Se hace
+    // aquí porque el template no conoce los cid (mantenemos el template
+    // puro). Ambos cid apuntan a variantes diseñadas para fondo claro:
+    //   - diploma@mi-dorsal: diploma PNG (842x595 A4 landscape) con fondo
+    //     crema y marco rojo, legible sobre el fondo del email.
+    //   - sticker@mi-dorsal: sticker PNG variante email (fondo crema +
+    //     textos oscuros), legible sobre fondo claro por sí mismo.
+    // El template ya no envuelve ninguna de las dos en un panel oscuro.
+    const DIPLOMA_INLINE_CID = "diploma@mi-dorsal";
+    const STICKER_INLINE_CID = "sticker@mi-dorsal";
+    const htmlWithInline = html
+      .replace(
+        /<!--DIPLOMA_INLINE-->/g,
+        `<img src="cid:${DIPLOMA_INLINE_CID}" alt="Tu diploma de ${escapeAttr(race.name)}" width="560" style="display:block;max-width:100%;height:auto;border:0;" />`,
+      )
+      .replace(
+        /<!--SHARE_CARD_INLINE-->/g,
+        `<img src="cid:${STICKER_INLINE_CID}" alt="Tu resultado en ${escapeAttr(race.name)}" width="240" style="display:block;max-width:100%;height:auto;" />`,
+      );
 
     // ---------- 7. Enviar email ----------
     let success = false;
@@ -313,7 +350,7 @@ export const sendResultFoundEmail = internalAction({
 
     if (IS_MOCK) {
       console.log(
-        `[result-found-mock] → ${profile.email} | ${subject} | diploma=${(pdfBytes.length / 1024).toFixed(1)}KB sticker=${(stickerBytes.length / 1024).toFixed(1)}KB stickerEmail=${(stickerEmailBytes.length / 1024).toFixed(1)}KB`,
+        `[result-found-mock] → ${profile.email} | ${subject} | diploma=${(pdfBytes.length / 1024).toFixed(1)}KB diplomaPreview=${(diplomaImageBytes.length / 1024).toFixed(1)}KB stickerOverlay=${(stickerBytes.length / 1024).toFixed(1)}KB stickerEmail=${(stickerEmailBytes.length / 1024).toFixed(1)}KB`,
       );
       success = true;
     } else {
@@ -329,21 +366,30 @@ export const sendResultFoundEmail = internalAction({
           // Resend acepta `content_id` (snake_case) en attachments, pero
           // el tipo público `Attachment` no lo expone. Lo casteamos a
           // `any` para no pelearnos con el tipado.
+          //
+          // 3 adjuntos:
+          //   1. Diploma PDF — fuente de verdad oficial, descargable.
+          //   2. Diploma PNG — preview inline (cid diploma@mi-dorsal).
+          //   3. Sticker email PNG — preview inline (cid sticker@mi-dorsal).
+          // El sticker overlay transparente (stickerBytes) se sigue
+          // subiendo a Convex Storage para descarga desde
+          // /api/result/{myRaceId}/story-sticker.png, pero NO se adjunta
+          // al email — son 3 adjuntos en lugar de 4 para no saturar la
+          // bandeja, y la descarga del overlay vive en la web.
           attachments: [
             {
-              filename: `mi-dorsal-${verificationId}.pdf`,
+              filename: `mi-dorsal-${verificationId}-diploma.pdf`,
               content: bytesToBase64(pdfBytes),
             },
             {
-              // Variante "email" (fondo crema opaco + textos oscuros): es
-              // la que se incrusta inline con cid para que el HTML del
-              // email la muestre directamente. El overlay transparente
-              // (stickerBytes) se sigue subiendo a Convex Storage y se
-              // sirve desde /api/result/{myRaceId}/story-sticker.png
-              // para descarga.
-              filename: `mi-dorsal-${verificationId}.png`,
+              filename: `mi-dorsal-${verificationId}-diploma.png`,
+              content: bytesToBase64(diplomaImageBytes),
+              content_id: DIPLOMA_INLINE_CID,
+            },
+            {
+              filename: `mi-dorsal-${verificationId}-sticker.png`,
               content: bytesToBase64(stickerEmailBytes),
-              content_id: INLINE_CID,
+              content_id: STICKER_INLINE_CID,
             },
           ] as any,
         });
@@ -372,6 +418,7 @@ export const sendResultFoundEmail = internalAction({
       resendId,
       isPR,
       diplomaStorageId,
+      diplomaPreviewStorageId,
       storyStickerStorageId,
       storyStickerEmailStorageId,
       error: errorMsg,

@@ -30,6 +30,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { renderDiploma, DiplomaProps } from "@/lib/pdf/diploma";
+import { renderDiplomaAsImage, DiplomaImageProps } from "@/lib/pdf/diploma-image";
 import { renderStorySticker, StoryStickerProps } from "@/lib/share-card/story-sticker";
 
 export const dynamic = "force-dynamic";
@@ -63,17 +64,43 @@ export async function POST(req: NextRequest) {
       issuedAt: body.diploma.issuedAt ? new Date(body.diploma.issuedAt) : undefined,
     };
 
-    // Render en paralelo: diploma PDF, story sticker overlay (transparente,
-    // para descarga de Stories) y story sticker variante email (fondo
-    // crema + textos oscuros, para incrustar inline en el email).
-    const [pdfBuffer, stickerBuffer, stickerEmailBuffer] = await Promise.all([
-      renderDiploma(diplomaProps),
-      renderStorySticker(body.storySticker, { theme: "overlay" }),
-      renderStorySticker(body.storySticker, { theme: "email" }),
-    ]);
+    // Render en paralelo:
+    //   - diploma PDF: fuente de verdad oficial, se adjunta al email.
+    //   - diploma PNG: preview para incrustar inline en el cuerpo del email
+    //     (842x595, A4 landscape). El PDF sigue siendo el adjunto descargable.
+    //   - story sticker overlay (transparente): descarga de Stories.
+    //   - story sticker variante email: inline en el email.
+    // Los 4 renders son independientes → Promise.all para minimizar latencia.
+    const diplomaImageProps: DiplomaImageProps = {
+      runnerName: diplomaProps.runnerName,
+      raceName: diplomaProps.raceName,
+      raceDate: diplomaProps.raceDate,
+      distanceKm: diplomaProps.distanceKm,
+      distanceLabel: diplomaProps.distanceLabel,
+      timeFormatted: diplomaProps.timeFormatted,
+      dorsalNumber: diplomaProps.dorsalNumber,
+      paceFormatted: diplomaProps.paceFormatted,
+      positionOverall: diplomaProps.positionOverall,
+      totalRunners: diplomaProps.totalRunners,
+      positionCategory: diplomaProps.positionCategory,
+      isPersonalRecord: diplomaProps.isPersonalRecord,
+      previousRecordFormatted: diplomaProps.previousRecordFormatted,
+      prDeltaSeconds: diplomaProps.prDeltaSeconds,
+      verificationId: diplomaProps.verificationId,
+      appUrl: diplomaProps.appUrl,
+    };
+
+    const [pdfBuffer, diplomaImageBuffer, stickerBuffer, stickerEmailBuffer] =
+      await Promise.all([
+        renderDiploma(diplomaProps),
+        renderDiplomaAsImage(diplomaImageProps),
+        renderStorySticker(body.storySticker, { theme: "overlay" }),
+        renderStorySticker(body.storySticker, { theme: "email" }),
+      ]);
 
     return NextResponse.json({
       diplomaBase64: pdfBuffer.toString("base64"),
+      diplomaImageBase64: diplomaImageBuffer.toString("base64"),
       storyStickerBase64: stickerBuffer.toString("base64"),
       storyStickerEmailBase64: stickerEmailBuffer.toString("base64"),
     });

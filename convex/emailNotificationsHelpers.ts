@@ -79,6 +79,9 @@ export const attachStorageIds = internalMutation({
     myRaceId: v.id("myRaces"),
     diplomaStorageId: v.id("_storage"),
     storyStickerStorageId: v.id("_storage"),
+    // Opcional: diploma PNG (preview inline para el email, 842x595 A4).
+    // La fuente de verdad oficial sigue siendo diplomaStorageId (PDF).
+    diplomaPreviewStorageId: v.optional(v.id("_storage")),
     // Opcional: variante "email" del story sticker (fondo crema opaco +
     // textos oscuros). Se persiste junto al overlay transparente para que
     // el template del email pueda referenciarla vía cid inline sin tener
@@ -89,6 +92,9 @@ export const attachStorageIds = internalMutation({
     await ctx.db.patch(args.myRaceId, {
       diplomaStorageId: args.diplomaStorageId,
       storyStickerStorageId: args.storyStickerStorageId,
+      ...(args.diplomaPreviewStorageId
+        ? { diplomaPreviewStorageId: args.diplomaPreviewStorageId }
+        : {}),
       ...(args.storyStickerEmailStorageId
         ? { storyStickerEmailStorageId: args.storyStickerEmailStorageId }
         : {}),

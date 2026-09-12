@@ -517,6 +517,12 @@ export default defineSchema({
     )),
     resultScrapedAt: v.optional(v.number()),
     diplomaStorageId: v.optional(v.id("_storage")),
+    // Diploma VARIANTE PREVIEW (842x595 PNG, A4 landscape). Se incrusta
+    // inline en el email de resultado para que el usuario vea el diploma
+    // sin abrir el adjunto. El diploma PDF (diplomaStorageId) sigue
+    // siendo la fuente de verdad oficial y el archivo adjunto para
+    // descargar/imprimir/compartir.
+    diplomaPreviewStorageId: v.optional(v.id("_storage")),
     // LEGACY: share card PNG (1200x630) del diseño anterior, retirado.
     // Ya no se genera ni se lee — se mantiene el campo solo para no
     // invalidar filas antiguas que aún lo tengan. No usar en código nuevo.

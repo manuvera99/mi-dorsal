@@ -31,6 +31,7 @@
 8. **Nunca pushear a `master` sin `npm run build` local primero** (`tsc --noEmit` no basta, Vercel es más estricto).
 9. Testimonios de la home son placeholders con disclaimer — no tratarlos como reales.
 10. Cambiar `RESEND_FROM_EMAIL` → verificar dominio en Resend primero.
+11. **Tras cualquier sesión que toque `convex/*.ts` o cambie el schema**: pasar la checklist de optimización de `docs/optional/convex-upgrade.md` §"Checklist post-sesión" antes de cerrar la sesión — buscar `.collect()` nuevos sobre tablas grandes en el hot path (crons, mutations llamadas en bucle) y confirmar que usan índice real, no filtro en memoria.
 
 ---
 

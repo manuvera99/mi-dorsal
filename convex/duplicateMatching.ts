@@ -48,7 +48,7 @@ export function normalizeName(s: string): string {
   // string hace que \b la trate como límite de palabra y stripOrdinals corte
   // mal (p.ej. "Xàtiva" se leería como "X" + "àtiva" y la X se eliminaría
   // como si fuera un numeral romano).
-  const deaccented = s.normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const deaccented = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   return stripYear(stripOrdinals(deaccented))
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
@@ -72,7 +72,7 @@ export function jaccard(a: Set<string>, b: Set<string>): number {
 }
 
 function normLocality(s: string | undefined): string {
-  return (s ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+  return (s ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 }
 
 export function localitiesCompatible(a: string | undefined, b: string | undefined): boolean {

@@ -769,6 +769,11 @@ export const systemUpsert = mutation({
     // docs/superpowers/specs/2026-09-12-prevenir-duplicados-ingest-design.md.
     // Reutiliza dateMatches (ya cargado arriba, mismo índice by_date) — sin
     // query adicional.
+    // matchReason: solo se rellena cuando el match viene de structural/fuzzy
+    // (pasos 4-5, probabilístico). null para exact/pasos 1-3 (alta confianza,
+    // ya existente antes de esta task) — se usa más abajo para excluir
+    // officialUrl del auto-relleno en el caso probabilístico.
+    let matchReason: "structural" | "fuzzy" | null = null;
     if (!existing && args.startDate && dateMatches.length > 0) {
       const candidate: MatchCandidate = {
         name: args.name,
@@ -780,7 +785,13 @@ export const systemUpsert = mutation({
       };
       const match = findExistingMatch(candidate, dateMatches);
       if (match) {
+        console.warn(
+          `[dup-match:${match.reason}] "${args.name}" (${args.scraperAdapter ?? "manual"}) → matched existing ${match.race._id} "${match.race.name}" (${match.race.scraperAdapter ?? "manual"})`,
+        );
         existing = match.race;
+        if (match.reason === "structural" || match.reason === "fuzzy") {
+          matchReason = match.reason;
+        }
       }
     }
 
@@ -793,6 +804,15 @@ export const systemUpsert = mutation({
         "scraperAdapter", // no pisar (mantenemos el primero)
         "dataSourceId", // manejado aparte (priority)
       ]);
+      // Match probabilístico (structural/fuzzy, pasos 4-5): si el match fuera
+      // erróneo, pisar officialUrl aquí contaminaría una carrera real con la
+      // URL de otra, y un futuro ingest desde esa fuente volvería a matchear
+      // por by_official_url (paso 1) reforzando el error en vez de exponerlo.
+      // Los matches exact/pasos 1-3 (alta confianza) siguen rellenando
+      // officialUrl como antes de esta task.
+      if (matchReason === "structural" || matchReason === "fuzzy") {
+        skipFields.add("officialUrl");
+      }
       for (const [k, v] of Object.entries(args)) {
         if (skipFields.has(k)) continue;
         if (v === null || v === undefined || v === "") continue;

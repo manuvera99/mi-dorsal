@@ -692,6 +692,30 @@ export const systemUpsert = mutation({
     chiplevanteCarreraIds: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
+    // Defensa en profundidad contra ingests que traen carreras de fuera de
+    // España: rechazamos la escritura si el caller aporta lat/lng y caen
+    // fuera del bounding box de España. Encontramos 212 carreras de
+    // Guatemala/México/Polonia/etc. en el catálogo (2026-09-12) porque el
+    // filtro de país vivía SOLO en cada script de ingest individual (p.ej.
+    // ingest-sportmaniacs-2026.ts, antes de 27e866d) — un script nuevo o mal
+    // configurado podía colarlas sin que nada en el backend lo impidiera.
+    // Mismo bbox que scripts/audit-races-by-country.ts. Solo aplica cuando
+    // hay geo: los ingests sin lat/lng (RFEA, FEDME...) siguen dependiendo
+    // de su propio filtro por país, que ya es correcto.
+    if (typeof args.latitude === "number" && typeof args.longitude === "number") {
+      const SPAIN_BBOX = { minLat: 27.5, maxLat: 44.0, minLng: -18.5, maxLng: 4.5 };
+      const inSpain =
+        args.latitude >= SPAIN_BBOX.minLat &&
+        args.latitude <= SPAIN_BBOX.maxLat &&
+        args.longitude >= SPAIN_BBOX.minLng &&
+        args.longitude <= SPAIN_BBOX.maxLng;
+      if (!inSpain) {
+        throw new Error(
+          `systemUpsert rechazado: lat/lng (${args.latitude}, ${args.longitude}) fuera de España para "${args.name}"`,
+        );
+      }
+    }
+
     // Auto-asignación de scraperAdapter según el officialUrl.
     // Si el caller no pasó scraperAdapter y la URL es de un cronometrador conocido,
     // lo inferimos. Esto es seguro porque los adapters son no-op para URLs que no son suyas.

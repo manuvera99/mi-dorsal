@@ -495,6 +495,26 @@ export const getPlannedRacesForCron = internalQuery({
   },
 });
 
+/**
+ * myRaces de una carrera con dorsal asignado y sin resultado aún — usado
+ * por el escaneo manual admin (convex/adminResultsScan.ts) para saber a
+ * quién procesar cuando el admin pulsa "buscar resultados ahora" en
+ * `/admin/races/[id]`. Sin filtro de ventana temporal ni de `status`
+ * (a diferencia de `getPlannedRacesForCron`): es un disparo explícito del
+ * admin, no el cron automático, así que no aplicamos la misma cautela de
+ * frecuencia — solo evitamos re-procesar lo que ya tiene resultado.
+ */
+export const getPendingByRace = internalQuery({
+  args: { raceId: v.id("races") },
+  handler: async (ctx, { raceId }) => {
+    const all = await ctx.db
+      .query("myRaces")
+      .withIndex("by_race", (q) => q.eq("raceId", raceId))
+      .collect();
+    return all.filter((m) => m.dorsalNumber && !m.resultScrapedAt);
+  },
+});
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------

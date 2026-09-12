@@ -83,3 +83,41 @@ export async function deepExtractAndApplyAction(
     url: cleaned,
   };
 }
+
+export type ScanRaceResultsResult =
+  | {
+      ok: true;
+      totalPending: number;
+      found: number;
+      notFound: number;
+      skippedNoUrl: number;
+      errors: number;
+    }
+  | { error: string };
+
+/**
+ * Dispara el mismo pipeline que el cron `checkResults` (convex/crons/
+ * checkResults.ts) para TODAS las myRaces pendientes de una carrera —
+ * botón "Buscar resultados ahora" en /admin/races/[id]. Ver
+ * convex/adminResultsScan.ts para el detalle y por qué no lleva
+ * requireAdmin dentro de la action de Convex.
+ */
+export async function scanRaceResultsAction(raceId: string): Promise<ScanRaceResultsResult> {
+  const { userId } = await auth();
+  if (!userId) return { error: "No autenticado" };
+  const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+  if (!convexUrl) return { error: "NEXT_PUBLIC_CONVEX_URL no configurado" };
+  const client = new ConvexHttpClient(convexUrl);
+  const profile = await client.query(api.users.getProfileByClerkId, { clerkUserId: userId });
+  if (!profile || profile.role !== "admin") {
+    return { error: "Solo admins pueden ejecutar esta acción" };
+  }
+  try {
+    const result = await client.action(api.adminResultsScan.adminScanRaceResults, {
+      raceId: raceId as any,
+    });
+    return { ok: true, ...result };
+  } catch (e: any) {
+    return { error: "Escaneo falló: " + (e?.message ?? e) };
+  }
+}

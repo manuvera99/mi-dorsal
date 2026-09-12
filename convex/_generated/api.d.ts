@@ -16,6 +16,7 @@ import type * as actions_stravaWebhookHandler from "../actions/stravaWebhookHand
 import type * as actions_stravaWebhookSubscription from "../actions/stravaWebhookSubscription.js";
 import type * as activities_normalize from "../activities/normalize.js";
 import type * as activities_queries from "../activities/queries.js";
+import type * as adminResultsScan from "../adminResultsScan.js";
 import type * as adminTools from "../adminTools.js";
 import type * as aiUsage from "../aiUsage.js";
 import type * as blog from "../blog.js";
@@ -26,6 +27,7 @@ import type * as coachAnalysisHelpers from "../coachAnalysisHelpers.js";
 import type * as cronJobs from "../cronJobs.js";
 import type * as crons_checkResults from "../crons/checkResults.js";
 import type * as crons_newsletterEditorial from "../crons/newsletterEditorial.js";
+import type * as crons_notifyPhotosAvailable from "../crons/notifyPhotosAvailable.js";
 import type * as crons_recalcStats from "../crons/recalcStats.js";
 import type * as crons_reminderPreRace from "../crons/reminderPreRace.js";
 import type * as crons_resetCoachUsage from "../crons/resetCoachUsage.js";
@@ -45,6 +47,7 @@ import type * as emailDispatch from "../emailDispatch.js";
 import type * as emailNotificationsAction from "../emailNotificationsAction.js";
 import type * as emailNotificationsHelpers from "../emailNotificationsHelpers.js";
 import type * as emails_sendEmail from "../emails/sendEmail.js";
+import type * as emails_templates_photosAvailable from "../emails/templates/photosAvailable.js";
 import type * as emails_templates_reminder from "../emails/templates/reminder.js";
 import type * as emails_templates_resultFound from "../emails/templates/resultFound.js";
 import type * as emails_templates_resultNotFound from "../emails/templates/resultNotFound.js";
@@ -85,6 +88,7 @@ declare const fullApi: ApiFromModules<{
   "actions/stravaWebhookSubscription": typeof actions_stravaWebhookSubscription;
   "activities/normalize": typeof activities_normalize;
   "activities/queries": typeof activities_queries;
+  adminResultsScan: typeof adminResultsScan;
   adminTools: typeof adminTools;
   aiUsage: typeof aiUsage;
   blog: typeof blog;
@@ -95,6 +99,7 @@ declare const fullApi: ApiFromModules<{
   cronJobs: typeof cronJobs;
   "crons/checkResults": typeof crons_checkResults;
   "crons/newsletterEditorial": typeof crons_newsletterEditorial;
+  "crons/notifyPhotosAvailable": typeof crons_notifyPhotosAvailable;
   "crons/recalcStats": typeof crons_recalcStats;
   "crons/reminderPreRace": typeof crons_reminderPreRace;
   "crons/resetCoachUsage": typeof crons_resetCoachUsage;
@@ -114,6 +119,7 @@ declare const fullApi: ApiFromModules<{
   emailNotificationsAction: typeof emailNotificationsAction;
   emailNotificationsHelpers: typeof emailNotificationsHelpers;
   "emails/sendEmail": typeof emails_sendEmail;
+  "emails/templates/photosAvailable": typeof emails_templates_photosAvailable;
   "emails/templates/reminder": typeof emails_templates_reminder;
   "emails/templates/resultFound": typeof emails_templates_resultFound;
   "emails/templates/resultNotFound": typeof emails_templates_resultNotFound;

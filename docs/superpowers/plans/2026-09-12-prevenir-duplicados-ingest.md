@@ -369,7 +369,14 @@ git commit -m "feat(duplicados): módulo puro de matching exact/structural/fuzzy
 **Files:**
 - Modify: `convex/races.ts:1078-1244` (handler de `adminFindDuplicates`)
 
-**Importante:** `adminFindDuplicates` necesita encontrar **todos** los grupos de duplicados (agrupación pairwise sobre toda la tabla), mientras que `findExistingMatch` (Task 1) encuentra la **primera** coincidencia de un candidato contra un pool ya acotado. Son problemas distintos — esta tarea NO sustituye el algoritmo de agrupación de `adminFindDuplicates` por `findExistingMatch`; solo elimina la duplicación de las funciones puras de normalización (`normalizeName`, `tokenize`, `jaccard`, `localitiesCompatible`), que ahora se importan del módulo nuevo en vez de redefinirse inline. El comportamiento visible del panel `/admin/duplicates` no cambia.
+**Importante:** `adminFindDuplicates` necesita encontrar **todos** los grupos de duplicados (agrupación pairwise sobre toda la tabla), mientras que `findExistingMatch` (Task 1) encuentra la **primera** coincidencia de un candidato contra un pool ya acotado. Son problemas distintos — esta tarea NO sustituye el algoritmo de agrupación de `adminFindDuplicates` por `findExistingMatch`; solo elimina la duplicación de las funciones puras de normalización (`normalizeName`, `tokenize`, `jaccard`, `localitiesCompatible`), que ahora se importan del módulo nuevo en vez de redefinirse inline.
+
+**Actualización 2026-09-12 (post-Task 1):** al implementar Task 1 se descubrió que el código inline que hoy vive en `adminFindDuplicates` (y que iba a extraerse literalmente) tiene 3 bugs reales de normalización, verificados de forma independiente:
+1. `stripOrdinals` nunca matchea el `\b` final tras `[ºª°]` (no es un carácter de palabra en regex JS) — los ordinales tipo "15ª" no se limpiaban.
+2. El orden de `stripYear(stripOrdinals(s))` ANTES de quitar acentos hacía que nombres con tilde justo tras un ordinal/año se cortaran mal (ej. "Xàtiva" se partía en "X" + "àtiva").
+3. `tokenize` dejaba pasar tokens de 2 letras (partículas como "de"/"la"), inflando la similitud Jaccard entre nombres no relacionados.
+
+Decisión del usuario (confirmada 2026-09-12): mantener el fix en `convex/duplicateMatching.ts` en vez de revertir a la extracción 1:1 con los bugs incluidos. **Por tanto, el comportamiento visible del panel `/admin/duplicates` SÍ cambia tras esta tarea** — detectará más duplicados reales que antes (mejor matching, no peor), no menos. No es una regresión: es una corrección de bugs preexistentes que ahora se hereda al refactorizar. La Step 4 de abajo se ajusta a esto.
 
 - [ ] **Step 1: Añadir el import**
 
@@ -434,9 +441,9 @@ El resto del handler (los 3 bloques `byExact`/`byStructural`/`byFuzzyBucket`, `a
 Run: `npx tsc --noEmit`
 Expected: sin errores nuevos en `convex/races.ts`. Si hay un error de "variable no usada" o "redeclarada", revisa que borraste las 2 definiciones completas (incluyendo `stripOrdinals`/`stripYear`, que solo se usaban dentro de la `normalizeName` local ya borrada).
 
-- [ ] **Step 4: Verificación manual — el panel de duplicados sigue igual**
+- [ ] **Step 4: Verificación manual — el panel de duplicados sigue funcionando (puede mostrar MÁS grupos que antes)**
 
-Run: `npx convex dev` en una terminal, `npm run dev` en otra. Abre `/admin/duplicates` con tu usuario admin de dev. Confirma que la lista de grupos que aparece es la misma que antes del refactor (mismo número de grupos, mismos textos de "reason"). Si tenías capturado el número de grupos antes de este cambio, compáralo; si no, basta con que la página cargue sin error y muestre grupos con sentido (no vacíos ni con `undefined`).
+Run: `npx convex dev` en una terminal, `npm run dev` en otra. Abre `/admin/duplicates` con tu usuario admin de dev. Confirma que la página carga sin error y muestra grupos con sentido (no vacíos ni con `undefined`). El número de grupos puede ser **igual o mayor** que antes del refactor (los 3 fixes de normalización de la Task 1 detectan casos que antes se les escapaban, p.ej. nombres con ordinal seguido de tilde) — eso es el comportamiento esperado, no un bug. Si el número de grupos es MENOR que antes, sí investiga — eso sería una regresión real.
 
 - [ ] **Step 5: Commit**
 
@@ -1238,6 +1245,13 @@ reutiliza el mismo matching structural+fuzzy que ya usaba el panel, sobre el
 pool de carreras de la misma fecha (`by_date`, ya cargado, sin query
 adicional). Spec completo:
 `docs/superpowers/specs/2026-09-12-prevenir-duplicados-ingest-design.md`.
+
+De paso, la extracción a `duplicateMatching.ts` corrigió 3 bugs de
+normalización que existían en el código inline original (regex de ordinales
+que nunca matchaba, orden de stripping de acentos, tokens de 2 letras
+inflando la similitud Jaccard) — el panel puede detectar algún grupo nuevo
+que antes se le escapaba. No es una regresión: los criterios (exact/
+structural/fuzzy, umbral 0.75) no cambiaron, solo la normalización previa.
 
 El panel de duplicados de abajo **sigue existiendo** como red de seguridad
 para lo que el matching automático no capture (p.ej. carreras sin `startDate`,

@@ -65,6 +65,30 @@ mavis cron self --cron-name "monitor-deep-extract" --every "15m" --prompt "..." 
 
 El cron `monitor-deep-extract` está configurado al lanzar el deep-extract. Si el log no crece en 5 min, avisa. Cuando ve "RESUMEN" al final, lo borra y reporta.
 
+## Prevención de duplicados en el ingest (desde 2026-09-12)
+
+Antes, `systemUpsert` (usado por todo el ingest nocturno) solo reconocía una
+carrera existente por `officialUrl` específico o nombre+fecha(+localidad)
+exactos — no cruzaba fuentes con nombres distintos, así que cada noche podían
+crearse duplicados que el panel de abajo detectaba **después**.
+
+Desde el commit que introduce `convex/duplicateMatching.ts`, `systemUpsert`
+reutiliza el mismo matching structural+fuzzy que ya usaba el panel, sobre el
+pool de carreras de la misma fecha (`by_date`, ya cargado, sin query
+adicional). Spec completo:
+`docs/superpowers/specs/2026-09-12-prevenir-duplicados-ingest-design.md`.
+
+De paso, la extracción a `duplicateMatching.ts` corrigió 3 bugs de
+normalización que existían en el código inline original (regex de ordinales
+que nunca matchaba, orden de stripping de acentos, tokens de 2 letras
+inflando la similitud Jaccard) — el panel puede detectar algún grupo nuevo
+que antes se le escapaba. No es una regresión: los criterios (exact/
+structural/fuzzy, umbral 0.75) no cambiaron, solo la normalización previa.
+
+El panel de duplicados de abajo **sigue existiendo** como red de seguridad
+para lo que el matching automático no capture (p.ej. carreras sin `startDate`,
+o creadas manualmente con nombres muy distintos) — no se ha vuelto redundante.
+
 ## Panel de duplicados en `/admin/duplicates`
 
 Detecta carreras candidatas a duplicado combinando 3 criterios (ordenados por confianza):
@@ -75,6 +99,7 @@ Detecta carreras candidatas a duplicado combinando 3 criterios (ordenados por co
 
 **Implementación**:
 - Convex query: `convex/races.ts → adminFindDuplicates` (3 detectores + dedupe de grupos)
+- Módulo compartido: `convex/duplicateMatching.ts` (funciones puras de normalización/matching, usadas también por `systemUpsert` para prevenir duplicados en el ingest — ver sección de arriba)
 - Convex mutation: `adminDeleteMany` (batch delete con `requireAdmin`)
 - Página: `app/admin/duplicates/page.tsx` (Client Component)
 - Scripts CLI equivalentes (para uso sin auth desde servidor):

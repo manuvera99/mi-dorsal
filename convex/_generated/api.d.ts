@@ -43,6 +43,7 @@ import type * as devOnly_markFeatured from "../devOnly/markFeatured.js";
 import type * as devOnly_promoteToAdmin from "../devOnly/promoteToAdmin.js";
 import type * as devOnly_seedTestUser from "../devOnly/seedTestUser.js";
 import type * as devOnly_slimActivitiesPayload from "../devOnly/slimActivitiesPayload.js";
+import type * as duplicateMatching from "../duplicateMatching.js";
 import type * as emailDispatch from "../emailDispatch.js";
 import type * as emailNotificationsAction from "../emailNotificationsAction.js";
 import type * as emailNotificationsHelpers from "../emailNotificationsHelpers.js";
@@ -115,6 +116,7 @@ declare const fullApi: ApiFromModules<{
   "devOnly/promoteToAdmin": typeof devOnly_promoteToAdmin;
   "devOnly/seedTestUser": typeof devOnly_seedTestUser;
   "devOnly/slimActivitiesPayload": typeof devOnly_slimActivitiesPayload;
+  duplicateMatching: typeof duplicateMatching;
   emailDispatch: typeof emailDispatch;
   emailNotificationsAction: typeof emailNotificationsAction;
   emailNotificationsHelpers: typeof emailNotificationsHelpers;

@@ -39,6 +39,27 @@ if (!convexUrl) {
 }
 const client = new ConvexHttpClient(convexUrl);
 
+// Exclusión manual tras revisión humana del dry-run (2026-09-12): estas
+// carreras son eventos REALES DISTINTOS que el detector fuzzy agrupó por
+// error (misma fecha+provincia+nombre similar, pero disciplinas distintas
+// de un evento multideporte — 5K vs Swim vs Aquathlon de "The Bay Series" —
+// o casos ambiguos que requieren revisión manual en /admin/duplicates).
+// Cualquier grupo que contenga alguna de estas carreras se salta por
+// completo, para no fusionar eventos que no son duplicados.
+const EXCLUDED_RACE_IDS = new Set<string>([
+  "k57133t2ackq8mtyc550v6a5sn8dxyf2", // The Bay 5K 2026 Series Race 3
+  "k57a8rp3bhg8fwydg3tg8q1hmh8dx2r9", // The Bay Swim 2026 Series Race 3
+  "k573prz43fym092db5x56345td8dxtjm", // The Bay Aquathlon 2026 Series Race 3
+  "k5769vvb5p9rmp5dqtw10v3p8n8dxkt4", // The Bay 5K 2026 Series Race 2
+  "k57ch64234mhpc272eww4vnx9h8dxm6w", // The Bay Swim 2026 Series Race 2
+  "k576gthz4h4pwzq3t8w0wc2ncn8dws2p", // The Bay Aquathlon 2026 Series Race 2
+  "k579hat2c8g3329a2h9789dwrx8dx0mc", // The Bay 5K 2026 Series Race 1
+  "k57ds0n192qn77z0d4gat45wm58dx03p", // The Bay Aquathlon 2026 Series Race 1
+  "k570fnnd827bvz4a3penv6t0fn8dw7vp", // The Bay Swim Series Race 1
+  "k57976xjkcxnpsz000246vpbg18dwvb1", // BEER NIGHT RUN MIRAFLORES 2026 OK
+  "k5729gg9fvwxdgabmsyatpstsh8dx3dg", // BEER NIGHT RUN MIRAFLORES DE LA SIERRA 2026
+]);
+
 type RaceDoc = {
   _id: string;
   _creationTime: number;
@@ -164,11 +185,17 @@ async function main() {
   const all = (await client.query(api.races.systemListAllDetailed, {})) as RaceDoc[];
   console.log(`\nTotal carreras en BBDD: ${all.length}`);
 
-  const groups = findDuplicateGroups(all);
-  console.log(`Encontrados ${groups.length} grupos duplicados (exact+structural+fuzzy)\n`);
+  const allGroups = findDuplicateGroups(all);
+  const groups = allGroups.filter((g) => !g.races.some((r) => EXCLUDED_RACE_IDS.has(r._id)));
+  const skippedCount = allGroups.length - groups.length;
+  console.log(`Encontrados ${allGroups.length} grupos duplicados (exact+structural+fuzzy)`);
+  if (skippedCount > 0) {
+    console.log(`⏭️  Saltados ${skippedCount} grupos por exclusión manual (revisar en /admin/duplicates)`);
+  }
+  console.log(`Procesando ${groups.length} grupos\n`);
 
   if (groups.length === 0) {
-    console.log("✅ No hay duplicados pendientes");
+    console.log("✅ No hay duplicados pendientes de procesar");
     return;
   }
 

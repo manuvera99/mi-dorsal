@@ -1,0 +1,354 @@
+[
+  {
+    "name": "MARCHA DE LA RIBERA",
+    "slug": "marcha-de-la-ribera",
+    "url": "https://carreraspopulares.com/carrera/marcha-de-la-ribera",
+    "date": "2026-09-13",
+    "locality": "LLOMBAI",
+    "province": "Valencia",
+    "distances": [
+      120
+    ],
+    "distanceRaw": "120 KM",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Speaker en zona de meta"
+      ]
+    }
+  },
+  {
+    "name": "IV CARRERA EN PRIMERA LINEA BENIDORM",
+    "slug": "carrera-solidaria-en-primera-linea",
+    "url": "https://carreraspopulares.com/carrera/carrera-solidaria-en-primera-linea",
+    "date": "2026-09-20",
+    "locality": "Benidorm",
+    "province": "Alicante",
+    "distances": [
+      10
+    ],
+    "distanceRaw": "10000 m",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Avituallamiento líquido",
+        "Cronometraje",
+        "Prueba solidaria",
+        "Bolsa del corredor",
+        "Servicio de guardarropía",
+        "Carreras infantiles",
+        "Trofeos",
+        "Categoría silla de ruedas",
+        "Actividades para niños",
+        "Speaker en zona de meta"
+      ]
+    }
+  },
+  {
+    "name": "TRAIL VALL DE SETA",
+    "slug": "trail-vall-de-seta",
+    "url": "https://carreraspopulares.com/carrera/trail-vall-de-seta",
+    "date": "2026-09-26",
+    "locality": "Gorga",
+    "province": "Alicante",
+    "distances": [
+      27.5
+    ],
+    "distanceRaw": "27,5\n                                                                                                                        \n                                             M",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Trofeos",
+        "Parking o zona de fácil aparcamiento",
+        "Speaker en zona de meta"
+      ]
+    }
+  },
+  {
+    "name": "15K NOCTURNA VALENCIA",
+    "slug": "15k-nocturna-valencia",
+    "url": "https://carreraspopulares.com/carrera/15k-nocturna-valencia",
+    "date": "2026-09-26",
+    "locality": "Valencia",
+    "province": "Valencia",
+    "distances": [
+      15
+    ],
+    "distanceRaw": "15.000 m",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": []
+    }
+  },
+  {
+    "name": "TRAIL JALANCE",
+    "slug": "trail-de-jalance",
+    "url": "https://carreraspopulares.com/carrera/trail-de-jalance",
+    "date": "2026-09-26",
+    "locality": "Jalance",
+    "province": "Valencia",
+    "distances": [
+      21
+    ],
+    "distanceRaw": "21000 mts",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Baños",
+        "Trofeos",
+        "Speaker en zona de meta"
+      ]
+    }
+  },
+  {
+    "name": "MARCHA SOLIDARIA CARRERA POR LA VIDA",
+    "slug": "marcha-solidaria-carrera-por-la-vida",
+    "url": "https://carreraspopulares.com/carrera/marcha-solidaria-carrera-por-la-vida",
+    "date": "2026-09-27",
+    "locality": "Burjassot",
+    "province": "Valencia",
+    "distances": [
+      4
+    ],
+    "distanceRaw": "4 Km",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Prueba solidaria"
+      ]
+    }
+  },
+  {
+    "name": "XXV MARXA SOLIDÀRIA DE MUNTANYA AL GARBÍ",
+    "slug": "marxa-solidaria-de-muntanya-al-garbi",
+    "url": "https://carreraspopulares.com/carrera/marxa-solidaria-de-muntanya-al-garbi",
+    "date": "2026-09-27",
+    "locality": "Estivella",
+    "province": "Valencia",
+    "distances": [
+      16
+    ],
+    "distanceRaw": "16 km",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Prueba solidaria",
+        "Baños",
+        "Servicio de duchas",
+        "Inscripción gratuita",
+        "Parking o zona de fácil aparcamiento"
+      ]
+    }
+  },
+  {
+    "name": "VII BENICATRAIL",
+    "slug": "benicatrail",
+    "url": "https://carreraspopulares.com/carrera/benicatrail",
+    "date": "2026-09-27",
+    "locality": "BENIATJAR",
+    "province": "Valencia",
+    "distances": [
+      26
+    ],
+    "distanceRaw": "26km",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Servicio de fisioterapia",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Trofeos",
+        "Categoría silla de ruedas",
+        "Parking o zona de fácil aparcamiento",
+        "Speaker en zona de meta"
+      ]
+    }
+  },
+  {
+    "name": "XXVI CURSA POPULAR A PEU ROTOVA 2025",
+    "slug": "cursa-a-peu-rotova",
+    "url": "https://carreraspopulares.com/carrera/cursa-a-peu-rotova",
+    "date": "2026-09-27",
+    "locality": "Ròtova",
+    "province": "Valencia",
+    "distances": [
+      10
+    ],
+    "distanceRaw": "10 km",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Carreras infantiles",
+        "Trofeos",
+        "Parking o zona de fácil aparcamiento",
+        "Oferta de restaurantes",
+        "Speaker en zona de meta"
+      ]
+    }
+  },
+  {
+    "name": "TRAIL CORTES DE PALLÁS ( SENDA DE GIGANTES )",
+    "slug": "trail-cortes-de-pallas",
+    "url": "https://carreraspopulares.com/carrera/trail-cortes-de-pallas",
+    "date": "2026-10-04",
+    "locality": "CORTES DE PALLÁS",
+    "province": "Valencia",
+    "distances": [
+      21
+    ],
+    "distanceRaw": "21000 mts",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de vestuario",
+        "Sorteo de regalos",
+        "Trofeos",
+        "Parking o zona de fácil aparcamiento",
+        "Alojamiento",
+        "Oferta de restaurantes",
+        "Speaker en zona de meta"
+      ]
+    }
+  },
+  {
+    "name": "IV CARRERA SOLIDARIA CONTRA LA LEUCEMIA",
+    "slug": "carrera-solidaria-contra-la-leucemia",
+    "url": "https://carreraspopulares.com/carrera/carrera-solidaria-contra-la-leucemia",
+    "date": "2026-10-04",
+    "locality": "Castellón",
+    "province": "Castellón",
+    "distances": [
+      5
+    ],
+    "distanceRaw": "5.000 m",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": []
+    }
+  },
+  {
+    "name": "GRAN FONS CIUTAT D'OLIVA",
+    "slug": "gran-fons-ciutat-doliva",
+    "url": "https://carreraspopulares.com/carrera/gran-fons-ciutat-doliva",
+    "date": "2026-10-04",
+    "locality": "OLIVA",
+    "province": "Valencia",
+    "distances": [
+      12.2
+    ],
+    "distanceRaw": "12.200 mts",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Carreras infantiles",
+        "Trofeos"
+      ]
+    }
+  },
+  {
+    "name": "XLI VOLTA A PEU A CULLERA",
+    "slug": "volta-a-peu-a-cullera",
+    "url": "https://carreraspopulares.com/carrera/volta-a-peu-a-cullera",
+    "date": "2026-10-04",
+    "locality": "Cullera",
+    "province": "Valencia",
+    "distances": [
+      12.7
+    ],
+    "distanceRaw": "12700 m",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Trofeos",
+        "Speaker en zona de meta"
+      ]
+    }
+  }
+]

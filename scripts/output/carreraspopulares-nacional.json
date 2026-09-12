@@ -1,0 +1,2521 @@
+[
+  {
+    "name": "XXVI CARRERA POPULAR AGROMADRID",
+    "slug": "carrera-popular-agromadrid",
+    "url": "https://carreraspopulares.com/carrera/carrera-popular-agromadrid",
+    "date": "2026-09-20",
+    "locality": "Villarejo de Salvanes",
+    "province": "Madrid",
+    "distances": [
+      5
+    ],
+    "distanceRaw": "5.000 mts",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Carreras infantiles",
+        "Trofeos",
+        "Parking o zona de fácil aparcamiento",
+        "Oferta de restaurantes",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "VIII CROSS CUCORUN",
+    "slug": "cross-cucorun",
+    "url": "https://carreraspopulares.com/carrera/cross-cucorun",
+    "date": "2026-09-26",
+    "locality": "Garganta del Villar",
+    "province": "Avila",
+    "distances": [],
+    "distanceRaw": "",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Prueba solidaria",
+        "Bolsa del corredor",
+        "Baños",
+        "Trofeos",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "XVI CARRERA SOLIDARIA DE LA ILUSIÓN",
+    "slug": "carrera-de-la-ilusion",
+    "url": "https://carreraspopulares.com/carrera/carrera-de-la-ilusion",
+    "date": "2026-09-27",
+    "locality": "Collado Villalba",
+    "province": "Madrid",
+    "distances": [],
+    "distanceRaw": "",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Prueba solidaria",
+        "Bolsa del corredor",
+        "Servicio de fisioterapia",
+        "Baños",
+        "Servicio de guardarropía",
+        "Carreras infantiles",
+        "Sorteo de regalos",
+        "Trofeos",
+        "Categoría silla de ruedas",
+        "Actividades para niños",
+        "Speaker en zona de meta",
+        "Diploma de participacion en la carrera",
+        "Mismo numero de premios y de importes para hombres y mujeres"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "V CARRERA POPULAR EL CAÑAVERAL",
+    "slug": "carrera-popular-el-canaveral",
+    "url": "https://carreraspopulares.com/carrera/carrera-popular-el-canaveral",
+    "date": "2026-10-04",
+    "locality": "Vicálvaro - Madrid",
+    "province": "Madrid",
+    "distances": [
+      5
+    ],
+    "distanceRaw": "5 km",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Carreras infantiles",
+        "Trofeos",
+        "Actividades para niños",
+        "Parking o zona de fácil aparcamiento",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "TRAIL MONTAÑA PICO DEL FRAILE DE TEJADILLOS",
+    "slug": "trail-montana-pico-del-fraile-de-tejadillos",
+    "url": "https://carreraspopulares.com/carrera/trail-montana-pico-del-fraile-de-tejadillos",
+    "date": "2026-10-11",
+    "locality": "Tejadillos",
+    "province": "Cuenca",
+    "distances": [
+      16
+    ],
+    "distanceRaw": "16Km",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": []
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "Carrera Popular Villa de Saceruela",
+    "slug": "carrera-popular-villa-de-saceruela",
+    "url": "https://carreraspopulares.com/carrera/carrera-popular-villa-de-saceruela",
+    "date": "2026-09-13",
+    "locality": "Saceruela",
+    "province": "Ciudad Real",
+    "distances": [
+      10
+    ],
+    "distanceRaw": "10.000 m",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Trofeos",
+        "Parking o zona de fácil aparcamiento"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "MARCHA DE LA RIBERA",
+    "slug": "marcha-de-la-ribera",
+    "url": "https://carreraspopulares.com/carrera/marcha-de-la-ribera",
+    "date": "2026-09-13",
+    "locality": "LLOMBAI",
+    "province": "Valencia",
+    "distances": [
+      120
+    ],
+    "distanceRaw": "120 KM",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "1ª CARRERA DEL BOTIJO DE OCAÑA 10K-5K",
+    "slug": "carrera-del-botijo-de-ocana-10k-5k",
+    "url": "https://carreraspopulares.com/carrera/carrera-del-botijo-de-ocana-10k-5k",
+    "date": "2026-09-13",
+    "locality": "Ocaña",
+    "province": "Toledo",
+    "distances": [
+      10000
+    ],
+    "distanceRaw": "10000m",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Avituallamiento líquido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Carreras infantiles",
+        "Sorteo de regalos",
+        "Trofeos",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "CARRERA NOCTURNA  LA RINCONADA \"POR LA MOVILIDAD\"",
+    "slug": "carrera-nocturna-entreparques-la-rinconada",
+    "url": "https://carreraspopulares.com/carrera/carrera-nocturna-entreparques-la-rinconada",
+    "date": "2026-09-18",
+    "locality": "San José de la Rinconada",
+    "province": "Sevilla",
+    "distances": [],
+    "distanceRaw": "",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Avituallamiento líquido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Servicio de fisioterapia",
+        "Servicio de guardarropía",
+        "Trofeos"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "RIBERA RUN EXPERIENCE",
+    "slug": "ribera-run-experience",
+    "url": "https://carreraspopulares.com/carrera/ribera-run-experience",
+    "date": "2026-09-19",
+    "locality": "Peñafiel",
+    "province": "Valladolid",
+    "distances": [],
+    "distanceRaw": "",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": []
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "21 KM DE LA SIERRA",
+    "slug": "21k-medio-maraton-de-la-sierra",
+    "url": "https://carreraspopulares.com/carrera/21k-medio-maraton-de-la-sierra",
+    "date": "2026-09-19",
+    "locality": "Manzanares El Real",
+    "province": "Madrid",
+    "distances": [
+      2.026
+    ],
+    "distanceRaw": "2026\n                                         M",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Trofeos",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "42K MARATON DEL CASTILLO",
+    "slug": "maraton-del-castillo",
+    "url": "https://carreraspopulares.com/carrera/maraton-del-castillo",
+    "date": "2026-09-19",
+    "locality": "Madrid",
+    "province": "Madrid",
+    "distances": [
+      2.026
+    ],
+    "distanceRaw": "2026\n                                         M",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Trofeos",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "65K MADRID CERCEDILLA",
+    "slug": "65k-madrid-cercedilla",
+    "url": "https://carreraspopulares.com/carrera/65k-madrid-cercedilla",
+    "date": "2026-09-19",
+    "locality": "Madrid",
+    "province": "Madrid",
+    "distances": [
+      2.026
+    ],
+    "distanceRaw": "2026\n                                         M",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Trofeos",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "TRAIL PIEDRA ROJA RODENAS",
+    "slug": "trail-piedra-roja-rodenas",
+    "url": "https://carreraspopulares.com/carrera/trail-piedra-roja-rodenas",
+    "date": "2026-09-19",
+    "locality": "Rodenas",
+    "province": "Zaragoza",
+    "distances": [
+      21
+    ],
+    "distanceRaw": "14 y 21\n                                                                                                                        \n                                             M",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Salida en boxes",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Sorteo de regalos",
+        "Trofeos",
+        "Actividades para niños",
+        "Parking o zona de fácil aparcamiento",
+        "Alojamiento",
+        "Oferta de restaurantes",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "BENEMERITA BURGOS CHALLENGE",
+    "slug": "benemerita-burgos-challenge",
+    "url": "https://carreraspopulares.com/carrera/benemerita-burgos-challenge",
+    "date": "2026-09-19",
+    "locality": "Quintanar de la Sierra",
+    "province": "Burgos",
+    "distances": [
+      40
+    ],
+    "distanceRaw": "32 y 40 km",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Prueba solidaria",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de vestuario",
+        "Sorteo de regalos",
+        "Trofeos",
+        "Actividades para niños",
+        "Parking o zona de fácil aparcamiento",
+        "Oferta de restaurantes",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "CURSA DE LA MERCE BIMBO GLOBAL RACE 2026",
+    "slug": "cursa-de-la-merce",
+    "url": "https://carreraspopulares.com/carrera/cursa-de-la-merce",
+    "date": "2026-09-20",
+    "locality": "Barcelona",
+    "province": "Barcelona",
+    "distances": [
+      10
+    ],
+    "distanceRaw": "10.000 m",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": []
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "MADRID CORRE POR MADRID",
+    "slug": "madrid-corre-por-madrid",
+    "url": "https://carreraspopulares.com/carrera/madrid-corre-por-madrid",
+    "date": "2026-09-20",
+    "locality": "Madrid",
+    "province": "Madrid",
+    "distances": [
+      2.026
+    ],
+    "distanceRaw": "2026\n                                         M",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": []
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "CROSS PINSIMAR",
+    "slug": "cross-popular-pins-i-mar-la-marina",
+    "url": "https://carreraspopulares.com/carrera/cross-popular-pins-i-mar-la-marina",
+    "date": "2026-09-20",
+    "locality": "La Marina",
+    "province": "España",
+    "distances": [
+      8
+    ],
+    "distanceRaw": "8,000\n                                                                                                                        \n                                             M",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Avituallamiento líquido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de duchas",
+        "Carreras infantiles",
+        "Trofeos"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "Carrera Villa de Torrijos",
+    "slug": "carrera-villa-de-torrijos",
+    "url": "https://carreraspopulares.com/carrera/carrera-villa-de-torrijos",
+    "date": "2026-09-20",
+    "locality": "Torrijos",
+    "province": "Toledo",
+    "distances": [
+      5
+    ],
+    "distanceRaw": "10 y 5 km",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Servicio de fisioterapia",
+        "Baños",
+        "Servicio de guardarropía",
+        "Carreras infantiles",
+        "Sorteo de regalos",
+        "Trofeos",
+        "Categoría silla de ruedas",
+        "Actividades para niños",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "CROSS URBANO BARRIO FRATERNIDAD",
+    "slug": "cross-urbano-barrio-fraternidad",
+    "url": "https://carreraspopulares.com/carrera/cross-urbano-barrio-fraternidad",
+    "date": "2026-09-20",
+    "locality": "ELDA",
+    "province": "Barcelona",
+    "distances": [],
+    "distanceRaw": "",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Carreras infantiles",
+        "Inscripción gratuita",
+        "Trofeos",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "IV CARRERA EN PRIMERA LINEA BENIDORM",
+    "slug": "carrera-solidaria-en-primera-linea",
+    "url": "https://carreraspopulares.com/carrera/carrera-solidaria-en-primera-linea",
+    "date": "2026-09-20",
+    "locality": "Benidorm",
+    "province": "Alicante",
+    "distances": [
+      10
+    ],
+    "distanceRaw": "10000 m",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Avituallamiento líquido",
+        "Cronometraje",
+        "Prueba solidaria",
+        "Bolsa del corredor",
+        "Servicio de guardarropía",
+        "Carreras infantiles",
+        "Trofeos",
+        "Categoría silla de ruedas",
+        "Actividades para niños",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "TRAIL VALL DE SETA",
+    "slug": "trail-vall-de-seta",
+    "url": "https://carreraspopulares.com/carrera/trail-vall-de-seta",
+    "date": "2026-09-26",
+    "locality": "Gorga",
+    "province": "Alicante",
+    "distances": [
+      27.5
+    ],
+    "distanceRaw": "27,5\n                                                                                                                        \n                                             M",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Trofeos",
+        "Parking o zona de fácil aparcamiento",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "15K NOCTURNA VALENCIA",
+    "slug": "15k-nocturna-valencia",
+    "url": "https://carreraspopulares.com/carrera/15k-nocturna-valencia",
+    "date": "2026-09-26",
+    "locality": "Valencia",
+    "province": "Valencia",
+    "distances": [
+      15
+    ],
+    "distanceRaw": "15.000 m",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": []
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "BINTER NIGHTRUN ZARAGOZA - HERALDO",
+    "slug": "binter-nightrun-zaragoza",
+    "url": "https://carreraspopulares.com/carrera/binter-nightrun-zaragoza",
+    "date": "2026-09-26",
+    "locality": "Zaragoza",
+    "province": "Zaragoza",
+    "distances": [
+      10
+    ],
+    "distanceRaw": "5.000 y 10.000 m",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Salida en boxes",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Prueba solidaria",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de guardarropía",
+        "Trofeos",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "TRAIL INDIANO",
+    "slug": "trail-indiano",
+    "url": "https://carreraspopulares.com/carrera/trail-indiano",
+    "date": "2026-09-26",
+    "locality": "Somao (Pravia)",
+    "province": "Asturias",
+    "distances": [],
+    "distanceRaw": "",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Servicio de duchas",
+        "Servicio de vestuario",
+        "Carreras infantiles",
+        "Trofeos",
+        "Alojamiento",
+        "Oferta de restaurantes",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "I CARRERA PISANDO UVAS CARIÑENA RUN",
+    "slug": "carrera-pisando-uvas-carinena-run",
+    "url": "https://carreraspopulares.com/carrera/carrera-pisando-uvas-carinena-run",
+    "date": "2026-09-26",
+    "locality": "CARIÑENA",
+    "province": "Zaragoza",
+    "distances": [
+      10
+    ],
+    "distanceRaw": "5 y10\n                                                                                                                        \n                                             M",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de vestuario",
+        "Trofeos",
+        "Parking o zona de fácil aparcamiento",
+        "Alojamiento",
+        "Oferta de restaurantes",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "TRAIL JALANCE",
+    "slug": "trail-de-jalance",
+    "url": "https://carreraspopulares.com/carrera/trail-de-jalance",
+    "date": "2026-09-26",
+    "locality": "Jalance",
+    "province": "Valencia",
+    "distances": [
+      21
+    ],
+    "distanceRaw": "21000 mts",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Baños",
+        "Trofeos",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "CARRERA POR MONTAÑA CROSS DE LAS DEHESAS",
+    "slug": "cross-por-montana-las-dehesas",
+    "url": "https://carreraspopulares.com/carrera/cross-por-montana-las-dehesas",
+    "date": "2026-09-27",
+    "locality": "Cercedilla",
+    "province": "Madrid",
+    "distances": [
+      30
+    ],
+    "distanceRaw": "30\n                                                                                                                        \n                                             M",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": true,
+      "services": [
+        "Servicios médicos",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Carreras infantiles",
+        "Sorteo de regalos",
+        "Trofeos",
+        "Parking o zona de fácil aparcamiento",
+        "Alojamiento",
+        "Oferta de restaurantes",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "CARRERA POR MONTAÑA TRAIL LAS DEHESAS DE LA FUENFRIA",
+    "slug": "carrera-por-montana-trail-las-dehesas-de-la-fuenfria",
+    "url": "https://carreraspopulares.com/carrera/carrera-por-montana-trail-las-dehesas-de-la-fuenfria",
+    "date": "2026-09-27",
+    "locality": "Cercedilla",
+    "province": "Madrid",
+    "distances": [
+      15
+    ],
+    "distanceRaw": "15\n                                                                                                                        \n                                             M",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": true,
+      "services": [
+        "Servicios médicos",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Carreras infantiles",
+        "Sorteo de regalos",
+        "Trofeos",
+        "Parking o zona de fácil aparcamiento",
+        "Alojamiento",
+        "Oferta de viaje",
+        "Oferta de restaurantes",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "CARRERA DE LA MUJER DE A CORUÑA",
+    "slug": "carrera-de-la-mujer-de-a-coruna",
+    "url": "https://carreraspopulares.com/carrera/carrera-de-la-mujer-de-a-coruna",
+    "date": "2026-09-27",
+    "locality": "A Coruña",
+    "province": "A Coruña",
+    "distances": [
+      6.5
+    ],
+    "distanceRaw": "6.500 m",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": []
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "MARCHA SOLIDARIA CARRERA POR LA VIDA",
+    "slug": "marcha-solidaria-carrera-por-la-vida",
+    "url": "https://carreraspopulares.com/carrera/marcha-solidaria-carrera-por-la-vida",
+    "date": "2026-09-27",
+    "locality": "Burjassot",
+    "province": "Valencia",
+    "distances": [
+      4
+    ],
+    "distanceRaw": "4 Km",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Prueba solidaria"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "MEDIA MARATÓN CIUDAD DE VALLADOLID",
+    "slug": "media-maraton-ciudad-de-valladolid",
+    "url": "https://carreraspopulares.com/carrera/media-maraton-ciudad-de-valladolid",
+    "date": "2026-09-27",
+    "locality": "Valladolid",
+    "province": "Valladolid",
+    "distances": [
+      21.097
+    ],
+    "distanceRaw": "21.097 m",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Servicio de fisioterapia",
+        "Baños",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Premios en metálico",
+        "Trofeos",
+        "Parking o zona de fácil aparcamiento",
+        "Oferta de viaje",
+        "Oferta de restaurantes",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "40 MEDIA MARATÓN CÓRDOBA - ALMODÓVAR DEL RÍO",
+    "slug": "media-maraton-cordoba-almodovar-del-rio",
+    "url": "https://carreraspopulares.com/carrera/media-maraton-cordoba-almodovar-del-rio",
+    "date": "2026-09-27",
+    "locality": "Almodóvar del Río",
+    "province": "Córdoba",
+    "distances": [
+      21.097
+    ],
+    "distanceRaw": "21,097 km",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": true,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Servicio de fisioterapia",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Carreras infantiles",
+        "Premios en metálico",
+        "Trofeos",
+        "Categoría silla de ruedas",
+        "Parking o zona de fácil aparcamiento",
+        "Actividades para niños",
+        "Alojamiento",
+        "Oferta de restaurantes",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "CARRERA POR LOS CUIDADOS",
+    "slug": "carrera-por-los-cuidados",
+    "url": "https://carreraspopulares.com/carrera/carrera-por-los-cuidados",
+    "date": "2026-09-27",
+    "locality": "Madrid",
+    "province": "Madrid",
+    "distances": [
+      2.026
+    ],
+    "distanceRaw": "2026\n                                         M",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": []
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "EQUINOCCIO CORRE POR ELLOS",
+    "slug": "equinoccio-corre-por-ellos",
+    "url": "https://carreraspopulares.com/carrera/equinoccio-corre-por-ellos",
+    "date": "2026-09-27",
+    "locality": "Majadahonda",
+    "province": "Madrid",
+    "distances": [
+      2.026
+    ],
+    "distanceRaw": "2026\n                                         M",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Cronometraje",
+        "Prueba solidaria",
+        "Bolsa del corredor",
+        "Baños",
+        "Trofeos",
+        "Parking o zona de fácil aparcamiento",
+        "Oferta de restaurantes"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "2ª TRAMUNTANA TRAIL TRANSFORTER 2026",
+    "slug": "tramuntana-trail-transforter",
+    "url": "https://carreraspopulares.com/carrera/tramuntana-trail-transforter",
+    "date": "2026-09-27",
+    "locality": "La Junquera",
+    "province": "Girona",
+    "distances": [],
+    "distanceRaw": "",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": []
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "XXV MARXA SOLIDÀRIA DE MUNTANYA AL GARBÍ",
+    "slug": "marxa-solidaria-de-muntanya-al-garbi",
+    "url": "https://carreraspopulares.com/carrera/marxa-solidaria-de-muntanya-al-garbi",
+    "date": "2026-09-27",
+    "locality": "Estivella",
+    "province": "Valencia",
+    "distances": [
+      16
+    ],
+    "distanceRaw": "16 km",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Prueba solidaria",
+        "Baños",
+        "Servicio de duchas",
+        "Inscripción gratuita",
+        "Parking o zona de fácil aparcamiento"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "VII BENICATRAIL",
+    "slug": "benicatrail",
+    "url": "https://carreraspopulares.com/carrera/benicatrail",
+    "date": "2026-09-27",
+    "locality": "BENIATJAR",
+    "province": "Valencia",
+    "distances": [
+      26
+    ],
+    "distanceRaw": "26km",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Servicio de fisioterapia",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Trofeos",
+        "Categoría silla de ruedas",
+        "Parking o zona de fácil aparcamiento",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "España próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "XXVI CURSA POPULAR A PEU ROTOVA 2025",
+    "slug": "cursa-a-peu-rotova",
+    "url": "https://carreraspopulares.com/carrera/cursa-a-peu-rotova",
+    "date": "2026-09-27",
+    "locality": "Ròtova",
+    "province": "Valencia",
+    "distances": [
+      10
+    ],
+    "distanceRaw": "10 km",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Carreras infantiles",
+        "Trofeos",
+        "Parking o zona de fácil aparcamiento",
+        "Oferta de restaurantes",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "C. Valenciana próximos 30 días",
+    "sourceCcaa": "valencia"
+  },
+  {
+    "name": "TRAIL CORTES DE PALLÁS ( SENDA DE GIGANTES )",
+    "slug": "trail-cortes-de-pallas",
+    "url": "https://carreraspopulares.com/carrera/trail-cortes-de-pallas",
+    "date": "2026-10-04",
+    "locality": "CORTES DE PALLÁS",
+    "province": "Valencia",
+    "distances": [
+      21
+    ],
+    "distanceRaw": "21000 mts",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de vestuario",
+        "Sorteo de regalos",
+        "Trofeos",
+        "Parking o zona de fácil aparcamiento",
+        "Alojamiento",
+        "Oferta de restaurantes",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "C. Valenciana próximos 30 días",
+    "sourceCcaa": "valencia"
+  },
+  {
+    "name": "IV CARRERA SOLIDARIA CONTRA LA LEUCEMIA",
+    "slug": "carrera-solidaria-contra-la-leucemia",
+    "url": "https://carreraspopulares.com/carrera/carrera-solidaria-contra-la-leucemia",
+    "date": "2026-10-04",
+    "locality": "Castellón",
+    "province": "Castellón",
+    "distances": [
+      5
+    ],
+    "distanceRaw": "5.000 m",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": []
+    },
+    "sourceFilter": "C. Valenciana próximos 30 días",
+    "sourceCcaa": "valencia"
+  },
+  {
+    "name": "GRAN FONS CIUTAT D'OLIVA",
+    "slug": "gran-fons-ciutat-doliva",
+    "url": "https://carreraspopulares.com/carrera/gran-fons-ciutat-doliva",
+    "date": "2026-10-04",
+    "locality": "OLIVA",
+    "province": "Valencia",
+    "distances": [
+      12.2
+    ],
+    "distanceRaw": "12.200 mts",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Carreras infantiles",
+        "Trofeos"
+      ]
+    },
+    "sourceFilter": "C. Valenciana próximos 30 días",
+    "sourceCcaa": "valencia"
+  },
+  {
+    "name": "XLI VOLTA A PEU A CULLERA",
+    "slug": "volta-a-peu-a-cullera",
+    "url": "https://carreraspopulares.com/carrera/volta-a-peu-a-cullera",
+    "date": "2026-10-04",
+    "locality": "Cullera",
+    "province": "Valencia",
+    "distances": [
+      12.7
+    ],
+    "distanceRaw": "12700 m",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Trofeos",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "C. Valenciana próximos 30 días",
+    "sourceCcaa": "valencia"
+  },
+  {
+    "name": "13ª CURSA DE LA DONA GIRONA",
+    "slug": "cursa-de-la-dona-girona",
+    "url": "https://carreraspopulares.com/carrera/cursa-de-la-dona-girona",
+    "date": "2026-09-27",
+    "locality": "Girona",
+    "province": "Girona",
+    "distances": [
+      5.5
+    ],
+    "distanceRaw": "5500\n                                                                                                                        \n                                             M",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Avituallamiento líquido",
+        "Bolsa del corredor",
+        "Guardería",
+        "Servicio de fisioterapia",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Trofeos",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Cataluña próximos 30 días",
+    "sourceCcaa": "barcelona"
+  },
+  {
+    "name": "VIX - PIRINEU XS",
+    "slug": "pirineu-xs",
+    "url": "https://carreraspopulares.com/carrera/pirineu-xs",
+    "date": "2026-10-03",
+    "locality": "Bagà",
+    "province": "Barcelona",
+    "distances": [
+      6
+    ],
+    "distanceRaw": "6000\n                                                                                                                        \n                                             M",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de duchas",
+        "Carreras infantiles",
+        "Sorteo de regalos",
+        "Trofeos"
+      ]
+    },
+    "sourceFilter": "Cataluña próximos 30 días",
+    "sourceCcaa": "barcelona"
+  },
+  {
+    "name": "CARRERA FUNDACIÓN SÍNDROME DE DOWN DE MADRID",
+    "slug": "carrera-down-madrid",
+    "url": "https://carreraspopulares.com/carrera/carrera-down-madrid",
+    "date": "2026-10-04",
+    "locality": "Madrid",
+    "province": "Madrid",
+    "distances": [
+      2.026
+    ],
+    "distanceRaw": "2026\n                                         M",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de guardarropía",
+        "Trofeos",
+        "Premios en metálico",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Madrid próximos 30 días",
+    "sourceCcaa": "madrid"
+  },
+  {
+    "name": "DuCross Popular La Tribu 4BS Triatlon",
+    "slug": "ducross-popular-la-tribu-4bs-triatlon",
+    "url": "https://carreraspopulares.com/carrera/ducross-popular-la-tribu-4bs-triatlon",
+    "date": "2026-10-04",
+    "locality": "Pinto",
+    "province": "Madrid",
+    "distances": [],
+    "distanceRaw": "",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": true,
+      "services": [
+        "Incluida en el calendario de la A.I.M.S.",
+        "Servicios médicos",
+        "Medallas",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de guardarropía",
+        "Carreras infantiles",
+        "Trofeos",
+        "Parking o zona de fácil aparcamiento",
+        "Oferta de restaurantes",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Madrid próximos 30 días",
+    "sourceCcaa": "madrid"
+  },
+  {
+    "name": "TRAIL DE PEÑALARA",
+    "slug": "trail-de-penalara",
+    "url": "https://carreraspopulares.com/carrera/trail-de-penalara",
+    "date": "2026-10-09",
+    "locality": "Navacerrada",
+    "province": "Madrid",
+    "distances": [
+      2.026
+    ],
+    "distanceRaw": "2026\n                                                                                                                        \n                                             M",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": []
+    },
+    "sourceFilter": "Madrid próximos 30 días",
+    "sourceCcaa": "madrid"
+  },
+  {
+    "name": "CROSS NOCTURNO DE NAVACERRADA",
+    "slug": "cross-nocturno-de-navacerrada",
+    "url": "https://carreraspopulares.com/carrera/cross-nocturno-de-navacerrada",
+    "date": "2026-10-09",
+    "locality": "Navacerrada",
+    "province": "Madrid",
+    "distances": [
+      11
+    ],
+    "distanceRaw": "11.000 m",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": []
+    },
+    "sourceFilter": "Madrid próximos 30 días",
+    "sourceCcaa": "madrid"
+  },
+  {
+    "name": "XXXI MEMORIAL JOAQUÍN SÁNCHEZ LA CARLOTA 2026",
+    "slug": "memorial-joaquin-sanchez-la-carlota",
+    "url": "https://carreraspopulares.com/carrera/memorial-joaquin-sanchez-la-carlota",
+    "date": "2026-10-11",
+    "locality": "La Carlota",
+    "province": "Córdoba",
+    "distances": [
+      10000
+    ],
+    "distanceRaw": "10000m",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Prueba solidaria",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Carreras infantiles",
+        "Trofeos",
+        "Sorteo de regalos",
+        "Premios en metálico",
+        "Categoría silla de ruedas",
+        "Parking o zona de fácil aparcamiento",
+        "Actividades para niños",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Andalucía próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "CARRERA SOLIDARIA CONTRA LA ELA. FUNDACIÓN EUROCAJA RURAL",
+    "slug": "carrera-solidaria-contra-la-ela",
+    "url": "https://carreraspopulares.com/carrera/carrera-solidaria-contra-la-ela",
+    "date": "2026-10-04",
+    "locality": "Toledo",
+    "province": "Toledo",
+    "distances": [
+      5
+    ],
+    "distanceRaw": "5.000 m",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Prueba solidaria",
+        "Bolsa del corredor",
+        "Servicio de fisioterapia",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Carreras infantiles",
+        "Trofeos",
+        "Categoría silla de ruedas",
+        "Actividades para niños",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Castilla La Mancha próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "Medio Maratón Ciudad de Albacete",
+    "slug": "media-maraton-ciudad-de-albacete",
+    "url": "https://carreraspopulares.com/carrera/media-maraton-ciudad-de-albacete",
+    "date": "2026-10-04",
+    "locality": "Albacete",
+    "province": "Albacete",
+    "distances": [
+      21.097
+    ],
+    "distanceRaw": "21.097 m",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": true,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Servicio de fisioterapia",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Premios en metálico",
+        "Trofeos",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Castilla La Mancha próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "SORGINEN LASTERKETA",
+    "slug": "sorginen-lasterketa",
+    "url": "https://carreraspopulares.com/carrera/sorginen-lasterketa",
+    "date": "2026-10-04",
+    "locality": "Atxondo",
+    "province": "Vizcaya",
+    "distances": [
+      21
+    ],
+    "distanceRaw": "21000 m",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": true,
+      "services": [
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Servicio de fisioterapia",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Premios en metálico",
+        "Trofeos",
+        "Sorteo de regalos",
+        "Actividades para niños",
+        "Parking o zona de fácil aparcamiento",
+        "Oferta de restaurantes",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "País Vasco próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "III PASOS Y PEDALES POR CUIDAR MEJOR SAN JUAN DE DIOS PALIATIVOS",
+    "slug": "pasos-y-pedales-por-cuidar-mejor-san-juan-de-dios-paliativos",
+    "url": "https://carreraspopulares.com/carrera/pasos-y-pedales-por-cuidar-mejor-san-juan-de-dios-paliativos",
+    "date": "2026-09-27",
+    "locality": "ZARAGOZA",
+    "province": "Zaragoza",
+    "distances": [
+      50
+    ],
+    "distanceRaw": "25 y 50\n                                                                                                                        \n                                             M",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Prueba solidaria",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Sorteo de regalos",
+        "Trofeos",
+        "Parking o zona de fácil aparcamiento",
+        "Alojamiento",
+        "Oferta de restaurantes",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Aragón próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "ULTRA-TRAIL GUARA SOMONTANO",
+    "slug": "ultra-trail-guara-somontano",
+    "url": "https://carreraspopulares.com/carrera/ultra-trail-guara-somontano",
+    "date": "2026-10-02",
+    "locality": "Alquezar",
+    "province": "Huesca",
+    "distances": [
+      30
+    ],
+    "distanceRaw": "50 y 30 km",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": []
+    },
+    "sourceFilter": "Aragón próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "XLVI SUBIDA PEDESTRE AL SANTUARIO DE MISERICORDIA",
+    "slug": "subida-pedestre-al-santuario-de-misericordia",
+    "url": "https://carreraspopulares.com/carrera/subida-pedestre-al-santuario-de-misericordia",
+    "date": "2026-10-04",
+    "locality": "BORJA",
+    "province": "Zaragoza",
+    "distances": [
+      67
+    ],
+    "distanceRaw": "6.7km",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Carreras infantiles",
+        "Premios en metálico",
+        "Trofeos",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Aragón próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "CARRERA POPULAR CORUÑA10",
+    "slug": "carreira-popular-coruna",
+    "url": "https://carreraspopulares.com/carrera/carreira-popular-coruna",
+    "date": "2026-10-04",
+    "locality": "A Coruña",
+    "province": "A Coruña",
+    "distances": [],
+    "distanceRaw": "",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": []
+    },
+    "sourceFilter": "Galicia próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "TRAIL RIBEIRA SACRA",
+    "slug": "trail-ribeira-sacra",
+    "url": "https://carreraspopulares.com/carrera/trail-ribeira-sacra",
+    "date": "2026-10-11",
+    "locality": "Luintra",
+    "province": "Ourense",
+    "distances": [
+      48
+    ],
+    "distanceRaw": "48.000 mts",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": []
+    },
+    "sourceFilter": "Galicia próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "Trail Ruta de Los Molinos",
+    "slug": "trail-ruta-de-los-molinos",
+    "url": "https://carreraspopulares.com/carrera/trail-ruta-de-los-molinos",
+    "date": "2026-10-10",
+    "locality": "Vega de San Mateo (Gran Canaria)",
+    "province": "Las Palmas",
+    "distances": [
+      25
+    ],
+    "distanceRaw": "13 y 25Km",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": []
+    },
+    "sourceFilter": "Islas Canarias próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "15K FORMENTERA SUNSET RUN",
+    "slug": "15k-formentera-sunset-run",
+    "url": "https://carreraspopulares.com/carrera/15k-formentera-sunset-run",
+    "date": "2026-10-10",
+    "locality": "Formentera",
+    "province": "Baleares",
+    "distances": [
+      15
+    ],
+    "distanceRaw": "15km",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": []
+    },
+    "sourceFilter": "Baleares próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "Trail de Alconchel",
+    "slug": "trail-de-alconchel",
+    "url": "https://carreraspopulares.com/carrera/trail-de-alconchel",
+    "date": "2026-10-04",
+    "locality": "ALCONCHEL",
+    "province": "Badajoz",
+    "distances": [
+      21
+    ],
+    "distanceRaw": "21.000 mts",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Carreras infantiles",
+        "Trofeos",
+        "Sorteo de regalos",
+        "Parking o zona de fácil aparcamiento",
+        "Actividades para niños",
+        "Alojamiento",
+        "Oferta de viaje",
+        "Oferta de restaurantes",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Extremadura próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "Media Maratón Medina de las Torres",
+    "slug": "media-maraton-medina-de-las-torres",
+    "url": "https://carreraspopulares.com/carrera/media-maraton-medina-de-las-torres",
+    "date": "2026-10-11",
+    "locality": "Medina de las Torres",
+    "province": "Badajoz",
+    "distances": [
+      2.026
+    ],
+    "distanceRaw": "2026\n                                         M",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": []
+    },
+    "sourceFilter": "Extremadura próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "10K. CASTRO URDIALES",
+    "slug": "10km-castro-urdiales",
+    "url": "https://carreraspopulares.com/carrera/10km-castro-urdiales",
+    "date": "2026-10-04",
+    "locality": "Castro Urdiales",
+    "province": "Cantabria",
+    "distances": [
+      10
+    ],
+    "distanceRaw": "10.000 mts",
+    "iconos": {
+      "homologated": false,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": []
+    },
+    "sourceFilter": "Cantabria próximos 30 días",
+    "sourceCcaa": null
+  },
+  {
+    "name": "31 MITJA MARATÓ CIUTAT DE GANDIA",
+    "slug": "mitja-marato-gandia",
+    "url": "https://carreraspopulares.com/carrera/mitja-marato-gandia",
+    "date": "2026-11-08",
+    "locality": "Gandia",
+    "province": "Valencia",
+    "distances": [
+      21.097
+    ],
+    "distanceRaw": "21.097 mts",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": true,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Salida en boxes",
+        "Avituallamiento líquido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Servicio de fisioterapia",
+        "Baños",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Premios en metálico",
+        "Trofeos",
+        "Categoría silla de ruedas",
+        "Parking o zona de fácil aparcamiento",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Nacional con circuito homologado",
+    "sourceCcaa": null
+  },
+  {
+    "name": "38 PAS RAS AL PORT DE VALENCIA",
+    "slug": "pas-ras-al-port-de-valencia",
+    "url": "https://carreraspopulares.com/carrera/pas-ras-al-port-de-valencia",
+    "date": "2026-12-13",
+    "locality": "Valencia",
+    "province": "Valencia",
+    "distances": [
+      10
+    ],
+    "distanceRaw": "10.000 mts",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": true,
+      "services": [
+        "Servicios médicos",
+        "Salida en boxes",
+        "Avituallamiento líquido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Servicio de guardarropía",
+        "Carreras infantiles",
+        "Trofeos",
+        "Premios en metálico",
+        "Speaker en zona de meta",
+        "Diploma de participacion en la carrera",
+        "Mismo numero de premios y de importes para hombres y mujeres"
+      ]
+    },
+    "sourceFilter": "Nacional con circuito homologado",
+    "sourceCcaa": null
+  },
+  {
+    "name": "BILBAO NIGHT RUNNING FEST",
+    "slug": "bilbao-night-running-fest",
+    "url": "https://carreraspopulares.com/carrera/bilbao-night-running-fest",
+    "date": "2026-10-17",
+    "locality": "Bilbao",
+    "province": "Vizcaya",
+    "distances": [
+      21.097
+    ],
+    "distanceRaw": "21097\n                                                                                                                        \n                                             M",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": true,
+      "inAutonomicCalendar": true,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Salida en boxes",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Prueba solidaria",
+        "Bolsa del corredor",
+        "Servicio de fisioterapia",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Trofeos",
+        "Premios en metálico",
+        "Sorteo de regalos",
+        "Parking o zona de fácil aparcamiento",
+        "Alojamiento",
+        "Oferta de viaje",
+        "Oferta de restaurantes",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Nacional con circuito homologado",
+    "sourceCcaa": null
+  },
+  {
+    "name": "QUIJOTE MARATON DE CIUDAD REAL",
+    "slug": "quijote-maraton-ciudad-real",
+    "url": "https://carreraspopulares.com/carrera/quijote-maraton-ciudad-real",
+    "date": "2026-10-18",
+    "locality": "Ciudad Real",
+    "province": "Ciudad Real",
+    "distances": [
+      42.195
+    ],
+    "distanceRaw": "42195\n                                                                                                                        \n                                             M",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": true,
+      "inAutonomicCalendar": true,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Servicio de fisioterapia",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Carreras infantiles",
+        "Premios en metálico",
+        "Trofeos",
+        "Sorteo de regalos",
+        "Categoría silla de ruedas",
+        "Actividades para niños",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Nacional con circuito homologado",
+    "sourceCcaa": null
+  },
+  {
+    "name": "XXVIII MEDIA MARATÓN Y XV 10 K DE FUENLABRADA",
+    "slug": "media-maraton-de-fuelabrada",
+    "url": "https://carreraspopulares.com/carrera/media-maraton-de-fuelabrada",
+    "date": "2026-10-18",
+    "locality": "Fuenlabrada",
+    "province": "Madrid",
+    "distances": [
+      21.095
+    ],
+    "distanceRaw": "21.095\n                                                                                                                        \n                                             M",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": true,
+      "inAutonomicCalendar": true,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Prueba solidaria",
+        "Bolsa del corredor",
+        "Servicio de fisioterapia",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Carreras infantiles",
+        "Trofeos",
+        "Premios en metálico",
+        "Parking o zona de fácil aparcamiento",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Nacional con circuito homologado",
+    "sourceCcaa": null
+  },
+  {
+    "name": "10K CARABANCHEL: \"DEL ALTO AL BAJO\"",
+    "slug": "10k-carabanchel-del-alto-al-bajo",
+    "url": "https://carreraspopulares.com/carrera/10k-carabanchel-del-alto-al-bajo",
+    "date": "2026-10-25",
+    "locality": "madrid",
+    "province": "Madrid",
+    "distances": [
+      2.026
+    ],
+    "distanceRaw": "2026\n                                         m",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": true,
+      "services": [
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Servicio de fisioterapia",
+        "Baños",
+        "Servicio de guardarropía",
+        "Trofeos",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Nacional con circuito homologado",
+    "sourceCcaa": null
+  },
+  {
+    "name": "BINTER NIGHTRUN LAS PALMAS DE",
+    "slug": "binter-nightrun-las-palmas-de-gran-canaria",
+    "url": "https://carreraspopulares.com/carrera/binter-nightrun-las-palmas-de-gran-canaria",
+    "date": "2026-11-07",
+    "locality": "Las Palmas",
+    "province": "Las Palmas",
+    "distances": [
+      10
+    ],
+    "distanceRaw": "5.000 y 10.000 m",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": true,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Salida en boxes",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Prueba solidaria",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de guardarropía",
+        "Sorteo de regalos",
+        "Premios en metálico",
+        "Trofeos",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Nacional con circuito homologado",
+    "sourceCcaa": null
+  },
+  {
+    "name": "XII MEDIA MARATÓN ÁVILA MONUMENTAL Y 10K",
+    "slug": "media-maraton-avila-monumental",
+    "url": "https://carreraspopulares.com/carrera/media-maraton-avila-monumental",
+    "date": "2026-11-08",
+    "locality": "ÁVILA",
+    "province": "Avila",
+    "distances": [
+      21095
+    ],
+    "distanceRaw": "21.095M",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": true,
+      "inAutonomicCalendar": true,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Salida en boxes",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Guardería",
+        "Bolsa del corredor",
+        "Servicio de fisioterapia",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Premios en metálico",
+        "Trofeos",
+        "Parking o zona de fácil aparcamiento",
+        "Alojamiento",
+        "Oferta de restaurantes",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Nacional con circuito homologado",
+    "sourceCcaa": null
+  },
+  {
+    "name": "I MARATÓN IMPERIAL DE TOLEDO",
+    "slug": "maraton-imperial-de-toledo",
+    "url": "https://carreraspopulares.com/carrera/maraton-imperial-de-toledo",
+    "date": "2026-11-15",
+    "locality": "Toledo",
+    "province": "Toledo",
+    "distances": [],
+    "distanceRaw": "",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Salida en boxes",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Servicio de fisioterapia",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Premios en metálico",
+        "Trofeos",
+        "Categoría silla de ruedas",
+        "Parking o zona de fácil aparcamiento",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Nacional con circuito homologado",
+    "sourceCcaa": null
+  },
+  {
+    "name": "XIV 5K Y 10K FUENTES DE EBRO",
+    "slug": "10k-y-5k-fuentes-de-ebro",
+    "url": "https://carreraspopulares.com/carrera/10k-y-5k-fuentes-de-ebro",
+    "date": "2026-11-29",
+    "locality": "FUENTES DE EBRO",
+    "province": "Zaragoza",
+    "distances": [
+      10
+    ],
+    "distanceRaw": "5 y 10\n                                                                                                                        \n                                             M",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Medallas",
+        "Salida en boxes",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Carreras infantiles",
+        "Trofeos",
+        "Sorteo de regalos",
+        "Parking o zona de fácil aparcamiento",
+        "Alojamiento",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Nacional con circuito homologado",
+    "sourceCcaa": null
+  },
+  {
+    "name": "CARRERA DE LAS CIUDADES CONTRA EL CANCER DE PANCREAS BARCELONA",
+    "slug": "carrera-de-barcelona-contra-el-cancer-de-pancreas",
+    "url": "https://carreraspopulares.com/carrera/carrera-de-barcelona-contra-el-cancer-de-pancreas",
+    "date": "2026-12-13",
+    "locality": "Barcelona",
+    "province": "Barcelona",
+    "distances": [
+      5
+    ],
+    "distanceRaw": "5.000 mts",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Prueba solidaria",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de guardarropía",
+        "Sorteo de regalos",
+        "Trofeos",
+        "Categoría silla de ruedas",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Nacional con circuito homologado",
+    "sourceCcaa": null
+  },
+  {
+    "name": "10K VALENCIA IBERCAJA",
+    "slug": "10k-valencia-ibercaja",
+    "url": "https://carreraspopulares.com/carrera/10k-valencia-ibercaja",
+    "date": "2027-01-10",
+    "locality": "Valencia",
+    "province": "Valencia",
+    "distances": [
+      10
+    ],
+    "distanceRaw": "10.000 mts",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": true,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de guardarropía",
+        "Trofeos",
+        "Speaker en zona de meta",
+        "Los distintos boxes salen en horas diferentes",
+        "Tiene entrega de dorsales antes del dia de carrera",
+        "La salida y meta estan situadas en el mismo sitio o a una distancia muy corta",
+        "Mismo numero de premios y de importes para hombres y mujeres"
+      ]
+    },
+    "sourceFilter": "Nacional con circuito homologado",
+    "sourceCcaa": null
+  },
+  {
+    "name": "XXXVII MEDIA MARATON DE TORREMOLINOS",
+    "slug": "media-maraton-de-torremolinos",
+    "url": "https://carreraspopulares.com/carrera/media-maraton-de-torremolinos",
+    "date": "2027-02-07",
+    "locality": "Torremolinos",
+    "province": "Málaga",
+    "distances": [
+      21.097
+    ],
+    "distanceRaw": "21097\n                                                                                                                        \n                                             M",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": true,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Servicio de fisioterapia",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Premios en metálico",
+        "Sorteo de regalos",
+        "Trofeos",
+        "Categoría silla de ruedas",
+        "Parking o zona de fácil aparcamiento",
+        "Oferta de restaurantes",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Nacional con circuito homologado",
+    "sourceCcaa": null
+  },
+  {
+    "name": "HYUNDAI MITJA MARATÓ DE BARCELONA",
+    "slug": "mitja-marato-de-barcelona",
+    "url": "https://carreraspopulares.com/carrera/mitja-marato-de-barcelona",
+    "date": "2027-02-14",
+    "locality": "Barcelona",
+    "province": "Barcelona",
+    "distances": [
+      21.097
+    ],
+    "distanceRaw": "21.097 m",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Incluida en el calendario de la A.I.M.S.",
+        "Servicios médicos",
+        "Medallas",
+        "Salida en boxes",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de guardarropía",
+        "Trofeos",
+        "Alojamiento",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Nacional con circuito homologado",
+    "sourceCcaa": null
+  },
+  {
+    "name": "MARATÓ BP CASTELLÓ",
+    "slug": "maraton-bp-castellon",
+    "url": "https://carreraspopulares.com/carrera/maraton-bp-castellon",
+    "date": "2027-02-14",
+    "locality": "Castellon",
+    "province": "Castellón",
+    "distances": [
+      42.195
+    ],
+    "distanceRaw": "42.195 m",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": true,
+      "inAutonomicCalendar": true,
+      "services": [
+        "Incluida en el calendario de la A.I.M.S.",
+        "Servicios médicos",
+        "Medallas",
+        "Salida en boxes",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Prueba solidaria",
+        "Bolsa del corredor",
+        "Servicio de fisioterapia",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Carreras infantiles",
+        "Premios en metálico",
+        "Trofeos",
+        "Parking o zona de fácil aparcamiento",
+        "Actividades para niños",
+        "Oferta de restaurantes",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Nacional con circuito homologado",
+    "sourceCcaa": null
+  },
+  {
+    "name": "Zurich Marató Barcelona",
+    "slug": "zurich-marato-barcelona",
+    "url": "https://carreraspopulares.com/carrera/zurich-marato-barcelona",
+    "date": "2027-03-14",
+    "locality": "Barcelona",
+    "province": "Barcelona",
+    "distances": [
+      14
+    ],
+    "distanceRaw": "14 m",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": false,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Incluida en el calendario de la A.I.M.S.",
+        "Medallas",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Prueba solidaria",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de guardarropía",
+        "Carreras infantiles",
+        "Trofeos",
+        "Categoría silla de ruedas",
+        "Alojamiento",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Nacional con circuito homologado",
+    "sourceCcaa": null
+  },
+  {
+    "name": "Santa Eulària Ibiza Marathon",
+    "slug": "ibiza-marathon",
+    "url": "https://carreraspopulares.com/carrera/ibiza-marathon",
+    "date": "2027-04-10",
+    "locality": "Santa Eularia des Riu",
+    "province": "Baleares",
+    "distances": [],
+    "distanceRaw": "",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": true,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Incluida en el calendario de la A.I.M.S.",
+        "Servicios médicos",
+        "Medallas",
+        "Salida en boxes",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Baños",
+        "Servicio de guardarropía",
+        "Carreras infantiles",
+        "Trofeos",
+        "Actividades para niños",
+        "Oferta de viaje",
+        "Oferta de restaurantes",
+        "Speaker en zona de meta"
+      ]
+    },
+    "sourceFilter": "Nacional con circuito homologado",
+    "sourceCcaa": null
+  },
+  {
+    "name": "MANN-FILTER MARATÓN DE ZARAGOZA",
+    "slug": "mann-filter-maraton-de-zaragoza",
+    "url": "https://carreraspopulares.com/carrera/mann-filter-maraton-de-zaragoza",
+    "date": "2027-04-18",
+    "locality": "Zaragoza",
+    "province": "Zaragoza",
+    "distances": [
+      42.195
+    ],
+    "distanceRaw": "42.195 m",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": true,
+      "inAutonomicCalendar": false,
+      "services": [
+        "Servicios médicos",
+        "Medallas",
+        "Salida en boxes",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Servicio de fisioterapia",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Premios en metálico",
+        "Trofeos"
+      ]
+    },
+    "sourceFilter": "Nacional con circuito homologado",
+    "sourceCcaa": null
+  },
+  {
+    "name": "MEDIA MARATÓN CIUDAD DE CARTAGENA",
+    "slug": "media-maraton-cartagena",
+    "url": "https://carreraspopulares.com/carrera/media-maraton-cartagena",
+    "date": "2032-03-05",
+    "locality": "Cartagena",
+    "province": "Murcia",
+    "distances": [
+      5
+    ],
+    "distanceRaw": "05 m",
+    "iconos": {
+      "homologated": true,
+      "inRfeaCalendar": true,
+      "inAutonomicCalendar": true,
+      "services": [
+        "Servicios médicos",
+        "Avituallamiento líquido",
+        "Avituallamiento sólido",
+        "Cronometraje",
+        "Bolsa del corredor",
+        "Servicio de fisioterapia",
+        "Baños",
+        "Servicio de duchas",
+        "Servicio de guardarropía",
+        "Servicio de vestuario",
+        "Trofeos",
+        "Categoría silla de ruedas",
+        "Parking o zona de fácil aparcamiento",
+        "Alojamiento",
+        "Oferta de restaurantes"
+      ]
+    },
+    "sourceFilter": "Nacional con circuito homologado",
+    "sourceCcaa": null
+  }
+]

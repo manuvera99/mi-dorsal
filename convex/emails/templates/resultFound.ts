@@ -46,6 +46,7 @@ export function resultFoundEmail(args: {
   classificationUrl?: string;
   diplomaUrl?: string;
   shareUrl?: string;
+  stickerEditorUrl?: string;
   appUrl: string;
 }): { subject: string; html: string; text: string } {
   const {
@@ -65,6 +66,7 @@ export function resultFoundEmail(args: {
     classificationUrl,
     diplomaUrl,
     shareUrl,
+    stickerEditorUrl,
     appUrl,
   } = args;
 
@@ -287,6 +289,25 @@ export function resultFoundEmail(args: {
             </td>
           </tr>
 
+          <!-- Sticker editor teaser: explica el sticker para Stories y -->
+          <!-- lleva al editor premium de esa carrera. -->
+          ${stickerEditorUrl ? `
+          <tr>
+            <td style="padding: 8px 28px 8px;">
+              <div style="background: ${COLORS.warm}; border-radius: 10px; padding: 18px 20px;">
+                <p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: ${COLORS.dark};">
+                  📱 Tu resultado, listo para tus Stories
+                </p>
+                <p style="margin: 0 0 14px; font-size: 13px; color: ${COLORS.muted}; line-height: 1.5;">
+                  Hemos generado un sticker transparente con tu tiempo, pace y kilómetros, pensado para superponer sobre tu propia foto de carrera en Instagram o TikTok. Personaliza qué datos mostrar y su posición en el editor.
+                </p>
+                <a href="${escapeHtml(stickerEditorUrl)}" style="display: inline-block; color: ${COLORS.primary}; font-size: 13px; font-weight: 600; text-decoration: none;">
+                  Personalizar mi sticker →
+                </a>
+              </div>
+            </td>
+          </tr>` : ""}
+
           <!-- Footer -->
           <tr>
             <td style="padding: 0 28px 24px;">
@@ -336,6 +357,12 @@ export function resultFoundEmail(args: {
   textLines.push("");
   textLines.push(`Ver mi diploma: ${diplomaHref}`);
   textLines.push(`Clasificación completa: ${classificationHref}`);
+  if (stickerEditorUrl) {
+    textLines.push("");
+    textLines.push("📱 Tu resultado, listo para tus Stories");
+    textLines.push("Hemos generado un sticker transparente con tu tiempo, pace y kilómetros, para superponer sobre tu foto de carrera en Instagram o TikTok. Personalízalo aquí:");
+    textLines.push(stickerEditorUrl);
+  }
   textLines.push("");
   textLines.push(`— Manu, en mi-dorsal`);
   textLines.push("El hilo que te une a tu dorsal.");

@@ -269,6 +269,7 @@ export const sendResultFoundEmail = internalAction({
     // ---------- 6. Renderizar email ----------
     const diplomaUrl = `${APP_URL}/api/diploma/${myRace._id}.pdf`;
     const shareCardUrl = `${APP_URL}/api/result/${myRace._id}/share-card.png`;
+    const stickerEditorUrl = `${APP_URL}/editor-sticker/${myRace._id}`;
     const classificationUrl = race.resultsUrl ?? `${APP_URL}/carreras/${race.slug ?? ""}`;
     const predictionBlock = args.predictedTimeSeconds
       ? {
@@ -292,6 +293,7 @@ export const sendResultFoundEmail = internalAction({
       classificationUrl,
       diplomaUrl,
       shareUrl: shareCardUrl,
+      stickerEditorUrl,
       appUrl: APP_URL,
       ...predictionBlock,
     });

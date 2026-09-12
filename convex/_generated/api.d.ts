@@ -16,6 +16,7 @@ import type * as actions_stravaWebhookHandler from "../actions/stravaWebhookHand
 import type * as actions_stravaWebhookSubscription from "../actions/stravaWebhookSubscription.js";
 import type * as activities_normalize from "../activities/normalize.js";
 import type * as activities_queries from "../activities/queries.js";
+import type * as adminResultsScan from "../adminResultsScan.js";
 import type * as adminTools from "../adminTools.js";
 import type * as aiUsage from "../aiUsage.js";
 import type * as blog from "../blog.js";
@@ -87,6 +88,7 @@ declare const fullApi: ApiFromModules<{
   "actions/stravaWebhookSubscription": typeof actions_stravaWebhookSubscription;
   "activities/normalize": typeof activities_normalize;
   "activities/queries": typeof activities_queries;
+  adminResultsScan: typeof adminResultsScan;
   adminTools: typeof adminTools;
   aiUsage: typeof aiUsage;
   blog: typeof blog;

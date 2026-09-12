@@ -28,7 +28,7 @@ import { getEffectiveDistance } from "../../lib/prediction/effective-distance";
 // Tipos
 // ---------------------------------------------------------------------------
 
-type Item = {
+export type Item = {
   myRaceId: string;
   raceId: string;
   dorsalNumber: string;
@@ -80,6 +80,41 @@ function getCheckFrequency(raceTimeMs: number, nowMs: number): "skip" | "aggress
 }
 
 // ---------------------------------------------------------------------------
+// Construye el Item de un myRace+race — compartido entre el cron
+// (getRacesToCheck) y el escaneo manual admin (adminResultsScan.ts). Requiere
+// myRace.dorsalNumber ya validado como truthy por el caller.
+// ---------------------------------------------------------------------------
+
+export function buildItem(myRace: Doc<"myRaces">, race: Doc<"races">): Item {
+  // sourceUrl es la URL real de sportmaniacs.com para este adapter;
+  // officialUrl puede haber sido sobrescrito con la web del organizador
+  // por otra sesión (homologación) — solo lo usamos si sourceUrl no
+  // sirve (no es de sportmaniacs.com).
+  const sourceUrl = (race as any).sourceUrl as string | undefined;
+  const officialUrl = race.officialUrl ?? undefined;
+  const sportmaniacsDiscoveryUrl =
+    sourceUrl?.includes("sportmaniacs.com")
+      ? sourceUrl
+      : officialUrl?.includes("sportmaniacs.com")
+        ? officialUrl
+        : undefined;
+
+  return {
+    myRaceId: myRace._id,
+    raceId: race._id,
+    dorsalNumber: myRace.dorsalNumber!,
+    resultsUrl: race.resultsUrl ?? undefined,
+    sportmaniacsDiscoveryUrl,
+    scraperAdapter: (race as any).scraperAdapter ?? undefined,
+    sportmaniacsEventIds: (race as any).sportmaniacsEventIds ?? undefined,
+    userId: myRace.userId,
+    raceName: race.name,
+    raceDate: race.startDate,
+    raceStartTime: (race as any).startTime ?? undefined,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Query: devuelve las carreras que hay que chequear, agrupadas por frecuencia
 // ---------------------------------------------------------------------------
 
@@ -120,34 +155,7 @@ export const getRacesToCheck = internalQuery({
         continue;
       }
 
-      // sourceUrl es la URL real de sportmaniacs.com para este adapter;
-      // officialUrl puede haber sido sobrescrito con la web del organizador
-      // por otra sesión (homologación) — solo lo usamos si sourceUrl no
-      // sirve (no es de sportmaniacs.com).
-      const sourceUrl = (race as any).sourceUrl as string | undefined;
-      const officialUrl = race.officialUrl ?? undefined;
-      const sportmaniacsDiscoveryUrl =
-        sourceUrl?.includes("sportmaniacs.com")
-          ? sourceUrl
-          : officialUrl?.includes("sportmaniacs.com")
-            ? officialUrl
-            : undefined;
-
-      const item: Item = {
-        myRaceId: myRace._id,
-        raceId: race._id,
-        dorsalNumber: myRace.dorsalNumber,
-        resultsUrl: race.resultsUrl ?? undefined,
-        sportmaniacsDiscoveryUrl,
-        scraperAdapter: (race as any).scraperAdapter ?? undefined,
-        sportmaniacsEventIds: (race as any).sportmaniacsEventIds ?? undefined,
-        userId: myRace.userId,
-        raceName: race.name,
-        raceDate: race.startDate,
-        raceStartTime: (race as any).startTime ?? undefined,
-      };
-
-      races.push({ item, frequency, raceTime });
+      races.push({ item: buildItem(myRace, race), frequency, raceTime });
     }
 
     return { races, skipped };
@@ -173,6 +181,156 @@ export const getMyRaceForNotification = internalQuery({
 });
 
 // ---------------------------------------------------------------------------
+// Procesamiento de un item — compartido entre el cron y el escaneo manual
+// admin (convex/adminResultsScan.ts). Toda la lógica delicada (discovery de
+// sportmaniacs, orden scrape→cachear→actualizar myRace→email→PR, qué cuenta
+// como "no encontrado" vs "error") vive AQUÍ UNA SOLA VEZ.
+// ---------------------------------------------------------------------------
+
+export type ProcessItemOutcome =
+  | { outcome: "found"; timeSeconds: number }
+  | { outcome: "not_found" }
+  | { outcome: "skipped_no_url" }
+  | { outcome: "error"; message: string };
+
+export async function processResultCheckItem(
+  ctx: any,
+  item: Item,
+): Promise<ProcessItemOutcome> {
+  let sportmaniacsEventIds = item.sportmaniacsEventIds;
+
+  // Fallback de descubrimiento: si el backfill masivo (script offline)
+  // aún no cacheó los eventIds de esta carrera — típicamente porque se
+  // corrió antes de que sportmaniacs activara la página de resultados
+  // con event-card, algo que pasa con carreras muy próximas en fecha —
+  // intentamos parsear sportmaniacsDiscoveryUrl aquí mismo, una vez por
+  // check. Si sportmaniacs ya lo publicó, lo cacheamos y seguimos con
+  // el scrape normal en la misma pasada; si no, seguimos sin poder
+  // chequear esta carrera y lo reintentaremos en el siguiente cron.
+  if (
+    item.scraperAdapter === "sportmaniacs" &&
+    !sportmaniacsEventIds?.length &&
+    item.sportmaniacsDiscoveryUrl
+  ) {
+    const discovered = await discoverSportmaniacsEventIds(item.sportmaniacsDiscoveryUrl);
+    if (discovered.length > 0) {
+      sportmaniacsEventIds = discovered;
+      await ctx.runMutation(internal.crons.checkResults.cacheSportmaniacsEventIds, {
+        raceId: item.raceId as Id<"races">,
+        sportmaniacsEventIds: discovered,
+      });
+    }
+  }
+
+  // Sportmaniacs no necesita resultsUrl para scrapear (usa
+  // sportmaniacsEventIds, cacheados por el backfill o descubiertos
+  // arriba) — solo el resto de adapters lo requieren.
+  const hasSportmaniacsIds =
+    item.scraperAdapter === "sportmaniacs" && !!sportmaniacsEventIds?.length;
+  if (!item.resultsUrl && !hasSportmaniacsIds) {
+    // No podemos scrapear sin URL (ni sin eventIds cacheados/descubiertos).
+    return { outcome: "skipped_no_url" };
+  }
+
+  try {
+    const result = await scrapeResults(
+      item.resultsUrl ?? "",
+      item.dorsalNumber,
+      item.scraperAdapter,
+      { sportmaniacsEventIds },
+    );
+
+    if (!result) {
+      // No encontrado todavía. No marcamos resultScrapedAt, queremos
+      // que se reintente en el siguiente cron/escaneo.
+      return { outcome: "not_found" };
+    }
+
+    console.log(
+      `[check-results] ✓ Encontrado ${item.raceName} dorsal ${item.dorsalNumber}: ${formatTime(result.timeSeconds)}`,
+    );
+
+    // 1) Cachear el resultado
+    await ctx.runMutation(internal.crons.checkResults.cacheResult, {
+      raceId: item.raceId as Id<"races">,
+      dorsalNumber: item.dorsalNumber,
+      runnerName: result.runnerName,
+      positionOverall: result.positionOverall,
+      positionCategory: result.positionCategory,
+      timeSeconds: result.timeSeconds,
+      sourceUrl: item.resultsUrl,
+    });
+
+    // 2) Actualizar myRace (status → done)
+    await ctx.runMutation(internal.crons.checkResults.updateMyRace, {
+      myRaceId: item.myRaceId as Id<"myRaces">,
+      timeSeconds: result.timeSeconds,
+      position: result.positionOverall,
+      positionCategory: result.positionCategory,
+    });
+
+    // 3) Enviar email al usuario
+    const notifData = await ctx.runQuery(
+      internal.crons.checkResults.getMyRaceForNotification,
+      { myRaceId: item.myRaceId as Id<"myRaces"> },
+    );
+
+    if (notifData) {
+      await ctx.runAction(internal.emailNotificationsAction.sendResultFoundEmail, {
+        userId: notifData.profile._id,
+        myRaceId: item.myRaceId as Id<"myRaces">,
+        raceName: item.raceName,
+        raceDate: item.raceDate ?? "",
+        timeSeconds: result.timeSeconds,
+        positionOverall: result.positionOverall,
+        positionCategory: result.positionCategory,
+        predictedTimeSeconds: notifData.myRace.predictedTimeSeconds,
+      });
+
+      // 4) Persistir el PR si el nuevo tiempo bate el récord anterior.
+      // Se hace DESPUÉS del email para que el email haya leído el PR
+      // "viejo" como referencia. La próxima vez, este PR nuevo será
+      // el current y ya no se mostrará como badge.
+      try {
+        const effectiveDistance = getEffectiveDistance(notifData.myRace, notifData.race);
+        const distanceM = Math.round(effectiveDistance.distanceKm * 1000);
+        const prResult = await ctx.runMutation(
+          internal.personalRecords.updateIfBetter,
+          {
+            userId: notifData.profile._id,
+            distanceM,
+            timeSeconds: result.timeSeconds,
+            raceId: notifData.race._id,
+            achievedAt: notifData.race.startDate,
+          },
+        );
+        if (prResult.updated) {
+          console.log(
+            `[check-results] ✓ Nuevo PR para ${notifData.profile.email} ` +
+              `en ${distanceM}m: ${prResult.previousTimeSeconds}s → ${result.timeSeconds}s`,
+          );
+        }
+      } catch (e) {
+        // No bloqueamos el flujo principal si falla el PR update.
+        // El email ya se envió. Log para investigar después.
+        console.error(
+          `[check-results] PR update failed for myRaceId=${item.myRaceId}:`,
+          e,
+        );
+      }
+    }
+
+    return { outcome: "found", timeSeconds: result.timeSeconds };
+  } catch (err) {
+    console.error(
+      `[check-results] Error scraping ${item.raceName} (dorsal ${item.dorsalNumber}):`,
+      err,
+    );
+    return { outcome: "error", message: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Action principal del cron
 // ---------------------------------------------------------------------------
 
@@ -186,11 +344,9 @@ export const checkResults = internalAction({
 
     // Estadísticas para el log final
     let foundCount = 0;
-    let errorCount = 0;
     let skippedNoUrl = 0;
     let skippedNoDorsal = 0;
     let scrapeErrors = 0;
-    let eventIdsDiscovered = 0;
 
     for (const { item } of races) {
       if (!item.dorsalNumber) {
@@ -198,146 +354,15 @@ export const checkResults = internalAction({
         continue;
       }
 
-      let sportmaniacsEventIds = item.sportmaniacsEventIds;
-
-      // Fallback de descubrimiento: si el backfill masivo (script offline)
-      // aún no cacheó los eventIds de esta carrera — típicamente porque se
-      // corrió antes de que sportmaniacs activara la página de resultados
-      // con event-card, algo que pasa con carreras muy próximas en fecha —
-      // intentamos parsear sportmaniacsDiscoveryUrl aquí mismo, una vez por
-      // check. Si sportmaniacs ya lo publicó, lo cacheamos y seguimos con
-      // el scrape normal en la misma pasada; si no, seguimos sin poder
-      // chequear esta carrera y lo reintentaremos en el siguiente cron.
-      if (
-        item.scraperAdapter === "sportmaniacs" &&
-        !sportmaniacsEventIds?.length &&
-        item.sportmaniacsDiscoveryUrl
-      ) {
-        const discovered = await discoverSportmaniacsEventIds(item.sportmaniacsDiscoveryUrl);
-        if (discovered.length > 0) {
-          sportmaniacsEventIds = discovered;
-          eventIdsDiscovered++;
-          await ctx.runMutation(internal.crons.checkResults.cacheSportmaniacsEventIds, {
-            raceId: item.raceId as Id<"races">,
-            sportmaniacsEventIds: discovered,
-          });
-        }
-      }
-
-      // Sportmaniacs no necesita resultsUrl para scrapear (usa
-      // sportmaniacsEventIds, cacheados por el backfill o descubiertos
-      // arriba) — solo el resto de adapters lo requieren.
-      const hasSportmaniacsIds =
-        item.scraperAdapter === "sportmaniacs" && !!sportmaniacsEventIds?.length;
-      if (!item.resultsUrl && !hasSportmaniacsIds) {
-        // No podemos scrapear sin URL (ni sin eventIds cacheados/descubiertos).
-        // Marcamos como intentado para no machacar el log con warnings en
-        // cada cron. Se reintentará en el siguiente check (getRacesToCheck
-        // no marca resultScrapedAt hasta encontrar un resultado).
-        skippedNoUrl++;
-        continue;
-      }
-
-      try {
-        const result = await scrapeResults(
-          item.resultsUrl ?? "",
-          item.dorsalNumber,
-          item.scraperAdapter,
-          { sportmaniacsEventIds },
-        );
-
-        if (!result) {
-          // No encontrado todavía. No marcamos resultScrapedAt, queremos
-          // que se reintente en el siguiente cron.
-          continue;
-        }
-
-        foundCount++;
-        console.log(
-          `[check-results] ✓ Encontrado ${item.raceName} dorsal ${item.dorsalNumber}: ${formatTime(result.timeSeconds)}`,
-        );
-
-        // 1) Cachear el resultado
-        await ctx.runMutation(internal.crons.checkResults.cacheResult, {
-          raceId: item.raceId as Id<"races">,
-          dorsalNumber: item.dorsalNumber,
-          runnerName: result.runnerName,
-          positionOverall: result.positionOverall,
-          positionCategory: result.positionCategory,
-          timeSeconds: result.timeSeconds,
-          sourceUrl: item.resultsUrl,
-        });
-
-        // 2) Actualizar myRace (status → done)
-        await ctx.runMutation(internal.crons.checkResults.updateMyRace, {
-          myRaceId: item.myRaceId as Id<"myRaces">,
-          timeSeconds: result.timeSeconds,
-          position: result.positionOverall,
-          positionCategory: result.positionCategory,
-        });
-
-        // 3) Enviar email al usuario
-        const notifData = await ctx.runQuery(
-          internal.crons.checkResults.getMyRaceForNotification,
-          { myRaceId: item.myRaceId as Id<"myRaces"> },
-        );
-
-        if (notifData) {
-          await ctx.runAction(internal.emailNotificationsAction.sendResultFoundEmail, {
-            userId: notifData.profile._id,
-            myRaceId: item.myRaceId as Id<"myRaces">,
-            raceName: item.raceName,
-            raceDate: item.raceDate ?? "",
-            timeSeconds: result.timeSeconds,
-            positionOverall: result.positionOverall,
-            positionCategory: result.positionCategory,
-            predictedTimeSeconds: notifData.myRace.predictedTimeSeconds,
-          });
-
-          // 4) Persistir el PR si el nuevo tiempo bate el récord anterior.
-          // Se hace DESPUÉS del email para que el email haya leído el PR
-          // "viejo" como referencia. La próxima vez, este PR nuevo será
-          // el current y ya no se mostrará como badge.
-          try {
-            const effectiveDistance = getEffectiveDistance(notifData.myRace, notifData.race);
-            const distanceM = Math.round(effectiveDistance.distanceKm * 1000);
-            const prResult = await ctx.runMutation(
-              internal.personalRecords.updateIfBetter,
-              {
-                userId: notifData.profile._id,
-                distanceM,
-                timeSeconds: result.timeSeconds,
-                raceId: notifData.race._id,
-                achievedAt: notifData.race.startDate,
-              },
-            );
-            if (prResult.updated) {
-              console.log(
-                `[check-results] ✓ Nuevo PR para ${notifData.profile.email} ` +
-                  `en ${distanceM}m: ${prResult.previousTimeSeconds}s → ${result.timeSeconds}s`,
-              );
-            }
-          } catch (e) {
-            // No bloqueamos el flujo principal si falla el PR update.
-            // El email ya se envió. Log para investigar después.
-            console.error(
-              `[check-results] PR update failed for myRaceId=${item.myRaceId}:`,
-              e,
-            );
-          }
-        }
-      } catch (err) {
-        errorCount++;
-        scrapeErrors++;
-        console.error(
-          `[check-results] Error scraping ${item.raceName} (dorsal ${item.dorsalNumber}):`,
-          err,
-        );
-      }
+      const outcome = await processResultCheckItem(ctx, item);
+      if (outcome.outcome === "found") foundCount++;
+      else if (outcome.outcome === "skipped_no_url") skippedNoUrl++;
+      else if (outcome.outcome === "error") scrapeErrors++;
+      // "not_found" no cuenta para nada — se reintentará en el siguiente cron.
     }
 
     console.log(
-      `[check-results] Resumen: ${foundCount} resultados nuevos, ${scrapeErrors} errores, ${skippedNoUrl} sin URL, ${skippedNoDorsal} sin dorsal, ${eventIdsDiscovered} sportmaniacsEventIds descubiertos al vuelo`,
+      `[check-results] Resumen: ${foundCount} resultados nuevos, ${scrapeErrors} errores, ${skippedNoUrl} sin URL, ${skippedNoDorsal} sin dorsal`,
     );
   },
 });

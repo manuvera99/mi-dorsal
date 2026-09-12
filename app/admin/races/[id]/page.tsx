@@ -7,8 +7,8 @@ import { api } from "@/convex/_generated/api";
 import { isMockMode } from "@/lib/mock/provider";
 import { PROVINCE_LIST } from "@/lib/utils";
 import Link from "next/link";
-import { ArrowLeft, Save, Loader2, Trash2, Wand2, Sparkles, CheckCircle2, AlertCircle, AlertTriangle, ExternalLink, Zap } from "lucide-react";
-import { deepExtractAction, deepExtractAndApplyAction } from "./actions";
+import { ArrowLeft, Save, Loader2, Trash2, Wand2, Sparkles, CheckCircle2, AlertCircle, AlertTriangle, ExternalLink, Zap, Radio } from "lucide-react";
+import { deepExtractAction, deepExtractAndApplyAction, scanRaceResultsAction } from "./actions";
 import type { ExtractedRaceDeep } from "@/lib/ai/extract-race-deep";
 
 export default function EditRacePage() {
@@ -34,6 +34,10 @@ export default function EditRacePage() {
   // 1-click extract & apply
   const [oneClickBusy, setOneClickBusy] = useState(false);
   const [oneClickResult, setOneClickResult] = useState<string | null>(null);
+  // Escaneo manual de resultados (dispara el mismo pipeline que el cron
+  // checkResults, para todas las myRaces pendientes de esta carrera)
+  const [scanBusy, setScanBusy] = useState(false);
+  const [scanResult, setScanResult] = useState<string | null>(null);
 
   useEffect(() => {
     if (race) {
@@ -51,6 +55,7 @@ export default function EditRacePage() {
         registrationUrl: race.registrationUrl ?? "",
         resultsUrl: race.resultsUrl ?? "",
         photosUrl: race.photosUrl ?? "",
+        scraperAdapter: race.scraperAdapter ?? "",
         organizer: race.organizer ?? "",
         isPublished: race.isPublished ?? false,
         isFeatured: race.isFeatured ?? false,
@@ -75,6 +80,7 @@ export default function EditRacePage() {
         registrationUrl: race.registrationUrl ?? "",
         resultsUrl: race.resultsUrl ?? "",
         photosUrl: race.photosUrl ?? "",
+        scraperAdapter: race.scraperAdapter ?? "",
         organizer: race.organizer ?? "",
         isPublished: race.isPublished ?? false,
         isFeatured: race.isFeatured ?? false,
@@ -123,6 +129,7 @@ export default function EditRacePage() {
           registrationUrl: form.registrationUrl || undefined,
           resultsUrl: form.resultsUrl || undefined,
           photosUrl: form.photosUrl || undefined,
+          scraperAdapter: form.scraperAdapter || undefined,
           organizer: form.organizer || undefined,
           isPublished: form.isPublished,
           isFeatured: form.isFeatured,
@@ -173,6 +180,26 @@ export default function EditRacePage() {
       setTimeout(() => router.refresh(), 800);
     } finally {
       setOneClickBusy(false);
+    }
+  };
+
+  const handleScanResults = async () => {
+    setError(null);
+    setScanResult(null);
+    setScanBusy(true);
+    try {
+      const res = await scanRaceResultsAction(id);
+      if ("error" in res) {
+        setError(res.error);
+        return;
+      }
+      setScanResult(
+        `${res.found} encontrados y notificados, ${res.notFound} aún sin publicar, ` +
+          `${res.skippedNoUrl} sin URL/adapter válido, ${res.errors} errores ` +
+          `(de ${res.totalPending} pendientes).`,
+      );
+    } finally {
+      setScanBusy(false);
     }
   };
 
@@ -395,6 +422,39 @@ export default function EditRacePage() {
             <input type="url" value={form.photosUrl} onChange={(e) => set("photosUrl", e.target.value)} className="input" />
           </Field>
         </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+          <Field label="Adapter de resultados">
+            <select value={form.scraperAdapter} onChange={(e) => set("scraperAdapter", e.target.value)} className="input">
+              <option value="">Genérico (tabla HTML)</option>
+              <option value="chiplevante">Chiplevante</option>
+              <option value="sportmaniacs">Sportmaniacs</option>
+              <option value="mysports">MySports</option>
+              <option value="dorsalchip">Dorsalchip</option>
+              <option value="championchip">Championchip</option>
+              <option value="pdf">PDF</option>
+            </select>
+          </Field>
+          <div>
+            <button
+              type="button"
+              onClick={handleScanResults}
+              disabled={scanBusy || (!form.resultsUrl && form.scraperAdapter !== "sportmaniacs")}
+              className="inline-flex items-center gap-2 bg-sky-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-sky-700 disabled:opacity-50 text-sm"
+              title="Busca el resultado de todos los usuarios que tienen esta carrera en su calendario con dorsal asignado, usando la URL y el adapter guardados"
+            >
+              {scanBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Radio className="h-4 w-4" />}
+              {scanBusy ? "Buscando resultados…" : "Buscar resultados ahora"}
+            </button>
+            <p className="text-xs text-gray-500 mt-1">
+              Usa los valores ya guardados — guarda cambios primero si has editado la URL o el adapter.
+            </p>
+          </div>
+        </div>
+        {scanResult && (
+          <div className="bg-sky-50 border border-sky-200 text-sky-800 text-sm rounded-md p-3">
+            {scanResult}
+          </div>
+        )}
         <div className="flex items-center gap-6 pt-2 border-t">
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={form.isPublished} onChange={(e) => set("isPublished", e.target.checked)} className="h-4 w-4" />

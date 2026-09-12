@@ -84,8 +84,31 @@ const W = 842;
 const H = 595;
 
 // ---------------------------------------------------------------------------
-// Componente (JSX puro compatible con satori)
+// Helpers de tamaño responsive para el dorsal
 // ---------------------------------------------------------------------------
+
+/**
+ * Tamaño de fuente del número de dorsal en función del número de dígitos.
+ * El card rojo mide 180 px de ancho con padding interno ~0; el número
+ * tiene que caber siempre sin salirse lateralmente.
+ *
+ *   - 1-3 dígitos (caso común, dorsales <1000): fontSize 92, letterSpacing -3.
+ *   - 4 dígitos (1000-9999, el caso más habitual en maratones grandes
+ *     como Valencia): fontSize 64, letterSpacing -1.
+ *   - 5+ dígitos (>9999): fontSize 52, letterSpacing -1.
+ *
+ * Mismo algoritmo en lib/pdf/diploma.tsx (PDF) para mantener consistencia
+ * entre diploma PDF y diploma PNG preview.
+ */
+function dorsalFontSize(dorsalNumber: string): {
+  fontSize: string;
+  letterSpacing: string;
+} {
+  const digits = dorsalNumber.length;
+  if (digits <= 3) return { fontSize: "92px", letterSpacing: "-3px" };
+  if (digits === 4) return { fontSize: "64px", letterSpacing: "-1px" };
+  return { fontSize: "52px", letterSpacing: "-1px" };
+}
 
 function DiplomaImage(props: DiplomaImageProps) {
   const verificationDomain = props.appUrl.replace(/^https?:\/\//, "");
@@ -266,9 +289,9 @@ function DiplomaImage(props: DiplomaImageProps) {
                   style={{
                     display: "flex",
                     color: "white",
-                    fontSize: "92px",
+                    fontSize: dorsalFontSize(props.dorsalNumber).fontSize,
                     fontWeight: 700,
-                    letterSpacing: "-3px",
+                    letterSpacing: dorsalFontSize(props.dorsalNumber).letterSpacing,
                     lineHeight: 1,
                   }}
                 >

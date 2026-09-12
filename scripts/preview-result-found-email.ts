@@ -136,16 +136,16 @@ async function main() {
       userName: "Manu",
       raceName: "Maratón Valencia 2026",
       raceDate: "domingo, 7 de diciembre de 2025",
-      timeSeconds: 7165, // 1:59:25
+      timeSeconds: 11700, // 3:15:00
       distanceKm: 42.195,
       distanceLabel: "Maratón",
       positionOverall: 1847,
       positionCategory: 412,
       totalRunners: 28500,
-      predictedTimeSeconds: 7300, // estimación más lenta → mejor de lo pensado
+      predictedTimeSeconds: 12000, // estimación más lenta → mejor de lo pensado
       isPersonalRecord: true,
-      previousRecordFormatted: "2:02:14",
-      prDeltaSeconds: 169, // 2:02:14 - 1:59:25 = 169s
+      previousRecordFormatted: "3:17:54",
+      prDeltaSeconds: 174, // 3:17:54 - 3:15:00 = 174s
       stickerEmailPng: stickerPR,
     },
     {
@@ -175,7 +175,7 @@ async function main() {
       distanceKm: s.distanceKm,
       distanceLabel: s.distanceLabel,
       timeFormatted: formatHMS(s.timeSeconds),
-      dorsalNumber: "1234",
+      dorsalNumber: "4287",
       paceFormatted: formatPace(s.timeSeconds, s.distanceKm),
       positionOverall: s.positionOverall,
       totalRunners: s.totalRunners,
@@ -183,7 +183,7 @@ async function main() {
       isPersonalRecord: s.isPersonalRecord,
       previousRecordFormatted: s.previousRecordFormatted,
       prDeltaSeconds: s.prDeltaSeconds,
-      verificationId: "MD-1234-20251207",
+      verificationId: "MD-4287-20251207",
       appUrl: APP_URL,
     };
     const diplomaPng = await renderDiplomaAsImage(diplomaProps);

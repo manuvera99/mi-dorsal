@@ -232,9 +232,7 @@ const styles = StyleSheet.create({
   },
   dorsalNumber: {
     color: "white",
-    fontSize: 92,
     fontFamily: "Helvetica-Bold",
-    letterSpacing: -3,
     lineHeight: 1,
   },
   dorsalDistance: {
@@ -432,6 +430,26 @@ function formatDelta(seconds: number): string {
   return `${sign}${m}:${String(s).padStart(2, "0")}`;
 }
 
+/**
+ * Tamaño de fuente del número de dorsal según dígitos, para que no se
+ * salga del card rojo (180px de ancho) en dorsales largos (4+ dígitos).
+ * Mismo algoritmo que en lib/pdf/diploma-image.tsx (PNG preview) para
+ * mantener consistencia entre diploma PDF y diploma PNG.
+ *
+ *   - 1-3 dígitos: fontSize 92, letterSpacing -3.
+ *   - 4 dígitos: fontSize 64, letterSpacing -1.
+ *   - 5+ dígitos: fontSize 52, letterSpacing -1.
+ */
+function dorsalFontSize(dorsalNumber: string): {
+  fontSize: number;
+  letterSpacing: number;
+} {
+  const digits = dorsalNumber.length;
+  if (digits <= 3) return { fontSize: 92, letterSpacing: -3 };
+  if (digits === 4) return { fontSize: 64, letterSpacing: -1 };
+  return { fontSize: 52, letterSpacing: -1 };
+}
+
 // ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
@@ -500,7 +518,17 @@ export function Diploma(props: DiplomaInternalProps) {
               <View style={styles.dorsalWrap}>
                 <View style={styles.dorsalCard}>
                   <Text style={styles.dorsalLabel}>DORSAL</Text>
-                  <Text style={styles.dorsalNumber}>{props.dorsalNumber}</Text>
+                  <Text
+                    style={[
+                      styles.dorsalNumber,
+                      {
+                        fontSize: dorsalFontSize(props.dorsalNumber).fontSize,
+                        letterSpacing: dorsalFontSize(props.dorsalNumber).letterSpacing,
+                      },
+                    ]}
+                  >
+                    {props.dorsalNumber}
+                  </Text>
                   <View style={styles.dorsalDistance}>
                     <Text style={styles.dorsalDistanceText}>{props.distanceLabel.toUpperCase()}</Text>
                   </View>

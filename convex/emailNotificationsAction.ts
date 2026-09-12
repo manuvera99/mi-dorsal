@@ -85,12 +85,14 @@ function bytesToBase64(bytes: Uint8Array): string {
 
 /**
  * Llama a /api/internal/render-diploma (Next.js, runtime Node) para
- * generar el PDF+PNG. Ver nota arriba sobre por qué no se genera in-process.
+ * generar el PDF + los dos PNGs (sticker overlay transparente + variante
+ * email fondo crema). Ver nota arriba sobre por qué no se genera
+ * in-process.
  */
 async function renderViaInternalApi(
   diploma: DiplomaProps,
   storySticker: StoryStickerProps,
-): Promise<{ pdfBytes: Uint8Array; stickerBytes: Uint8Array }> {
+): Promise<{ pdfBytes: Uint8Array; stickerBytes: Uint8Array; stickerEmailBytes: Uint8Array }> {
   const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://www.mi-dorsal.com").replace(/\/$/, "");
   const secret = process.env.INTERNAL_API_SECRET;
   if (!secret) {
@@ -109,13 +111,15 @@ async function renderViaInternalApi(
     const detail = await res.text().catch(() => "");
     throw new Error(`render-diploma endpoint failed: ${res.status} ${detail}`);
   }
-  const { diplomaBase64, storyStickerBase64 } = (await res.json()) as {
+  const { diplomaBase64, storyStickerBase64, storyStickerEmailBase64 } = (await res.json()) as {
     diplomaBase64: string;
     storyStickerBase64: string;
+    storyStickerEmailBase64: string;
   };
   return {
     pdfBytes: base64ToBytes(diplomaBase64),
     stickerBytes: base64ToBytes(storyStickerBase64),
+    stickerEmailBytes: base64ToBytes(storyStickerEmailBase64),
   };
 }
 
@@ -204,7 +208,7 @@ export const sendResultFoundEmail = internalAction({
       distanceKm: diplomaProps.distanceKm,
       isPersonalRecord: diplomaProps.isPersonalRecord,
     };
-    const { pdfBytes, stickerBytes } = await renderViaInternalApi(diplomaProps, stickerProps);
+    const { pdfBytes, stickerBytes, stickerEmailBytes } = await renderViaInternalApi(diplomaProps, stickerProps);
 
     // ---------- 5. Subir a Convex Storage ----------
     // `as any`: fetch acepta Uint8Array en runtime, pero su tipo genérico
@@ -235,11 +239,27 @@ export const sendResultFoundEmail = internalAction({
     const stickerBlob = (await stickerUploadRes.json()) as { storageId: string };
     const storyStickerStorageId = stickerBlob.storageId as Id<"_storage">;
 
+    // Variante email (fondo crema + textos oscuros) para inline en el
+    // email. Independiente del overlay transparente: la descarga sigue
+    // sirviendo el overlay, el email incrusta esta versión.
+    const stickerEmailUploadUrl = await ctx.storage.generateUploadUrl();
+    const stickerEmailUploadRes = await fetch(stickerEmailUploadUrl, {
+      method: "POST",
+      headers: { "Content-Type": "image/png" },
+      body: stickerEmailBytes as any,
+    });
+    if (!stickerEmailUploadRes.ok) {
+      throw new Error(`Story sticker (email variant) upload failed: ${stickerEmailUploadRes.status}`);
+    }
+    const stickerEmailBlob = (await stickerEmailUploadRes.json()) as { storageId: string };
+    const storyStickerEmailStorageId = stickerEmailBlob.storageId as Id<"_storage">;
+
     // Persistir storage IDs en myRace para descargas futuras
     await ctx.runMutation(internal.emailNotificationsHelpers.attachStorageIds, {
       myRaceId: myRace._id,
       diplomaStorageId,
       storyStickerStorageId,
+      storyStickerEmailStorageId,
     });
 
     // ---------- 6. Renderizar email ----------
@@ -275,9 +295,10 @@ export const sendResultFoundEmail = internalAction({
     });
 
     // Inyectar el inline cid: del sticker en el HTML. Se hace aquí porque
-    // el template no conoce el cid (mantenemos el template puro). El
-    // panel oscuro que envuelve la imagen (para que el texto blanco del
-    // sticker transparente se lea) ya vive en el propio template.
+    // el template no conoce el cid (mantenemos el template puro). El cid
+    // apunta a la variante "email" (fondo crema + textos oscuros), que ya
+    // es legible sobre fondo claro por sí misma — el template ya no
+    // necesita envolverla en un panel oscuro artificial.
     const INLINE_CID = "sticker@mi-dorsal";
     const htmlWithInline = html.replace(
       /<!--SHARE_CARD_INLINE-->/g,
@@ -292,7 +313,7 @@ export const sendResultFoundEmail = internalAction({
 
     if (IS_MOCK) {
       console.log(
-        `[result-found-mock] → ${profile.email} | ${subject} | diploma=${(pdfBytes.length / 1024).toFixed(1)}KB sticker=${(stickerBytes.length / 1024).toFixed(1)}KB`,
+        `[result-found-mock] → ${profile.email} | ${subject} | diploma=${(pdfBytes.length / 1024).toFixed(1)}KB sticker=${(stickerBytes.length / 1024).toFixed(1)}KB stickerEmail=${(stickerEmailBytes.length / 1024).toFixed(1)}KB`,
       );
       success = true;
     } else {
@@ -314,8 +335,14 @@ export const sendResultFoundEmail = internalAction({
               content: bytesToBase64(pdfBytes),
             },
             {
+              // Variante "email" (fondo crema opaco + textos oscuros): es
+              // la que se incrusta inline con cid para que el HTML del
+              // email la muestre directamente. El overlay transparente
+              // (stickerBytes) se sigue subiendo a Convex Storage y se
+              // sirve desde /api/result/{myRaceId}/story-sticker.png
+              // para descarga.
               filename: `mi-dorsal-${verificationId}.png`,
-              content: bytesToBase64(stickerBytes),
+              content: bytesToBase64(stickerEmailBytes),
               content_id: INLINE_CID,
             },
           ] as any,
@@ -346,6 +373,7 @@ export const sendResultFoundEmail = internalAction({
       isPR,
       diplomaStorageId,
       storyStickerStorageId,
+      storyStickerEmailStorageId,
       error: errorMsg,
     };
   },

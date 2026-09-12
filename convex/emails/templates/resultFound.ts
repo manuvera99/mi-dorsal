@@ -248,25 +248,19 @@ export function resultFoundEmail(args: {
             </td>
           </tr>
 
-          <!-- Sticker visual (plantilla clásica, inline cid:). El PNG es
-               transparente con texto blanco (pensado como overlay sobre
-               una foto en Stories) — sobre el fondo blanco del email
-               sería ilegible, así que aquí se envuelve en un panel
-               oscuro solo a efectos visuales del email; el archivo
-               descargado/adjunto sigue siendo 100% transparente.
+          <!-- Sticker visual (variante "email", inline cid:). El PNG ya
+               lleva fondo crema opaco + textos oscuros sobre paneles
+               blancos — es la versión legible sobre fondo claro, así
+               que el template ya no necesita envolverla en un panel
+               oscuro. Si el cliente bloquea el cid, el <img> cae al
+               alt-text y el resto del email sigue intacto.
                convex/emailNotificationsAction.sendResultFoundEmail
                reemplaza el marcador SHARE_CARD_INLINE por el <img> con
                el cid pre-generado. Si no hay inline, este bloque queda
                vacío (no rompe el email). -->
           <tr>
             <td style="padding: 16px 28px 0;" align="center">
-              <table role="presentation" cellpadding="0" cellspacing="0" style="background: ${COLORS.dark}; border-radius: 10px; padding: 20px;">
-                <tr>
-                  <td align="center">
-                    <!--SHARE_CARD_INLINE-->
-                  </td>
-                </tr>
-              </table>
+              <!--SHARE_CARD_INLINE-->
             </td>
           </tr>
 

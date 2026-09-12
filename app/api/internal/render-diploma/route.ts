@@ -63,14 +63,19 @@ export async function POST(req: NextRequest) {
       issuedAt: body.diploma.issuedAt ? new Date(body.diploma.issuedAt) : undefined,
     };
 
-    const [pdfBuffer, stickerBuffer] = await Promise.all([
+    // Render en paralelo: diploma PDF, story sticker overlay (transparente,
+    // para descarga de Stories) y story sticker variante email (fondo
+    // crema + textos oscuros, para incrustar inline en el email).
+    const [pdfBuffer, stickerBuffer, stickerEmailBuffer] = await Promise.all([
       renderDiploma(diplomaProps),
-      renderStorySticker(body.storySticker),
+      renderStorySticker(body.storySticker, { theme: "overlay" }),
+      renderStorySticker(body.storySticker, { theme: "email" }),
     ]);
 
     return NextResponse.json({
       diplomaBase64: pdfBuffer.toString("base64"),
       storyStickerBase64: stickerBuffer.toString("base64"),
+      storyStickerEmailBase64: stickerEmailBuffer.toString("base64"),
     });
   } catch (err) {
     console.error("[render-diploma] Error:", err);

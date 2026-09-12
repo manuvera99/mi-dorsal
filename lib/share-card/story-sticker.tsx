@@ -20,7 +20,9 @@ import { getFonts } from "./fonts";
 // Tokens
 // ---------------------------------------------------------------------------
 
-const C = {
+// Tokens para la variante "overlay" (descarga de Stories): transparente,
+// texto blanco con sombra fuerte — pensado para superponer sobre una foto.
+const OVERLAY_TOKENS = {
   accent: "#4ade80",
   // Paneles "cristal": relleno casi transparente + borde fino, para que
   // se note la forma pero la foto de fondo del usuario se siga viendo.
@@ -32,6 +34,26 @@ const C = {
   prBg: "rgba(74, 222, 128, 0.16)",
   prBorder: "rgba(74, 222, 128, 0.65)",
   textShadow: "0 2px 10px rgba(0,0,0,0.55), 0 1px 3px rgba(0,0,0,0.35)",
+  bg: "transparent",
+  text: "white",
+  accentText: "#4ade80",
+} as const;
+
+// Tokens para la variante "email": fondo crema opaco (igual al body del
+// email de mi-dorsal) + textos oscuros en paneles blancos redondeados.
+// Pensada para incrustarse inline en el email sobre fondo claro: legible
+// aunque el cliente de correo bloquee imágenes (el fondo opaco garantiza
+// contraste sin necesidad de cargar el cid).
+const EMAIL_TOKENS = {
+  accent: "#16a34a", // verde-600 (mismo que COLORS.accent del email)
+  panelBg: "#ffffff",
+  panelBorder: "#e7e5e4", // --runner-line
+  prBg: "#dcfce7", // verde-50
+  prBorder: "#16a34a",
+  textShadow: "none",
+  bg: "#fafaf9", // --runner-warm (crema)
+  text: "#0a0a0a", // --runner-dark
+  accentText: "#16a34a",
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -43,6 +65,21 @@ export interface StoryStickerProps {
   paceFormatted?: string; // "5:40"
   distanceKm?: number; // kilómetros recorridos, ej 21.1
   isPersonalRecord?: boolean;
+}
+
+/**
+ * - "overlay" (default): variante transparente con texto blanco + sombra
+ *   fuerte. Pensada para descargar y superponer sobre la foto del usuario
+ *   en Instagram/TikTok Stories.
+ * - "email": variante con fondo crema opaco + textos oscuros sobre paneles
+ *   blancos. Pensada para incrustarse inline en el email de resultado
+ *   sobre fondo claro: legible aunque el cliente bloquee imágenes y sin
+ *   depender de un wrapper oscuro artificial en el HTML del email.
+ */
+export type StoryStickerTheme = "overlay" | "email";
+
+export interface RenderStoryStickerOptions {
+  theme?: StoryStickerTheme;
 }
 
 // ---------------------------------------------------------------------------
@@ -58,7 +95,8 @@ function formatDistanceKm(distanceKm: number | undefined): string {
 // Componente (JSX puro compatible con satori)
 // ---------------------------------------------------------------------------
 
-function StorySticker(props: StoryStickerProps) {
+function StorySticker(props: StoryStickerProps & { theme: StoryStickerTheme }) {
+  const C = props.theme === "email" ? EMAIL_TOKENS : OVERLAY_TOKENS;
   return (
     <div
       style={{
@@ -69,6 +107,7 @@ function StorySticker(props: StoryStickerProps) {
         alignItems: "center",
         justifyContent: "center",
         fontFamily: "Inter",
+        backgroundColor: C.bg,
       }}
     >
       {/* Bloque de contenido centrado */}
@@ -100,7 +139,7 @@ function StorySticker(props: StoryStickerProps) {
                 display: "flex",
                 fontSize: "24px",
                 fontWeight: 700,
-                color: "white",
+                color: props.theme === "email" ? "#15803d" : "white", // verde-700 legible sobre verde-50
                 letterSpacing: "0.5px",
                 textShadow: C.textShadow,
               }}
@@ -129,7 +168,7 @@ function StorySticker(props: StoryStickerProps) {
             style={{
               fontSize: "22px",
               fontWeight: 700,
-              color: "white",
+              color: C.text,
               letterSpacing: "3px",
               textTransform: "uppercase",
               marginBottom: "12px",
@@ -143,7 +182,7 @@ function StorySticker(props: StoryStickerProps) {
               fontSize: "128px",
               fontWeight: 700,
               fontFamily: "JetBrains Mono",
-              color: C.accent,
+              color: C.accentText,
               letterSpacing: "-4px",
               lineHeight: 1,
               textShadow: C.textShadow,
@@ -181,7 +220,7 @@ function StorySticker(props: StoryStickerProps) {
               style={{
                 fontSize: "18px",
                 fontWeight: 700,
-                color: "white",
+                color: C.text,
                 letterSpacing: "2px",
                 textTransform: "uppercase",
                 marginBottom: "8px",
@@ -197,7 +236,7 @@ function StorySticker(props: StoryStickerProps) {
                 fontSize: "44px",
                 fontWeight: 700,
                 fontFamily: "JetBrains Mono",
-                color: "white",
+                color: C.text,
                 textShadow: C.textShadow,
               }}
             >
@@ -231,7 +270,7 @@ function StorySticker(props: StoryStickerProps) {
               style={{
                 fontSize: "18px",
                 fontWeight: 700,
-                color: "white",
+                color: C.text,
                 letterSpacing: "2px",
                 textTransform: "uppercase",
                 marginBottom: "8px",
@@ -247,7 +286,7 @@ function StorySticker(props: StoryStickerProps) {
                 fontSize: "44px",
                 fontWeight: 700,
                 fontFamily: "JetBrains Mono",
-                color: "white",
+                color: C.text,
                 textShadow: C.textShadow,
               }}
             >
@@ -271,7 +310,7 @@ function StorySticker(props: StoryStickerProps) {
           style={{
             fontSize: "24px",
             fontWeight: 700,
-            color: "rgba(255,255,255,0.45)",
+            color: props.theme === "email" ? "rgba(10,10,10,0.45)" : "rgba(255,255,255,0.45)",
             letterSpacing: "1px",
             textShadow: C.textShadow,
           }}
@@ -288,13 +327,28 @@ function StorySticker(props: StoryStickerProps) {
 // ---------------------------------------------------------------------------
 
 /**
- * Renderiza el story sticker como Buffer PNG con fondo transparente.
- * Pensado para subir a Convex Storage y servir como descarga directa desde
- * la página de resultado (no se envía por email).
+ * Renderiza el story sticker como Buffer PNG.
+ *
+ * Por defecto (`theme: "overlay"`) genera la variante transparente con
+ * texto blanco + sombra fuerte, pensada para descargar y superponer sobre
+ * la foto del usuario en Instagram/TikTok Stories.
+ *
+ * `theme: "email"` genera la variante con fondo crema opaco + textos
+ * oscuros sobre paneles blancos, pensada para incrustarse inline en el
+ * email de resultado sobre fondo claro: legible aunque el cliente de
+ * correo bloquee imágenes, sin depender de un wrapper oscuro artificial
+ * en el HTML.
+ *
+ * El PNG en ambos casos mide 1080x1920 — mismo formato vertical para que
+ * la maquetación sea consistente entre canales.
  */
-export async function renderStorySticker(props: StoryStickerProps): Promise<Buffer> {
+export async function renderStorySticker(
+  props: StoryStickerProps,
+  options: RenderStoryStickerOptions = {},
+): Promise<Buffer> {
+  const theme: StoryStickerTheme = options.theme ?? "overlay";
   const fonts = getFonts();
-  const res = new ImageResponse(<StorySticker {...props} />, {
+  const res = new ImageResponse(<StorySticker {...props} theme={theme} />, {
     width: 1080,
     height: 1920,
     fonts,

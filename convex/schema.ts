@@ -528,6 +528,12 @@ export default defineSchema({
     // el email, se usa como og:image de /resultado y se puede descargar
     // desde ahí como overlay para Stories de Instagram/TikTok.
     storyStickerStorageId: v.optional(v.id("_storage")),
+    // Story sticker VARIANTE EMAIL (1080x1920, fondo crema opaco + textos
+    // oscuros). Generado en paralelo al sticker transparente, pensado para
+    // incrustarse inline en el email de resultado sobre fondo claro: legible
+    // sin depender de allowlist de imágenes del cliente. El archivo
+    // descargado/adjunto sigue siendo el transparente (storyStickerStorageId).
+    storyStickerEmailStorageId: v.optional(v.id("_storage")),
     // Story sticker PERSONALIZADO (editor premium). PNG exportado
     // client-side desde /editor-sticker/{myRaceId}. Se sobrescribe con
     // cada nueva exportación (attachCustomSticker borra el blob anterior).

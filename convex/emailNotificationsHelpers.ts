@@ -79,11 +79,19 @@ export const attachStorageIds = internalMutation({
     myRaceId: v.id("myRaces"),
     diplomaStorageId: v.id("_storage"),
     storyStickerStorageId: v.id("_storage"),
+    // Opcional: variante "email" del story sticker (fondo crema opaco +
+    // textos oscuros). Se persiste junto al overlay transparente para que
+    // el template del email pueda referenciarla vía cid inline sin tener
+    // que regenerarla.
+    storyStickerEmailStorageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.myRaceId, {
       diplomaStorageId: args.diplomaStorageId,
       storyStickerStorageId: args.storyStickerStorageId,
+      ...(args.storyStickerEmailStorageId
+        ? { storyStickerEmailStorageId: args.storyStickerEmailStorageId }
+        : {}),
     });
   },
 });

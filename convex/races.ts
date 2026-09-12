@@ -4,6 +4,7 @@
 
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { Doc } from "./_generated/dataModel";
 import { provinceValidator, raceTypeValidator, slugify, requireAdmin } from "./_helpers";
 
@@ -392,6 +393,7 @@ export const adminUpdate = mutation({
       organizer: v.optional(v.string()),
       organizerUrl: v.optional(v.string()),
       resultsUrl: v.optional(v.string()),
+      photosUrl: v.optional(v.string()),
       rulesUrl: v.optional(v.string()),
       registrationUrl: v.optional(v.string()),
       officialUrl: v.optional(v.string()),
@@ -519,7 +521,25 @@ export const adminUpdate = mutation({
       }
       update.slug = finalSlug;
     }
+
+    // Fotos disponibles: solo se avisa en la transición vacío → con valor,
+    // para no reenviar el email cada vez que el admin retoca la URL ya
+    // publicada. Se comprueba ANTES del patch, comparando contra el valor
+    // que existía en BD (no contra `patch.photosUrl`, que solo dice qué
+    // vino en esta llamada).
+    const isNewPhotosUrl =
+      typeof patch.photosUrl === "string" &&
+      patch.photosUrl.trim().length > 0 &&
+      (!existing.photosUrl || existing.photosUrl.trim().length === 0);
+
     await ctx.db.patch(id, update);
+
+    if (isNewPhotosUrl) {
+      await ctx.scheduler.runAfter(0, internal.crons.notifyPhotosAvailable.notifyPhotosAvailable, {
+        raceId: id,
+      });
+    }
+
     return id;
   },
 });

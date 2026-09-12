@@ -725,6 +725,8 @@ export const systemUpsert = mutation({
         args.scraperAdapter = "chiplevante";
       } else if (u.includes("sportmaniacs.com")) {
         args.scraperAdapter = "sportmaniacs";
+      } else if (u.includes("cruzandolameta.es")) {
+        args.scraperAdapter = "cruzandolameta";
       }
       // Aquí se pueden añadir más auto-asignaciones en el futuro (dorsalchip, etc.)
     }

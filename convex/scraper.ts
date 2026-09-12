@@ -40,6 +40,7 @@ export interface SportmaniacsEventRef {
  *     UUID de modalidad cacheados en `race.sportmaniacsEventIds` (backfill
  *     previo) — sin ellos, no hay forma fiable de scrapear (ver nota en el
  *     bloque de sportmaniacs más abajo).
+ *   - `cruzandolameta` → endpoint API público de Cruzando la Meta (JSON).
  *   - `pdf` → PDF descargable (Time Runners, etc.).
  * Por eso los despachamos ANTES del fetch HTML.
  */
@@ -54,6 +55,9 @@ export async function scrapeResults(
   }
   if (adapterName === "sportmaniacs") {
     return scrapeSportmaniacs(extra?.sportmaniacsEventIds ?? [], dorsal);
+  }
+  if (adapterName === "cruzandolameta") {
+    return scrapeCruzandolameta(url, dorsal);
   }
   if (adapterName === "pdf" || /\.pdf(\?|#|$)/i.test(url)) {
     return scrapePdf(url, dorsal);
@@ -633,4 +637,115 @@ async function scrapeSportmaniacsEvent(
     `[scraper:sportmaniacs] Evento ${eventId} superó SPORTMANIACS_MAX_PAGES sin encontrar dorsal ${dorsal}`,
   );
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// Adapter: Cruzando la Meta (rankings.cruzandolameta.es)
+// ---------------------------------------------------------------------------
+//
+// Cruzando la Meta (CLM) es un cronometrador regional que cubre carreras
+// populares de Almería y Granada. Su web de resultados es una SPA (React/Vite,
+// sin SSR) que consume una API REST pública sin auth — descubierta
+// inspeccionando el bundle JS de la SPA (no hay documentación pública):
+//
+//   GET https://rankings.cruzandolameta.es/api/e/{slug}
+//   Respuesta: { evento: {...}, prueba: {...}, resultados: [
+//     { dorsal, nombre, apellidos, sexo, club, categoria, status,
+//       tiempo_oficial_ms, tiempo_oficial, tiempo_neto_ms, pos_general,
+//       pos_gen, pos_cat, ... }, ...
+//   ] }
+//
+// `{slug}` identifica una MODALIDAD/CATEGORÍA concreta de una prueba (una
+// prueba puede tener varias: absoluta, sub-10, sub-12, etc.), cada una con
+// su propia tabla `resultados[]` independiente — mismo patrón que un
+// event-card de sportmaniacs. `ingest-cruzandolameta.ts` guarda la URL de
+// este endpoint directamente en `race.resultsUrl` (una carrera = una
+// modalidad = un slug), así que a diferencia de chiplevante/sportmaniacs
+// este adapter no necesita descubrimiento ni combinaciones: la URL ya
+// apunta al endpoint JSON exacto.
+//
+// `dorsal` en la respuesta es numérico (no string) — comparamos con
+// `String(...)`, igual que hacen los adapters de chiplevante y sportmaniacs.
+// 404 (`{"detail": "..."}`) o dorsal no encontrado en `resultados[]` se
+// tratan igual: "no encontrado todavía", nunca se lanza excepción.
+// ---------------------------------------------------------------------------
+
+const CRUZANDOLAMETA_USER_AGENT = "Mozilla/5.0 mi-dorsal/0.1";
+
+/**
+ * Adapter principal: scrapea rankings.cruzandolameta.es buscando el dorsal
+ * en la tabla de resultados de la modalidad apuntada por `url`
+ * (`https://rankings.cruzandolameta.es/api/e/{slug}`).
+ *
+ * No lanza excepciones: cualquier error (fetch, HTTP no-ok, JSON inválido,
+ * dorsal ausente) se loga y se trata como "no encontrado" — el cron
+ * reintentará en el siguiente check.
+ */
+export async function scrapeCruzandolameta(
+  url: string,
+  dorsal: string,
+): Promise<RunnerResult | null> {
+  const target = String(dorsal).trim();
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": CRUZANDOLAMETA_USER_AGENT,
+      },
+    });
+  } catch (err) {
+    console.error(`[scraper:cruzandolameta] Fetch failed for ${url}:`, err);
+    return null;
+  }
+
+  if (!res.ok) {
+    // 404 = evento o dorsal no encontrado (la prueba puede no estar
+    // publicada todavía) — no es un error, es "no encontrado".
+    if (res.status !== 404) {
+      console.warn(`[scraper:cruzandolameta] HTTP ${res.status} for ${url}`);
+    }
+    return null;
+  }
+
+  let body: any;
+  try {
+    body = await res.json();
+  } catch (err) {
+    console.error(`[scraper:cruzandolameta] Respuesta no es JSON válido:`, err);
+    return null;
+  }
+
+  const resultados: any[] = Array.isArray(body?.resultados) ? body.resultados : [];
+  const entry = resultados.find((r) => {
+    if (r == null) return false;
+    return String(r.dorsal).trim() === target;
+  });
+
+  if (!entry) return null;
+
+  if (entry.status !== "FINALIZADO" || entry.tiempo_oficial_ms == null) {
+    // Dorsal presente pero sin tiempo oficial (abandonó, aún no ha cruzado
+    // meta). No es un error: seguimos sin resultado válido.
+    return null;
+  }
+
+  const timeMs = Number(entry.tiempo_oficial_ms);
+  if (!Number.isFinite(timeMs) || timeMs <= 0) {
+    console.warn(
+      `[scraper:cruzandolameta] tiempo_oficial_ms inválido "${entry.tiempo_oficial_ms}" para dorsal ${dorsal}`,
+    );
+    return null;
+  }
+
+  const runnerName =
+    [entry.nombre, entry.apellidos].filter(Boolean).join(" ").trim() || undefined;
+
+  return {
+    runnerName,
+    positionOverall: toIntOrUndefined(entry.pos_general),
+    positionCategory: toIntOrUndefined(entry.pos_cat),
+    timeSeconds: Math.round(timeMs / 1000),
+  };
 }

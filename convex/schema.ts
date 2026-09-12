@@ -516,13 +516,16 @@ export default defineSchema({
     )),
     resultScrapedAt: v.optional(v.number()),
     diplomaStorageId: v.optional(v.id("_storage")),
-    // Share card PNG (1200x630, OG image). Pre-generado por
-    // convex/emailNotificationsAction.sendResultFoundEmail al publicar
-    // resultado.
+    // LEGACY: share card PNG (1200x630) del diseño anterior, retirado.
+    // Ya no se genera ni se lee — se mantiene el campo solo para no
+    // invalidar filas antiguas que aún lo tengan. No usar en código nuevo.
     shareCardStorageId: v.optional(v.id("_storage")),
-    // Story sticker PNG (1080x1920, fondo transparente). Pre-generado en
-    // el mismo pipeline, para descargar y usar como overlay en Stories de
-    // Instagram/TikTok. No se envía por email (solo diploma + share card).
+    // Story sticker PNG (1080x1920, fondo transparente, plantilla
+    // "clásica"). Pre-generado por
+    // convex/emailNotificationsAction.sendResultFoundEmail al publicar
+    // resultado. Es la imagen principal de resultado: se envía inline en
+    // el email, se usa como og:image de /resultado y se puede descargar
+    // desde ahí como overlay para Stories de Instagram/TikTok.
     storyStickerStorageId: v.optional(v.id("_storage")),
     // Story sticker PERSONALIZADO (editor premium). PNG exportado
     // client-side desde /editor-sticker/{myRaceId}. Se sobrescribe con

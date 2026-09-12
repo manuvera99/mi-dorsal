@@ -4,8 +4,9 @@
  * ResultadoClient — vista pública del resultado de una myRace.
  *
  * Carga los datos vía Convex y renderiza:
- *   - El share card PNG embebido (descargable con click derecho / long press)
- *   - Botones de descarga: PNG, diploma PDF
+ *   - El story sticker PNG embebido (plantilla clásica, 1080x1920,
+ *     transparente — descargable con click derecho / long press)
+ *   - Botones de descarga: sticker, diploma PDF, editor premium
  *   - Botón "Compartir" con Web Share API (móvil) + fallback a URL copy
  *   - Bloque de stats: dorsal, tiempo, posición, PR si aplica
  *
@@ -48,7 +49,7 @@ export function ResultadoClient({ myRaceId }: { myRaceId: string }) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-8">
         <div className="h-8 w-32 bg-gray-100 rounded animate-pulse mb-4" />
-        <div className="aspect-[1200/630] bg-gray-50 rounded-lg animate-pulse" />
+        <div className="aspect-[1080/1920] max-h-[480px] mx-auto bg-gray-50 rounded-lg animate-pulse" />
       </div>
     );
   }
@@ -85,10 +86,8 @@ export function ResultadoClient({ myRaceId }: { myRaceId: string }) {
   );
   const runnerName = profile.displayName ?? "Corredor";
   const pageUrl = `${APP_URL}/resultado/${myRaceId}`;
-  const pngUrl = `${APP_URL}/api/result/${myRaceId}/share-card.png`;
   const pdfUrl = `${APP_URL}/api/diploma/${myRaceId}`;
   const stickerUrl = `${APP_URL}/api/result/${myRaceId}/story-sticker.png`;
-  const hasCard = !!myRace.shareCardStorageId;
   const hasDiploma = !!myRace.diplomaStorageId;
   const hasSticker = !!myRace.storyStickerStorageId;
 
@@ -216,23 +215,29 @@ export function ResultadoClient({ myRaceId }: { myRaceId: string }) {
         )}
       </div>
 
-      {/* Share card visual */}
+      {/* Sticker visual (plantilla clásica, transparente) */}
       <div className="card mb-4">
         <h2 className="text-sm font-semibold text-stone-700 mb-3 flex items-center gap-1.5">
-          <Share2 className="h-4 w-4 text-runner-primary" />
-          Tu resultado, listo para compartir
+          <Instagram className="h-4 w-4 text-runner-primary" />
+          Tu sticker para Stories
         </h2>
-        {hasCard ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={pngUrl}
-            alt={`${runnerName}: ${timeFormatted} en ${race.name}`}
-            width={1200}
-            height={630}
-            className="w-full h-auto rounded-lg border border-stone-200"
-          />
+        {hasSticker ? (
+          // El sticker es transparente con texto blanco (pensado como
+          // overlay sobre una foto en Stories) — fondo oscuro aquí solo
+          // para que se vea bien en esta vista previa, el archivo
+          // descargado sigue siendo 100% transparente.
+          <div className="rounded-lg bg-runner-dark flex items-center justify-center py-6">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={stickerUrl}
+              alt={`${runnerName}: ${timeFormatted} en ${race.name}`}
+              width={1080}
+              height={1920}
+              className="w-auto max-h-[480px] rounded-lg"
+            />
+          </div>
         ) : (
-          <div className="aspect-[1200/630] rounded-lg bg-stone-50 flex items-center justify-center text-sm text-stone-500 text-center px-4">
+          <div className="aspect-[1080/1920] max-h-[480px] mx-auto rounded-lg bg-stone-50 flex items-center justify-center text-sm text-stone-500 text-center px-4">
             <div>
               <p>El visual aún se está generando.</p>
               <p className="text-xs mt-1">Vuelve en unos minutos o descárgalo desde tu perfil.</p>
@@ -242,14 +247,16 @@ export function ResultadoClient({ myRaceId }: { myRaceId: string }) {
 
         {/* CTAs */}
         <div className="flex flex-wrap gap-2 mt-4">
-          <a
-            href={pngUrl}
-            download={`mi-dorsal-${myRaceId}.png`}
-            className="btn bg-runner-primary text-white hover:bg-red-700 inline-flex items-center gap-1.5"
-          >
-            <Download className="h-4 w-4" />
-            Descargar PNG
-          </a>
+          {hasSticker && (
+            <a
+              href={stickerUrl}
+              download={`mi-dorsal-story-${myRaceId}.png`}
+              className="btn bg-runner-primary text-white hover:bg-red-700 inline-flex items-center gap-1.5"
+            >
+              <Download className="h-4 w-4" />
+              Descargar sticker
+            </a>
+          )}
           {hasDiploma && (
             <a
               href={pdfUrl}
@@ -258,16 +265,6 @@ export function ResultadoClient({ myRaceId }: { myRaceId: string }) {
             >
               <Download className="h-4 w-4" />
               Diploma PDF
-            </a>
-          )}
-          {hasSticker && (
-            <a
-              href={stickerUrl}
-              download={`mi-dorsal-story-${myRaceId}.png`}
-              className="btn bg-white border border-runner-primary text-runner-primary hover:bg-red-50 inline-flex items-center gap-1.5"
-            >
-              <Instagram className="h-4 w-4" />
-              Descargar para Stories
             </a>
           )}
           <Link

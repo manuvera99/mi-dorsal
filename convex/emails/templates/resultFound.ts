@@ -248,12 +248,27 @@ export function resultFoundEmail(args: {
             </td>
           </tr>
 
-          <!-- Share card visual (inline cid:). Inyectado por
+          <!-- Sticker visual (plantilla clásica, inline cid:). El PNG es
+               transparente con texto blanco (pensado como overlay sobre
+               una foto en Stories) — sobre el fondo blanco del email
+               sería ilegible, así que aquí se envuelve en un panel
+               oscuro solo a efectos visuales del email; el archivo
+               descargado/adjunto sigue siendo 100% transparente.
                convex/emailNotificationsAction.sendResultFoundEmail
-               reemplazando el marcador SHARE_CARD_INLINE por la imagen
-               pre-generada. Si no hay inline, este bloque queda vacío
-               (no rompe el email). -->
-          <!--SHARE_CARD_INLINE-->
+               reemplaza el marcador SHARE_CARD_INLINE por el <img> con
+               el cid pre-generado. Si no hay inline, este bloque queda
+               vacío (no rompe el email). -->
+          <tr>
+            <td style="padding: 16px 28px 0;" align="center">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="background: ${COLORS.dark}; border-radius: 10px; padding: 20px;">
+                <tr>
+                  <td align="center">
+                    <!--SHARE_CARD_INLINE-->
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
           <!-- CTAs -->
           <tr>
@@ -281,7 +296,7 @@ export function resultFoundEmail(args: {
                 <tr>
                   <td style="padding: 0 4px;">
                     <a href="${escapeHtml(shareUrl)}" style="display: inline-block; color: ${COLORS.muted}; padding: 8px 16px; text-decoration: none; font-size: 13px;">
-                      Compartir resultado →
+                      Descargar sticker →
                     </a>
                   </td>
                 </tr>

@@ -78,13 +78,11 @@ export const attachStorageIds = internalMutation({
   args: {
     myRaceId: v.id("myRaces"),
     diplomaStorageId: v.id("_storage"),
-    shareCardStorageId: v.id("_storage"),
-    storyStickerStorageId: v.optional(v.id("_storage")),
+    storyStickerStorageId: v.id("_storage"),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.myRaceId, {
       diplomaStorageId: args.diplomaStorageId,
-      shareCardStorageId: args.shareCardStorageId,
       storyStickerStorageId: args.storyStickerStorageId,
     });
   },
@@ -152,23 +150,11 @@ export const getMyRaceForDiploma = query({
 });
 
 /**
- * Devuelve los datos mínimos del myRace para servir el share card PNG.
- */
-export const getMyRaceForShareCard = query({
-  args: { myRaceId: v.id("myRaces") },
-  handler: async (ctx, { myRaceId }) => {
-    const myRace = await ctx.db.get(myRaceId);
-    if (!myRace) return null;
-    return {
-      _id: myRace._id,
-      shareCardStorageId: myRace.shareCardStorageId,
-    };
-  },
-});
-
-/**
  * Devuelve los datos mínimos del myRace para servir el story sticker PNG
- * (1080x1920, fondo transparente, para Stories).
+ * (1080x1920, fondo transparente). Es la imagen principal de resultado:
+ * se usa en el email (inline), en og:image de /resultado, y en la
+ * descarga desde esa misma página. Sustituyó al antiguo share card
+ * 1200x630 (lib/share-card/render.tsx, retirado) — mismo dato, mismo rol.
  */
 export const getMyRaceForStorySticker = query({
   args: { myRaceId: v.id("myRaces") },
@@ -226,7 +212,6 @@ export const getMyRaceForPublicPage = query({
         actualPosition: myRace.actualPosition,
         actualPositionCategory: myRace.actualPositionCategory,
         diplomaStorageId: myRace.diplomaStorageId,
-        shareCardStorageId: myRace.shareCardStorageId,
         storyStickerStorageId: myRace.storyStickerStorageId,
       },
       profile: {

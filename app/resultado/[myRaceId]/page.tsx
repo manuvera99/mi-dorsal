@@ -8,9 +8,10 @@
 // si la comparte, lo hace voluntariamente. Mismo modelo que Strava y
 // Runedia.
 //
-// OG meta: og:image apunta al share card PNG (/api/result/{myRaceId}/share-card.png).
-// Si el myRace aún no tiene `shareCardStorageId` (cron no ha corrido), usa
-// un fallback (logo de mi-dorsal).
+// OG meta: og:image apunta al story sticker PNG (plantilla clásica,
+// 1080x1920, transparente) en /api/result/{myRaceId}/story-sticker.png.
+// Si el myRace aún no tiene `storyStickerStorageId` (cron no ha corrido),
+// usa un fallback (logo de mi-dorsal).
 //
 // IMPORTANTE: NO exponer email ni datos sensibles en el HTML (robots no
 // necesarios; la URL ya es la "autorización").
@@ -71,8 +72,8 @@ export async function generateMetadata({
   const distanceLabel = getDistanceLabel(distanceM);
   const timeFormatted = formatHMS(myRace.actualTimeSeconds);
   const runnerName = profile.displayName ?? "Corredor";
-  const ogImageUrl = myRace.shareCardStorageId
-    ? `${APP_URL}/api/result/${myRaceId}/share-card.png`
+  const ogImageUrl = myRace.storyStickerStorageId
+    ? `${APP_URL}/api/result/${myRaceId}/story-sticker.png`
     : FALLBACK_OG;
 
   const title = `${runnerName} — ${timeFormatted} en ${race.name}`;
@@ -90,8 +91,8 @@ export async function generateMetadata({
       images: [
         {
           url: ogImageUrl,
-          width: 1200,
-          height: 630,
+          width: 1080,
+          height: 1920,
           alt: `${runnerName}: ${timeFormatted} en ${race.name}`,
         },
       ],

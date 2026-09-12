@@ -5,13 +5,12 @@
 //
 // Sirve el PNG pre-generado por la action
 // `convex/emailNotificationsAction.sendResultFoundEmail` desde Convex
-// Storage. A diferencia del share card, no se usa como og:image ni se
-// adjunta al email — solo se descarga desde la página pública para
-// subirla como sticker/overlay en Instagram/TikTok Stories.
+// Storage. Es la imagen principal de resultado: se envía inline en el
+// email, se usa como og:image de /resultado y se puede descargar desde
+// ahí como overlay para Instagram/TikTok Stories.
 //
 // Si la myRace no tiene `storyStickerStorageId` (legacy o generación
-// fallida), devuelve 404. Sin regeneración on-demand, mismo criterio que
-// share-card.png/route.ts.
+// fallida), devuelve 404. Sin regeneración on-demand.
 //
 // Cache: inmutable 1 año. El sticker no cambia una vez publicado el
 // resultado.
@@ -113,8 +112,8 @@ export async function GET(
   }
 }
 
-// SVG placeholder mínimo, dimensiones 1080x1920 (formato vertical del
-// sticker, a diferencia del placeholder 1200x630 de share-card.png).
+// SVG placeholder mínimo, dimensiones 1080x1920 (formato vertical fijo
+// del sticker).
 function generatePlaceholderSvg(message: string): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
     <rect width="1080" height="1920" fill="#fafaf9"/>

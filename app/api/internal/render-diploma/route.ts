@@ -1,5 +1,5 @@
 // =============================================================================
-// mi-dorsal — Endpoint interno: renderizar diploma PDF + share card PNG
+// mi-dorsal — Endpoint interno: renderizar diploma PDF + story sticker PNG
 // =============================================================================
 // POST /api/internal/render-diploma
 //
@@ -18,6 +18,11 @@
 // sube los buffers a Convex Storage y envía el email. Mantiene pdfkit/
 // @vercel/og fuera del bundle de Convex por completo.
 //
+// El story sticker (plantilla "clásica" fija) es la imagen principal de
+// resultado: se envía inline en el email, se usa como og:image de
+// /resultado y se puede descargar desde ahí. Sustituyó al antiguo share
+// card 1200x630 (lib/share-card/render.tsx, retirado).
+//
 // Auth: header `x-internal-secret` debe coincidir con la env var
 // INTERNAL_API_SECRET (mismo patrón que ADMIN_BACKFILL_SECRET). Solo lo
 // llama la action de Convex, nunca el cliente.
@@ -25,7 +30,6 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { renderDiploma, DiplomaProps } from "@/lib/pdf/diploma";
-import { renderShareCard, ShareCardProps } from "@/lib/share-card/render";
 import { renderStorySticker, StoryStickerProps } from "@/lib/share-card/story-sticker";
 
 export const dynamic = "force-dynamic";
@@ -38,16 +42,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { diploma: DiplomaProps; shareCard: ShareCardProps; storySticker: StoryStickerProps };
+  let body: { diploma: DiplomaProps; storySticker: StoryStickerProps };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (!body?.diploma || !body?.shareCard || !body?.storySticker) {
+  if (!body?.diploma || !body?.storySticker) {
     return NextResponse.json(
-      { error: "Missing diploma, shareCard or storySticker in body" },
+      { error: "Missing diploma or storySticker in body" },
       { status: 400 },
     );
   }
@@ -59,15 +63,13 @@ export async function POST(req: NextRequest) {
       issuedAt: body.diploma.issuedAt ? new Date(body.diploma.issuedAt) : undefined,
     };
 
-    const [pdfBuffer, pngBuffer, stickerBuffer] = await Promise.all([
+    const [pdfBuffer, stickerBuffer] = await Promise.all([
       renderDiploma(diplomaProps),
-      renderShareCard(body.shareCard),
       renderStorySticker(body.storySticker),
     ]);
 
     return NextResponse.json({
       diplomaBase64: pdfBuffer.toString("base64"),
-      shareCardBase64: pngBuffer.toString("base64"),
       storyStickerBase64: stickerBuffer.toString("base64"),
     });
   } catch (err) {

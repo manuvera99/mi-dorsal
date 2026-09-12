@@ -8,18 +8,18 @@
 //
 //   1. Lee profile + myRace + race + PR actual
 //   2. Calcula si el resultado bate el PR (sin modificarlo aún)
-//   3. Pide el diploma PDF + share card PNG a
+//   3. Pide el diploma PDF + story sticker PNG (plantilla clásica) a
 //      app/api/internal/render-diploma (ver nota abajo)
 //   4. Sube ambos a Convex Storage y guarda los IDs en myRaces
 //   5. Renderiza el email HTML con todos los datos
-//   6. Envía el email con Resend: diploma PDF como attachment + share card
+//   6. Envía el email con Resend: diploma PDF como attachment + sticker
 //      PNG inline con cid: (para que se vea en la bandeja sin hacer clic)
 //   7. Log a notificationLog (idempotente)
 //
 // El PR se persiste DESPUÉS desde checkResults.ts (updateIfBetter), que
 // recibe el previousTimeSeconds implícito en el flujo.
 //
-// Por qué el PDF/PNG NO se generan aquí con renderDiploma/renderShareCard:
+// Por qué el PDF/PNG NO se generan aquí con renderDiploma/renderStorySticker:
 // esas funciones usan @react-pdf/renderer (pdfkit) y @vercel/og (satori),
 // que leen assets binarios (TTF, WASM) con fs.readFileSync desde rutas
 // relativas al propio paquete al cargar el módulo. El paso de análisis de
@@ -59,7 +59,6 @@ import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import type { DiplomaProps } from "../lib/pdf/diploma";
-import type { ShareCardProps } from "../lib/share-card/render";
 import type { StoryStickerProps } from "../lib/share-card/story-sticker";
 import { resultFoundEmail } from "./emails/templates/resultFound";
 import { reminderEmail } from "./emails/templates/reminder";
@@ -90,9 +89,8 @@ function bytesToBase64(bytes: Uint8Array): string {
  */
 async function renderViaInternalApi(
   diploma: DiplomaProps,
-  shareCard: ShareCardProps,
   storySticker: StoryStickerProps,
-): Promise<{ pdfBytes: Uint8Array; pngBytes: Uint8Array; stickerBytes: Uint8Array }> {
+): Promise<{ pdfBytes: Uint8Array; stickerBytes: Uint8Array }> {
   const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://www.mi-dorsal.com").replace(/\/$/, "");
   const secret = process.env.INTERNAL_API_SECRET;
   if (!secret) {
@@ -105,20 +103,18 @@ async function renderViaInternalApi(
       "Content-Type": "application/json",
       "x-internal-secret": secret,
     },
-    body: JSON.stringify({ diploma, shareCard, storySticker }),
+    body: JSON.stringify({ diploma, storySticker }),
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     throw new Error(`render-diploma endpoint failed: ${res.status} ${detail}`);
   }
-  const { diplomaBase64, shareCardBase64, storyStickerBase64 } = (await res.json()) as {
+  const { diplomaBase64, storyStickerBase64 } = (await res.json()) as {
     diplomaBase64: string;
-    shareCardBase64: string;
     storyStickerBase64: string;
   };
   return {
     pdfBytes: base64ToBytes(diplomaBase64),
-    pngBytes: base64ToBytes(shareCardBase64),
     stickerBytes: base64ToBytes(storyStickerBase64),
   };
 }
@@ -200,22 +196,15 @@ export const sendResultFoundEmail = internalAction({
       issuedAt,
       myRaceId: myRace._id,
     };
-    // ---------- 4. Generar diploma PDF + share card PNG + story sticker ----------
+    // ---------- 4. Generar diploma PDF + story sticker (plantilla clásica) ----------
     // (vía el endpoint interno de Next.js — ver nota al inicio del archivo)
-    const cardProps: ShareCardProps = {
-      ...diplomaProps,
-    };
     const stickerProps: StoryStickerProps = {
       timeFormatted: diplomaProps.timeFormatted,
       paceFormatted: diplomaProps.paceFormatted,
       distanceKm: diplomaProps.distanceKm,
       isPersonalRecord: diplomaProps.isPersonalRecord,
     };
-    const { pdfBytes, pngBytes, stickerBytes } = await renderViaInternalApi(
-      diplomaProps,
-      cardProps,
-      stickerProps,
-    );
+    const { pdfBytes, stickerBytes } = await renderViaInternalApi(diplomaProps, stickerProps);
 
     // ---------- 5. Subir a Convex Storage ----------
     // `as any`: fetch acepta Uint8Array en runtime, pero su tipo genérico
@@ -234,18 +223,6 @@ export const sendResultFoundEmail = internalAction({
     const diplomaBlob = (await diplomaUploadRes.json()) as { storageId: string };
     const diplomaStorageId = diplomaBlob.storageId as Id<"_storage">;
 
-    const cardUploadUrl = await ctx.storage.generateUploadUrl();
-    const cardUploadRes = await fetch(cardUploadUrl, {
-      method: "POST",
-      headers: { "Content-Type": "image/png" },
-      body: pngBytes as any,
-    });
-    if (!cardUploadRes.ok) {
-      throw new Error(`Share card upload failed: ${cardUploadRes.status}`);
-    }
-    const cardBlob = (await cardUploadRes.json()) as { storageId: string };
-    const shareCardStorageId = cardBlob.storageId as Id<"_storage">;
-
     const stickerUploadUrl = await ctx.storage.generateUploadUrl();
     const stickerUploadRes = await fetch(stickerUploadUrl, {
       method: "POST",
@@ -262,13 +239,12 @@ export const sendResultFoundEmail = internalAction({
     await ctx.runMutation(internal.emailNotificationsHelpers.attachStorageIds, {
       myRaceId: myRace._id,
       diplomaStorageId,
-      shareCardStorageId,
       storyStickerStorageId,
     });
 
     // ---------- 6. Renderizar email ----------
     const diplomaUrl = `${APP_URL}/api/diploma/${myRace._id}.pdf`;
-    const shareCardUrl = `${APP_URL}/api/result/${myRace._id}/share-card.png`;
+    const stickerUrl = `${APP_URL}/api/result/${myRace._id}/story-sticker.png`;
     const stickerEditorUrl = `${APP_URL}/editor-sticker/${myRace._id}`;
     const classificationUrl = race.resultsUrl ?? `${APP_URL}/carreras/${race.slug ?? ""}`;
     const predictionBlock = args.predictedTimeSeconds
@@ -292,21 +268,20 @@ export const sendResultFoundEmail = internalAction({
       distanceLabel,
       classificationUrl,
       diplomaUrl,
-      shareUrl: shareCardUrl,
+      shareUrl: stickerUrl,
       stickerEditorUrl,
       appUrl: APP_URL,
       ...predictionBlock,
     });
 
-    // Inyectar el inline cid: del share card en el HTML. Se hace aquí
-    // porque el template no conoce el cid (mantenemos el template puro).
-    const INLINE_CID = "sharecard@mi-dorsal";
+    // Inyectar el inline cid: del sticker en el HTML. Se hace aquí porque
+    // el template no conoce el cid (mantenemos el template puro). El
+    // panel oscuro que envuelve la imagen (para que el texto blanco del
+    // sticker transparente se lea) ya vive en el propio template.
+    const INLINE_CID = "sticker@mi-dorsal";
     const htmlWithInline = html.replace(
-      /<\/head>/,
-      `<style>.share-card-hero img{max-width:100%;height:auto;border-radius:8px;display:block;}</style></head>`,
-    ).replace(
       /<!--SHARE_CARD_INLINE-->/g,
-      `<img class="share-card-hero" src="cid:${INLINE_CID}" alt="Tu resultado en ${escapeAttr(race.name)}" width="480" />`,
+      `<img src="cid:${INLINE_CID}" alt="Tu resultado en ${escapeAttr(race.name)}" width="240" style="display:block;max-width:100%;height:auto;" />`,
     );
 
     // ---------- 7. Enviar email ----------
@@ -317,7 +292,7 @@ export const sendResultFoundEmail = internalAction({
 
     if (IS_MOCK) {
       console.log(
-        `[result-found-mock] → ${profile.email} | ${subject} | diploma=${(pdfBytes.length / 1024).toFixed(1)}KB card=${(pngBytes.length / 1024).toFixed(1)}KB`,
+        `[result-found-mock] → ${profile.email} | ${subject} | diploma=${(pdfBytes.length / 1024).toFixed(1)}KB sticker=${(stickerBytes.length / 1024).toFixed(1)}KB`,
       );
       success = true;
     } else {
@@ -340,7 +315,7 @@ export const sendResultFoundEmail = internalAction({
             },
             {
               filename: `mi-dorsal-${verificationId}.png`,
-              content: bytesToBase64(pngBytes),
+              content: bytesToBase64(stickerBytes),
               content_id: INLINE_CID,
             },
           ] as any,
@@ -370,7 +345,6 @@ export const sendResultFoundEmail = internalAction({
       resendId,
       isPR,
       diplomaStorageId,
-      shareCardStorageId,
       storyStickerStorageId,
       error: errorMsg,
     };

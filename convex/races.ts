@@ -969,6 +969,236 @@ export const systemDelete = mutation({
 });
 
 /**
+ * systemMergeDuplicates: fusiona UNA carrera duplicada (`deleteId`) en la
+ * carrera que se conserva (`keepId`). Migra todas las referencias de usuario
+ * a `races` antes de borrar `deleteId`, para no dejar FKs colgando.
+ *
+ * Usado por scripts/fix-cross-source-duplicates.ts (limpieza one-off del
+ * backlog de /admin/duplicates). Auth-free como el resto de mutations
+ * "system*" — solo se ejecuta desde terminal con CONVEX_DEPLOY_KEY.
+ *
+ * Tablas con conflicto de unicidad lógica (userId, raceId) — myRaces,
+ * raceRatings, raceVotes — no se migran ciegamente: si el usuario ya tiene
+ * fila en `keepId`, se conserva la de más señal y se borra la otra (nunca
+ * las 2 a la vez, para no perder datos de nadie).
+ */
+export const systemMergeDuplicates = mutation({
+  args: {
+    keepId: v.id("races"),
+    deleteId: v.id("races"),
+  },
+  handler: async (ctx, { keepId, deleteId }) => {
+    if (keepId === deleteId) {
+      throw new Error("keepId y deleteId no pueden ser la misma carrera");
+    }
+    const keepRace = await ctx.db.get(keepId);
+    const deleteRace = await ctx.db.get(deleteId);
+    if (!keepRace || !deleteRace) {
+      throw new Error("keepId o deleteId no existen");
+    }
+
+    const migrated: Record<string, number> = {};
+    const merged: Record<string, number> = {};
+
+    // --- myRaces (conflicto de unicidad por userId) ---
+    {
+      const toMigrate = await ctx.db
+        .query("myRaces")
+        .withIndex("by_race", (q) => q.eq("raceId", deleteId))
+        .collect();
+      let n = 0, m = 0;
+      for (const row of toMigrate) {
+        const existingForUser = await ctx.db
+          .query("myRaces")
+          .withIndex("by_user_race", (q) => q.eq("userId", row.userId).eq("raceId", keepId))
+          .unique();
+        if (!existingForUser) {
+          await ctx.db.patch(row._id, { raceId: keepId });
+          n++;
+        } else {
+          // El usuario ya tiene fila en keepId: conserva la de más señal
+          // (status !== "planned" gana a "planned"; si ambas iguales, la más
+          // reciente por _creationTime) y borra la otra.
+          const rowScore = row.status !== "planned" ? 1 : 0;
+          const existingScore = existingForUser.status !== "planned" ? 1 : 0;
+          if (rowScore > existingScore) {
+            await ctx.db.delete(existingForUser._id);
+            await ctx.db.patch(row._id, { raceId: keepId });
+          } else if (rowScore < existingScore) {
+            await ctx.db.delete(row._id);
+          } else {
+            // Empate de señal: conserva la más reciente
+            if ((row._creationTime ?? 0) > (existingForUser._creationTime ?? 0)) {
+              await ctx.db.delete(existingForUser._id);
+              await ctx.db.patch(row._id, { raceId: keepId });
+            } else {
+              await ctx.db.delete(row._id);
+            }
+          }
+          m++;
+        }
+      }
+      migrated.myRaces = n;
+      merged.myRaces = m;
+    }
+
+    // --- raceRatings (conflicto de unicidad por userId) ---
+    {
+      const toMigrate = await ctx.db
+        .query("raceRatings")
+        .withIndex("by_race", (q) => q.eq("raceId", deleteId))
+        .collect();
+      let n = 0, m = 0;
+      for (const row of toMigrate) {
+        const existingForUser = await ctx.db
+          .query("raceRatings")
+          .withIndex("by_user_race", (q) => q.eq("userId", row.userId).eq("raceId", keepId))
+          .unique();
+        if (!existingForUser) {
+          await ctx.db.patch(row._id, { raceId: keepId });
+          n++;
+        } else {
+          // Ya hay rating del usuario en keepId: nos quedamos con ese, se
+          // borra el del duplicado (no hay "más señal" objetiva en un rating).
+          await ctx.db.delete(row._id);
+          m++;
+        }
+      }
+      migrated.raceRatings = n;
+      merged.raceRatings = m;
+    }
+
+    // --- raceVotes (conflicto de unicidad por userId) ---
+    {
+      const toMigrate = await ctx.db
+        .query("raceVotes")
+        .withIndex("by_race", (q) => q.eq("raceId", deleteId))
+        .collect();
+      let n = 0, m = 0;
+      for (const row of toMigrate) {
+        const existingForUser = await ctx.db
+          .query("raceVotes")
+          .withIndex("by_user_race", (q) => q.eq("userId", row.userId).eq("raceId", keepId))
+          .unique();
+        if (!existingForUser) {
+          await ctx.db.patch(row._id, { raceId: keepId });
+          n++;
+        } else {
+          await ctx.db.delete(row._id);
+          m++;
+        }
+      }
+      migrated.raceVotes = n;
+      merged.raceVotes = m;
+    }
+
+    // --- Tablas sin conflicto de unicidad: migración directa ---
+    // personalRecords no tiene índice por raceId (raceId es opcional, de baja
+    // cardinalidad de uso) — .collect() de tabla completa aceptable aquí: es
+    // un script one-off de mantenimiento, no un hot path de cron/ingesta (la
+    // regla de checklist de coste de esta sesión aplica a hot paths).
+    {
+      const all = await ctx.db.query("personalRecords").collect();
+      let n = 0;
+      for (const row of all) {
+        if (row.raceId === deleteId) {
+          await ctx.db.patch(row._id, { raceId: keepId });
+          n++;
+        }
+      }
+      migrated.personalRecords = n;
+    }
+
+    {
+      const toMigrate = await ctx.db
+        .query("raceResultsCache")
+        .withIndex("by_race", (q) => q.eq("raceId", deleteId))
+        .collect();
+      for (const row of toMigrate) {
+        await ctx.db.patch(row._id, { raceId: keepId });
+      }
+      migrated.raceResultsCache = toMigrate.length;
+    }
+
+    {
+      const toMigrate = await ctx.db
+        .query("predictions")
+        .withIndex("by_race", (q) => q.eq("raceId", deleteId))
+        .collect();
+      for (const row of toMigrate) {
+        await ctx.db.patch(row._id, { raceId: keepId });
+      }
+      migrated.predictions = toMigrate.length;
+    }
+
+    {
+      const toMigrate = await ctx.db
+        .query("activities")
+        .withIndex("by_matched_race", (q) => q.eq("matchedRaceId", deleteId))
+        .collect();
+      for (const row of toMigrate) {
+        await ctx.db.patch(row._id, { matchedRaceId: keepId });
+      }
+      migrated.activities = toMigrate.length;
+    }
+
+    {
+      const toMigrate = await ctx.db
+        .query("feedbackReports")
+        .withIndex("by_race", (q) => q.eq("raceId", deleteId))
+        .collect();
+      for (const row of toMigrate) {
+        await ctx.db.patch(row._id, { raceId: keepId });
+      }
+      migrated.feedbackReports = toMigrate.length;
+    }
+
+    // notificationLog, raceSuggestions, raceCandidates no tienen índice por
+    // raceId (son de bajo volumen y no forman parte de ningún hot path) —
+    // se aceptan sin índice dedicado en este script one-off.
+    {
+      const all = await ctx.db.query("notificationLog").collect();
+      let n = 0;
+      for (const row of all) {
+        if (row.relatedRaceId === deleteId) {
+          await ctx.db.patch(row._id, { relatedRaceId: keepId });
+          n++;
+        }
+      }
+      migrated.notificationLog = n;
+    }
+
+    {
+      const all = await ctx.db.query("raceSuggestions").collect();
+      let n = 0;
+      for (const row of all) {
+        if (row.createdRaceId === deleteId) {
+          await ctx.db.patch(row._id, { createdRaceId: keepId });
+          n++;
+        }
+      }
+      migrated.raceSuggestions = n;
+    }
+
+    {
+      const all = await ctx.db.query("raceCandidates").collect();
+      let n = 0;
+      for (const row of all) {
+        if (row.linkedRaceId === deleteId) {
+          await ctx.db.patch(row._id, { linkedRaceId: keepId });
+          n++;
+        }
+      }
+      migrated.raceCandidates = n;
+    }
+
+    await ctx.db.delete(deleteId);
+
+    return { keepId, deleteId, migrated, merged };
+  },
+});
+
+/**
  * findDuplicateSlugs: agrupa por slug y devuelve los que tienen >1 carrera.
  * Usado por scripts de migración.
  */

@@ -11,12 +11,12 @@ jobs:
   ingest:
     name: Ingest desde todas las fuentes
     runs-on: ubuntu-latest
-    # 45 min (antes 30): con el nuevo step de deploy Convex (0/10) +
-    # unificación de JSONs (7.5/10) + geocoding de más carreras nuevas
+    # 45 min (antes 30): con el nuevo step de deploy Convex (0/11) +
+    # unificación de JSONs (8.5/11) + geocoding de más carreras nuevas
     # cada noche, 30 min se quedaba corto y cancelaba el geocoding final
     # a mitad (confirmado 2026-09-11, run 34602490190: "exceeded the
     # maximum execution time of 30m0s" en el paso 9/9 — numeración previa
-    # a añadir Cruzando la Meta, ver paso 10/10 actual).
+    # a añadir Cruzando la Meta y Carreraspopulares, ver paso 11/11 actual).
     timeout-minutes: 45
 
     steps:
@@ -85,25 +85,36 @@ jobs:
       # ingest:to-convex los une y sube via systemUpsert
       # ------------------------------------------------------------------
 
-      - name: 4/10 Ingest RFEA (PDF + scraping)
+      - name: 4/10 Ingest Carreraspopulares (44 filtros HTML, ~120 carreras)
+        env:
+          NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+        run: |
+          echo "=== Carreraspopulares (44 filtros, autodeteccion de paginacion) ==="
+          # 1) Scrapea 44 filtros (CCAA + distancias + modalidades + homologadas)
+          npm run ingest:carreraspopulares:scrape 2>&1 | tail -30 || echo "⚠️  Scrape failed, continuing"
+          # 2) Sube directo a Convex via systemUpsert (idempotente)
+          npm run ingest:carreraspopulares 2>&1 | tail -30 || echo "⚠️  Ingest carreraspopulares failed, continuing"
+        continue-on-error: true
+
+      - name: 5/10 Ingest RFEA (PDF + scraping)
         run: |
           echo "=== RFEA (Real Federación Española de Atletismo) ==="
           npm run ingest:rfea 2>&1 | tail -20 || echo "⚠️  RFEA failed, continuing"
         continue-on-error: true
 
-      - name: 5/10 Ingest FEDME (scraping HTML)
+      - name: 6/10 Ingest FEDME (scraping HTML)
         run: |
           echo "=== FEDME (Federación Deportes de Montaña) ==="
           npm run ingest:fedme 2>&1 | tail -20 || echo "⚠️  FEDME failed, continuing"
         continue-on-error: true
 
-      - name: 6/10 Ingest ITRA (scraping, 503 parcial)
+      - name: 7/10 Ingest ITRA (scraping, 503 parcial)
         run: |
           echo "=== ITRA (International Trail Running) ==="
           npm run ingest:itra 2>&1 | tail -20 || echo "⚠️  ITRA failed, continuing"
         continue-on-error: true
 
-      - name: 7/10 Ingest Runedia (scraping HTML)
+      - name: 8/10 Ingest Runedia (scraping HTML)
         run: |
           echo "=== Runedia (Mundo Deportivo) ==="
           npm run ingest:runedia 2>&1 | tail -20 || echo "⚠️  Runedia failed, continuing"
@@ -119,7 +130,7 @@ jobs:
       # 2 de septiembre).
       # ------------------------------------------------------------------
 
-      - name: 7.5/10 Unificar JSONs scrapeados (rfea+fedme+itra+runedia → all-races.json)
+      - name: 8.5/10 Unificar JSONs scrapeados (rfea+fedme+itra+runedia → all-races.json)
         run: |
           echo "=== Unificar JSONs en all-races.json ==="
           npx tsx scripts/ingest-all.ts 2>&1 | tail -30 || echo "⚠️  Unificación falló, continuing"
@@ -130,7 +141,7 @@ jobs:
       # scripts/ingest-to-convex.ts) — es el último paso que registra sync
       # de todas las fuentes, así que es el punto correcto para el resumen
       # de la corrida completa (Sportmaniacs y Agenda Sureste incluidos).
-      - name: 8/10 Push JSONs a Convex (RFEA/FEDME/ITRA/Runedia) + email resumen
+      - name: 9/10 Push JSONs a Convex (RFEA/FEDME/ITRA/Runedia) + email resumen
         env:
           CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
           NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
@@ -148,14 +159,14 @@ jobs:
             npm run ingest:to-convex 2>&1 | tail -30 || echo "⚠️  to-convex failed"
 
       # ------------------------------------------------------------------
-      # 9/10 Deep Extract IA — enriquece carreras con officialUrl.
+      # 10/10 Deep Extract IA — enriquece carreras con officialUrl.
       # Modo priority: procesa primero las que NO tienen extractedAt,
       # luego las que les faltan longDescription/altimetryData/raceFormats.
       # --limit=30 procesa 30 carreras por noche (cubre 375 en ~13 días).
       # Si los secrets de IA no están, falla gracefully y sigue.
       # ------------------------------------------------------------------
 
-      - name: 9/10 Deep Extract IA (MiniMax M3, 30 carreras prioritarias)
+      - name: 10/10 Deep Extract IA (MiniMax M3, 30 carreras prioritarias)
         env:
           NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -173,11 +184,11 @@ jobs:
         continue-on-error: true
 
       # ------------------------------------------------------------------
-      # 10/10 Geocodificación — asigna lat/lng a carreras nuevas para el
+      # 11/11 Geocodificación — asigna lat/lng a carreras nuevas para el
       # filtro de distancia del usuario. Nominatim (OpenStreetMap, sin key).
       # ------------------------------------------------------------------
 
-      - name: 10/10 Geocodificar carreras nuevas (Nominatim)
+      - name: 11/11 Geocodificar carreras nuevas (Nominatim)
         env:
           NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
         run: |

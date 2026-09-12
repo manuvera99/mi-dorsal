@@ -227,6 +227,7 @@ export const seedDefaults = mutation({
       { name: "Runedia", slug: "runedia", type: "scraper" as const, description: "Calendario popular de carreras populares en España (anti-bot)", baseUrl: "https://runedia.es" },
       { name: "Agenda Sureste", slug: "correbirras", type: "scraper" as const, description: "Agenda de carreras populares del sureste peninsular (datos vía Supabase REST)", baseUrl: "https://www.correbirras.com" },
       { name: "Cruzando la Meta", slug: "cruzandolameta", type: "api" as const, description: "Cronometrador de Almería/Granada — API REST pública con resultados por dorsal (rankings.cruzandolameta.es)", baseUrl: "https://rankings.cruzandolameta.es" },
+      { name: "Carreraspopulares", slug: "carreraspopulares", type: "scraper" as const, description: "Calendario popular de carreras en España con filtro de circuito homologado (carreraspopulares.com)", baseUrl: "https://carreraspopulares.com" },
       { name: "Manual", slug: "manual", type: "manual" as const, description: "Carreras añadidas a mano por el admin desde el panel" },
     ];
     const results: Array<{ slug: string; id: Id<"dataSources">; created: boolean }> = [];
@@ -398,6 +399,7 @@ export const systemSeedDefaults = mutation({
       { name: "Runedia", slug: "runedia", type: "scraper" as const, description: "Calendario popular de carreras populares en España (anti-bot)", baseUrl: "https://runedia.es" },
       { name: "Agenda Sureste", slug: "correbirras", type: "scraper" as const, description: "Agenda de carreras populares del sureste peninsular (datos vía Supabase REST)", baseUrl: "https://www.correbirras.com" },
       { name: "Cruzando la Meta", slug: "cruzandolameta", type: "api" as const, description: "Cronometrador de Almería/Granada — API REST pública con resultados por dorsal (rankings.cruzandolameta.es)", baseUrl: "https://rankings.cruzandolameta.es" },
+      { name: "Carreraspopulares", slug: "carreraspopulares", type: "scraper" as const, description: "Calendario popular de carreras en España con filtro de circuito homologado (carreraspopulares.com)", baseUrl: "https://carreraspopulares.com" },
       { name: "Manual", slug: "manual", type: "manual" as const, description: "Carreras añadidas a mano por el admin desde el panel" },
     ];
     const results: Array<{ slug: string; id: Id<"dataSources">; created: boolean }> = [];

@@ -19,6 +19,8 @@
     "ingest:correbirras": "tsx scripts/scrape-correbirras.ts --upload",
     "ingest:chiplevante": "tsx scripts/ingest-chiplevante.ts",
     "ingest:cruzandolameta": "tsx scripts/ingest-cruzandolameta.ts",
+    "ingest:carreraspopulares": "tsx scripts/ingest-carreraspopulares.ts",
+    "ingest:carreraspopulares:scrape": "tsx scripts/prototypes/scrape-carreraspopulares-nacional.ts",
     "ingest:sportmaniacs:2026": "tsx scripts/ingest-sportmaniacs-2026.ts",
     "migrate:sportmaniacs": "tsx scripts/migrate-sportmaniacs-attrs.ts",
     "ingest:all": "tsx scripts/ingest-rfea.ts && tsx scripts/ingest-fedme.ts && tsx scripts/ingest-itra.ts && tsx scripts/ingest-sportmaniacs.ts && tsx scripts/ingest-runedia.ts && tsx scripts/ingest-all.ts",

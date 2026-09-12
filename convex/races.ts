@@ -1024,15 +1024,32 @@ export const systemMergeDuplicates = mutation({
           if (rowScore > existingScore) {
             await ctx.db.delete(existingForUser._id);
             await ctx.db.patch(row._id, { raceId: keepId });
+            console.log(`[merge-conflict:myRaces] user=${row.userId} kept=${row._id} deleted=${existingForUser._id} reason=status`);
           } else if (rowScore < existingScore) {
             await ctx.db.delete(row._id);
+            console.log(`[merge-conflict:myRaces] user=${row.userId} kept=${existingForUser._id} deleted=${row._id} reason=status`);
           } else {
-            // Empate de señal: conserva la más reciente
-            if ((row._creationTime ?? 0) > (existingForUser._creationTime ?? 0)) {
+            // Empate de señal por status: prioriza la fila con datos de
+            // resultado reales (tiempo/diploma) antes de mirar recencia —
+            // recencia no se correlaciona con completitud, y perder la fila
+            // con diploma/resultado real deja _storage blobs huérfanos y
+            // enlaces /resultado/{myRaceId} rotos sin posibilidad de deshacer.
+            const rowHasResult = row.actualTimeSeconds !== undefined || row.diplomaStorageId !== undefined;
+            const existingHasResult = existingForUser.actualTimeSeconds !== undefined || existingForUser.diplomaStorageId !== undefined;
+            if (rowHasResult && !existingHasResult) {
               await ctx.db.delete(existingForUser._id);
               await ctx.db.patch(row._id, { raceId: keepId });
+              console.log(`[merge-conflict:myRaces] user=${row.userId} kept=${row._id} deleted=${existingForUser._id} reason=result-data`);
+            } else if (!rowHasResult && existingHasResult) {
+              await ctx.db.delete(row._id);
+              console.log(`[merge-conflict:myRaces] user=${row.userId} kept=${existingForUser._id} deleted=${row._id} reason=result-data`);
+            } else if ((row._creationTime ?? 0) > (existingForUser._creationTime ?? 0)) {
+              await ctx.db.delete(existingForUser._id);
+              await ctx.db.patch(row._id, { raceId: keepId });
+              console.log(`[merge-conflict:myRaces] user=${row.userId} kept=${row._id} deleted=${existingForUser._id} reason=recency`);
             } else {
               await ctx.db.delete(row._id);
+              console.log(`[merge-conflict:myRaces] user=${row.userId} kept=${existingForUser._id} deleted=${row._id} reason=recency`);
             }
           }
           m++;
@@ -1061,6 +1078,7 @@ export const systemMergeDuplicates = mutation({
           // Ya hay rating del usuario en keepId: nos quedamos con ese, se
           // borra el del duplicado (no hay "más señal" objetiva en un rating).
           await ctx.db.delete(row._id);
+          console.log(`[merge-conflict:raceRatings] user=${row.userId} kept=${existingForUser._id} deleted=${row._id}`);
           m++;
         }
       }
@@ -1085,6 +1103,7 @@ export const systemMergeDuplicates = mutation({
           n++;
         } else {
           await ctx.db.delete(row._id);
+          console.log(`[merge-conflict:raceVotes] user=${row.userId} kept=${existingForUser._id} deleted=${row._id}`);
           m++;
         }
       }

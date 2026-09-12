@@ -8,7 +8,7 @@
 | `/admin` | Dashboard. Lee de `statsCache` (no consulta tablas en vivo). | `statsCache` |
 | `/admin/races`, `/races/new`, `/races/[id]`, `/races/from-url` | CRUD manual de carreras. `from-url` lanza deep extraction con IA. | `races` |
 | `/admin/sources`, `/sources/from-url` | Lista `dataSources` con último sync, botón "sincronizar ahora". | `dataSources`, `syncHistory` |
-| `/admin/duplicates` | Detecta carreras duplicadas (exact/structural/fuzzy). Solo BORRA, no hace merge. Ver `docs/optional/enrichment.md`. | `races` |
+| `/admin/duplicates` | Detecta carreras duplicadas (exact/structural/fuzzy) como red de seguridad — `systemUpsert` ya previene la mayoría en el ingest desde 2026-09-12. Solo BORRA, no hace merge. Ver `docs/optional/enrichment.md`. | `races` |
 | `/admin/users`, `/users/[id]` | Lista de profiles con métricas + detalle para soporte. | `profiles` |
 | `/admin/blog`, `/blog/new`, `/blog/[id]` | CRUD del blog, editor markdown. | `blogPosts` |
 | `/admin/newsletter` | Suscriptores, filtros, export CSV, alta/baja manual. | `newsletterSubscribers` |

@@ -24,13 +24,27 @@ import {
   Info,
 } from "./icons";
 import { StravaExportUploader } from "./strava-export-uploader";
+import { StravaOauthConnect } from "./strava-oauth-connect";
 import { PremiumFeatureLock } from "@/components/billing/premium-feature-lock";
 
 export function ConnectionsSection() {
   const summary = useQuery(api.stravaExport.getMyStravaSummary, {});
+  const oauthStatus = useQuery(api.stravaOauth.getMyStravaOauthStatus, {});
   const [activeUploadId, setActiveUploadId] = useState<string | null>(null);
   const [showInstructions, setShowInstructions] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+
+  // Detectar query params de redirect del callback OAuth
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("strava") === "connected") {
+      // Limpiar el query param
+      window.history.replaceState({}, "", "/perfil");
+    } else if (params.get("strava") === "denied" || params.get("strava") === "error") {
+      window.history.replaceState({}, "", "/perfil");
+    }
+  }, []);
 
   // Cuando el upload termina (done o failed), limpiamos el activeUploadId
   // tras 5 segundos para mostrar el resumen
@@ -58,7 +72,7 @@ export function ConnectionsSection() {
                   type="button"
                   onClick={() => setShowInfo(true)}
                   className="text-gray-400 hover:text-gray-600"
-                  aria-label="Info sobre cómo subir tu export de Strava en mi-dorsal"
+                  aria-label="Info sobre cómo se sincroniza Strava en mi-dorsal"
                 >
                   <Info className="h-4 w-4" aria-hidden="true" />
                 </button>
@@ -66,24 +80,31 @@ export function ConnectionsSection() {
               <p className="text-xs text-gray-500">
                 {summary?.total
                   ? `${summary.total} actividades · ${summary.racesMatched} carreras detectadas`
-                  : "Sube tu export para traer tus carreras"}
+                  : oauthStatus?.connected
+                    ? "Conectado, sincronizando…"
+                    : "Aún no has conectado Strava"}
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setShowInstructions(true)}
-            className="text-xs text-runner-primary hover:underline flex items-center gap-1"
-          >
-            <Upload className="h-3.5 w-3.5" />
-            Subir export
-          </button>
+          {!oauthStatus?.connected && (
+            <button
+              onClick={() => setShowInstructions(true)}
+              className="text-xs text-runner-primary hover:underline flex items-center gap-1"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              Subir export
+            </button>
+          )}
         </div>
 
         {/* Resumen histórico */}
-        {summary && (summary.lastExportAt || summary.total > 0) && (
+        {summary && (summary.lastExportAt || summary.fromOAuth > 0) && (
           <div className="text-xs text-gray-500 mb-3 flex flex-wrap gap-3">
             {summary.fromExport > 0 && (
               <span>{summary.fromExport} desde el export</span>
+            )}
+            {summary.fromOAuth > 0 && (
+              <span>{summary.fromOAuth} desde OAuth</span>
             )}
             {summary.lastExportAt && (
               <span className="flex items-center gap-1">
@@ -94,11 +115,40 @@ export function ConnectionsSection() {
           </div>
         )}
 
+        {/* OAuth — solo Pro (sesión 8 sep 2026).
+            Free puede seguir subiendo el export ZIP, pero NO consumir
+            la API de Strava (OAuth + webhook). El gate usa
+            <PremiumFeatureLock> con variant="banner" para mostrar el
+            upsell claro en lugar del botón de OAuth. */}
+        <PremiumFeatureLock
+          feature="Sincronización con Strava"
+          description="Conecta tu cuenta de Strava y tus actividades se importan solas. Detectamos carreras, actualizamos tus PRs automáticamente. El export manual sigue funcionando en free."
+          variant="banner"
+        >
+          {/* Si el user es Pro, renderiza el OAuth connect. La
+              <StravaOauthConnect> ya muestra el estado correcto
+              (conectado/desconectado) y el botón de OAuth. */}
+          <div className="mb-4">
+            <StravaOauthConnect />
+          </div>
+        </PremiumFeatureLock>
+
+        {/* Divider entre OAuth y export */}
+        {!oauthStatus?.connected && summary?.fromExport === 0 && (
+          <div className="flex items-center gap-2 mb-3">
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="text-xs text-gray-400 uppercase tracking-wide">
+              o sube el export
+            </span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
+        )}
+
         {/* Uploader (solo si no hay upload activo, o si lo hay, muestra su estado).
             Free ya agotó su única subida gratis → mostramos el upsell a Pro
             en vez de la drop-zone (evita que suba el ZIP y choque con el
             error de la mutation). */}
-        {summary?.canUploadExport === false && !activeUploadId ? (
+        {!oauthStatus?.connected && summary?.canUploadExport === false && !activeUploadId ? (
           <PremiumFeatureLock
             feature="Re-subir tu export de Strava"
             description="En Free puedes subir tu export una vez. Con Pro puedes re-subirlo sin límite (ej. tras cambiar de dispositivo o para traer actividades nuevas)."
@@ -107,12 +157,14 @@ export function ConnectionsSection() {
             {null}
           </PremiumFeatureLock>
         ) : (
-          <StravaExportUploader
-            activeUploadId={activeUploadId}
-            onUploadComplete={setActiveUploadId}
-            onClearActive={() => setActiveUploadId(null)}
-            onDeleted={() => setActiveUploadId(null)}
-          />
+          !oauthStatus?.connected && (
+            <StravaExportUploader
+              activeUploadId={activeUploadId}
+              onUploadComplete={setActiveUploadId}
+              onClearActive={() => setActiveUploadId(null)}
+              onDeleted={() => setActiveUploadId(null)}
+            />
+          )
         )}
       </div>
 
@@ -147,6 +199,7 @@ export function ConnectionsSection() {
         <InfoModal
           onClose={() => setShowInfo(false)}
           summary={summary}
+          oauthConnected={!!oauthStatus?.connected}
         />
       )}
     </div>
@@ -259,9 +312,10 @@ interface InfoModalProps {
       }
     | null
     | undefined;
+  oauthConnected: boolean;
 }
 
-function InfoModal({ onClose, summary }: InfoModalProps) {
+function InfoModal({ onClose, summary, oauthConnected }: InfoModalProps) {
   return (
     <div
       className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
@@ -285,8 +339,57 @@ function InfoModal({ onClose, summary }: InfoModalProps) {
         </div>
 
         <p className="text-sm text-gray-700 mb-4">
-          Trae tus carreras a mi-dorsal subiendo tu export de Strava.
+          Tienes <strong>dos formas</strong> de traerte tus actividades a
+          mi-dorsal. Puedes usar una, las dos, o cambiar entre ellas cuando
+          quieras.
         </p>
+
+        {/* OAuth */}
+        <section className="mb-5">
+          <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-[#FC4C02]" />
+            Conexión OAuth (recomendada)
+          </h3>
+          <ul className="text-xs text-gray-700 space-y-1.5 list-disc list-inside">
+            <li>
+              Autorizas a mi-dorsal a leer tus actividades. No publicamos
+              nada en tu nombre ni modificamos tu Strava.
+            </li>
+            <li>
+              <strong>Se actualiza automáticamente</strong>: cuando subes una
+              actividad a Strava, llega a mi-dorsal en pocos minutos
+              (Strava nos avisa por webhook).
+            </li>
+            <li>
+              <strong>Sincronización inicial</strong>: al conectar,
+              descargamos los últimos 90 días por defecto. Si quieres más
+              histórico, sube también un export (ver abajo).
+            </li>
+            <li>
+              <strong>Caducidad del token</strong>: cada ~6 horas el token
+              se renueva solo. No tienes que hacer nada.
+            </li>
+          </ul>
+          {oauthConnected && (
+            <div className="text-xs text-gray-500 mt-2 space-y-0.5">
+              {summary?.oauthConnectedAt && (
+                <div>
+                  Conectado {timeAgo(summary.oauthConnectedAt)}
+                </div>
+              )}
+              {summary?.lastOAuthSyncAt && (
+                <div>
+                  Última sincronización: {timeAgo(summary.lastOAuthSyncAt)}
+                </div>
+              )}
+              {summary?.fromOAuth !== undefined && (
+                <div>
+                  {summary.fromOAuth} actividades ingestadas por esta vía
+                </div>
+              )}
+            </div>
+          )}
+        </section>
 
         {/* Export */}
         <section className="mb-5">

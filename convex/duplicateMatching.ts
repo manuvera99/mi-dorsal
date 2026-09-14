@@ -136,6 +136,21 @@ export function findExistingMatch<T extends MatchCandidate>(
     for (const r of pool) {
       const rProv = r.province ?? r.locality ?? "?";
       if (rProv !== candidateProv) continue;
+      // Veto por distancia (2026-09-14): si ambos lados tienen distanceKm
+      // real (no fallback/undefined) y difieren en más de 1km, no es la
+      // misma carrera aunque el nombre sea casi idéntico salvo el número
+      // (ej. "10K Carrera Nocturna Gandia" vs "5K Carrera Nocturna
+      // Gandia" da Jaccard 0.75 — el mismo tipo de falso positivo que ya
+      // se vio en structural con distancias fallback, pero aquí con datos
+      // reales). Si a alguno de los 2 lados le falta distanceKm, no hay
+      // veto — no hay dato con el que descartar.
+      if (
+        candidate.distanceKm !== undefined &&
+        r.distanceKm !== undefined &&
+        Math.abs(r.distanceKm - candidate.distanceKm) > 1
+      ) {
+        continue;
+      }
       const sim = jaccard(candidateTokens, tokenize(r.name));
       if (sim >= similarityThreshold && (!best || sim > best.sim)) {
         best = { race: r, sim };

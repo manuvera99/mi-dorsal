@@ -208,5 +208,30 @@ check(
   structuralSameSourceResult === null,
 );
 
+// --- findExistingMatch: veto por distancia real en fuzzy (fix 2026-09-14, hallazgo de code review) ---
+const poolFuzzyDistanceVeto: MatchCandidate[] = [
+  {
+    name: "10K Carrera Nocturna Gandia",
+    startDate: "2026-11-14",
+    scraperAdapter: "correbirras",
+    province: "valencia",
+    distanceKm: 10,
+  },
+];
+const fuzzyDistanceVetoResult = findExistingMatch(
+  {
+    name: "5K Carrera Nocturna Gandia",
+    startDate: "2026-11-14",
+    scraperAdapter: "correbirras",
+    province: "valencia",
+    distanceKm: 5,
+  },
+  poolFuzzyDistanceVeto,
+);
+check(
+  "findExistingMatch NO fusiona por fuzzy cuando la distancia real difiere >1km, aunque el nombre sea casi idéntico salvo el número (hallazgo de code review 2026-09-14)",
+  fuzzyDistanceVetoResult === null,
+);
+
 console.log(`\n${pass} OK, ${fail} fail`);
 process.exit(fail > 0 ? 1 : 0);

@@ -129,7 +129,7 @@ check(
   distinctResult === null,
 );
 
-// --- findExistingMatch: mismo source nunca dispara structural/fuzzy (los cubre exact o nada) ---
+// --- findExistingMatch: mismo source NO dispara si el nombre es realmente distinto (fuzzy exige similitud alta, no fuente distinta) ---
 const poolSameSource: MatchCandidate[] = [
   {
     name: "Carrera Popular de Petrer",
@@ -152,8 +152,60 @@ const sameSourceDifferentNameResult = findExistingMatch(
   poolSameSource,
 );
 check(
-  "findExistingMatch no fusiona 2 carreras de la MISMA fuente con nombre distinto (structural/fuzzy exigen fuente distinta)",
+  "findExistingMatch no fusiona 2 carreras de la MISMA fuente si el nombre es realmente distinto (Jaccard bajo)",
   sameSourceDifferentNameResult === null,
+);
+
+// --- findExistingMatch: fuzzy SÍ dispara same-source cuando el nombre es similar (fix 2026-09-14) ---
+const poolFuzzySameSource: MatchCandidate[] = [
+  {
+    name: "XVI Vuelta a Sierra Espuña",
+    startDate: "2026-10-03",
+    scraperAdapter: "correbirras",
+    province: "murcia",
+    locality: "Totana",
+  },
+];
+const fuzzySameSourceResult = findExistingMatch(
+  {
+    name: "Vuelta Senderista a Sierra Espuña",
+    startDate: "2026-10-03",
+    scraperAdapter: "correbirras",
+    province: "murcia",
+    locality: "Totana",
+  },
+  poolFuzzySameSource,
+);
+check(
+  "findExistingMatch SÍ fusiona 2 carreras de la MISMA fuente con nombre similar (Jaccard alto) — fix same-source",
+  fuzzySameSourceResult?.reason === "fuzzy",
+);
+
+// --- findExistingMatch: structural NUNCA dispara same-source (sin cambios, test de regresión) ---
+const poolStructuralSameSource: MatchCandidate[] = [
+  {
+    name: "38 Pas Ras al Port de Valencia",
+    startDate: "2026-12-13",
+    scraperAdapter: "carreraspopulares",
+    province: "valencia",
+    locality: "Valencia",
+    distanceKm: 10,
+  },
+];
+const structuralSameSourceResult = findExistingMatch(
+  {
+    name: "Carreras Infantiles Pas Ras al Port de Valencia",
+    startDate: "2026-12-13",
+    scraperAdapter: "carreraspopulares",
+    province: "valencia",
+    locality: "Valencia",
+    distanceKm: 10,
+  },
+  poolStructuralSameSource,
+);
+check(
+  "findExistingMatch NO fusiona por structural dentro de la MISMA fuente (evita el falso positivo real de 2026-09-14: carrera infantil vs adultos)",
+  structuralSameSourceResult === null,
 );
 
 console.log(`\n${pass} OK, ${fail} fail`);

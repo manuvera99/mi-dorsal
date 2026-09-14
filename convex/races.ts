@@ -760,11 +760,16 @@ export const systemUpsert = mutation({
         .query("races")
         .withIndex("by_official_url", (q) => q.eq("officialUrl", args.officialUrl))
         .collect();
+      // Si varias carreras comparten este officialUrl, es la URL de un
+      // organizador/portal (no de una carrera específica) — no es una señal
+      // de identidad fiable. Se descarta y se deja caer a los pasos
+      // siguientes (nombre+fecha+localidad → structural → fuzzy), que sí
+      // usan el nombre real para diferenciar. Verificado 2026-09-14: URLs
+      // como carreraspopularesalmeria.com son compartidas por 9 carreras
+      // reales distintas en producción — antes de este fix, coger "la más
+      // antigua" bloqueaba que structural/fuzzy llegaran a intentarlo con
+      // el nombre real, generando duplicados same-source cada noche.
       if (matches.length === 1) existing = matches[0];
-      else if (matches.length > 1) {
-        // Hay varias con el mismo URL (no debería pasar, pero por si acaso): coge la más antigua
-        existing = matches.sort((a, b) => (a._creationTime ?? 0) - (b._creationTime ?? 0))[0];
-      }
     }
 
     // 2. Buscar por nombre + fecha + localidad, y 3. por nombre + fecha (sin

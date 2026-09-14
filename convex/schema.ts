@@ -611,6 +611,7 @@ export default defineSchema({
       v.literal("weekly_digest"),
       v.literal("year_review"),
       v.literal("photos_available"),
+      v.literal("photos_found"),
     ),
     relatedRaceId: v.optional(v.id("races")),
     relatedMyRaceId: v.optional(v.id("myRaces")),

@@ -50,6 +50,7 @@ import type * as emailNotificationsAction from "../emailNotificationsAction.js";
 import type * as emailNotificationsHelpers from "../emailNotificationsHelpers.js";
 import type * as emails_sendEmail from "../emails/sendEmail.js";
 import type * as emails_templates_photosAvailable from "../emails/templates/photosAvailable.js";
+import type * as emails_templates_photosFound from "../emails/templates/photosFound.js";
 import type * as emails_templates_reminder from "../emails/templates/reminder.js";
 import type * as emails_templates_resultFound from "../emails/templates/resultFound.js";
 import type * as emails_templates_resultNotFound from "../emails/templates/resultNotFound.js";
@@ -126,6 +127,7 @@ declare const fullApi: ApiFromModules<{
   emailNotificationsHelpers: typeof emailNotificationsHelpers;
   "emails/sendEmail": typeof emails_sendEmail;
   "emails/templates/photosAvailable": typeof emails_templates_photosAvailable;
+  "emails/templates/photosFound": typeof emails_templates_photosFound;
   "emails/templates/reminder": typeof emails_templates_reminder;
   "emails/templates/resultFound": typeof emails_templates_resultFound;
   "emails/templates/resultNotFound": typeof emails_templates_resultNotFound;

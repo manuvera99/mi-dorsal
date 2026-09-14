@@ -21,7 +21,11 @@ export const getProfile = internalQuery({
 export const hasLog = internalQuery({
   args: {
     userId: v.id("profiles"),
-    myRaceId: v.id("myRaces"),
+    // myRaceId opcional: photos_found puede dispararse para un usuario sin
+    // myRace inscrita en la carrera (buscó fotos sin tener el dorsal
+    // registrado). En ese caso la idempotencia se comprueba por raceId.
+    myRaceId: v.optional(v.id("myRaces")),
+    raceId: v.optional(v.id("races")),
     type: v.union(
       v.literal("welcome"),
       v.literal("reminder_7d"),
@@ -31,15 +35,20 @@ export const hasLog = internalQuery({
       v.literal("weekly_digest"),
       v.literal("year_review"),
       v.literal("photos_available"),
+      v.literal("photos_found"),
     ),
   },
-  handler: async (ctx, { userId, myRaceId, type }) => {
+  handler: async (ctx, { userId, myRaceId, raceId, type }) => {
     const log = await ctx.db
       .query("notificationLog")
       .withIndex("by_user_type", (q) =>
         q.eq("userId", userId).eq("type", type),
       )
-      .filter((q) => q.eq(q.field("relatedMyRaceId"), myRaceId))
+      .filter((q) =>
+        myRaceId
+          ? q.eq(q.field("relatedMyRaceId"), myRaceId)
+          : q.eq(q.field("relatedRaceId"), raceId),
+      )
       .first();
     return log !== null;
   },
@@ -48,7 +57,8 @@ export const hasLog = internalQuery({
 export const writeLog = internalMutation({
   args: {
     userId: v.id("profiles"),
-    myRaceId: v.id("myRaces"),
+    myRaceId: v.optional(v.id("myRaces")),
+    raceId: v.optional(v.id("races")),
     type: v.union(
       v.literal("welcome"),
       v.literal("reminder_7d"),
@@ -58,6 +68,7 @@ export const writeLog = internalMutation({
       v.literal("weekly_digest"),
       v.literal("year_review"),
       v.literal("photos_available"),
+      v.literal("photos_found"),
     ),
     delivered: v.boolean(),
     resendMessageId: v.optional(v.string()),
@@ -66,7 +77,7 @@ export const writeLog = internalMutation({
   handler: async (ctx, args) => {
     await ctx.db.insert("notificationLog", {
       userId: args.userId,
-      relatedRaceId: undefined,
+      relatedRaceId: args.raceId,
       relatedMyRaceId: args.myRaceId,
       type: args.type,
       sentAt: Date.now(),
@@ -84,7 +95,8 @@ export const dispatchAndLog = internalAction({
     html: v.string(),
     text: v.optional(v.string()),
     userId: v.id("profiles"),
-    myRaceId: v.id("myRaces"),
+    myRaceId: v.optional(v.id("myRaces")),
+    raceId: v.optional(v.id("races")),
     type: v.union(
       v.literal("welcome"),
       v.literal("reminder_7d"),
@@ -94,6 +106,7 @@ export const dispatchAndLog = internalAction({
       v.literal("weekly_digest"),
       v.literal("year_review"),
       v.literal("photos_available"),
+      v.literal("photos_found"),
     ),
   },
   handler: async (ctx, args) => {
@@ -132,6 +145,7 @@ export const dispatchAndLog = internalAction({
     await ctx.runMutation(internal.emailDispatch.writeLog, {
       userId: args.userId,
       myRaceId: args.myRaceId,
+      raceId: args.raceId,
       type: args.type,
       delivered: success,
       resendMessageId: resendId,

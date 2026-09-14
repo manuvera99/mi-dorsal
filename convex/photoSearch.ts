@@ -292,6 +292,21 @@ export const getJobInternal = internalQuery({
   },
 });
 
+/** myRaceId del usuario para esta carrera, si existe — usado por
+ *  photoSearchActions.ts::runJob al enviar el email de aviso: si el
+ *  usuario no tiene myRace (buscó sin dorsal inscrito), se envía igual
+ *  pero el log de idempotencia usa raceId en vez de myRaceId. */
+export const getMyRaceIdForNotification = internalQuery({
+  args: { userId: v.id("profiles"), raceId: v.id("races") },
+  handler: async (ctx, { userId, raceId }) => {
+    const myRace = await ctx.db
+      .query("myRaces")
+      .withIndex("by_user_race", (q) => q.eq("userId", userId).eq("raceId", raceId))
+      .first();
+    return myRace?._id ?? null;
+  },
+});
+
 export const markRunning = internalMutation({
   args: { jobId: v.id("photoSearchJobs") },
   handler: async (ctx, { jobId }) => {

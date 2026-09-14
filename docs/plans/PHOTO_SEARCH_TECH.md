@@ -1273,9 +1273,9 @@ contra lo que se había imaginado antes de construir el endpoint):
 - **`convex/photoSearchActions.ts`**: `runJob` — obtiene URLs firmadas de
   las selfies vía `ctx.storage.getUrl()`, hace el `fetch()` POST a
   `${PHOTO_SEARCH_API_URL}/api/find_photos` con
-  `Authorization: Bearer ${PHOTO_SEARCH_API_SECRET}`, y guarda el
-  resultado. Sin el envío de email (`dispatchAndLog`) del pseudocódigo
-  original — pendiente, no bloqueante para que el flujo funcione.
+  `Authorization: Bearer ${PHOTO_SEARCH_API_SECRET}`, guarda el
+  resultado y, si hay al menos 1 foto encontrada, envía el email
+  `photos_found` (ver más abajo).
 - **`convex/crons/cleanupPhotoSearch.ts`** + entrada en `cronJobs.ts`
   (03:15 UTC diario) — borra jobs con `expiresAt` vencido. Las selfies ya
   se borran de Storage en cuanto el job termina (`markDone`/`markError`/
@@ -1294,13 +1294,44 @@ selfie de prueba (un portrait genérico, no una foto real de un corredor
 de esa carrera) no coincide con nadie del álbum — el circuito completo
 funciona, la ausencia de resultados es del dato de prueba, no del código.
 
+**UI real construida (14 sep 2026, más tarde)**: `/perfil/fotos`
+(listado de carreras del usuario con álbum Flickr) y
+`/perfil/fotos/[raceId]` (formulario de subida o resultado, según haya
+o no un job previo). Mismo patrón de gate Pro que `/mi-sticker`
+(redirect a `/premium` si no hay acceso). `queries` nuevas de soporte:
+`photoSearch.listRacesWithPhotos`, `photoSearch.getRaceContext`.
+Verificado con `next build` y `tsc` limpios; no probado con una sesión
+de usuario logueada real en el navegador (requiere credenciales Clerk).
+
+**Email de aviso implementado y probado end-to-end (14 sep 2026, más
+tarde)**: `runJob` envía `photosFoundEmail` (nueva plantilla en
+`convex/emails/templates/photosFound.ts`, mismo estilo que
+`photosAvailable.ts` — grid de hasta 6 fotos + CTA) cuando
+`results.length > 0`. No bloqueante: si el email falla, se loggea pero
+el job sigue en `status: "done"` (el usuario ya puede ver el resultado
+en la UI aunque el email no llegue).
+
+Para que esto funcionara hubo que relajar `myRaceId` de obligatorio a
+opcional en `emailDispatch.ts` (`hasLog`/`writeLog`/`dispatchAndLog`) —
+exactamente el problema que el pseudocódigo original de §4 ya había
+anotado sin resolver: un usuario puede buscar fotos sin tener una
+`myRace` inscrita en esa carrera. Cuando no hay `myRaceId`, la
+idempotencia de `notificationLog` usa `raceId` en su lugar (ambos
+campos ya eran opcionales en el schema, solo faltaba relajarlos en los
+argumentos de las funciones). Se añadió el literal `"photos_found"` a
+la unión de tipos en `schema.ts` y `emailDispatch.ts`.
+
+Probado de verdad: email real enviado vía Resend a una cuenta de
+prueba, `notificationLog` con `delivered: true` y `resendMessageId`
+real, confirmado visualmente por el usuario, y verificada la
+idempotencia (una segunda llamada con los mismos datos no reenvía).
+Datos de prueba (email temporal en el profile, log de notificación,
+mutations/action temporales usadas solo para la prueba) limpiados
+después.
+
 **Pendiente** (no bloqueante para que el flujo funcione hoy):
-- UI real (`PhotoSearchForm.tsx`, `Progress.tsx`, `Results.tsx` — ver
-  checklist original de §7 del roadmap). Hoy la única forma de disparar
-  un job es vía `npx convex run photoSearch:create` o una futura pantalla.
-- Email de aviso cuando hay resultados (`dispatchAndLog`) — no
-  implementado en `runJob` todavía.
 - Sin polling de progreso intermedio: el cliente solo puede consultar
   `getJob` para ver si sigue `pending`/`running` o ya llegó a un estado
   terminal — no hay fases (`uploading`/`detecting`/`scanning`) porque el
   endpoint Modal es una sola llamada síncrona, no las reporta.
+- La UI no se ha probado con una sesión de usuario real en el navegador.

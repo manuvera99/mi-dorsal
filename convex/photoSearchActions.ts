@@ -13,9 +13,13 @@
 
 "use node";
 
-import { internalAction } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { internalAction, ActionCtx } from "./_generated/server";
+import { internal, api } from "./_generated/api";
 import { v } from "convex/values";
+import { Id } from "./_generated/dataModel";
+import { photosFoundEmail } from "./emails/templates/photosFound";
+
+const RESULT_PREVIEW_COUNT = 6;
 
 interface FindPhotosResult {
   photoUrl: string;
@@ -106,19 +110,25 @@ export const runJob = internalAction({
         return;
       }
 
+      const results = (result.results ?? []).map((r) => ({
+        photoUrl: r.photoUrl,
+        score: r.score,
+        identityConfirmed: r.identityConfirmed,
+        faceScore: r.faceScore ?? undefined,
+        dorsalMatch: r.dorsalMatch ?? undefined,
+        bbox: r.bbox ?? undefined,
+      }));
+
       await ctx.runMutation(internal.photoSearch.markDone, {
         jobId,
-        results: (result.results ?? []).map((r) => ({
-          photoUrl: r.photoUrl,
-          score: r.score,
-          identityConfirmed: r.identityConfirmed,
-          faceScore: r.faceScore ?? undefined,
-          dorsalMatch: r.dorsalMatch ?? undefined,
-          bbox: r.bbox ?? undefined,
-        })),
+        results,
         rejectedSelfies: result.rejectedSelfies,
         stats: result.stats,
       });
+
+      if (results.length > 0) {
+        await sendPhotosFoundEmail(ctx, job, results);
+      }
     } catch (err) {
       await ctx.runMutation(internal.photoSearch.markError, {
         jobId,
@@ -127,3 +137,62 @@ export const runJob = internalAction({
     }
   },
 });
+
+/** Envía el email de "te encontramos" — no bloqueante: si falla, se
+ *  loggea pero no marca el job como error (ya se guardó el resultado,
+ *  el usuario puede verlo en /perfil/fotos aunque el email no llegue).
+ *  Idempotente vía notificationLog (type "photos_found"), igual que el
+ *  resto de emails de carrera. */
+async function sendPhotosFoundEmail(
+  ctx: ActionCtx,
+  job: { userId: Id<"profiles">; raceId: Id<"races"> },
+  results: { photoUrl: string }[],
+): Promise<void> {
+  try {
+    const [profile, race, myRaceId] = await Promise.all([
+      ctx.runQuery(internal.emailDispatch.getProfile, { userId: job.userId }),
+      ctx.runQuery(api.races.get, { id: job.raceId }),
+      ctx.runQuery(internal.photoSearch.getMyRaceIdForNotification, {
+        userId: job.userId,
+        raceId: job.raceId,
+      }),
+    ]);
+
+    if (!profile?.email || !race) return;
+
+    const alreadySent = await ctx.runQuery(internal.emailDispatch.hasLog, {
+      userId: job.userId,
+      myRaceId: myRaceId ?? undefined,
+      raceId: myRaceId ? undefined : job.raceId,
+      type: "photos_found",
+    });
+    if (alreadySent) return;
+
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://www.mi-dorsal.com").replace(
+      /\/$/,
+      "",
+    );
+
+    const { subject, html, text } = photosFoundEmail({
+      userName: profile.displayName ?? "corredor",
+      raceName: race.name,
+      photoUrls: results.slice(0, RESULT_PREVIEW_COUNT).map((r) => r.photoUrl),
+      totalCount: results.length,
+      resultsUrl: `${appUrl}/perfil/fotos/${job.raceId}`,
+      appUrl,
+    });
+
+    await ctx.runAction(internal.emailDispatch.dispatchAndLog, {
+      to: profile.email,
+      subject,
+      html,
+      text,
+      userId: job.userId,
+      myRaceId: myRaceId ?? undefined,
+      raceId: myRaceId ? undefined : job.raceId,
+      type: "photos_found",
+    });
+  } catch (err) {
+    console.error("[photos-found] error enviando email:", err);
+  }
+}

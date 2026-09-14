@@ -13,7 +13,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { formatDate } from "@/lib/utils";
-import { ArrowLeft, ImageOff, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { PhotoSearchUploadForm } from "@/components/perfil/photo-search-upload-form";
 import { PhotoSearchResults } from "@/components/perfil/photo-search-results";
 
@@ -78,22 +78,13 @@ export function PhotoSearchDetailClient({ raceId }: { raceId: string }) {
             <p className="text-sm text-gray-500">{formatDate(context.race.startDate)}</p>
           </div>
 
-          {!context.supported ? (
-            <div className="card text-center py-10">
-              <ImageOff className="h-8 w-8 text-gray-300 mx-auto mb-3" />
-              <p className="font-medium">
-                Esta carrera usa un proveedor de fotos que aún no soportamos automáticamente
-              </p>
-              <p className="text-sm text-gray-500 mt-1">
-                Solo álbumes de Flickr por ahora. Iremos añadiendo más proveedores.
-              </p>
-            </div>
-          ) : jobIdToShow ? (
+          {jobIdToShow ? (
             <PhotoSearchResults jobId={jobIdToShow} onSearchAgain={() => setActiveJobId(null)} />
           ) : (
             <PhotoSearchUploadForm
               raceId={raceId as Id<"races">}
               initialDorsal={context.dorsal}
+              initialAlbumUrl={context.defaultAlbumUrl}
               onJobCreated={(jobId) => setActiveJobId(jobId)}
             />
           )}

@@ -45,7 +45,7 @@ class TestPayloadValidation:
             json={
                 "jobId": "x",
                 "selfieUrls": ["a", "b", "c", "d"],  # 4 > max_length=3
-                "albumUrl": "https://example.com",
+                "albumUrls": ["https://example.com"],
             },
         )
         assert resp.status_code == 422
@@ -53,7 +53,25 @@ class TestPayloadValidation:
     def test_no_selfies_rejected(self) -> None:
         resp = client.post(
             "/api/find_photos",
-            json={"jobId": "x", "selfieUrls": [], "albumUrl": "https://example.com"},
+            json={"jobId": "x", "selfieUrls": [], "albumUrls": ["https://example.com"]},
+        )
+        assert resp.status_code == 422
+
+    def test_too_many_albums_rejected(self) -> None:
+        resp = client.post(
+            "/api/find_photos",
+            json={
+                "jobId": "x",
+                "selfieUrls": ["a"],
+                "albumUrls": ["https://a.com", "https://b.com", "https://c.com", "https://d.com"],
+            },
+        )
+        assert resp.status_code == 422
+
+    def test_no_albums_rejected(self) -> None:
+        resp = client.post(
+            "/api/find_photos",
+            json={"jobId": "x", "selfieUrls": ["a"], "albumUrls": []},
         )
         assert resp.status_code == 422
 
@@ -62,7 +80,8 @@ class TestUnsupportedAlbumSource:
     def test_non_flickr_url_returns_400(self) -> None:
         """get_source_for_url lanza ValueError para proveedores sin
         downloader (fotoscarreras.com, barrel.cloud, etc. — ver TECH.md
-        §15.1/§14.3). Debe traducirse en un 400 explícito, no un 500."""
+        §15.1/§14.3). Si NINGÚN álbum es soportado, debe traducirse en un
+        400 explícito, no un 500."""
         with patch(
             "api.find_photos._download_selfies",
             new=AsyncMock(return_value=[Path("/tmp/fake_selfie.jpg")]),
@@ -76,7 +95,7 @@ class TestUnsupportedAlbumSource:
                 json={
                     "jobId": "x",
                     "selfieUrls": ["https://example.com/selfie.jpg"],
-                    "albumUrl": "https://fotoscarreras.com/algun-album",
+                    "albumUrls": ["https://fotoscarreras.com/algun-album"],
                 },
             )
         assert resp.status_code == 400
@@ -89,7 +108,7 @@ class TestAuth:
         flujo puede fallar por otros motivos (probado en otros tests)."""
         resp = client.post(
             "/api/find_photos",
-            json={"jobId": "x", "selfieUrls": [], "albumUrl": "https://example.com"},
+            json={"jobId": "x", "selfieUrls": [], "albumUrls": ["https://example.com"]},
         )
         assert resp.status_code != 401
 
@@ -97,7 +116,7 @@ class TestAuth:
         with patch("api.find_photos.API_SECRET", "supersecret"):
             resp = client.post(
                 "/api/find_photos",
-                json={"jobId": "x", "selfieUrls": ["a"], "albumUrl": "https://example.com"},
+                json={"jobId": "x", "selfieUrls": ["a"], "albumUrls": ["https://example.com"]},
                 headers={"Authorization": "Bearer wrong"},
             )
         assert resp.status_code == 401
@@ -108,7 +127,7 @@ class TestAuth:
         ):
             resp = client.post(
                 "/api/find_photos",
-                json={"jobId": "x", "selfieUrls": ["a"], "albumUrl": "https://example.com"},
+                json={"jobId": "x", "selfieUrls": ["a"], "albumUrls": ["https://example.com"]},
                 headers={"Authorization": "Bearer supersecret"},
             )
         # Pasa la auth (no 401) — el 400 vendría de "no se pudo descargar

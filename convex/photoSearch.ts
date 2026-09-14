@@ -50,6 +50,11 @@ export const create = mutation({
     raceId: v.id("races"),
     dorsal: v.optional(v.string()),
     selfieStorageIds: v.array(v.id("_storage")),
+    // 1-3 álbumes de esta búsqueda concreta — el usuario puede aportar su
+    // propio enlace (no se guarda en `races.photosUrl`, solo aquí; cada
+    // búsqueda es independiente). Si no se pasa nada y la carrera ya tiene
+    // photosUrl (puesto por el admin), se usa como default.
+    albumUrls: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const profile = await requireUser(ctx);
@@ -65,16 +70,46 @@ export const create = mutation({
 
     const race = await ctx.db.get(args.raceId);
     if (!race) throw new Error("Carrera no encontrada");
-    if (!race.photosUrl) {
-      throw new Error("Esta carrera aún no tiene álbum de fotos");
+
+    const rawAlbumUrls =
+      args.albumUrls && args.albumUrls.length > 0
+        ? args.albumUrls
+        : race.photosUrl
+          ? [race.photosUrl]
+          : [];
+
+    if (rawAlbumUrls.length === 0) {
+      throw new Error("Añade al menos un enlace de álbum de fotos");
     }
+    if (rawAlbumUrls.length > 3) {
+      throw new Error("Máximo 3 álbumes por búsqueda");
+    }
+
+    const albumUrls: string[] = [];
+    for (const raw of rawAlbumUrls) {
+      const trimmed = raw.trim();
+      let parsed: URL;
+      try {
+        parsed = new URL(trimmed);
+      } catch {
+        throw new Error(`"${trimmed}" no es una URL válida`);
+      }
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        throw new Error("Los álbumes deben ser enlaces http:// o https://");
+      }
+      albumUrls.push(parsed.toString());
+    }
+
     // Solo Flickr tiene downloader real hoy (ver TECH.md §15.1) —
     // get_source_for_url en el servicio lanza un 400 explícito para
-    // cualquier otra URL, pero rechazarlo aquí evita gastar un job y una
-    // llamada a Modal por algo que sabemos que va a fallar.
-    if (!race.photosUrl.includes("flickr.com")) {
+    // cualquier otra URL. Rechazamos aquí solo si NINGÚN álbum es
+    // soportado — evita gastar un job y una llamada a Modal por algo que
+    // sabemos que va a fallar del todo; si al menos uno es de Flickr, se
+    // deja pasar (el servicio ya ignora los no soportados y sigue con
+    // los demás, ver photo-search-api/api/find_photos.py).
+    if (!albumUrls.some((u) => u.includes("flickr.com"))) {
       throw new Error(
-        "Esta carrera usa un proveedor de fotos que aún no soportamos automáticamente.",
+        "Ninguno de los álbumes es de un proveedor soportado (solo Flickr por ahora).",
       );
     }
 
@@ -106,7 +141,7 @@ export const create = mutation({
       selfieCount: args.selfieStorageIds.length,
       status: "pending",
       results: [],
-      albumUrl: race.photosUrl,
+      albumUrls,
       createdAt: now,
       expiresAt: now + JOB_TTL_MS,
     });
@@ -201,11 +236,10 @@ export const listMine = query({
   },
 });
 
-/** Carreras del calendario del usuario que tienen álbum de fotos soportado
- *  (Flickr, hoy la única fuente con downloader real — ver TECH.md §15.1).
- *  Base del listado de /perfil/fotos: para cada una, si ya hay un job
- *  reciente se adjunta también, así la UI puede mostrar "ver resultado"
- *  en vez de "buscar" para carreras ya buscadas. */
+/** Todas las carreras del calendario del usuario, con el álbum conocido (si
+ *  el admin ya lo puso) y el job más reciente (si ya buscó antes). Ya no se
+ *  filtra por "tiene álbum de Flickr" — el usuario puede aportar su propio
+ *  enlace en /perfil/fotos/[raceId] aunque la carrera no tenga ninguno. */
 export const listRacesWithPhotos = query({
   args: {},
   handler: async (ctx) => {
@@ -220,11 +254,15 @@ export const listRacesWithPhotos = query({
     const withPhotos: {
       race: Doc<"races">;
       dorsal: string | undefined;
-      lastJob: { _id: Id<"photoSearchJobs">; status: string; resultCount: number } | null;
+      lastJob: {
+        _id: Id<"photoSearchJobs">;
+        status: Doc<"photoSearchJobs">["status"];
+        resultCount: number;
+      } | null;
     }[] = [];
     for (const myRace of myRaces) {
       const race = await ctx.db.get(myRace.raceId);
-      if (!race?.photosUrl?.includes("flickr.com")) continue;
+      if (!race) continue;
 
       const lastJob = await ctx.db
         .query("photoSearchJobs")
@@ -248,9 +286,10 @@ export const listRacesWithPhotos = query({
 });
 
 /** Contexto de una carrera concreta para /perfil/fotos/[raceId]: el
- *  dorsal inscrito (si hay) y el job más reciente del usuario para esa
- *  carrera (si existe) — la UI decide si mostrar el formulario de subida
- *  o el resultado de la última búsqueda. */
+ *  dorsal inscrito (si hay), el álbum conocido de la carrera (si el admin
+ *  ya lo puso — usado como valor prellenado, no bloqueante) y el job más
+ *  reciente del usuario (si existe) — la UI decide si mostrar el
+ *  formulario de subida o el resultado de la última búsqueda. */
 export const getRaceContext = query({
   args: { raceId: v.id("races") },
   handler: async (ctx, { raceId }) => {
@@ -274,7 +313,7 @@ export const getRaceContext = query({
     return {
       race,
       dorsal: myRace?.dorsalNumber,
-      supported: race.photosUrl?.includes("flickr.com") ?? false,
+      defaultAlbumUrl: race.photosUrl,
       lastJobId: lastJob?._id ?? null,
     };
   },

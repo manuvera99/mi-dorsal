@@ -15,9 +15,10 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useToast } from "@/components/ui/toast";
-import { Camera, Loader2, X, Upload } from "lucide-react";
+import { Camera, Loader2, X, Upload, Plus, Link as LinkIcon } from "lucide-react";
 
 const MAX_SELFIES = 3;
+const MAX_ALBUMS = 3;
 
 interface SelfieSlot {
   file: File;
@@ -27,10 +28,15 @@ interface SelfieSlot {
 export function PhotoSearchUploadForm({
   raceId,
   initialDorsal,
+  initialAlbumUrl,
   onJobCreated,
 }: {
   raceId: Id<"races">;
   initialDorsal?: string;
+  /** Álbum ya conocido de la carrera (puesto por el admin), si existe —
+   *  se usa como primer valor prellenado pero editable: esta búsqueda es
+   *  personal, no cambia el álbum de la carrera para nadie más. */
+  initialAlbumUrl?: string;
   onJobCreated: (jobId: Id<"photoSearchJobs">) => void;
 }) {
   const toast = useToast();
@@ -39,8 +45,21 @@ export function PhotoSearchUploadForm({
 
   const [slots, setSlots] = useState<SelfieSlot[]>([]);
   const [dorsal, setDorsal] = useState(initialDorsal ?? "");
+  const [albumUrls, setAlbumUrls] = useState<string[]>([initialAlbumUrl ?? ""]);
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function setAlbumUrl(index: number, value: string) {
+    setAlbumUrls((prev) => prev.map((u, i) => (i === index ? value : u)));
+  }
+
+  function addAlbumSlot() {
+    setAlbumUrls((prev) => (prev.length < MAX_ALBUMS ? [...prev, ""] : prev));
+  }
+
+  function removeAlbumSlot(index: number) {
+    setAlbumUrls((prev) => prev.filter((_, i) => i !== index));
+  }
 
   function handleFilesSelected(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -63,6 +82,21 @@ export function PhotoSearchUploadForm({
       toast.show({ title: "Sube al menos una selfie", variant: "warning" });
       return;
     }
+
+    const trimmedAlbumUrls = albumUrls.map((u) => u.trim()).filter(Boolean);
+    if (trimmedAlbumUrls.length === 0) {
+      toast.show({ title: "Añade el enlace del álbum de fotos", variant: "warning" });
+      return;
+    }
+    for (const url of trimmedAlbumUrls) {
+      try {
+        new URL(url);
+      } catch {
+        toast.show({ title: `"${url}" no es un enlace válido`, variant: "warning" });
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       const storageIds: Id<"_storage">[] = [];
@@ -84,6 +118,7 @@ export function PhotoSearchUploadForm({
         raceId,
         dorsal: dorsal.trim() || undefined,
         selfieStorageIds: storageIds,
+        albumUrls: trimmedAlbumUrls,
       });
 
       onJobCreated(jobId);
@@ -149,6 +184,50 @@ export function PhotoSearchUploadForm({
         className="hidden"
         onChange={(e) => handleFilesSelected(e.target.files)}
       />
+
+      <div className="mb-4">
+        <label className="label mb-1 block">Álbum(es) de fotos</label>
+        <p className="text-xs text-gray-500 mb-2">
+          Pega el enlace del álbum de Flickr de tu carrera. Si hay varios fotógrafos, añade
+          hasta 3 enlaces — esta búsqueda solo te afecta a ti, no cambia el álbum para nadie más.
+        </p>
+        <div className="flex flex-col gap-2">
+          {albumUrls.map((url, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="url"
+                  value={url}
+                  onChange={(e) => setAlbumUrl(i, e.target.value)}
+                  placeholder="https://www.flickr.com/photos/..."
+                  className="input pl-9"
+                />
+              </div>
+              {albumUrls.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeAlbumSlot(i)}
+                  className="h-10 w-10 flex-shrink-0 rounded-md border border-gray-300 flex items-center justify-center text-gray-400 hover:bg-gray-50"
+                  aria-label="Quitar este álbum"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+        {albumUrls.length < MAX_ALBUMS && (
+          <button
+            type="button"
+            onClick={addAlbumSlot}
+            className="mt-2 inline-flex items-center gap-1 text-sm text-runner-primary hover:underline"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Añadir otro álbum
+          </button>
+        )}
+      </div>
 
       <div className="mb-4">
         <label htmlFor="photo-search-dorsal" className="label mb-1 block">

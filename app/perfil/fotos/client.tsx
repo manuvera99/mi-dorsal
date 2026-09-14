@@ -1,8 +1,10 @@
 "use client";
 
 /**
- * PhotoSearchListClient — "Encuentra tus fotos": listado de carreras del
- * calendario del usuario que tienen álbum de fotos soportado (Flickr).
+ * PhotoSearchListClient — "Encuentra tus fotos": listado de TODAS las
+ * carreras del calendario del usuario (no solo las que ya tienen álbum de
+ * admin) — en /perfil/fotos/[raceId] el usuario puede pegar su propio
+ * enlace de álbum aunque el admin no haya puesto ninguno.
  *
  * Usa convex/photoSearch.ts::listRacesWithPhotos (join myRaces + races +
  * último job, si existe). Cada carrera lleva a /perfil/fotos/[raceId],
@@ -71,11 +73,9 @@ export function PhotoSearchListClient() {
       {races !== undefined && races.length === 0 && (
         <div className="card text-center py-10">
           <ImageOff className="h-8 w-8 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-700 font-medium">
-            Ninguna de tus carreras tiene álbum de fotos todavía
-          </p>
+          <p className="text-gray-700 font-medium">Aún no tienes carreras en tu calendario</p>
           <p className="text-sm text-gray-500 mt-1">
-            Cuando el organizador publique las fotos y las enlacemos, aparecerán aquí.
+            Añade una carrera y podrás buscar tus fotos, aunque el álbum lo tengas que enlazar tú mismo.
           </p>
         </div>
       )}

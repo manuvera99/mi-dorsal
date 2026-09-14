@@ -85,7 +85,7 @@ export const runJob = internalAction({
         body: JSON.stringify({
           jobId,
           selfieUrls,
-          albumUrl: job.albumUrl,
+          albumUrls: job.albumUrls,
           dorsal: job.dorsal,
         }),
       });

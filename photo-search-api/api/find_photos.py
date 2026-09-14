@@ -87,7 +87,10 @@ class FindPhotosRequest(BaseModel):
 
     job_id: str = Field(..., alias="jobId")
     selfie_urls: list[str] = Field(..., alias="selfieUrls", min_length=1, max_length=3)
-    album_url: str = Field(..., alias="albumUrl")
+    # Varios álbumes en una misma búsqueda (p. ej. varios fotógrafos de la
+    # misma carrera) — cada uno se descarga y se analiza, los resultados se
+    # combinan. Límite de 3, igual que selfies, para acotar tiempo total.
+    album_urls: list[str] = Field(..., alias="albumUrls", min_length=1, max_length=3)
     dorsal: Optional[str] = None
     top_k: int = Field(15, alias="topK", ge=1, le=50)
     min_score: float = Field(0.30, alias="minScore", ge=0.0, le=1.0)
@@ -159,35 +162,56 @@ async def find_photos(payload: FindPhotosRequest, request: Request):
             weights=MatcherWeights(),
         )
 
-        # 4) Descargar álbum. Solo Flickr tiene downloader real hoy (ver
+        # 4) Descargar álbum(es). Solo Flickr tiene downloader real hoy (ver
         # TECH.md §15.1/§14.3) — get_source_for_url lanza ValueError para
-        # cualquier otra URL, lo que aquí se traduce en un 400 explícito.
-        try:
-            source = get_source_for_url(payload.album_url)
-        except ValueError as e:
-            raise HTTPException(400, str(e)) from e
+        # cualquier otra URL. Con varios álbumes, uno no soportado o que
+        # falle no aborta el job entero: se sigue con los demás, y solo se
+        # devuelve error si NINGUNO de los álbumes dio resultado.
+        path_to_source_url: dict[Path, str] = {}
+        unsupported_albums: list[str] = []
+        failed_albums: list[str] = []
 
-        album_dir = tmpdir / "album"
-        # download_with_source_urls (no `download`): necesitamos saber de
-        # qué URL vino cada foto para poder devolver la URL pública
-        # original en la respuesta — no hay storage propio aquí que copie
-        # los resultados (ver docstring del módulo).
-        #
-        # max_workers=DOWNLOAD_WORKERS: descargas en paralelo con backoff
-        # adaptativo COMPARTIDO entre workers (ver
-        # findmyrace/sources/base.py::_AdaptiveRateLimiter) — un 429 visto
-        # por cualquier worker frena a todos por igual, así que la tasa
-        # total de peticiones/segundo no sube solo por paralelizar. Álbum
-        # real de 297 fotos: ~2m48s secuencial -> objetivo ~35-40s con 5
-        # workers, sin más rate-limiting que antes.
-        path_to_source_url = source.download_with_source_urls(
-            payload.album_url, album_dir, max_workers=DOWNLOAD_WORKERS
-        )
+        for i, album_url in enumerate(payload.album_urls):
+            try:
+                source = get_source_for_url(album_url)
+            except ValueError:
+                unsupported_albums.append(album_url)
+                continue
+
+            # Subcarpeta por álbum, todas bajo "albums/" (no directamente
+            # en tmpdir — ahí también viven selfies/ y face_cache/, que no
+            # son fotos del álbum): evita colisión de nombres de fichero
+            # entre álbumes distintos (dos fotógrafos pueden reusar el
+            # mismo esquema de nombre, p. ej. "IMG_0001.jpg").
+            album_dir = tmpdir / "albums" / f"album_{i}"
+            # download_with_source_urls (no `download`): necesitamos saber
+            # de qué URL vino cada foto para poder devolver la URL pública
+            # original en la respuesta — no hay storage propio aquí que
+            # copie los resultados (ver docstring del módulo).
+            #
+            # max_workers=DOWNLOAD_WORKERS: descargas en paralelo con
+            # backoff adaptativo COMPARTIDO entre workers (ver
+            # findmyrace/sources/base.py::_AdaptiveRateLimiter) — un 429
+            # visto por cualquier worker frena a todos por igual. Álbum
+            # real de 297 fotos: ~2m48s secuencial -> ~35-40s con 5 workers.
+            album_results = source.download_with_source_urls(
+                album_url, album_dir, max_workers=DOWNLOAD_WORKERS
+            )
+            if not album_results:
+                failed_albums.append(album_url)
+                continue
+            path_to_source_url.update(album_results)
+
         if not path_to_source_url:
+            if unsupported_albums and len(unsupported_albums) == len(payload.album_urls):
+                raise HTTPException(
+                    400,
+                    "Ninguno de los álbumes es de un proveedor soportado (solo Flickr por ahora)",
+                )
             return {
                 "jobId": job_id,
                 "status": "error",
-                "error": "No se pudo descargar el álbum",
+                "error": "No se pudo descargar ningún álbum",
             }
 
         remaining = SOFT_TIMEOUT_SECONDS - (time.time() - t0)
@@ -200,9 +224,12 @@ async def find_photos(payload: FindPhotosRequest, request: Request):
 
         # 5) Matching. include_identity_matches=True (default) — ver
         # TECH.md §15.2: una foto con identidad confirmada por cara no se
-        # pierde aunque el dorsal no se detecte en ella.
+        # pierde aunque el dorsal no se detecte en ella. album=tmpdir/"albums"
+        # (no un único album_dir) + recursive=True: iter_images ya recorre
+        # subcarpetas (findmyrace/pipeline.py), así que las N subcarpetas
+        # album_0/album_1/... se analizan juntas en una sola pasada.
         photo_scores = pipeline.run(
-            album=album_dir,
+            album=tmpdir / "albums",
             target_dorsal=payload.dorsal or "",
             min_score=payload.min_score,
             top_k=payload.top_k,

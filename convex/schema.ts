@@ -1518,7 +1518,10 @@ export default defineSchema({
       }),
     ),
 
-    albumUrl: v.string(),
+    // 1-3 álbumes buscados en este job. El usuario puede aportar su propio
+    // enlace (no persiste en `races.photosUrl`, solo aquí — cada búsqueda
+    // es independiente) o usar el de la carrera si el admin ya lo puso.
+    albumUrls: v.array(v.string()),
     error: v.optional(v.string()),
 
     createdAt: v.number(),

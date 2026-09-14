@@ -805,18 +805,26 @@ Cada job loguea a `console.log` con prefijo `[photo-search]`:
 
 ## 12. Plan de implementación por sprints (6-8 semanas)
 
-### Sprint 0 (sem 1): Backend Modal
-- [ ] Crear `modal-photo-search/` proyecto
-- [ ] Adaptar `findmyrace/face.py`, `ocr.py`, `matcher.py`, `pipeline.py` a Modal
-- [ ] `modal_app.py` con endpoint `POST /find-photos`
-- [ ] Test con tu selfie + álbum Cumbres Trail (validación manual)
-- [ ] Verificar cold-start, warm-up, timeout
+### Sprint 0 (sem 1): Backend Modal — ✅ completado 14 sep 2026
+- [x] Crear `photo-search-api/` (no `modal-photo-search/` separado — mismo
+      repo mi-dorsal, ver §15)
+- [x] Reutilizar `findmyrace/` (face.py, ocr.py, matcher.py, pipeline.py)
+      sin cambios de lógica — solo config de storage/HOME para Modal
+- [x] `modal_app.py` con endpoint `POST /api/find_photos` (FastAPI, no una
+      ruta `/find-photos` a medida — reutiliza `api/find_photos.py`)
+- [x] Test con selfie real + álbum Canfranc-Canfranc/mikemanitasdpm (ver §15.7)
+- [x] Verificado cold-start (Vercel probado y descartado por esto),
+      warm-up y timeout — Modal con volumen persistente, 600s de timeout
 
-### Sprint 1 (sem 2): Convex bridge
-- [ ] Añadir tabla `photoSearchJobs` a `schema.ts`
-- [ ] `convex/photoSearch.ts`: create, cancel, getJob, getResults, listMine
-- [ ] `convex/photoSearchActions.ts`: runJob (scheduled action que llama Modal)
-- [ ] Script de prueba end-to-end (curl + CLI)
+### Sprint 1 (sem 2): Convex bridge — ✅ completado 14 sep 2026
+- [x] Tabla `photoSearchJobs` en `schema.ts` (forma real, no la del
+      pseudocódigo — ver §16)
+- [x] `convex/photoSearch.ts`: create, cancel, getJob, getResults,
+      listMine, generateSelfieUploadUrl
+- [x] `convex/photoSearchActions.ts`: runJob (action que llama a Modal)
+- [x] `convex/crons/cleanupPhotoSearch.ts`
+- [x] Prueba end-to-end real (CLI de Convex con `--identity`, selfie real
+      subida a Storage, álbum real de Flickr) — ver §16
 
 ### Sprint 2 (sem 3): UI básica
 - [ ] `/perfil/fotos` (listado de carreras con `photosUrl`)
@@ -1233,3 +1241,66 @@ cambió el "pegamento" de despliegue, no la lógica).
   documentado como descartado pero no eliminado, por si compensa
   revisitarlo si Vercel soluciona la persistencia de `/tmp` o si se sube
   a plan Pro con concurrencia baja donde el cold-start amortiza mejor.
+
+**Actualización (14 sep 2026, más tarde)**: el secret real
+(`photo-search-api-secret`) se creó en Modal y la auth quedó activada en
+`modal_app.py` (`secrets = [modal.Secret.from_name(...)]`). Verificado en
+producción: sin `Authorization` → 401; con el `Bearer` correcto, pasa.
+
+## 16. Integración con Convex — implementada y probada end-to-end (14 sep 2026)
+
+Todo lo que las secciones §2-6 describían como pseudocódigo está ahora
+implementado de verdad y desplegado en el deployment real de Convex
+(`precious-goshawk-41`). Diferencias reales respecto al pseudocódigo
+original (auditadas contra el contrato real de `api/find_photos.py`, no
+contra lo que se había imaginado antes de construir el endpoint):
+
+- **`schema.ts`**: tabla `photoSearchJobs` sin `progress` (el endpoint
+  Modal es síncrono, no reporta fases intermedias — no hay polling de
+  progreso posible con el diseño actual, solo pending→running→done/error)
+  ni `thumbnailUrl`/`gpuCostUsd` (no existen en la respuesta real). Añade
+  `identityConfirmed` (gate de cara) y `rejectedSelfies` (selfies que no
+  pasaron el pre-score de calidad), que sí son reales.
+- **`convex/photoSearch.ts`**: `create` (gate Pro vía
+  `currentUserHasPremium`, rate limit 20/día, valida que el álbum sea de
+  Flickr antes de gastar una llamada a Modal), `cancel`, `getJob`,
+  `getResults`, `listMine`, y una `generateSelfieUploadUrl` (mutation
+  nueva, no estaba en el pseudocódigo — necesaria para que la UI real
+  pueda subir selfies a Storage antes de llamar a `create`). Internas
+  (`getJobInternal`, `markRunning`, `markDone`, `markError`,
+  `getExpiredJobsInternal`, `deleteJobInternal`) usadas solo desde la
+  action y el cron.
+- **`convex/photoSearchActions.ts`**: `runJob` — obtiene URLs firmadas de
+  las selfies vía `ctx.storage.getUrl()`, hace el `fetch()` POST a
+  `${PHOTO_SEARCH_API_URL}/api/find_photos` con
+  `Authorization: Bearer ${PHOTO_SEARCH_API_SECRET}`, y guarda el
+  resultado. Sin el envío de email (`dispatchAndLog`) del pseudocódigo
+  original — pendiente, no bloqueante para que el flujo funcione.
+- **`convex/crons/cleanupPhotoSearch.ts`** + entrada en `cronJobs.ts`
+  (03:15 UTC diario) — borra jobs con `expiresAt` vencido. Las selfies ya
+  se borran de Storage en cuanto el job termina (`markDone`/`markError`/
+  `cancel`), no esperan al cron.
+- **Env vars reales configuradas** en el deployment de Convex:
+  `PHOTO_SEARCH_API_URL=https://manuvera08--photo-search-api-fastapi-app.modal.run`,
+  `PHOTO_SEARCH_API_SECRET` (mismo valor que el secret de Modal).
+
+**Prueba end-to-end real** (mismo álbum de Canfranc-Canfranc/mikemanitasdpm
+validado en sesiones anteriores, con `photosUrl` puesto temporalmente en
+esa carrera real y revertido después): `photoSearch.create` →
+scheduler → `photoSearchActions.runJob` → fetch autenticado a Modal →
+297 fotos escaneadas → resultado guardado. `status: "done"`,
+`photosScanned: 297`, `durationMs: 93942`. `results: []` porque la
+selfie de prueba (un portrait genérico, no una foto real de un corredor
+de esa carrera) no coincide con nadie del álbum — el circuito completo
+funciona, la ausencia de resultados es del dato de prueba, no del código.
+
+**Pendiente** (no bloqueante para que el flujo funcione hoy):
+- UI real (`PhotoSearchForm.tsx`, `Progress.tsx`, `Results.tsx` — ver
+  checklist original de §7 del roadmap). Hoy la única forma de disparar
+  un job es vía `npx convex run photoSearch:create` o una futura pantalla.
+- Email de aviso cuando hay resultados (`dispatchAndLog`) — no
+  implementado en `runJob` todavía.
+- Sin polling de progreso intermedio: el cliente solo puede consultar
+  `getJob` para ver si sigue `pending`/`running` o ya llegó a un estado
+  terminal — no hay fases (`uploading`/`detecting`/`scanning`) porque el
+  endpoint Modal es una sola llamada síncrona, no las reporta.

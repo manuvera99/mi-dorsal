@@ -67,6 +67,7 @@ export const systemPatch = mutation({
       profileImageUrl: v.optional(v.string()),
       altimetryImageUrl: v.optional(v.string()),
       regulationUrl: v.optional(v.string()),
+      photosUrl: v.optional(v.string()),
       mapUrl: v.optional(v.string()),
       mapEmbedUrl: v.optional(v.string()),
       socialInstagram: v.optional(v.string()),
@@ -90,7 +91,7 @@ export const systemPatch = mutation({
       "latitude", "longitude", "priceEur", "maxParticipants",
       "timeLimitMinutes", "contactEmail", "contactPhone", "address", "venue",
       "courseType", "gpxUrl", "mapImageUrl", "profileImageUrl",
-      "altimetryImageUrl", "regulationUrl", "mapUrl", "mapEmbedUrl",
+      "altimetryImageUrl", "regulationUrl", "photosUrl", "mapUrl", "mapEmbedUrl",
       "socialInstagram", "socialFacebook", "socialTwitter", "socialYoutube",
     ]);
 

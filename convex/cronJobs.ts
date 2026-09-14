@@ -79,4 +79,13 @@ crons.cron(
   (internal as any)["actions/stravaWebhookSubscription"].ensureWebhookSubscription,
 );
 
+// Limpieza de jobs de "Encuentra tus fotos" expirados (>24h). Las selfies ya
+// se borran de Storage en cuanto el job termina; esto solo borra el
+// documento en sí (ver convex/crons/cleanupPhotoSearch.ts).
+crons.cron(
+  "cleanup-photo-search",
+  "15 3 * * *", // 03:15 UTC diario
+  internal.crons.cleanupPhotoSearch.cleanupPhotoSearch,
+);
+
 export default crons;

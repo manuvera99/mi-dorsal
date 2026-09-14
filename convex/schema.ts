@@ -1448,4 +1448,86 @@ export default defineSchema({
     .index("by_model", ["model", "timestamp"])
     .index("by_function_date", ["functionLabel", "dateUtc"])
     .index("by_timestamp", ["timestamp"]),
+
+  // ---------------------------------------------------------------------------
+  // 24. PHOTO_SEARCH_JOBS — "Encuentra tus fotos" (reconocimiento facial)
+  // ---------------------------------------------------------------------------
+  // Un job = una búsqueda: el usuario sube 1-3 selfies + elige una carrera con
+  // álbum, y un servicio externo (Modal, ver photo-search-api/) escanea el
+  // álbum y devuelve las fotos donde aparece. Ver docs/plans/PHOTO_SEARCH_TECH.md
+  // §15 para el detalle de esa integración — este schema es la versión real
+  // (adaptada al contrato exacto de api/find_photos.py, no al pseudocódigo
+  // original de §2, que asumía "thumbnailUrl" y "gpuCostUsd" que no existen).
+  //
+  // Las selfies se borran de Convex Storage en cuanto el job termina (éxito
+  // o error) — nunca persisten más que el tiempo de una búsqueda. `expiresAt`
+  // es solo para el propio documento (borrado por cron, ver §15).
+  // ---------------------------------------------------------------------------
+  photoSearchJobs: defineTable({
+    userId: v.id("profiles"),
+    raceId: v.id("races"),
+    dorsal: v.optional(v.string()),
+
+    selfieStorageIds: v.array(v.id("_storage")),
+    selfieCount: v.number(),
+
+    status: v.union(
+      v.literal("pending"), // creado, esperando a que la action llame a Modal
+      v.literal("running"), // Modal procesando
+      v.literal("done"), // completado con éxito (puede tener 0 resultados)
+      v.literal("error"), // falló (selfie inválida, álbum no soportado, timeout...)
+      v.literal("cancelled"), // usuario canceló antes de completar
+    ),
+
+    // Resultados — forma real que devuelve api/find_photos.py, no la del
+    // pseudocódigo original (sin thumbnailUrl, con identityConfirmed).
+    results: v.array(
+      v.object({
+        photoUrl: v.string(), // URL pública original (Flickr), no copia propia
+        score: v.number(), // 0-1, score combinado (cara+dorsal+color)
+        identityConfirmed: v.boolean(), // gate de cara superado independientemente del score
+        faceScore: v.optional(v.number()),
+        dorsalMatch: v.optional(v.string()),
+        bbox: v.optional(
+          v.object({
+            x: v.number(),
+            y: v.number(),
+            w: v.number(),
+            h: v.number(),
+          }),
+        ),
+      }),
+    ),
+
+    // Selfies rechazadas por el pre-score de calidad (findmyrace/reference_quality.py)
+    rejectedSelfies: v.optional(
+      v.array(
+        v.object({
+          index: v.number(),
+          reasons: v.array(v.string()),
+        }),
+      ),
+    ),
+
+    stats: v.optional(
+      v.object({
+        photosScanned: v.number(),
+        durationMs: v.number(),
+        platform: v.string(), // "modal" | "vercel" — ver TECH.md §15.7
+      }),
+    ),
+
+    albumUrl: v.string(),
+    error: v.optional(v.string()),
+
+    createdAt: v.number(),
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    expiresAt: v.number(), // createdAt + 24h, usado por el cron de limpieza
+  })
+    .index("by_user", ["userId"])
+    .index("by_race", ["raceId"])
+    .index("by_user_race", ["userId", "raceId"])
+    .index("by_status", ["status"])
+    .index("by_expires_at", ["expiresAt"]),
 });

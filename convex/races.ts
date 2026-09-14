@@ -769,7 +769,22 @@ export const systemUpsert = mutation({
       // reales distintas en producción — antes de este fix, coger "la más
       // antigua" bloqueaba que structural/fuzzy llegaran a intentarlo con
       // el nombre real, generando duplicados same-source cada noche.
-      if (matches.length === 1) existing = matches[0];
+      //
+      // Solo confiar en un único match por officialUrl si viene de la MISMA
+      // fuente (probable re-ingest real del mismo scraper). Si es de una
+      // fuente distinta, es la primera colisión de una URL de organizador
+      // compartida — no hay garantía de que sea la misma carrera, y
+      // confiar ciegamente en ella repetiría el mismo bug que las URLs con
+      // >1 match de arriba, solo retrasado hasta que llegue una 3ª carrera
+      // con esa URL. Cae a los pasos siguientes (nombre+fecha/structural/
+      // fuzzy) en ese caso, igual que con matches.length > 1.
+      if (matches.length === 1 && (matches[0].scraperAdapter ?? "manual") === (args.scraperAdapter ?? "manual")) {
+        existing = matches[0];
+      } else if (matches.length > 0) {
+        console.warn(
+          `[dup-officialUrl-shared] "${args.name}" (${args.scraperAdapter ?? "manual"}) — officialUrl ${args.officialUrl} compartido por ${matches.length} carrera(s) existente(s), no se usa como señal de identidad`,
+        );
+      }
     }
 
     // 2. Buscar por nombre + fecha + localidad, y 3. por nombre + fecha (sin

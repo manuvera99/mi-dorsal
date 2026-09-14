@@ -19,7 +19,7 @@ import {
 import { internal } from "./_generated/api";
 import { requireUser, getOptionalUser, assertOwner } from "./_helpers";
 import { currentUserHasPremium } from "./subscriptions";
-import { Id } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 
 const MAX_JOBS_PER_DAY = 20;
 const JOB_TTL_MS = 24 * 60 * 60 * 1000;
@@ -198,6 +198,85 @@ export const listMine = query({
       .withIndex("by_user", (q) => q.eq("userId", profile._id))
       .order("desc")
       .take(limit);
+  },
+});
+
+/** Carreras del calendario del usuario que tienen álbum de fotos soportado
+ *  (Flickr, hoy la única fuente con downloader real — ver TECH.md §15.1).
+ *  Base del listado de /perfil/fotos: para cada una, si ya hay un job
+ *  reciente se adjunta también, así la UI puede mostrar "ver resultado"
+ *  en vez de "buscar" para carreras ya buscadas. */
+export const listRacesWithPhotos = query({
+  args: {},
+  handler: async (ctx) => {
+    const profile = await getOptionalUser(ctx);
+    if (!profile) return [];
+
+    const myRaces = await ctx.db
+      .query("myRaces")
+      .withIndex("by_user", (q) => q.eq("userId", profile._id))
+      .collect();
+
+    const withPhotos: {
+      race: Doc<"races">;
+      dorsal: string | undefined;
+      lastJob: { _id: Id<"photoSearchJobs">; status: string; resultCount: number } | null;
+    }[] = [];
+    for (const myRace of myRaces) {
+      const race = await ctx.db.get(myRace.raceId);
+      if (!race?.photosUrl?.includes("flickr.com")) continue;
+
+      const lastJob = await ctx.db
+        .query("photoSearchJobs")
+        .withIndex("by_user_race", (q) =>
+          q.eq("userId", profile._id).eq("raceId", race._id),
+        )
+        .order("desc")
+        .first();
+
+      withPhotos.push({
+        race,
+        dorsal: myRace.dorsalNumber,
+        lastJob: lastJob
+          ? { _id: lastJob._id, status: lastJob.status, resultCount: lastJob.results.length }
+          : null,
+      });
+    }
+
+    return withPhotos;
+  },
+});
+
+/** Contexto de una carrera concreta para /perfil/fotos/[raceId]: el
+ *  dorsal inscrito (si hay) y el job más reciente del usuario para esa
+ *  carrera (si existe) — la UI decide si mostrar el formulario de subida
+ *  o el resultado de la última búsqueda. */
+export const getRaceContext = query({
+  args: { raceId: v.id("races") },
+  handler: async (ctx, { raceId }) => {
+    const profile = await getOptionalUser(ctx);
+    if (!profile) return null;
+
+    const race = await ctx.db.get(raceId);
+    if (!race) return null;
+
+    const myRace = await ctx.db
+      .query("myRaces")
+      .withIndex("by_user_race", (q) => q.eq("userId", profile._id).eq("raceId", raceId))
+      .first();
+
+    const lastJob = await ctx.db
+      .query("photoSearchJobs")
+      .withIndex("by_user_race", (q) => q.eq("userId", profile._id).eq("raceId", raceId))
+      .order("desc")
+      .first();
+
+    return {
+      race,
+      dorsal: myRace?.dorsalNumber,
+      supported: race.photosUrl?.includes("flickr.com") ?? false,
+      lastJobId: lastJob?._id ?? null,
+    };
   },
 });
 

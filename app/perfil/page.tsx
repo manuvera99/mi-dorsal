@@ -5,7 +5,8 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { mockApi, isMockMode } from "@/lib/mock/provider";
 import { formatTime } from "@/lib/utils";
-import { User, Trophy, TrendingUp, Plus, Trash2, RefreshCw } from "lucide-react";
+import { User, Trophy, TrendingUp, Plus, Trash2, RefreshCw, Camera, ChevronRight } from "lucide-react";
+import Link from "next/link";
 
 /** Tiempo relativo en español. Usado por el banner de auto-sync. */
 function timeAgo(ms: number): string {
@@ -176,6 +177,27 @@ function PerfilContent({ profile, prs }: { profile: any; prs: any[] }) {
           }}
           onClose={() => setEditing(false)}
         />
+      )}
+
+      {/* Encuentra tus fotos — entrada visible pero no invasiva */}
+      {!isMockMode() && (
+        <Link
+          href="/perfil/fotos"
+          className="card mb-6 flex items-center justify-between gap-4 hover:border-runner-primary/40"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-runner-primary/10 text-runner-primary flex items-center justify-center flex-shrink-0">
+              <Camera className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-semibold">Encuentra tus fotos</p>
+              <p className="text-sm text-gray-500">
+                Sube una selfie y te decimos en qué fotos de la carrera apareces
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
+        </Link>
       )}
 
       {/* PRs — primero: la acción principal del corredor popular */}

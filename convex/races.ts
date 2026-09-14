@@ -760,10 +760,30 @@ export const systemUpsert = mutation({
         .query("races")
         .withIndex("by_official_url", (q) => q.eq("officialUrl", args.officialUrl))
         .collect();
-      if (matches.length === 1) existing = matches[0];
-      else if (matches.length > 1) {
-        // Hay varias con el mismo URL (no debería pasar, pero por si acaso): coge la más antigua
-        existing = matches.sort((a, b) => (a._creationTime ?? 0) - (b._creationTime ?? 0))[0];
+      // Si varias carreras comparten este officialUrl, es la URL de un
+      // organizador/portal (no de una carrera específica) — no es una señal
+      // de identidad fiable. Se descarta y se deja caer a los pasos
+      // siguientes (nombre+fecha+localidad → structural → fuzzy), que sí
+      // usan el nombre real para diferenciar. Verificado 2026-09-14: URLs
+      // como carreraspopularesalmeria.com son compartidas por 9 carreras
+      // reales distintas en producción — antes de este fix, coger "la más
+      // antigua" bloqueaba que structural/fuzzy llegaran a intentarlo con
+      // el nombre real, generando duplicados same-source cada noche.
+      //
+      // Solo confiar en un único match por officialUrl si viene de la MISMA
+      // fuente (probable re-ingest real del mismo scraper). Si es de una
+      // fuente distinta, es la primera colisión de una URL de organizador
+      // compartida — no hay garantía de que sea la misma carrera, y
+      // confiar ciegamente en ella repetiría el mismo bug que las URLs con
+      // >1 match de arriba, solo retrasado hasta que llegue una 3ª carrera
+      // con esa URL. Cae a los pasos siguientes (nombre+fecha/structural/
+      // fuzzy) en ese caso, igual que con matches.length > 1.
+      if (matches.length === 1 && (matches[0].scraperAdapter ?? "manual") === (args.scraperAdapter ?? "manual")) {
+        existing = matches[0];
+      } else if (matches.length > 0) {
+        console.warn(
+          `[dup-officialUrl-shared] "${args.name}" (${args.scraperAdapter ?? "manual"}) — officialUrl ${args.officialUrl} compartido por ${matches.length} carrera(s) existente(s), no se usa como señal de identidad`,
+        );
       }
     }
 

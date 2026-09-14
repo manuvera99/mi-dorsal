@@ -122,15 +122,35 @@ export function findExistingMatch<T extends MatchCandidate>(
   }
 
   // 3. fuzzy: misma fecha + provincia (o localidad si no hay provincia),
-  // similitud de nombre por Jaccard >= threshold, cruzando fuentes
+  // similitud de nombre por Jaccard >= threshold. A diferencia de structural,
+  // SÍ dispara same-source (2026-09-14): el patrón real observado es la
+  // misma fuente reingestando la misma carrera con el nombre reescrito
+  // (ediciones, mayúsculas, texto añadido) noche tras noche. structural
+  // sigue exigiendo fuente distinta — es el detector más propenso a falsos
+  // positivos cuando distanceKm es un fallback inventado, no un dato real
+  // (ver docs/superpowers/specs/2026-09-14-fix-duplicados-same-source-design.md).
   if (candidateNorm) {
     const candidateTokens = tokenize(candidate.name);
     const candidateProv = candidate.province ?? candidate.locality ?? "?";
     let best: { race: T; sim: number } | null = null;
     for (const r of pool) {
-      if ((r.scraperAdapter ?? "manual") === candidateSource) continue;
       const rProv = r.province ?? r.locality ?? "?";
       if (rProv !== candidateProv) continue;
+      // Veto por distancia (2026-09-14): si ambos lados tienen distanceKm
+      // real (no fallback/undefined) y difieren en más de 1km, no es la
+      // misma carrera aunque el nombre sea casi idéntico salvo el número
+      // (ej. "10K Carrera Nocturna Gandia" vs "5K Carrera Nocturna
+      // Gandia" da Jaccard 0.75 — el mismo tipo de falso positivo que ya
+      // se vio en structural con distancias fallback, pero aquí con datos
+      // reales). Si a alguno de los 2 lados le falta distanceKm, no hay
+      // veto — no hay dato con el que descartar.
+      if (
+        candidate.distanceKm !== undefined &&
+        r.distanceKm !== undefined &&
+        Math.abs(r.distanceKm - candidate.distanceKm) > 1
+      ) {
+        continue;
+      }
       const sim = jaccard(candidateTokens, tokenize(r.name));
       if (sim >= similarityThreshold && (!best || sim > best.sim)) {
         best = { race: r, sim };

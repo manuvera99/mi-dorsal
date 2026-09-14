@@ -118,7 +118,7 @@ export function Hero() {
             </li>
             <li className="inline-flex items-center gap-1.5">
               <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Strava sync en Pro</span>
+              <span>Re-subir Strava en Pro</span>
             </li>
           </ul>
         </div>

@@ -33,7 +33,7 @@ import { ReactNode } from "react";
 
 type PaywallProps = {
   /** Nombre legible de la feature, mostrado en el upsell. ej: "predicciones
-   *  ilimitadas", "sincronización con Strava". */
+   *  ilimitadas", "análisis sin límite". */
   feature: string;
   /** Descripción opcional de lo que se desbloquea. */
   description?: string;

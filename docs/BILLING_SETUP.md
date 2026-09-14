@@ -101,7 +101,7 @@
 - **Currency**: EUR
 - **Billing interval**: Monthly
 - **Trial period**: 14 días (gratis, sin tarjeta — Clerk lo soporta nativo)
-- **Description**: "Predicciones ilimitadas, sincronización Strava/Garmin, planificación de temporada, alertas personalizadas, exportación de calendario y soporte prioritario."
+- **Description**: "Predicciones ilimitadas, re-subida de Strava ZIP sin límite, análisis ilimitado del perfil de corredor, planificación de temporada, alertas personalizadas, exportación de calendario y soporte prioritario."
 - **Features** (bullets): 6-8 bullets, uno por cada feature premium principal
 - **CTA label**: "Hazte Premium"
 - **Visible in pricing table**: ✅

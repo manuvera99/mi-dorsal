@@ -4,7 +4,7 @@
 // mi-dorsal — <PremiumFeatureLock />
 // =============================================================================
 // Componente hermano de <Paywall> (más general, con 3 variantes) pero
-// específico para features de DATOS (Strava sync, calendario, diploma,
+// específico para features de DATOS (Strava re-upload, calendario, diploma,
 // export, etc.). No muestra el children si el usuario no tiene premium;
 // en su lugar muestra un upsell contextual con la feature que se está
 // bloqueando.
@@ -20,7 +20,7 @@
 //   - "subtle"  → solo texto pequeño con link a Pro. Para inline junto
 //                  a un botón que YA está visible (ej. "Diploma (Pro)").
 //   - "banner"  → banner amarillo/ámbar visible. Para secciones
-//                  enteras bloqueadas (ej. bloque Strava OAuth).
+//                  enteras bloqueadas (ej. bloque de re-subir Strava).
 //   - "inline"  → bloque compacto entre contenido. Para el caso "ya
 //                  tienes 5 carreras, aquí está el upsell".
 //

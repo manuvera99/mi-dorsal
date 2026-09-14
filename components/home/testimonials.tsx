@@ -50,7 +50,7 @@ const TESTIMONIALS: Testimonial[] = [
     city: "Sevilla",
     race: "Maratón Sevilla 2026",
     time: "3:48:12",
-    text: "Conecté Strava una vez y ya no subo nada a mano: mis PRs se actualizan solos con cada actividad. Por 2,99 € al mes me quito de encima el ZIP y el rollo de exportar cada temporada.",
+    text: "Con el análisis ilimitado de Pro, en 2 minutos sé si estoy subiendo de forma o estancada, y qué distancia me conviene atacar antes del maratón. Por 2,99 € al mes, eso no lo cambio.",
     avatar: "✨",
     pro: true,
   },

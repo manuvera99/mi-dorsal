@@ -1129,3 +1129,84 @@ gris de ToS, no un bloqueo técnico. Añadido como riesgo en
 **Implicación para Modal**: portar `PhotoSource.download()` tal cual (ya
 incluye ambas mitigaciones) — no hace falta rediseñar nada, solo no perder
 estas dos características al copiar el código a `modal-photo-search/`.
+
+### 15.7. Decisión de plataforma real: Vercel probado y descartado, Modal en producción (14 sep 2026)
+
+Se construyó el endpoint real (no pseudocódigo) en
+`mi-dorsal/photo-search-api/` y se probó **primero en Vercel Functions**,
+tal como se acordó ("primero Vercel, si no funciona probamos con Modal").
+Resultado: **funcionó correctamente en lógica, falló en infraestructura**.
+
+**Lo que se resolvió en Vercel** (quedó documentado por si se revisita):
+
+- Bundle Python de find-my-race supera el límite estándar de 500MB
+  (torch+opencv+onnxruntime+easyocr ≈ 850MB reales) → requiere activar
+  [Large Functions beta](https://vercel.com/docs/functions/limitations#large-functions-beta)
+  vía `VERCEL_SUPPORT_LARGE_FUNCTIONS=1` como env var del proyecto.
+- `easyocr` arrastra `torch` con soporte CUDA por defecto (paquetes
+  `nvidia-cu13-*`, varios GB) aunque se corre en CPU — se fuerza el índice
+  CPU-only de PyTorch (`index_url=https://download.pytorch.org/whl/cpu`)
+  instalándolo en su propia capa/paso *antes* de instalar `easyocr`, para
+  que la resolución de dependencias de este último encuentre ya
+  satisfecho el requisito y no reinstale la variante con CUDA.
+- `scikit-image` (dependencia de `insightface`) usa
+  `lazy_loader.attach_stub()` en 15 módulos distintos — un mecanismo que
+  en tiempo de *import* busca un `__init__.pyi` adyacente para resolver
+  submódulos perezosamente. El file-tracer de Vercel no sigue esa
+  dependencia dinámica (no es un `import` estático) y nunca incluye esos
+  `.pyi` en el bundle final: falla en producción con `Cannot load imports
+  from non-existent stub`, aunque `vercel build` local no avise de nada.
+  `includeFiles` en `vercel.json` tampoco sirve — solo cubre archivos del
+  propio repo, no el virtualenv que crea `uv` durante el build remoto.
+  Solución real: un `build.py` (`tool.vercel.scripts.build` en
+  `pyproject.toml`) que parchea cada `__init__.py` afectado, sustituyendo
+  `attach_stub` por imports directos de los submódulos declarados en su
+  `.pyi` — se ejecuta en el propio entorno de build, donde el `.pyi` sí
+  existe en disco (solo no viaja al bundle).
+
+**Por qué se descartó de todos modos**: una vez desplegado y respondiendo
+200 en `/` (health check), la primera petición real de matching contra el
+álbum de prueba (297 fotos) devolvió **504 Function Invocation Timeout**.
+Causa raíz confirmada en logs: `/tmp` en Vercel Functions **no persiste
+entre invocaciones** (cada invocación puede caer en una instancia nueva),
+así que cada petición re-descarga desde cero los pesos de modelo —
+InsightFace buffalo_l (~280MB) + detector/reconocedor de EasyOCR
+(~200MB) — antes de procesar una sola foto del álbum. Esa descarga sola
+consume la mayor parte del límite de 300s del plan Hobby; con el límite
+de 800s de Pro habría margen, pero el problema de fondo (recomputar
+~500MB en cada invocación) sigue ahí y escala mal con concurrencia.
+
+**Modal resuelve esto de forma estructural**, no como parche: un
+`modal.Volume` persistente (`photo-search-model-cache`) montado en
+`/cache`, con `HOME=/cache` para que InsightFace y EasyOCR escriban ahí
+sus pesos (`~/.insightface`, `~/.EasyOCR`) — se descargan una sola vez y
+quedan cacheados entre invocaciones, incluso en frío. Además el límite de
+timeout es de 600s configurados (Modal permite horas si hiciera falta,
+sin el escalón artificial de los planes de Vercel).
+
+**Resultado medido en Modal, mismo álbum de 297 fotos real**: primera
+invocación (cache de modelo en frío) completó en ~2m48s; invocaciones
+siguientes reutilizan el volumen y no repiten la descarga de pesos.
+Desplegado en:
+`https://manuvera08--photo-search-api-fastapi-app.modal.run` (`modal_app.py`,
+mismo código `findmyrace/` y `api/find_photos.py` sin cambios — solo
+cambió el "pegamento" de despliegue, no la lógica).
+
+**Pendiente antes de conectar Convex a este endpoint**:
+
+- Crear el secret compartido real: `modal secret create
+  photo-search-api-secret PHOTO_SEARCH_API_SECRET=<valor>` (bloqueado
+  para el agente por política de escritura de secretos — requiere que el
+  usuario lo ejecute manualmente) y activar `secrets=[...]` en
+  `modal_app.py` (hoy corre sin auth, igual que el despliegue de Vercel).
+  El mismo secreto ya está configurado como env var en el proyecto Vercel
+  `photo-search-api` (`vercel env add`), por si se revisita esa vía en
+  el futuro.
+- El repo `mi-dorsal/photo-search-api/` queda con dos rutas de despliegue
+  válidas en paralelo (`vercel.json` + `pyproject.toml` para Vercel,
+  `modal_app.py` para Modal) — no se ha borrado la ruta Vercel porque el
+  código es el mismo (`findmyrace/`, `api/find_photos.py`); solo cambia
+  el archivo de despliegue. Modal es la plataforma en uso; Vercel queda
+  documentado como descartado pero no eliminado, por si compensa
+  revisitarlo si Vercel soluciona la persistencia de `/tmp` o si se sube
+  a plan Pro con concurrencia baja donde el cold-start amortiza mejor.

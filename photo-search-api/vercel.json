@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/find_photos.py": {
+      "maxDuration": 300,
+      "memory": 2048,
+      "excludeFiles": "{tests/**,__pycache__/**,**/*.pyc}"
+    }
+  }
+}

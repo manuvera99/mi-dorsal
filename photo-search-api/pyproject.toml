@@ -1,0 +1,54 @@
+[project]
+name = "photo-search-api"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.110",
+    "pydantic>=2.6",
+    "numpy>=1.26",
+    "opencv-python-headless>=4.9",
+    "Pillow>=10.2",
+    "insightface>=0.7",
+    "onnxruntime>=1.16",
+    "easyocr>=1.7",
+    "torch",
+    "torchvision",
+    "requests>=2.31",
+    "httpx>=0.27",
+    "python-dotenv>=1.0",
+]
+
+[tool.vercel]
+entrypoint = "api.find_photos:app"
+
+[tool.vercel.scripts]
+build = "python build.py"
+
+[tool.uv]
+override-dependencies = [
+    "opencv-python; sys_platform=='never'",
+    "nvidia-cublas-cu13; sys_platform=='never'",
+    "nvidia-cuda-cupti-cu13; sys_platform=='never'",
+    "nvidia-cuda-nvrtc-cu13; sys_platform=='never'",
+    "nvidia-cuda-runtime-cu13; sys_platform=='never'",
+    "nvidia-cudnn-cu13; sys_platform=='never'",
+    "nvidia-cufft-cu13; sys_platform=='never'",
+    "nvidia-cufile-cu13; sys_platform=='never'",
+    "nvidia-curand-cu13; sys_platform=='never'",
+    "nvidia-cusolver-cu13; sys_platform=='never'",
+    "nvidia-cusparse-cu13; sys_platform=='never'",
+    "nvidia-cusparselt-cu13; sys_platform=='never'",
+    "nvidia-nccl-cu13; sys_platform=='never'",
+    "nvidia-nvjitlink-cu13; sys_platform=='never'",
+    "nvidia-nvshmem-cu13; sys_platform=='never'",
+    "nvidia-nvtx-cu13; sys_platform=='never'",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+torchvision = [{ index = "pytorch-cpu" }]

@@ -64,15 +64,12 @@ image = (
 # tocar findmyrace/face.py ni findmyrace/ocr.py para redirigirlas.
 model_cache = modal.Volume.from_name("photo-search-model-cache", create_if_missing=True)
 
-# Mismo secreto compartido que en Vercel (PHOTO_SEARCH_API_SECRET). Pendiente
-# de crear manualmente (requiere confirmación del usuario — bloqueado para el
-# agente por política de "Secret-Store Writes"). Mientras no exista,
-# find_photos.py corre sin auth (mismo comportamiento que en Vercel hoy).
-# Crear el secret real y activar la auth con:
+# Mismo secreto compartido que en Vercel (PHOTO_SEARCH_API_SECRET) — creado
+# el 14 sep 2026 con:
 #   modal secret create photo-search-api-secret PHOTO_SEARCH_API_SECRET=<valor>
-# y luego cambiar `_secrets = []` por:
-#   _secrets = [modal.Secret.from_name("photo-search-api-secret")]
-_secrets: list[modal.Secret] = []
+# find_photos.py (_check_auth) exige "Authorization: Bearer <valor>" en
+# cada petición mientras esta env var esté presente en el contenedor.
+_secrets = [modal.Secret.from_name("photo-search-api-secret")]
 
 
 @app.function(

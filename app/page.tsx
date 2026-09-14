@@ -148,7 +148,7 @@ const FAQ_PAGE_JSONLD = JSON.stringify({
       name: "¿Cuánto cuesta mi-dorsal?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "El plan Free es completo y 100% gratis: catálogo, predicción VDOT, voto 8D, calendario personal, resultados por email y diploma PDF. Pro Mensual cuesta 2,99 €/mes y Pro Anual 24,99 €/año (≈ 2,08 €/mes, ahorras 30%). Pro añade re-subir Strava ZIP sin límite y análisis ilimitado de tu perfil de corredor. Cancela cuando quieras.",
+        text: "El plan Free es completo y 100% gratis: catálogo, predicción VDOT, voto 8D, calendario personal, resultados por email y diploma PDF. Pro Mensual cuesta 2,99 €/mes y Pro Anual 24,99 €/año (≈ 2,08 €/mes, ahorras 30%). Pro añade Strava en tiempo real y análisis ilimitado de tu perfil de corredor. Cancela cuando quieras.",
       },
     },
     {
@@ -156,7 +156,7 @@ const FAQ_PAGE_JSONLD = JSON.stringify({
       name: "¿Qué hay gratis y qué es de pago?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Gratis: catálogo, predicción de tiempo, voto 8D, calendario, PRs, resultados oficiales y un export de Strava (ZIP) por cuenta. Pro: re-subir Strava ZIP sin límite, análisis de tu perfil de corredor sin restricción y soporte prioritario 24 h. En roadmap: planificador de temporada, alertas personalizadas, export a Google/Apple Calendar y widget público.",
+        text: "Gratis: catálogo, predicción de tiempo, voto 8D, calendario, PRs, resultados oficiales y un export de Strava (ZIP) por cuenta. Pro: Strava OAuth en tiempo real, re-subir Strava sin límite, análisis de tu perfil de corredor sin restricción y soporte prioritario 24 h. En roadmap: planificador de temporada, alertas personalizadas, export a Google/Apple Calendar y widget público.",
       },
     },
     {
@@ -204,7 +204,7 @@ const FAQ_PAGE_JSONLD = JSON.stringify({
       name: "¿Funciona con Strava o Garmin?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Strava: sí. Puedes subir tu export ZIP cuando quieras — una vez en Free, sin límite en Pro. Garmin: en roadmap, sin fecha confirmada aún.",
+        text: "Strava: sí. En plan Free puedes subir un export ZIP una vez. En Pro, la sincronización OAuth es en tiempo real con webhook. Garmin: en roadmap para Pro, sin fecha confirmada aún.",
       },
     },
     {

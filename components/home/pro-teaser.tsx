@@ -63,10 +63,10 @@ const TIERS: Tier[] = [
     period: "/ mes",
     tagline: "Pruébalo sin compromiso. Cancela cuando quieras.",
     features: [
-      "Re-subir Strava (ZIP) sin límite",
+      "Strava OAuth en tiempo real (webhook)",
       "Análisis de tu perfil de corredor (ilimitado)",
+      "Re-subir Strava export sin límite",
       "Alertas y export a calendario (próximamente)",
-      "Soporte prioritario 24 h",
     ],
     cta: { label: "Probar 14 días gratis", href: "/premium" },
   },
@@ -125,8 +125,8 @@ function ProTeaserSection() {
         </h2>
         <p className="text-gray-600 mt-2 max-w-2xl mx-auto">
           El 90% de los corredores usa el plan Free sin pagar nada. Pro
-          es para los que quieren re-subir Strava sin límite y el análisis de tu perfil de corredor
-          sin restricciones.
+          es para los que quieren Strava en tiempo real y el análisis de tu perfil de corredor
+          sin límites.
         </p>
       </div>
 

@@ -11,7 +11,7 @@ export default function PrivacidadPage() {
   return (
     <article className="mx-auto max-w-3xl px-4 py-12 prose prose-gray">
       <h1>Política de privacidad</h1>
-      <p className="text-sm text-gray-500">Última actualización: 14 de septiembre de 2026</p>
+      <p className="text-sm text-gray-500">Última actualización: 7 de septiembre de 2026</p>
 
       <h2>1. Responsable del tratamiento</h2>
       <p>
@@ -40,7 +40,8 @@ export default function PrivacidadPage() {
           resultados, si decides añadirlos.
         </li>
         <li>
-          <strong>De Strava (si decides subir tu export):</strong> ver sección 4 más abajo.
+          <strong>De Strava (si decides conectarte o subir tu export):</strong> ver sección 4 bis
+          más abajo.
         </li>
       </ul>
 
@@ -64,11 +65,17 @@ export default function PrivacidadPage() {
         </li>
       </ul>
 
-      <h2>4. Subida del export de Strava (descarga GDPR)</h2>
+      <h2>4. Conexión con Strava: OAuth y subida de export</h2>
       <p>
-        Si lo deseas, puedes enriquecer tu perfil con datos de tu actividad en Strava. La única
-        vía es subir el archivo ZIP que tú mismo te descargas desde Strava (Strava &gt; Settings &gt;
-        "Download all your data"). Este archivo contiene todas tus actividades históricas.
+        Si lo deseas, puedes enriquecer tu perfil con datos de tu actividad en Strava. Ofrecemos
+        dos formas, independientes entre sí y con consentimientos separados:
+      </p>
+
+      <h3>4.1 Subida del export de Strava (descarga GDPR)</h3>
+      <p>
+        Desde tu perfil, puedes subirnos el archivo ZIP que tú mismo te descargas de Strava
+        (Strava &gt; Settings &gt; "Download all your data"). Este archivo contiene todas tus
+        actividades históricas.
       </p>
       <ul>
         <li>
@@ -101,6 +108,15 @@ export default function PrivacidadPage() {
           notificar a Strava de nada porque nunca recibimos credenciales tuyas.
         </li>
       </ul>
+
+      <h3>4.2 Conexión OAuth con Strava (próximamente)</h3>
+      <p>
+        En el futuro podrás conectar tu cuenta de Strava directamente para sincronizar actividades
+        nuevas automáticamente. En ese caso, además de los datos de actividad descritos arriba,
+        recogeremos <strong>tokens de acceso cifrados</strong> (credenciales temporales que nos
+        permiten hablar con la API de Strava en tu nombre). Podrás revocar la conexión en cualquier
+        momento desde tu perfil o desde la configuración de Strava.
+      </p>
 
       <h2>5. Encargados de tratamiento</h2>
       <p>Compartimos datos con los siguientes proveedores de servicios:</p>

@@ -59,7 +59,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://mi-dorsal.com";
 export const metadata: Metadata = {
   title: "mi-dorsal Premium — Más de tu temporada de carreras",
   description:
-    "Análisis ilimitado de tu perfil de corredor y re-subida de Strava ZIP sin límite. Desde 2,99 €/mes. Sin compromiso, cancela cuando quieras.",
+    "Sincronización Strava en tiempo real y análisis ilimitado de tu perfil de corredor. Desde 2,99 €/mes. Sin compromiso, cancela cuando quieras.",
   alternates: { canonical: "/premium" },
   openGraph: {
     title: "mi-dorsal Premium",
@@ -126,7 +126,8 @@ const TIERS: Tier[] = [
     tagline: "Pruébalo sin compromiso. Cancela cuando quieras.",
     features: [
       "Todo lo de Free, y además:",
-      "Re-subir export de Strava sin límite",
+      "Sincronización Strava OAuth (sync en tiempo real)",
+      "Re-subir export de Strava ilimitado",
       "Análisis de tu perfil de corredor (sin límite)",
       "Soporte prioritario 24 h",
       "Alertas, export calendario y widget (próximamente)",
@@ -188,9 +189,9 @@ const PLAN_FEATURES: PlanFeature[] = [
   { category: "Predicciones y análisis", label: "Estadísticas avanzadas de tus PRs", free: false, premium: "Próximamente" },
   { category: "Predicciones y análisis", label: "Compararte con la comunidad", free: false, premium: "Próximamente" },
 
-  // Integraciones (Strava export ZIP, gratis y Pro — la única vía es subir el ZIP)
+  // Integraciones (Strava OAuth solo Pro — consume API; export ZIP libre)
   { category: "Integraciones", label: "Subir export de Strava (ZIP, una vez)", free: true, premium: true },
-  { category: "Integraciones", label: "Re-subir export de Strava tras cambiar de dispositivo", free: false, premium: true },
+  { category: "Integraciones", label: "Sincronización Strava OAuth (API + webhook tiempo real)", free: false, premium: true },
   { category: "Integraciones", label: "Sincronización con Garmin", free: false, premium: "Próximamente" },
 
   // Alertas y soporte
@@ -213,9 +214,9 @@ const BENEFITS: Benefit[] = [
   },
   {
     icon: Trophy,
-    title: "Sube tu Strava sin límites",
+    title: "Sincroniza Strava sin tocar la web",
     description:
-      "Trae tu historial completo de Strava cuando quieras y las veces que necesites. Detectamos carreras, actualizamos tus PRs y te avisamos si has batido una marca.",
+      "Tus actividades se importan solas. Detectamos carreras, actualizamos tus PRs y te avisamos si has batido una marca.",
   },
   {
     icon: MapPin,
@@ -282,7 +283,7 @@ const TESTIMONIALS: Testimonial[] = [
     distance: "Maratón",
     pr: "3:28:45",
     quote:
-      "Pro es comodidad. Re-subo mi export cada vez que cambio de dispositivo y el historial queda limpio y ordenado. Por 2,99 €/mes, no tener que pelearme con el ZIP, no tiene precio.",
+      "Pro es comodidad. Que las actividades se importen solas y me avisen si he batido un PR mientras yo corro otra cosa, no tiene precio.",
     initials: "JS",
   },
 ];
@@ -298,7 +299,7 @@ const FAQ: FaqItem[] = [
   {
     question: "¿Qué incluye Pro que no tenga Free?",
     answer:
-      "Re-subir tu export de Strava ZIP sin límite (útil tras cambiar de dispositivo), análisis ilimitado de tu perfil de corredor y soporte prioritario. En roadmap para Pro: alertas personalizadas, planificación de temporada, export a Google/Apple Calendar y widget público. Lo básico (catálogo, predicciones, PRs, primer export ZIP, calendario) es siempre free.",
+      "Sincronización Strava OAuth (sync en tiempo real, consume la API de Strava), análisis ilimitado y soporte prioritario. En roadmap para Pro: alertas personalizadas, planificación de temporada, export a Google/Apple Calendar y widget público. Lo básico (catálogo, predicciones, PRs, export ZIP, calendario) es siempre free.",
   },
   {
     question: "¿Puedo probar Pro antes de pagar?",
@@ -323,7 +324,7 @@ const FAQ: FaqItem[] = [
   {
     question: "¿Necesito Strava o Garmin para usar Pro?",
     answer:
-      "No. Pro funciona sin ellos. Si subes tu export de Strava, te detectamos carreras y actualizamos tus PRs automáticamente. Pero no es obligatorio: puedes usar Pro solo con PRs manuales y calendario.",
+      "No. Pro funciona sin ellos. Si los conectas, se sincronizan las actividades y se actualizan tus PRs automáticamente. Pero no son obligatorios: puedes usar Pro solo con PRs manuales y calendario.",
   },
   {
     question: "¿Hay plan familiar o de grupo?",

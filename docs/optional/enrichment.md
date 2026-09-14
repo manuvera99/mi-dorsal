@@ -65,7 +65,7 @@ mavis cron self --cron-name "monitor-deep-extract" --every "15m" --prompt "..." 
 
 El cron `monitor-deep-extract` está configurado al lanzar el deep-extract. Si el log no crece en 5 min, avisa. Cuando ve "RESUMEN" al final, lo borra y reporta.
 
-## Prevención de duplicados en el ingest (desde 2026-09-12)
+## Prevención de duplicados en el ingest (desde 2026-09-12, ampliado 2026-09-14)
 
 Antes, `systemUpsert` (usado por todo el ingest nocturno) solo reconocía una
 carrera existente por `officialUrl` específico o nombre+fecha(+localidad)
@@ -89,6 +89,55 @@ El panel de duplicados de abajo **sigue existiendo** como red de seguridad
 para lo que el matching automático no capture (p.ej. carreras sin `startDate`,
 o creadas manualmente con nombres muy distintos) — no se ha vuelto redundante.
 
+### Backlog inicial limpiado (2026-09-12)
+
+Tras desplegar el fix, se limpió el backlog acumulado con
+`scripts/fix-cross-source-duplicates.ts` (dry-run por defecto, `--execute`
+para aplicar de verdad — sin sandbox, escribe contra la BD real). El script
+agrupa candidatos con el mismo criterio del panel (vía
+`convex/duplicateMatching.ts`, ya que no tiene auth admin para llamar a
+`adminFindDuplicates` — usa `systemListAllDetailed`), y por cada grupo llama
+a la mutation `races.systemMergeDuplicates(keepId, deleteId)`: migra
+referencias de usuario en las 11 tablas que apuntan a `races` (`myRaces`,
+`raceRatings`, `raceVotes` con resolución de conflicto por `userId`;
+`personalRecords`, `raceResultsCache`, `predictions`, `activities`,
+`feedbackReports`, `notificationLog`, `raceSuggestions`, `raceCandidates`
+directas) antes de borrar el duplicado. Resultado: 44 carreras fusionadas;
+7 grupos "The Bay 5K/Swim/Aquathlon" y "Beer Night Run" quedaron excluidos a
+mano porque son disciplinas/eventos reales distintos del mismo día, no
+duplicados — un detector automático no puede distinguirlos de forma segura.
+
+### Gap same-source descubierto y arreglado (2026-09-14)
+
+Verificando 2 noches reales de ingest post-deploy se confirmó 0 duplicados
+**cross-source** nuevos, pero sí 14 y 12 duplicados **same-source** cada
+noche (la misma fuente reingesta la misma carrera con el nombre reescrito —
+ediciones, mayúsculas, texto añadido). Causa raíz: muchos scrapers (ej.
+`scripts/scrape-correbirras.ts`) pasan como `officialUrl` la URL del
+organizador/club cuando la carrera no tiene web propia — esa URL puede
+estar compartida por 9+ carreras reales distintas del mismo organizador. El
+paso 1 de `systemUpsert` (`by_official_url`) coge esa URL compartida como
+match aunque no identifique una carrera concreta, bloqueando que
+structural/fuzzy lleguen a intentarlo con el nombre real. Fix (spec:
+`docs/superpowers/specs/2026-09-14-fix-duplicados-same-source-design.md`):
+
+- **Fix A**: si el `officialUrl` está compartido por varias carreras
+  existentes (o por una sola de **otra** fuente distinta — mismo bug, con
+  una carrera de margen), ya no se trata como match válido; cae a los pasos
+  de nombre+fecha/structural/fuzzy. Logging `[dup-officialUrl-shared]`
+  cuando esto ocurre (sin sandbox, útil para verificar en logs de Convex).
+- **Fix B**: el detector **fuzzy** de `findExistingMatch` ya no exige fuente
+  distinta — puede reconocer un re-ingest same-source con nombre reescrito.
+  El detector **structural** mantiene la exigencia de fuente distinta sin
+  cambios: en la limpieza manual del backlog de estas 2 noches se cometieron
+  (y corrigieron a mano) 2 fusiones erróneas por structural con una
+  distancia fallback inventada (`?? 10`), no un dato real — carrera infantil
+  fusionada con la de adultos, y un "servicio de grabación de medalla" sin
+  distancia real fusionado con la carrera de verdad. Fuzzy también gana un
+  veto: si ambos lados tienen `distanceKm` real y difieren en más de 1km, no
+  dispara aunque el nombre sea casi idéntico (evita fusionar un "10K" con un
+  "5K" del mismo organizador por nombre parecido).
+
 ## Panel de duplicados en `/admin/duplicates`
 
 Detecta carreras candidatas a duplicado combinando 3 criterios (ordenados por confianza):
@@ -106,6 +155,7 @@ Detecta carreras candidatas a duplicado combinando 3 criterios (ordenados por co
   - `scripts/find-fuzzy-duplicates.ts` — fuzzy client-side
   - `scripts/find-dup-by-date-distance.ts` — structural client-side
   - `scripts/fix-same-source-duplicates.ts` — exact, ya existía
+  - `scripts/fix-cross-source-duplicates.ts` — exact+structural+fuzzy vía `duplicateMatching.ts`, con migración de referencias (`races.systemMergeDuplicates`) antes de borrar. Dry-run por defecto, `--execute` para aplicar. Es el que se usó para el backlog de 2026-09-12.
 
 **UI del panel**:
 - Filtros por tipo de detección (all / exact / structural / fuzzy)

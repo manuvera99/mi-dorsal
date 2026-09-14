@@ -8,10 +8,11 @@
 // hace falta un setInterval de polling manual.
 // =============================================================================
 
+import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { Loader2, ImageOff, RotateCcw, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Loader2, ImageOff, RotateCcw, AlertTriangle, CheckCircle2, Mail } from "lucide-react";
 import { useState } from "react";
 
 export function PhotoSearchResults({
@@ -48,19 +49,28 @@ export function PhotoSearchResults({
         <Loader2 className="h-8 w-8 text-runner-primary animate-spin mx-auto mb-3" />
         <p className="font-medium">Buscando tus fotos en el álbum…</p>
         <p className="text-sm text-gray-500 mt-1">
-          Puede tardar 1-2 minutos, dependiendo de cuántas fotos tenga la carrera.
+          Puede tardar varios minutos, sobre todo si el álbum tiene muchas fotos.
         </p>
-        <button
-          type="button"
-          disabled={cancelling}
-          onClick={async () => {
-            setCancelling(true);
-            await cancelJob({ jobId });
-          }}
-          className="btn-secondary mt-4"
-        >
-          Cancelar
-        </button>
+        <p className="text-sm text-gray-500 mt-1 inline-flex items-center gap-1.5 justify-center">
+          <Mail className="h-3.5 w-3.5 flex-shrink-0" />
+          Puedes cerrar esta página: si te encontramos en alguna foto, te avisaremos por email.
+        </p>
+        <div className="flex items-center justify-center gap-3 mt-4">
+          <Link href="/perfil/fotos" className="btn-secondary">
+            Salir y esperar el email
+          </Link>
+          <button
+            type="button"
+            disabled={cancelling}
+            onClick={async () => {
+              setCancelling(true);
+              await cancelJob({ jobId });
+            }}
+            className="text-sm text-gray-400 hover:text-red-600 hover:underline"
+          >
+            Cancelar búsqueda
+          </button>
+        </div>
       </div>
     );
   }

@@ -58,6 +58,7 @@ from findmyrace.matcher import MatcherWeights
 from findmyrace.ocr import DorsalDetector
 from findmyrace.pipeline import Pipeline
 from findmyrace.sources import get_source_for_url
+from findmyrace.sources.flickr import FlickrSource
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("photo_search_api")
@@ -96,6 +97,12 @@ class FindPhotosRequest(BaseModel):
     min_score: float = Field(0.30, alias="minScore", ge=0.0, le=1.0)
 
 
+class ListAlbumsRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    profile_url: str = Field(..., alias="profileUrl")
+
+
 def _check_auth(request: Request) -> None:
     if not API_SECRET:
         # Sin secreto configurado, no bloqueamos (útil en dev local con
@@ -113,6 +120,35 @@ def _check_auth(request: Request) -> None:
 @app.get("/")
 async def health():
     return {"status": "ok", "service": "photo-search-api"}
+
+
+@app.post("/api/list_albums")
+async def list_albums(payload: ListAlbumsRequest, request: Request):
+    """Lista los álbumes públicos de un fotógrafo dada la URL de su
+    perfil de Flickr (``flickr.com/photos/<user>/albums/``) — usado por
+    la UI para ofrecer un selector en vez de que el usuario tenga que
+    copiar cada enlace de álbum a mano. Ver findmyrace/sources/flickr.py
+    ::list_albums_for_profile.
+    """
+    _check_auth(request)
+
+    source = FlickrSource()
+    if not source.is_profile_albums_url(payload.profile_url):
+        raise HTTPException(
+            400,
+            "Esa URL no parece la página de álbumes de un perfil de Flickr "
+            "(debe ser del tipo flickr.com/photos/<usuario>/albums/)",
+        )
+
+    albums = source.list_albums_for_profile(payload.profile_url)
+    if albums is None:
+        raise HTTPException(
+            502,
+            "No se pudieron obtener los álbumes de ese perfil de Flickr. "
+            "Puede que el perfil no exista o no tenga álbumes públicos.",
+        )
+
+    return {"albums": albums}
 
 
 @app.post("/api/find_photos")

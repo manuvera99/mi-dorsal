@@ -54,6 +54,10 @@ _ALBUM_URL_RE = re.compile(
 )
 _PAGE_RE = re.compile(r"/page(\d+)(?:/)?$")
 
+# URL de PERFIL (lista de álbumes de un fotógrafo), sin set_id — distinta
+# de _ALBUM_URL_RE, que exige un id numérico tras "/albums/".
+_PROFILE_ALBUMS_URL_RE = re.compile(r"flickr\.com/photos/(?P<user>[^/]+)/albums/?$")
+
 
 def _pick_best_size(sizes: list[str]) -> str:
     """Devuelve el mayor tamaño disponible de una lista."""
@@ -131,6 +135,115 @@ class FlickrSource(PhotoSource):
         except Exception as e:  # noqa: BLE001
             logger.warning("[flickr] No se pudo extraer site_key/NSID: %s", e)
             return None, None
+
+    def _extract_site_key_and_nsid_from_profile(
+        self, user: str
+    ) -> tuple[str | None, str | None]:
+        """Como ``_extract_site_key_and_nsid``, pero para la página de
+        PERFIL de un fotógrafo (``/photos/<user>/albums/``, sin set_id) en
+        vez de la de un álbum concreto.
+
+        Confirmado con una petición real (14 sep 2026, mikemanitasdpm): esa
+        página también expone `site_key` (mismo patrón). El NSID del
+        propietario, sin embargo, no aparece como ``"ownerNsid":"..."``
+        (eso solo está en la página de un álbum) — en la de perfil aparece
+        como ``"nsid":"..."`` dentro de los `params` de la vista
+        `albums-list-page-view` que Flickr inicializa inline. Puede
+        aparecer más de una vez en el HTML (otros NSIDs de terceros,
+        contactos, etc.) — nos quedamos con el primer match, que es el de
+        `initialView.params`, la propia vista de álbumes que se está
+        cargando.
+        """
+        try:
+            base_url = f"https://www.flickr.com/photos/{user}/albums/"
+            resp = self.session.get(base_url, timeout=30)
+            resp.raise_for_status()
+            html = resp.text
+            key_match = re.search(r'site_key\s*=\s*"([0-9a-f]{32})"', html)
+            nsid_match = re.search(r'"nsid":"(\d+@N\d+)"', html)
+            site_key = key_match.group(1) if key_match else None
+            owner_nsid = nsid_match.group(1) if nsid_match else (user if "@N" in user else None)
+            return site_key, owner_nsid
+        except Exception as e:  # noqa: BLE001
+            logger.warning("[flickr] No se pudo extraer site_key/NSID de perfil: %s", e)
+            return None, None
+
+    @staticmethod
+    def is_profile_albums_url(url: str) -> bool:
+        """True si `url` es la página de perfil de un fotógrafo (lista de
+        álbumes), no un álbum concreto — usado por el endpoint de listado
+        de álbumes para distinguir ambos casos."""
+        return _PROFILE_ALBUMS_URL_RE.search(url) is not None
+
+    def list_albums_for_profile(self, profile_url: str) -> list[dict] | None:
+        """Lista los álbumes públicos de un fotógrafo dada la URL de su
+        perfil (``flickr.com/photos/<user>/albums/``).
+
+        Usa ``flickr.photosets.getList`` (método hermano de
+        ``flickr.photosets.getPhotos``, que ya usa ``_list_via_api``) — la
+        misma API REST pública, autenticada igual (site_key extraído del
+        HTML). Devuelve None si la URL no es de perfil o si falla la
+        extracción/llamada — el caller decide cómo comunicar el error.
+
+        Confirmado con una llamada real (14 sep 2026) contra el perfil de
+        mikemanitasdpm: 363 álbumes reales devueltos correctamente.
+        """
+        m = _PROFILE_ALBUMS_URL_RE.search(profile_url)
+        if not m:
+            return None
+        user = m.group("user")
+
+        site_key, owner_nsid = self._extract_site_key_and_nsid_from_profile(user)
+        if not site_key or not owner_nsid:
+            return None
+
+        albums: list[dict] = []
+        page = 1
+        per_page = 500  # máximo permitido por flickr.photosets.getList
+        while True:
+            params = {
+                "method": "flickr.photosets.getList",
+                "api_key": site_key,
+                "user_id": owner_nsid,
+                "per_page": per_page,
+                "page": page,
+                "format": "json",
+                "nojsoncallback": 1,
+            }
+            try:
+                resp = self.session.get(
+                    "https://api.flickr.com/services/rest", params=params, timeout=30
+                )
+                resp.raise_for_status()
+                data = json.loads(resp.text)
+            except Exception as e:  # noqa: BLE001
+                logger.warning("[flickr] getList falló: %s", e)
+                return None
+
+            if data.get("stat") != "ok":
+                logger.warning("[flickr] getList respondió error: %s", data.get("message"))
+                return None
+
+            photosets = data.get("photosets", {})
+            for ps in photosets.get("photoset", []):
+                set_id = ps.get("id")
+                title = (ps.get("title") or {}).get("_content", "")
+                albums.append(
+                    {
+                        "id": set_id,
+                        "title": title,
+                        "photoCount": int(ps.get("count_photos", 0)),
+                        "url": f"https://www.flickr.com/photos/{user}/albums/{set_id}/",
+                    }
+                )
+
+            total_pages = int(photosets.get("pages", 1))
+            if page >= total_pages:
+                break
+            page += 1
+
+        logger.info("[flickr] getList: %d álbumes para %s", len(albums), user)
+        return albums
 
     def _list_via_api(
         self, user: str, set_id: str, max_photos: int | None

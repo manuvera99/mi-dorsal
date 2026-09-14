@@ -13,7 +13,7 @@
 
 "use node";
 
-import { internalAction, ActionCtx } from "./_generated/server";
+import { internalAction, action, ActionCtx } from "./_generated/server";
 import { internal, api } from "./_generated/api";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
@@ -196,3 +196,52 @@ async function sendPhotosFoundEmail(
     console.error("[photos-found] error enviando email:", err);
   }
 }
+
+interface FlickrAlbum {
+  id: string;
+  title: string;
+  photoCount: number;
+  url: string;
+}
+
+/** Lista los álbumes públicos de un fotógrafo de Flickr, dada la URL de
+ *  su perfil (no de un álbum concreto) — usado por el selector del
+ *  formulario de subida, para no tener que copiar cada enlace a mano.
+ *  Gate Pro (mismo patrón que emailCustomSticker en stickerEditor.ts:
+ *  hasPremiumAccess necesita ctx.db, no disponible en una action, así
+ *  que se reutiliza la query pública vía ctx.runQuery). */
+export const listFlickrAlbums = action({
+  args: { profileUrl: v.string() },
+  handler: async (ctx, { profileUrl }): Promise<{ albums: FlickrAlbum[] }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const premiumStatus = await ctx.runQuery(api.subscriptions.getMyPremiumStatus, {});
+    if (!premiumStatus.hasAccess) {
+      throw new Error("Requiere suscripción Pro");
+    }
+
+    const apiUrl = process.env.PHOTO_SEARCH_API_URL;
+    const apiSecret = process.env.PHOTO_SEARCH_API_SECRET;
+    if (!apiUrl) {
+      throw new Error("Servicio de búsqueda de fotos no configurado");
+    }
+
+    const response = await fetch(`${apiUrl}/api/list_albums`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(apiSecret ? { Authorization: `Bearer ${apiSecret}` } : {}),
+      },
+      body: JSON.stringify({ profileUrl }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(`No se pudieron listar los álbumes: ${text.slice(0, 300)}`);
+    }
+
+    const data = (await response.json()) as { albums: FlickrAlbum[] };
+    return { albums: data.albums ?? [] };
+  },
+});

@@ -101,6 +101,67 @@ class TestUnsupportedAlbumSource:
         assert resp.status_code == 400
 
 
+class TestListAlbums:
+    """POST /api/list_albums — lista los álbumes públicos de un perfil de
+    Flickr (feature de selector, ver PHOTO_SEARCH_TECH.md, sesión 14 sep
+    2026). No repite la cobertura de findmyrace/sources/flickr.py — eso
+    ya está probado en find-my-race/tests/test_sources.py; aquí solo se
+    valida el contrato HTTP de este endpoint."""
+
+    def test_non_profile_url_returns_400(self) -> None:
+        """Una URL de álbum concreto (no de perfil) debe rechazarse
+        explícitamente, sin llegar a llamar a la red."""
+        resp = client.post(
+            "/api/list_albums",
+            json={"profileUrl": "https://www.flickr.com/photos/u/albums/123456/"},
+        )
+        assert resp.status_code == 400
+
+    def test_missing_profile_url_rejected(self) -> None:
+        resp = client.post("/api/list_albums", json={})
+        assert resp.status_code == 422
+
+    def test_profile_url_returns_albums(self) -> None:
+        fake_albums = [
+            {
+                "id": "111",
+                "title": "Carrera A",
+                "photoCount": 297,
+                "url": "https://www.flickr.com/photos/u/albums/111/",
+            }
+        ]
+        with patch(
+            "api.find_photos.FlickrSource.list_albums_for_profile",
+            return_value=fake_albums,
+        ):
+            resp = client.post(
+                "/api/list_albums",
+                json={"profileUrl": "https://www.flickr.com/photos/u/albums/"},
+            )
+        assert resp.status_code == 200
+        assert resp.json() == {"albums": fake_albums}
+
+    def test_profile_fetch_failure_returns_502(self) -> None:
+        with patch(
+            "api.find_photos.FlickrSource.list_albums_for_profile",
+            return_value=None,
+        ):
+            resp = client.post(
+                "/api/list_albums",
+                json={"profileUrl": "https://www.flickr.com/photos/u/albums/"},
+            )
+        assert resp.status_code == 502
+
+    def test_wrong_secret_rejected(self) -> None:
+        with patch("api.find_photos.API_SECRET", "supersecret"):
+            resp = client.post(
+                "/api/list_albums",
+                json={"profileUrl": "https://www.flickr.com/photos/u/albums/"},
+                headers={"Authorization": "Bearer wrong"},
+            )
+        assert resp.status_code == 401
+
+
 class TestAuth:
     def test_no_secret_configured_allows_request(self) -> None:
         """Sin PHOTO_SEARCH_API_SECRET configurado, no bloquea (comportamiento

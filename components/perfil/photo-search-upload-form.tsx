@@ -11,18 +11,39 @@
 // =============================================================================
 
 import { useRef, useState } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useToast } from "@/components/ui/toast";
-import { Camera, Loader2, X, Upload, Plus, Link as LinkIcon } from "lucide-react";
+import {
+  Camera,
+  Loader2,
+  X,
+  Upload,
+  Plus,
+  Link as LinkIcon,
+  Search,
+  ImageIcon,
+} from "lucide-react";
 
 const MAX_SELFIES = 3;
 const MAX_ALBUMS = 3;
 
+// Espejo en cliente del regex de findmyrace/sources/flickr.py
+// (_PROFILE_ALBUMS_URL_RE) — solo para decidir si mostrar el botón "Ver
+// álbumes", la validación real vive en el backend.
+const FLICKR_PROFILE_ALBUMS_RE = /flickr\.com\/photos\/[^/]+\/albums\/?$/i;
+
 interface SelfieSlot {
   file: File;
   previewUrl: string;
+}
+
+interface FlickrAlbum {
+  id: string;
+  title: string;
+  photoCount: number;
+  url: string;
 }
 
 export function PhotoSearchUploadForm({
@@ -42,6 +63,7 @@ export function PhotoSearchUploadForm({
   const toast = useToast();
   const generateSelfieUploadUrl = useMutation(api.photoSearch.generateSelfieUploadUrl);
   const createJob = useMutation(api.photoSearch.create);
+  const listFlickrAlbums = useAction(api.photoSearchActions.listFlickrAlbums);
 
   const [slots, setSlots] = useState<SelfieSlot[]>([]);
   const [dorsal, setDorsal] = useState(initialDorsal ?? "");
@@ -49,8 +71,22 @@ export function PhotoSearchUploadForm({
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Selector de álbumes: al pegar la URL de PERFIL de un fotógrafo (no de
+  // un álbum concreto), se ofrece cargar la lista completa de sus álbumes
+  // públicos y marcar cuáles buscar, en vez de copiar cada enlace a mano.
+  // `picker.slotIndex` identifica qué slot de texto disparó la carga —
+  // al confirmar, ese slot se reemplaza por las URLs elegidas.
+  const [picker, setPicker] = useState<{
+    slotIndex: number;
+    loading: boolean;
+    albums: FlickrAlbum[] | null;
+    selected: Set<string>;
+    error: string | null;
+  } | null>(null);
+
   function setAlbumUrl(index: number, value: string) {
     setAlbumUrls((prev) => prev.map((u, i) => (i === index ? value : u)));
+    if (picker?.slotIndex === index) setPicker(null);
   }
 
   function addAlbumSlot() {
@@ -59,6 +95,62 @@ export function PhotoSearchUploadForm({
 
   function removeAlbumSlot(index: number) {
     setAlbumUrls((prev) => prev.filter((_, i) => i !== index));
+    if (picker?.slotIndex === index) setPicker(null);
+  }
+
+  async function openAlbumPicker(index: number) {
+    const profileUrl = albumUrls[index]?.trim() ?? "";
+    setPicker({ slotIndex: index, loading: true, albums: null, selected: new Set(), error: null });
+    try {
+      const { albums } = await listFlickrAlbums({ profileUrl });
+      setPicker({ slotIndex: index, loading: false, albums, selected: new Set(), error: null });
+    } catch (e: any) {
+      setPicker({
+        slotIndex: index,
+        loading: false,
+        albums: null,
+        selected: new Set(),
+        error: e?.message ?? "No se pudieron cargar los álbumes",
+      });
+    }
+  }
+
+  function toggleAlbumSelection(url: string) {
+    setPicker((prev) => {
+      if (!prev) return prev;
+      const next = new Set(prev.selected);
+      if (next.has(url)) {
+        next.delete(url);
+      } else {
+        // Límite global de MAX_ALBUMS entre todos los slots: los ya
+        // rellenos en otros slots + los que se vayan marcando aquí.
+        const otherSlotsFilled = albumUrls.filter((u, i) => i !== prev.slotIndex && u.trim()).length;
+        if (otherSlotsFilled + next.size >= MAX_ALBUMS) return prev;
+        next.add(url);
+      }
+      return { ...prev, selected: next };
+    });
+  }
+
+  function confirmAlbumSelection() {
+    if (!picker || picker.selected.size === 0) return;
+    const chosen = Array.from(picker.selected);
+    setAlbumUrls((prev) => {
+      const next = [...prev];
+      next[picker.slotIndex] = chosen[0];
+      // Los álbumes adicionales elegidos ocupan huecos vacíos o se añaden
+      // como slots nuevos, respetando MAX_ALBUMS.
+      for (const url of chosen.slice(1)) {
+        const emptyIndex = next.findIndex((u) => !u.trim());
+        if (emptyIndex !== -1) {
+          next[emptyIndex] = url;
+        } else if (next.length < MAX_ALBUMS) {
+          next.push(url);
+        }
+      }
+      return next;
+    });
+    setPicker(null);
   }
 
   function handleFilesSelected(files: FileList | null) {
@@ -188,34 +280,59 @@ export function PhotoSearchUploadForm({
       <div className="mb-4">
         <label className="label mb-1 block">Álbum(es) de fotos</label>
         <p className="text-xs text-gray-500 mb-2">
-          Pega el enlace del álbum de Flickr de tu carrera. Si hay varios fotógrafos, añade
-          hasta 3 enlaces — esta búsqueda solo te afecta a ti, no cambia el álbum para nadie más.
+          Pega el enlace del álbum de Flickr de tu carrera, o el enlace del perfil del
+          fotógrafo (ej. flickr.com/photos/usuario/albums/) para elegir álbumes de una
+          lista. Esta búsqueda solo te afecta a ti, no cambia nada para nadie más.
         </p>
         <div className="flex flex-col gap-2">
-          {albumUrls.map((url, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="url"
-                  value={url}
-                  onChange={(e) => setAlbumUrl(i, e.target.value)}
-                  placeholder="https://www.flickr.com/photos/..."
-                  className="input pl-9"
-                />
+          {albumUrls.map((url, i) => {
+            const looksLikeProfile = FLICKR_PROFILE_ALBUMS_RE.test(url.trim());
+            return (
+              <div key={i}>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="url"
+                      value={url}
+                      onChange={(e) => setAlbumUrl(i, e.target.value)}
+                      placeholder="https://www.flickr.com/photos/..."
+                      className="input pl-9"
+                    />
+                  </div>
+                  {looksLikeProfile && (
+                    <button
+                      type="button"
+                      onClick={() => openAlbumPicker(i)}
+                      className="btn-secondary h-10 flex-shrink-0 whitespace-nowrap"
+                    >
+                      <Search className="h-3.5 w-3.5 mr-1.5" />
+                      Ver álbumes
+                    </button>
+                  )}
+                  {albumUrls.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeAlbumSlot(i)}
+                      className="h-10 w-10 flex-shrink-0 rounded-md border border-gray-300 flex items-center justify-center text-gray-400 hover:bg-gray-50"
+                      aria-label="Quitar este álbum"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+
+                {picker?.slotIndex === i && (
+                  <AlbumPickerPanel
+                    picker={picker}
+                    onToggle={toggleAlbumSelection}
+                    onConfirm={confirmAlbumSelection}
+                    onCancel={() => setPicker(null)}
+                  />
+                )}
               </div>
-              {albumUrls.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeAlbumSlot(i)}
-                  className="h-10 w-10 flex-shrink-0 rounded-md border border-gray-300 flex items-center justify-center text-gray-400 hover:bg-gray-50"
-                  aria-label="Quitar este álbum"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
         {albumUrls.length < MAX_ALBUMS && (
           <button
@@ -262,6 +379,98 @@ export function PhotoSearchUploadForm({
           </>
         )}
       </button>
+    </div>
+  );
+}
+
+function AlbumPickerPanel({
+  picker,
+  onToggle,
+  onConfirm,
+  onCancel,
+}: {
+  picker: {
+    loading: boolean;
+    albums: FlickrAlbum[] | null;
+    selected: Set<string>;
+    error: string | null;
+  };
+  onToggle: (url: string) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="mt-2 rounded-md border border-gray-200 bg-gray-50 p-3">
+      {picker.loading && (
+        <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Cargando álbumes de este perfil…
+        </div>
+      )}
+
+      {picker.error && (
+        <p className="text-sm text-red-600 py-1">{picker.error}</p>
+      )}
+
+      {picker.albums && picker.albums.length === 0 && (
+        <p className="text-sm text-gray-500 py-1">Este perfil no tiene álbumes públicos.</p>
+      )}
+
+      {picker.albums && picker.albums.length > 0 && (
+        <>
+          <p className="text-xs text-gray-500 mb-2">
+            Elige hasta {MAX_ALBUMS} álbumes (puedes combinarlos con otros ya añadidos):
+          </p>
+          <div className="max-h-64 overflow-y-auto flex flex-col gap-1">
+            {picker.albums.map((album) => {
+              const checked = picker.selected.has(album.url);
+              return (
+                <label
+                  key={album.id}
+                  className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-sm ${
+                    checked ? "bg-runner-primary/10" : "hover:bg-white"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => onToggle(album.url)}
+                    className="flex-shrink-0"
+                  />
+                  <ImageIcon className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                  <span className="flex-1 truncate">{album.title || "(sin título)"}</span>
+                  <span className="text-xs text-gray-400 flex-shrink-0">
+                    {album.photoCount} fotos
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-2 mt-3">
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={picker.selected.size === 0}
+              className="btn-primary text-sm px-3 py-1.5"
+            >
+              Usar {picker.selected.size || ""} álbum{picker.selected.size === 1 ? "" : "es"}
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              className="text-sm text-gray-500 hover:underline"
+            >
+              Cancelar
+            </button>
+          </div>
+        </>
+      )}
+
+      {picker.error && (
+        <button type="button" onClick={onCancel} className="text-sm text-gray-500 hover:underline mt-1">
+          Cerrar
+        </button>
+      )}
     </div>
   );
 }

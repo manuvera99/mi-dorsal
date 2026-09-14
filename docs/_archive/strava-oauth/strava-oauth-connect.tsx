@@ -1,3 +1,15 @@
+// @ts-nocheck
+// =============================================================================
+// ARCHIVADO — 14 sep 2026
+// =============================================================================
+// Strava OAuth retirado de producción. Este archivo se conserva ÚNICAMENTE
+// como referencia histórica por si se reactiva en el futuro. NO se compila,
+// NO se importa desde ningún sitio activo, y NO se debe tocar.
+//
+// Para reactivar OAuth, ver `docs/plans/STRAVA_OAUTH_HIDING.md` §6 (si se
+// reactiva, regenerar este plan) y deshacer los pasos 3-9 de ese plan.
+// =============================================================================
+
 "use client";
 
 // =============================================================================

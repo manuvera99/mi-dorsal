@@ -26,6 +26,7 @@
 | SEO + descubrimiento | 🟠 2.761 páginas indexables, **sitemap no enviado a GSC** | 10 sep 2026 |
 | Multi-distancia en carreras | 🟡 Plan aprobado, **0/7 tasks hechas** | 9 sep 2026 |
 | Clubs + ranking por temporada (Pro) | 🟡 Plan aprobado, **0/15 tasks hechas** | 10 sep 2026 |
+| Encuentra tus fotos (Pro, IA) | 🟡 **Plan aprobado**, sprint 0 sin empezar | 12 sep 2026 |
 
 **Tracción**: ~200 usuarios registrados, ~60 MAU, 2.761 carreras en catálogo, 0 Pro pagando.
 
@@ -225,6 +226,120 @@
 - [ ] Contactar organizadores top (Valencia, Madrid, Barcelona, Sevilla) para partnerships
 - [ ] Ref: `docs/plans/DORSALSWAP_MVP.md`, `docs/plans/DORSALSWAP_PLAN.md`, `docs/plans/INTERCAMBIO_DORSALES.md`
 
+
+### 3.7 Encuentra tus fotos (Pro) — feature IA nueva
+
+> **Nuevo.** Aprobado el 12 sep 2026. Plan completo en 3 documentos:
+> - docs/plans/PHOTO_SEARCH_PRD.md (funcional, copy, UX)
+> - docs/plans/PHOTO_SEARCH_TECH.md (arquitectura, schema, Modal)
+> - docs/plans/PHOTO_SEARCH_OPS.md (RGPD, costes, rollout)
+>
+> **Decisiones clave:**
+> - **Pro-only** desde el día 1 (paywall, sin coste GPU por free).
+> - **Modal serverless A10G**, región EU (RGPD-friendly, ~$0.10/job).
+> - **Retención 24h** de selfies + embeddings (cron diario de cleanup).
+> - **Consentimiento explícito** checkbox (no pre-marcado) + log de versión.
+> - **Timeline**: 6-8 semanas hasta rollout público.
+>
+> **Prerrequisito:** Sprint 1 (Stripe activo) cerrado — la feature va detrás del paywall Pro.
+>
+> **Status: 5/30 tasks hechas (14 sep 2026).** Los fixes de Sprint 0 se hicieron
+> directamente en `find-my-race` (no en mi-dorsal todavía) validando el pipeline
+> real contra álbumes de Flickr reales, incluido un positivo real (Manu, dorsal
+> 1282) — ver `PHOTO_SEARCH_TECH.md` §15 para el detalle completo (reemplaza las
+> notas de §14). Hallazgos clave de esa validación:
+> - **Solo álbumes de Flickr tienen downloader viable hoy** — el resto de
+>   proveedores usados por organizadores reales (fotoscarreras.com,
+>   barrel.cloud, QuieroMisFotos...) no tienen scraping implementado ni
+>   planeado, y varios ya ofrecen selfie-search propio (competencia directa).
+>   El alcance real del feature es más pequeño de lo que sugiere "2.761
+>   carreras indexadas" del PRD.
+> - **La calidad de la selfie de referencia que sube el usuario es, con mucho,
+>   la palanca más rentable** para la tasa de éxito — validado con datos
+>   reales (casi duplica el score). Esto añade una tarea nueva de producto:
+>   pedir 2 selfies con roles explícitos (frontal + lateral) y validar su
+>   calidad antes de aceptar la búsqueda.
+> - Se encontró y arregló un bug real de threshold que afectaba a **todas**
+>   las búsquedas hechas hasta ahora (el gate de cara era 0.35, no el 0.30
+>   documentado).
+
+#### Sprint 0 — Modal backend (sem 1)
+- [ ] Crear modal-photo-search/ proyecto
+- [x] Arreglar bug de reconocimiento facial en findmyrace/face.py (13 sep 2026, ya en find-my-race) - contaminaba el embedding si la foto de referencia tenia varias caras
+- [x] Arreglar paginacion de descarga de albumes Flickr (13 sep 2026, ya en find-my-race) - usa API REST oficial + resolucion de NSID (alias→id numerico) en vez de scraping HTML/Playwright
+- [x] Arreglar bug de threshold real de cara (14 sep 2026, ya en find-my-race) - el gate efectivo era 0.35, no el 0.30 documentado; encontrado validando con un positivo real
+- [x] Validar con positivo real (14 sep 2026) - álbum real de Manu (dorsal 1282), confirmado 3/3 fotos tras los fixes de threshold + selfies de referencia limpios
+- [x] Mejoras de rate-limiting Flickr (14 sep 2026, ya en find-my-race) - reutilizacion de sesion HTTP + backoff adaptativo, cobertura de descarga 84% -> 99.7% en album real
+- [ ] Añadir pre-score de selfies de referencia al flujo de subida (frontal + lateral, roles explícitos) — ver PHOTO_SEARCH_TECH.md §15.3, decisión pendiente de si vive en Convex o Modal
+- [ ] Portar findmyrace/ (face.py, reference_quality.py, ocr.py, matcher.py, pipeline.py, sources/flickr.py, sources/base.py, ya con todos los fixes de arriba) a Modal
+- [ ] modal_app.py con endpoint POST /find-photos
+- [ ] Verificar cold-start, warm-up, timeout
+- [ ] Ref: docs/plans/PHOTO_SEARCH_TECH.md §6, §15
+
+#### Sprint 1 — Convex bridge (sem 2)
+- [ ] Añadir tabla photoSearchJobs a convex/schema.ts
+- [ ] convex/photoSearch.ts: create, cancel, getJob, getResults, listMine
+- [ ] convex/photoSearchActions.ts: runJob (scheduled action → Modal)
+- [ ] Script de prueba end-to-end (curl + CLI)
+- [ ] Cron diario cleanupPhotoSearch registrado
+- [ ] Ref: docs/plans/PHOTO_SEARCH_TECH.md §3-§5
+
+#### Sprint 2 — UI básica (sem 3)
+- [ ] /perfil/fotos (listado de carreras con photosUrl)
+- [ ] /perfil/fotos/[raceSlug] (formulario de subida)
+- [ ] components/photo-search/PhotoSearchForm.tsx (drag-and-drop + dorsal + validación)
+- [ ] /perfil/fotos/[raceSlug]/job/[jobId] (polling status cada 3s)
+- [ ] PhotoSearchProgress.tsx (barra con fases: detectando cara / escaneando / filtrando)
+- [ ] Checkbox de consentimiento explícito (no pre-marcado, RGPD)
+
+#### Sprint 3 — Resultados + email (sem 4)
+- [ ] PhotoSearchResults.tsx (grid + scores + bbox overlay)
+- [ ] convex/emails/templates/photosFound.ts (reutilizar branding de photosAvailable.ts)
+- [ ] Disparar email al completar job (solo si resultCount >= 1)
+- [ ] Empty states pulidos ("0 fotos, posibles razones")
+- [ ] Resolver naming final del feature con feedback de beta
+
+#### Sprint 4 — Paywall + Pro gate (sem 5)
+- [ ] Envolver UI en <Paywall> con copy específico
+- [ ] Rate limit (20/día por usuario) funcional
+- [ ] Página /pro actualizada con sección "Encuentra tus fotos"
+- [ ] Manejo de errores Modal (álbum no descargable, etc.)
+- [ ] Privacy policy actualizada + DPA Modal verificado
+
+#### Sprint 5 — Polish + admin (sem 6)
+- [ ] Loading states pulidos en desktop + mobile
+- [ ] Tooltips RGPD ("selfie se borra en 24h, nunca la compartimos")
+- [ ] Página /admin/photo-search con métricas
+- [ ] Manejo de dorsal no inscrito (warn, no block)
+- [ ] Feature flag NEXT_PUBLIC_PHOTO_SEARCH_ENABLED para kill switch
+
+#### Sprint 6 — Beta cerrada (sem 7-8)
+- [ ] Activar solo para ti + 5-10 Bull Runners
+- [ ] Recoger feedback cualitativo + métricas (uso, conversión, NPS)
+- [ ] A/B test de copy en emails (con vs sin thumbnails inline)
+- [ ] Decidir rollout público basado en:
+  - Tasa de éxito ≥60%
+  - Coste GPU ≤/mes en beta
+  - NPS beta ≥40
+  - 0 issues RGPD
+
+#### Decisiones a resolver antes de beta (sem 4)
+- [ ] Naming final del feature (4 candidatos en PRD §9)
+- [ ] ¿Thumbnails inline en email o solo links?
+- [ ] ¿Guardar resultados en perfil del usuario o solo email?
+- [ ] ¿Búsqueda sobre álbumes sin dorsal inscrito en myRaces?
+
+#### Out of scope para Y1
+- App nativa iOS/Android (PWA basta)
+- Anti-spoofing (no justificado a esta escala)
+- Vídeo de carrera (otro stack)
+- Marketplace de fotos (el fotógrafo vende, nosotros no intermediamos)
+
+#### Refs
+- Funcional: docs/plans/PHOTO_SEARCH_PRD.md
+- Técnico: docs/plans/PHOTO_SEARCH_TECH.md
+- Operativo: docs/plans/PHOTO_SEARCH_OPS.md
+
 ### 3.6 Datos / observabilidad
 
 - [ ] Dashboard en `/admin` que muestre uso Pro vs Free (churn, MRR estimado)
@@ -385,7 +500,10 @@
 | DorsalSwap estrategia | `docs/plans/DORSALSWAP_PLAN.md` |
 | DorsalSwap MVP auditoría | `docs/plans/DORSALSWAP_MVP.md` |
 | DorsalSwap legal y modelo | `docs/plans/INTERCAMBIO_DORSALES.md` |
-| Plan multi-distancia | `docs/superpowers/plans/2026-09-09-multi-distancia-carreras.md` |
+| Plan multi-distancia | docs/superpowers/plans/2026-09-09-multi-distancia-carreras.md |
+| Plan Encuentra tus fotos (PRD) | docs/plans/PHOTO_SEARCH_PRD.md |
+| Plan técnico foto-search | docs/plans/PHOTO_SEARCH_TECH.md |
+| Plan operativo foto-search | docs/plans/PHOTO_SEARCH_OPS.md |
 | Reglas del proyecto (anti-patrones) | `docs/core/anti-patterns.md` |
 | Convenciones de código | `docs/core/stack.md` |
 | Deploy checklist | `docs/core/deploy-checklist.md` |

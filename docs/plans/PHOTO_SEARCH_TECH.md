@@ -1130,6 +1130,29 @@ gris de ToS, no un bloqueo técnico. Añadido como riesgo en
 incluye ambas mitigaciones) — no hace falta rediseñar nada, solo no perder
 estas dos características al copiar el código a `modal-photo-search/`.
 
+**Descargas en paralelo (14 sep 2026, tras desplegar en Modal)**: el modo
+secuencial original (una descarga a la vez) seguía siendo el cuello de
+botella en álbumes grandes. Se añadió `max_workers` a `download()` /
+`download_with_source_urls()` con un pool de hilos (`ThreadPoolExecutor`)
+y una clase nueva, `_AdaptiveRateLimiter`, que hace **thread-safe** el
+mismo backoff que antes vivía como variables locales del bucle
+secuencial (`current_delay`, `consecutive_ok`) — un 429 visto por
+cualquier worker sube el delay compartido para todos, no solo para el
+worker que lo vio; una racha de éxitos (contada de forma global) lo
+relaja igual que antes. `max_workers=1` (default) sigue usando el camino
+secuencial exacto, sin ningún cambio de comportamiento — el camino
+paralelo es estrictamente opt-in.
+
+En `photo-search-api/api/find_photos.py` se activó con
+`max_workers=DOWNLOAD_WORKERS` (env var `PHOTO_SEARCH_DOWNLOAD_WORKERS`,
+default `5`). Resultado medido end-to-end en Modal, mismo álbum real de
+297 fotos: **297/297 descargadas, sin ninguna pérdida** — la ejecución
+total bajó de ~140s a **118.3s**. Mejora más modesta de lo estimado en
+teoría (~35-40s) porque el matching (InsightFace + OCR por foto, sin
+paralelizar) domina el tiempo total una vez que la descarga deja de ser
+el cuello de botella — la descarga en sí ya no es la parte lenta del
+pipeline.
+
 ### 15.7. Decisión de plataforma real: Vercel probado y descartado, Modal en producción (14 sep 2026)
 
 Se construyó el endpoint real (no pseudocódigo) en

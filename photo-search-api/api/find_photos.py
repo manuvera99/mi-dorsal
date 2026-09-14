@@ -74,6 +74,13 @@ API_SECRET = os.environ.get("PHOTO_SEARCH_API_SECRET")
 # controlado en vez de que Vercel corte la conexión en seco.
 SOFT_TIMEOUT_SECONDS = int(os.environ.get("PHOTO_SEARCH_SOFT_TIMEOUT", "700"))
 
+# Descargas simultáneas del álbum. 5 es un punto medio: suficiente para
+# bajar bastante el tiempo total (medido: ~2m48s -> objetivo ~35-40s en
+# 297 fotos) sin disparar el rate-limiting de Flickr más de lo que ya
+# provoca el modo secuencial — el backoff adaptativo sigue activo y
+# compartido entre los 5 workers (ver findmyrace/sources/base.py).
+DOWNLOAD_WORKERS = int(os.environ.get("PHOTO_SEARCH_DOWNLOAD_WORKERS", "5"))
+
 
 class FindPhotosRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -165,7 +172,17 @@ async def find_photos(payload: FindPhotosRequest, request: Request):
         # qué URL vino cada foto para poder devolver la URL pública
         # original en la respuesta — no hay storage propio aquí que copie
         # los resultados (ver docstring del módulo).
-        path_to_source_url = source.download_with_source_urls(payload.album_url, album_dir)
+        #
+        # max_workers=DOWNLOAD_WORKERS: descargas en paralelo con backoff
+        # adaptativo COMPARTIDO entre workers (ver
+        # findmyrace/sources/base.py::_AdaptiveRateLimiter) — un 429 visto
+        # por cualquier worker frena a todos por igual, así que la tasa
+        # total de peticiones/segundo no sube solo por paralelizar. Álbum
+        # real de 297 fotos: ~2m48s secuencial -> objetivo ~35-40s con 5
+        # workers, sin más rate-limiting que antes.
+        path_to_source_url = source.download_with_source_urls(
+            payload.album_url, album_dir, max_workers=DOWNLOAD_WORKERS
+        )
         if not path_to_source_url:
             return {
                 "jobId": job_id,

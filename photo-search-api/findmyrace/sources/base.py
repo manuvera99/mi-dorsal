@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import requests
@@ -29,6 +31,45 @@ DEFAULT_HEADERS: dict[str, str] = {
 }
 
 
+class _AdaptiveRateLimiter:
+    """Backoff adaptativo thread-safe: la misma lógica que antes vivía como
+    variables locales del bucle secuencial (``current_delay``,
+    ``consecutive_ok``), ahora compartida entre varios workers.
+
+    Por qué un lock y no un token bucket más sofisticado: el ritmo que le
+    importa a Flickr es la tasa media de peticiones por segundo, no si
+    van en serie o en paralelo. Con N workers que cada uno espera antes
+    de su siguiente descarga, la tasa total es aproximadamente
+    ``N / delay_medio`` — subir ``current_delay`` cuando cualquiera de
+    ellos ve un 429 frena a todos por igual, igual que en el modo
+    secuencial frenaba las siguientes descargas.
+    """
+
+    def __init__(self, base_delay: float, max_delay: float) -> None:
+        self._base_delay = base_delay
+        self._max_delay = max_delay
+        self._current_delay = base_delay
+        self._consecutive_ok = 0
+        self._lock = threading.Lock()
+
+    def report(self, was_rate_limited: bool) -> None:
+        with self._lock:
+            if was_rate_limited:
+                self._current_delay = min(
+                    self._max_delay, max(self._current_delay * 2, self._base_delay * 2)
+                )
+                self._consecutive_ok = 0
+            else:
+                self._consecutive_ok += 1
+                if self._consecutive_ok >= 10 and self._current_delay > self._base_delay:
+                    self._current_delay = max(self._base_delay, self._current_delay / 2)
+                    self._consecutive_ok = 0
+
+    def current_delay(self) -> float:
+        with self._lock:
+            return self._current_delay
+
+
 class PhotoSource(ABC):
     """Clase base para todas las fuentes de fotos.
 
@@ -46,11 +87,23 @@ class PhotoSource(ABC):
     # y genera menos "ruido" de conexiones nuevas por segundo (una señal
     # que los sistemas anti-bot vigilan).
     session: requests.Session | None = None
+    # Atributo de CLASE (no de instancia): protege solo la creación de
+    # self.session cuando varios workers llegan a la vez a la primera
+    # descarga (requests.Session, una vez creada, sí es segura para
+    # peticiones concurrentes). No se define en __init__ porque
+    # FlickrSource tiene su propio __init__ sin llamar a super() — un
+    # atributo de clase existe siempre, sin depender de esa cadena de
+    # constructores ni de una inicialización perezosa con su propia
+    # carrera. Compartir el lock entre instancias no es un problema aquí:
+    # cada búsqueda crea su propia instancia de fuente.
+    _session_lock = threading.Lock()
 
     def _get_session(self) -> requests.Session:
         if self.session is None:
-            self.session = requests.Session()
-            self.session.headers.update(DEFAULT_HEADERS)
+            with self._session_lock:
+                if self.session is None:
+                    self.session = requests.Session()
+                    self.session.headers.update(DEFAULT_HEADERS)
         return self.session
 
     @abstractmethod
@@ -77,6 +130,7 @@ class PhotoSource(ABC):
         max_photos: int | None = None,
         max_retries: int = 3,
         max_delay: float = 5.0,
+        max_workers: int = 1,
     ) -> list[Path]:
         """Descarga todas las fotos a dest_dir y devuelve sus paths locales.
 
@@ -102,11 +156,20 @@ class PhotoSource(ABC):
                 de que íbamos demasiado rápido — más agresivo con el
                 servidor de lo necesario y más lento en conjunto por los
                 reintentos repetidos.
+            max_workers: descargas simultáneas. 1 (por defecto) mantiene
+                el comportamiento secuencial original. >1 usa un pool de
+                hilos con el mismo backoff adaptativo, pero compartido
+                entre workers (ver ``_AdaptiveRateLimiter``) — la tasa
+                total de peticiones/segundo sigue respondiendo a los
+                429/5xx de la misma forma, solo se reparte entre varias
+                conexiones a la vez en lugar de una.
 
         Returns:
             Lista de paths a las imágenes descargadas.
         """
-        mapping = self._download_impl(url, dest_dir, delay, timeout, max_photos, max_retries, max_delay)
+        mapping = self._download_impl(
+            url, dest_dir, delay, timeout, max_photos, max_retries, max_delay, max_workers
+        )
         return list(mapping.keys())
 
     def download_with_source_urls(
@@ -118,13 +181,16 @@ class PhotoSource(ABC):
         max_photos: int | None = None,
         max_retries: int = 3,
         max_delay: float = 5.0,
+        max_workers: int = 1,
     ) -> dict[Path, str]:
         """Como ``download``, pero además devuelve de qué URL vino cada
         foto — necesario cuando el caller no aloja copia propia de los
         resultados y necesita servir/enlazar la foto original (p. ej.
         photo-search-api, que no tiene storage propio, ver find_photos.py).
         """
-        return self._download_impl(url, dest_dir, delay, timeout, max_photos, max_retries, max_delay)
+        return self._download_impl(
+            url, dest_dir, delay, timeout, max_photos, max_retries, max_delay, max_workers
+        )
 
     def _download_impl(
         self,
@@ -135,6 +201,7 @@ class PhotoSource(ABC):
         max_photos: int | None,
         max_retries: int,
         max_delay: float,
+        max_workers: int = 1,
     ) -> dict[Path, str]:
         dest_dir.mkdir(parents=True, exist_ok=True)
         photo_urls = self.list_photo_urls(url, max_photos=max_photos)
@@ -143,8 +210,38 @@ class PhotoSource(ABC):
             logger.warning("[%s] No se encontraron fotos en %s", self.name, url)
             return {}
 
-        logger.info("[%s] Descargando %d fotos a %s", self.name, len(photo_urls), dest_dir)
+        logger.info(
+            "[%s] Descargando %d fotos a %s (max_workers=%d)",
+            self.name, len(photo_urls), dest_dir, max_workers,
+        )
 
+        if max_workers <= 1:
+            downloaded = self._download_sequential(
+                photo_urls, dest_dir, delay, timeout, max_retries, max_delay
+            )
+        else:
+            downloaded = self._download_parallel(
+                photo_urls, dest_dir, delay, timeout, max_retries, max_delay, max_workers
+            )
+
+        logger.info(
+            "[%s] %d/%d fotos descargadas correctamente", self.name, len(downloaded), len(photo_urls)
+        )
+        return downloaded
+
+    def _download_sequential(
+        self,
+        photo_urls: list[str],
+        dest_dir: Path,
+        delay: float,
+        timeout: int,
+        max_retries: int,
+        max_delay: float,
+    ) -> dict[Path, str]:
+        """Camino original, sin cambios de comportamiento (ver tests de
+        TestAdaptiveBackoff, que fijan exactamente esta secuencia de
+        sleeps) — se mantiene tal cual por si algún caller depende de un
+        ritmo estrictamente uno-a-uno."""
         downloaded: dict[Path, str] = {}
         current_delay = delay
         consecutive_ok = 0
@@ -163,8 +260,6 @@ class PhotoSource(ABC):
             if success:
                 downloaded[target] = photo_url
 
-            # Backoff adaptativo: sube el delay si hubo rate-limit, lo
-            # relaja gradualmente tras una racha de descargas sin problema.
             if was_rate_limited:
                 current_delay = min(max_delay, max(current_delay * 2, delay * 2))
                 consecutive_ok = 0
@@ -177,7 +272,62 @@ class PhotoSource(ABC):
             if current_delay > 0 and i < len(photo_urls):
                 time.sleep(current_delay)
 
-        logger.info("[%s] %d/%d fotos descargadas correctamente", self.name, len(downloaded), len(photo_urls))
+        return downloaded
+
+    def _download_parallel(
+        self,
+        photo_urls: list[str],
+        dest_dir: Path,
+        delay: float,
+        timeout: int,
+        max_retries: int,
+        max_delay: float,
+        max_workers: int,
+    ) -> dict[Path, str]:
+        """Pool de hilos con backoff adaptativo compartido.
+
+        Cada worker, antes de pedir SU siguiente foto, espera el delay
+        actual del limitador compartido — igual que en el modo secuencial
+        se esperaba entre una foto y la siguiente, pero ahora repartido
+        entre N conexiones. Un 429 visto por cualquier worker sube el
+        delay para todos; una racha sin problemas (contada de forma
+        global, no por worker) lo relaja igual que antes.
+        """
+        limiter = _AdaptiveRateLimiter(base_delay=delay, max_delay=max_delay)
+        downloaded: dict[Path, str] = {}
+        downloaded_lock = threading.Lock()
+
+        def _worker(index_and_url: tuple[int, str]) -> None:
+            i, photo_url = index_and_url
+            filename = self._filename_from_url(photo_url, i)
+            target = dest_dir / filename
+
+            if target.exists():
+                logger.debug("Ya existe, skip: %s", target)
+                with downloaded_lock:
+                    downloaded[target] = photo_url
+                return
+
+            wait = limiter.current_delay()
+            if wait > 0:
+                time.sleep(wait)
+
+            success, was_rate_limited = self._download_one(
+                photo_url, target, timeout, max_retries
+            )
+            limiter.report(was_rate_limited)
+            if success:
+                with downloaded_lock:
+                    downloaded[target] = photo_url
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [
+                executor.submit(_worker, (i, photo_url))
+                for i, photo_url in enumerate(photo_urls, 1)
+            ]
+            for future in as_completed(futures):
+                future.result()  # re-lanza cualquier excepción inesperada
+
         return downloaded
 
     def _download_one(

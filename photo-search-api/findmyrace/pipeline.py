@@ -56,8 +56,8 @@ class Pipeline:
 
     def run(
         self,
-        album: Path,
-        target_dorsal: str,
+        album: Path | None = None,
+        target_dorsal: str = "",
         color_reference: ColorHistogram | None = None,
         min_score: float = 0.0,
         top_k: int | None = None,
@@ -65,11 +65,14 @@ class Pipeline:
         progress_callback: Callable[[int, int, PhotoScore | None], None] | None = None,
         include_identity_matches: bool = True,
         max_images: int | None = None,
+        image_paths: Sequence[Path] | None = None,
     ) -> list[PhotoScore]:
         """Procesa todas las fotos del álbum y devuelve resultados ordenados.
 
         Args:
-            album: carpeta con las fotos.
+            album: carpeta con las fotos — se recorre con ``iter_images``.
+                Ignorado si se da ``image_paths``. Debe darse uno de los
+                dos (``album`` o ``image_paths``).
             target_dorsal: número de dorsal a buscar.
             color_reference: histograma de la camiseta (opcional en MVP1).
             min_score: descarta fotos con score combinado (cara+dorsal+color)
@@ -104,11 +107,26 @@ class Pipeline:
                 agotó un timeout de 600s al 95% sin responder nada. Con
                 este límite, el job siempre termina y devuelve lo que pudo
                 analizar, dejando claro en el log cuántas se omitieron.
+            image_paths: si se da, se procesan exactamente estas rutas en
+                vez de recorrer ``album`` con ``iter_images`` — necesario
+                cuando las fotos de una búsqueda no viven todas bajo una
+                única carpeta raíz (p. ej. api/find_photos.py: con la
+                caché de álbumes de Modal, ver api/album_cache.py, cada
+                álbum puede vivir en una carpeta persistente distinta,
+                fuera del directorio temporal de la búsqueda). El orden
+                de la lista importa para `max_images` (se procesan las
+                primeras) — el caller es responsable de un orden
+                determinista si eso le importa.
 
         Returns:
             Lista de PhotoScore ordenada por score descendente.
         """
-        all_image_paths = list(iter_images(album, recursive=recursive))
+        if image_paths is not None:
+            all_image_paths = list(image_paths)
+        else:
+            if album is None:
+                raise ValueError("Se debe dar `album` o `image_paths`")
+            all_image_paths = list(iter_images(album, recursive=recursive))
         if not all_image_paths:
             logger.warning("Álbum vacío: %s", album)
             return []

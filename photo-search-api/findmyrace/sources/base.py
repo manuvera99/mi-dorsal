@@ -118,6 +118,16 @@ class PhotoSource(ABC):
                     self.session.headers.update(DEFAULT_HEADERS)
         return self.session
 
+    def cache_key_for_url(self, url: str) -> str | None:
+        """Clave estable para cachear el álbum de ``url`` entre búsquedas
+        distintas (ver photo-search-api/api/album_cache.py), o None si
+        esta fuente no puede identificar un "álbum" de forma estable a
+        partir de la URL (p. ej. DirectUrlSource: cada URL es una foto
+        suelta, no hay álbum que cachear). Por defecto None — subclases
+        que sí tienen un identificador de álbum estable (p. ej.
+        FlickrSource con el set_id numérico) lo sobreescriben."""
+        return None
+
     @abstractmethod
     def can_handle(self, url: str) -> bool:
         """Devuelve True si esta fuente sabe怎么处理 esa URL."""

@@ -101,6 +101,112 @@ class TestUnsupportedAlbumSource:
         assert resp.status_code == 400
 
 
+class TestAlbumCache:
+    """Integración: cuando la caché de álbumes está habilitada (ver
+    api/album_cache.py), find_photos.py debe descargar el álbum en la
+    carpeta persistente en vez del directorio temporal efímero — y
+    reload()/commit() deben llamarse alrededor de la descarga."""
+
+    def _mock_face(self):
+        mock_face = MagicMock()
+        mock_face.assess_reference.return_value = MagicMock(rejected=False)
+        return mock_face
+
+    def test_flickr_album_downloaded_into_cache_dir_when_enabled(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("PHOTO_SEARCH_ALBUM_CACHE_DIR", str(tmp_path))
+
+        fake_photo = tmp_path / "flickr" / "123" / "photo1.jpg"
+
+        def _fake_download(url, dest_dir, **kwargs):
+            # El caller (find_photos.py) debe pasar la carpeta de caché,
+            # no una subcarpeta de tmpdir.
+            assert dest_dir == tmp_path / "flickr" / "123"
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            fake_photo.write_bytes(b"fake")
+            return {fake_photo: "https://live.staticflickr.com/x/123_abc_k.jpg"}
+
+        with patch(
+            "api.find_photos._download_selfies",
+            new=AsyncMock(return_value=[Path("/tmp/fake_selfie.jpg")]),
+        ), patch("api.find_photos.FaceRecognizer") as mock_face_cls, patch(
+            "api.find_photos.FlickrSource.cache_key_for_url", return_value="123"
+        ), patch(
+            "api.find_photos.FlickrSource.download_with_source_urls",
+            side_effect=_fake_download,
+        ) as mock_download, patch(
+            "api.find_photos.Pipeline.run", return_value=[]
+        ) as mock_run, patch(
+            "api.album_cache.reload"
+        ) as mock_reload, patch(
+            "api.album_cache.commit"
+        ) as mock_commit:
+            mock_face_cls.return_value = self._mock_face()
+
+            resp = client.post(
+                "/api/find_photos",
+                json={
+                    "jobId": "x",
+                    "selfieUrls": ["https://example.com/selfie.jpg"],
+                    "albumUrls": [
+                        "https://www.flickr.com/photos/u/albums/123/"
+                    ],
+                },
+            )
+
+        assert resp.status_code == 200
+        mock_download.assert_called_once()
+        mock_reload.assert_called_once()
+        mock_commit.assert_called_once()
+        # image_paths pasado a Pipeline.run debe incluir la foto "cacheada"
+        assert mock_run.call_args.kwargs["image_paths"] == [fake_photo]
+
+    def test_ephemeral_dir_used_when_cache_disabled(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("PHOTO_SEARCH_ALBUM_CACHE_DIR", raising=False)
+
+        captured_dirs: list[Path] = []
+
+        def _fake_download(url, dest_dir, **kwargs):
+            captured_dirs.append(dest_dir)
+            return {}
+
+        with patch(
+            "api.find_photos._download_selfies",
+            new=AsyncMock(return_value=[Path("/tmp/fake_selfie.jpg")]),
+        ), patch("api.find_photos.FaceRecognizer") as mock_face_cls, patch(
+            "api.find_photos.FlickrSource.cache_key_for_url", return_value="123"
+        ), patch(
+            "api.find_photos.FlickrSource.download_with_source_urls",
+            side_effect=_fake_download,
+        ), patch("api.album_cache.reload") as mock_reload, patch(
+            "api.album_cache.commit"
+        ) as mock_commit:
+            mock_face_cls.return_value = self._mock_face()
+
+            client.post(
+                "/api/find_photos",
+                json={
+                    "jobId": "x",
+                    "selfieUrls": ["https://example.com/selfie.jpg"],
+                    "albumUrls": [
+                        "https://www.flickr.com/photos/u/albums/123/"
+                    ],
+                },
+            )
+
+        assert len(captured_dirs) == 1
+        # Carpeta efímera bajo el tmpdir de la búsqueda, no la de caché
+        assert "albums" in captured_dirs[0].parts
+        assert str(tmp_path) not in str(captured_dirs[0])
+        # reload() sigue siendo no-op seguro; commit() no se llama porque
+        # ningún álbum usó la caché (used_album_cache queda False)
+        mock_reload.assert_called_once()
+        mock_commit.assert_not_called()
+
+
 class TestListAlbums:
     """POST /api/list_albums — lista los álbumes públicos de un perfil de
     Flickr (feature de selector, ver PHOTO_SEARCH_TECH.md, sesión 14 sep

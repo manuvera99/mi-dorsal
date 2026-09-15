@@ -88,6 +88,19 @@ class FlickrSource(PhotoSource):
     def can_handle(self, url: str) -> bool:
         return "flickr.com" in url.lower()
 
+    def cache_key_for_url(self, url: str) -> str | None:
+        """El ``set_id`` numérico del álbum — estable independientemente
+        de con qué alias de usuario o formato de URL se haya compartido el
+        enlace (dos corredores pueden pegar URLs distintas del mismo
+        álbum). None si ``url`` no es una URL de álbum concreto (p. ej.
+        apunta a una página /pageN o no matchea en absoluto) — en ese
+        caso no cacheamos, para no arriesgar mezclar contenido de dos
+        álbumes distintos bajo la misma clave."""
+        if self._is_specific_page(url):
+            return None
+        _, set_id = self._parse_album_url(url)
+        return set_id
+
     @staticmethod
     def _parse_album_url(url: str) -> tuple[str | None, str | None]:
         """Extrae (user, set_id) de una URL de álbum de Flickr."""

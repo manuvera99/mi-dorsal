@@ -61,6 +61,8 @@ from findmyrace.sources import get_source_for_url
 from findmyrace.sources.base import AdaptiveRateLimiter, PhotoSource
 from findmyrace.sources.flickr import FlickrSource
 
+from . import album_cache
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("photo_search_api")
 
@@ -238,6 +240,14 @@ async def find_photos(payload: FindPhotosRequest, request: Request):
         sources_by_type: dict[str, PhotoSource] = {}
         limiters_by_type: dict[str, AdaptiveRateLimiter] = {}
 
+        # Ver caché entre álbumes descargados en OTRAS búsquedas (ver
+        # api/album_cache.py) antes de decidir qué descargar aquí — no-op
+        # si no hay caché configurada (Vercel, o tests locales). Una sola
+        # vez por job, no por álbum: solo hace falta ver el estado más
+        # reciente antes de empezar a leer directorios de caché.
+        album_cache.reload()
+        used_album_cache = False
+
         for i, album_url in enumerate(payload.album_urls):
             try:
                 probe = get_source_for_url(album_url)
@@ -250,16 +260,39 @@ async def find_photos(payload: FindPhotosRequest, request: Request):
                 probe.name, AdaptiveRateLimiter(base_delay=0.2, max_delay=5.0)
             )
 
-            # Subcarpeta por álbum, todas bajo "albums/" (no directamente
-            # en tmpdir — ahí también viven selfies/ y face_cache/, que no
-            # son fotos del álbum): evita colisión de nombres de fichero
-            # entre álbumes distintos (dos fotógrafos pueden reusar el
-            # mismo esquema de nombre, p. ej. "IMG_0001.jpg").
-            album_dir = tmpdir / "albums" / f"album_{i}"
+            # Álbum persistente entre búsquedas (Modal, ver modal_app.py y
+            # api/album_cache.py) cuando la fuente tiene una clave estable
+            # para esta URL (p. ej. el set_id de Flickr) — la MISMA carrera
+            # suele buscarse por muchos corredores distintos, y el álbum
+            # de fotos no cambia entre esas búsquedas. Bug real motivador
+            # (15 sep 2026): sin esto, cada búsqueda repetía la descarga
+            # completa del álbum, multiplicando peticiones contra el CDN
+            # de Flickr sin necesidad y contribuyendo a un bloqueo por 429
+            # tras varias búsquedas seguidas sobre los mismos álbumes.
+            # Fallback a subcarpeta efímera bajo tmpdir si no hay clave de
+            # caché (fuente sin cache_key_for_url, p. ej. DirectUrlSource)
+            # o si no hay caché configurada — mismo comportamiento que
+            # antes en ambos casos.
+            cache_key = probe.cache_key_for_url(album_url)
+            if album_cache.enabled() and cache_key is not None:
+                album_dir = album_cache.dir_for(probe.name, cache_key)
+                used_album_cache = True
+            else:
+                # Subcarpeta por álbum, todas bajo "albums/" (no
+                # directamente en tmpdir — ahí también viven selfies/ y
+                # face_cache/, que no son fotos del álbum): evita colisión
+                # de nombres de fichero entre álbumes distintos (dos
+                # fotógrafos pueden reusar el mismo esquema de nombre,
+                # p. ej. "IMG_0001.jpg").
+                album_dir = tmpdir / "albums" / f"album_{i}"
+
             # download_with_source_urls (no `download`): necesitamos saber
             # de qué URL vino cada foto para poder devolver la URL pública
             # original en la respuesta — no hay storage propio aquí que
-            # copie los resultados (ver docstring del módulo).
+            # copie los resultados (ver docstring del módulo). Las fotos
+            # que ya existen en album_dir (de una búsqueda anterior sobre
+            # el mismo álbum cacheado) se saltan solas — ver
+            # PhotoSource._download_impl, "Ya existe, skip".
             #
             # max_workers=DOWNLOAD_WORKERS: descargas en paralelo con
             # backoff adaptativo COMPARTIDO entre workers (ver
@@ -275,6 +308,12 @@ async def find_photos(payload: FindPhotosRequest, request: Request):
                 failed_albums.append(album_url)
                 continue
             path_to_source_url.update(album_results)
+
+        # Publica lo descargado en esta búsqueda para que la SIGUIENTE
+        # búsqueda (en este contenedor u otro) lo vea — no-op si no se usó
+        # la caché en ningún álbum de este job.
+        if used_album_cache:
+            album_cache.commit()
 
         if not path_to_source_url:
             if unsupported_albums and len(unsupported_albums) == len(payload.album_urls):
@@ -298,14 +337,18 @@ async def find_photos(payload: FindPhotosRequest, request: Request):
 
         # 5) Matching. include_identity_matches=True (default) — ver
         # TECH.md §15.2: una foto con identidad confirmada por cara no se
-        # pierde aunque el dorsal no se detecte en ella. album=tmpdir/"albums"
-        # (no un único album_dir) + recursive=True: iter_images ya recorre
-        # subcarpetas (findmyrace/pipeline.py), así que las N subcarpetas
-        # album_0/album_1/... se analizan juntas en una sola pasada.
+        # pierde aunque el dorsal no se detecte en ella.
+        # image_paths=list(path_to_source_url) en vez de un único `album`
+        # a recorrer: con la caché de álbumes (ver album_cache.py más
+        # arriba), las fotos de esta búsqueda ya NO viven todas bajo una
+        # única carpeta (tmpdir/albums) — un álbum cacheado vive en el
+        # Volume persistente, fuera de tmpdir. path_to_source_url ya tiene
+        # exactamente las rutas descargadas de todos los álbumes, sea cual
+        # sea su carpeta real.
         # max_images=MAX_PHOTOS_PER_JOB: protección real contra timeout —
         # ver docstring de Pipeline.run para el caso real que lo motivó.
         photo_scores = pipeline.run(
-            album=tmpdir / "albums",
+            image_paths=list(path_to_source_url),
             target_dorsal=payload.dorsal or "",
             min_score=payload.min_score,
             top_k=payload.top_k,

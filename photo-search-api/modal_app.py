@@ -53,6 +53,12 @@ image = (
         "easyocr>=1.7",
         "requests>=2.31",
         "httpx>=0.27",
+        # No es un descuido: api/album_cache.py hace `import modal` en
+        # tiempo de ejecución (perezoso, no a nivel de módulo) para llamar
+        # a Volume.from_name()/.reload()/.commit() desde dentro de la
+        # propia función Modal — explícito aquí para no depender de que
+        # el cliente modal ya esté disponible en la imagen sin pedirlo.
+        "modal",
     )
     .add_local_python_source("findmyrace")
     .add_local_python_source("api")
@@ -64,6 +70,17 @@ image = (
 # tocar findmyrace/face.py ni findmyrace/ocr.py para redirigirlas.
 model_cache = modal.Volume.from_name("photo-search-model-cache", create_if_missing=True)
 
+# Volumen persistente para álbumes ya descargados de Flickr, reutilizado
+# ENTRE búsquedas distintas — ver api/album_cache.py. Investigado el 15
+# sep 2026 tras un bloqueo real por 429 masivo de Flickr: sin esto, cada
+# búsqueda (incluso sobre la misma carrera que ya buscó otro corredor)
+# volvía a descargar el álbum entero desde el CDN de Flickr, multiplicando
+# peticiones sin necesidad. El nombre debe coincidir con
+# album_cache._VOLUME_NAME.
+album_cache_volume = modal.Volume.from_name(
+    "photo-search-album-cache", create_if_missing=True
+)
+
 # Mismo secreto compartido que en Vercel (PHOTO_SEARCH_API_SECRET) — creado
 # el 14 sep 2026 con:
 #   modal secret create photo-search-api-secret PHOTO_SEARCH_API_SECRET=<valor>
@@ -74,13 +91,20 @@ _secrets = [modal.Secret.from_name("photo-search-api-secret")]
 
 @app.function(
     image=image,
-    volumes={"/cache": model_cache},
+    volumes={
+        "/cache": model_cache,
+        "/album_cache": album_cache_volume,
+    },
     secrets=_secrets,
     # InsightFace y EasyOCR descargan sus pesos en rutas relativas a HOME
     # (~/.insightface, ~/.EasyOCR) sin que findmyrace/face.py u ocr.py les
     # pasen un directorio explícito — redirigimos HOME al volumen montado
     # para que esos pesos persistan entre invocaciones (y entre despliegues).
-    env={"HOME": "/cache"},
+    # PHOTO_SEARCH_ALBUM_CACHE_DIR activa la caché de álbumes de
+    # api/album_cache.py — sin esta env var (p. ej. en Vercel, o en tests
+    # locales), find_photos.py cae al comportamiento anterior (descarga
+    # siempre a un directorio efímero, sin reutilización entre búsquedas).
+    env={"HOME": "/cache", "PHOTO_SEARCH_ALBUM_CACHE_DIR": "/album_cache"},
     # 1500s (25 min): con el selector de álbumes de perfil (hasta 3
     # álbumes reales, no solo 1) el total de fotos a analizar puede
     # superar de sobra las ~300-500 fotos de un álbum único — medido en

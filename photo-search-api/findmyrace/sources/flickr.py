@@ -342,7 +342,9 @@ class FlickrSource(PhotoSource):
             for (server, pid, secret), sizes in photos.items()
         ]
 
-    def list_photo_urls(self, url: str, max_photos: int | None = None) -> list[str]:
+    def list_photo_urls(
+        self, url: str, max_photos: int | None = None, dorsal: str | None = None
+    ) -> list[str]:
         """Devuelve la lista de URLs de las fotos del álbum.
 
         - Si la URL tiene /pageN: usa el scraper HTML (solo esa página) —
@@ -354,6 +356,9 @@ class FlickrSource(PhotoSource):
         Args:
             url: URL del álbum.
             max_photos: si se da, limita el total de URLs devueltas.
+            dorsal: ignorado — Flickr no asocia fotos a dorsales, no hay
+                atajo posible (a diferencia de ChipLevantePhotoSource).
+                Aceptado solo para cumplir la interfaz de PhotoSource.
         """
         user, set_id = self._parse_album_url(url)
         if not user or not set_id:

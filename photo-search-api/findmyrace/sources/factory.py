@@ -6,6 +6,7 @@ import logging
 from typing import Type
 
 from .base import PhotoSource
+from .chiplevante import ChipLevantePhotoSource
 from .direct import DirectUrlSource
 from .flickr import FlickrSource
 
@@ -14,6 +15,7 @@ logger = logging.getLogger(__name__)
 # Registro de fuentes disponibles. Orden = prioridad (la primera que acepte gana).
 _SOURCE_REGISTRY: list[Type[PhotoSource]] = [
     FlickrSource,
+    ChipLevantePhotoSource,
     DirectUrlSource,
 ]
 

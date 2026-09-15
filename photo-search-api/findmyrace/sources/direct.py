@@ -37,7 +37,9 @@ class DirectUrlSource(PhotoSource):
             return True
         return False
 
-    def list_photo_urls(self, url: str, max_photos: int | None = None) -> list[str]:
+    def list_photo_urls(
+        self, url: str, max_photos: int | None = None, dorsal: str | None = None
+    ) -> list[str]:
         if url.lower().startswith(("http://", "https://")):
             logger.info("[direct] Single URL: %s", url)
             urls = [url]

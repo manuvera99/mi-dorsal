@@ -134,12 +134,24 @@ class PhotoSource(ABC):
         ...
 
     @abstractmethod
-    def list_photo_urls(self, url: str, max_photos: int | None = None) -> list[str]:
+    def list_photo_urls(
+        self, url: str, max_photos: int | None = None, dorsal: str | None = None
+    ) -> list[str]:
         """Devuelve la lista de URLs directas a imágenes del álbum.
 
         Args:
             url: URL del álbum.
             max_photos: si se da, limita el total de URLs devueltas.
+            dorsal: si se da Y la fuente sabe filtrar por dorsal en origen
+                (ver ``ChipLevantePhotoSource``: el propio proveedor ya
+                asocia fotos a dorsales por cronometraje+cámara, sin que
+                haga falta descargar el álbum completo ni correr
+                cara/OCR), se devuelven solo las fotos de ese dorsal —
+                mucho más rápido y barato que el álbum completo. Fuentes
+                sin este atajo (p. ej. Flickr, que no conoce dorsales)
+                ignoran el parámetro y devuelven el álbum completo igual;
+                el caller (find_photos.py) sigue corriendo el pipeline
+                normal sobre lo que reciba, así que ignorarlo es seguro.
         """
         ...
 
@@ -154,6 +166,7 @@ class PhotoSource(ABC):
         max_delay: float = 5.0,
         max_workers: int = 1,
         rate_limiter: AdaptiveRateLimiter | None = None,
+        dorsal: str | None = None,
     ) -> list[Path]:
         """Descarga todas las fotos a dest_dir y devuelve sus paths locales.
 
@@ -192,13 +205,16 @@ class PhotoSource(ABC):
                 búsqueda (ver docstring de ``AdaptiveRateLimiter``), para
                 que el backoff de un álbum persista al pasar al siguiente
                 en vez de reiniciarse desde cero.
+            dorsal: ver ``list_photo_urls`` — atajo por dorsal cuando la
+                fuente lo soporta (p. ej. ChipLevantePhotoSource),
+                ignorado por fuentes que no lo soportan.
 
         Returns:
             Lista de paths a las imágenes descargadas.
         """
         mapping = self._download_impl(
             url, dest_dir, delay, timeout, max_photos, max_retries, max_delay, max_workers,
-            rate_limiter,
+            rate_limiter, dorsal,
         )
         return list(mapping.keys())
 
@@ -213,6 +229,7 @@ class PhotoSource(ABC):
         max_delay: float = 5.0,
         max_workers: int = 1,
         rate_limiter: AdaptiveRateLimiter | None = None,
+        dorsal: str | None = None,
     ) -> dict[Path, str]:
         """Como ``download``, pero además devuelve de qué URL vino cada
         foto — necesario cuando el caller no aloja copia propia de los
@@ -221,7 +238,7 @@ class PhotoSource(ABC):
         """
         return self._download_impl(
             url, dest_dir, delay, timeout, max_photos, max_retries, max_delay, max_workers,
-            rate_limiter,
+            rate_limiter, dorsal,
         )
 
     def _download_impl(
@@ -235,9 +252,10 @@ class PhotoSource(ABC):
         max_delay: float,
         max_workers: int = 1,
         rate_limiter: AdaptiveRateLimiter | None = None,
+        dorsal: str | None = None,
     ) -> dict[Path, str]:
         dest_dir.mkdir(parents=True, exist_ok=True)
-        photo_urls = self.list_photo_urls(url, max_photos=max_photos)
+        photo_urls = self.list_photo_urls(url, max_photos=max_photos, dorsal=dorsal)
 
         if not photo_urls:
             logger.warning("[%s] No se encontraron fotos en %s", self.name, url)

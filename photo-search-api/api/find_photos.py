@@ -338,8 +338,21 @@ async def find_photos(payload: FindPhotosRequest, request: Request):
             # del mismo tipo de fuente, ver rate_limiter=limiter) frena a
             # todos por igual. Álbum real de 297 fotos: ~2m48s secuencial
             # -> ~35-40s con 5 workers.
+            #
+            # dorsal=payload.dorsal: atajo real para ChipLevante (ver
+            # findmyrace/sources/chiplevante.py) — ese proveedor ya asocia
+            # fotos a dorsales por cronometraje+cámara, así que si el
+            # usuario dio dorsal, se piden directamente SUS fotos en vez
+            # del álbum completo (cientos de fotos menos que descargar).
+            # Fuentes sin este atajo (Flickr) ignoran el parámetro y
+            # devuelven el álbum completo igual — pasar dorsal aquí no
+            # cambia su comportamiento.
             album_results = source.download_with_source_urls(
-                album_url, album_dir, max_workers=DOWNLOAD_WORKERS, rate_limiter=limiter
+                album_url,
+                album_dir,
+                max_workers=DOWNLOAD_WORKERS,
+                rate_limiter=limiter,
+                dorsal=payload.dorsal,
             )
             if not album_results:
                 failed_albums.append(album_url)

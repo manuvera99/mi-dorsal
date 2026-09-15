@@ -6,6 +6,7 @@ Permite pasar una URL al CLI y que la app descargue el álbum automáticamente.
 from __future__ import annotations
 
 from .base import PhotoSource
+from .chiplevante import ChipLevantePhotoSource
 from .direct import DirectUrlSource
 from .factory import get_source_for_url, list_supported_sources
 from .flickr import FlickrSource
@@ -13,6 +14,7 @@ from .flickr import FlickrSource
 __all__ = [
     "PhotoSource",
     "FlickrSource",
+    "ChipLevantePhotoSource",
     "DirectUrlSource",
     "get_source_for_url",
     "list_supported_sources",

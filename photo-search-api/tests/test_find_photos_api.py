@@ -250,6 +250,42 @@ class TestAlbumCache:
         mock_reload.assert_called_once()
         mock_commit.assert_not_called()
 
+    def test_dorsal_passed_through_to_source_download(self) -> None:
+        """El dorsal del payload debe llegar a
+        download_with_source_urls — es lo que permite el atajo real de
+        ChipLevantePhotoSource (ver findmyrace/sources/chiplevante.py):
+        pedir directamente las fotos de ESE dorsal en vez del álbum
+        completo. Probado aquí con FlickrSource (que ignora el parámetro)
+        porque lo que se valida es que find_photos.py lo propaga, no el
+        comportamiento de una fuente concreta — eso ya está cubierto en
+        find-my-race/tests/test_chiplevante.py."""
+        captured_kwargs: dict = {}
+
+        def _fake_download(url, dest_dir, **kwargs):
+            captured_kwargs.update(kwargs)
+            return {}
+
+        with patch(
+            "api.find_photos._download_selfies",
+            new=AsyncMock(return_value=[Path("/tmp/fake_selfie.jpg")]),
+        ), patch("api.find_photos.FaceRecognizer") as mock_face_cls, patch(
+            "api.find_photos.FlickrSource.download_with_source_urls",
+            side_effect=_fake_download,
+        ):
+            mock_face_cls.return_value = self._mock_face()
+
+            client.post(
+                "/api/find_photos",
+                json={
+                    "jobId": "x",
+                    "selfieUrls": ["https://example.com/selfie.jpg"],
+                    "albumUrls": ["https://www.flickr.com/photos/u/albums/123/"],
+                    "dorsal": "47",
+                },
+            )
+
+        assert captured_kwargs.get("dorsal") == "47"
+
 
 class TestListAlbums:
     """POST /api/list_albums — lista los álbumes públicos de un perfil de

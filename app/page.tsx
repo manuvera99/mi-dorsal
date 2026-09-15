@@ -1,57 +1,62 @@
-// La home es mayormente estática (11 secciones + JSON-LD FAQ).
-// Cachear con revalidate 5 min en Vercel CDN reduce el TTFB de ~600ms a <50ms
-// y sube el PSI score ~15-25 puntos. La geo-personalización del H2 de
-// FeaturedRaces se sigue haciendo en cliente vía useUserRegion, así que el
-// render inicial es la versión genérica ("Las que más molan este mes") y se
-// reescribe tras hidratación sin afectar al HTML cacheado.
+// Home de mi-dorsal — versión minimalista (sep 2026).
 //
-// Ver docs/core/anti-patterns.md (la nota sobre force-dynamic aplica a /carreras, no a /).
+// Estructura: 5 secciones visibles + JSON-LD FAQ inline para SEO.
+// Las queries a Convex (FeaturedRaces) se hacen en cliente tras hidratación.
+// El resto de la home es estática y se sirve vía ISR con revalidate=300,
+// así el HTML inicial se transfiere cacheado y solo cambia cada 5 min.
+//
+// Ver docs/core/anti-patterns.md (la nota sobre force-dynamic aplica a
+// /carreras, no a /). Esta home no necesita force-dynamic.
 //
 // Sobre el HTML inicial: Vercel comprime con brotli los HTML dinámicos
 // (/carreras) y los assets estáticos (CSS, JS, fuentes), pero NO comprime
-// el HTML estático de ISR (revalidate). La home se transfiere sin comprimir
-// (~130 KB). Para reducir el impacto en PSI mobile, las 6 secciones
-// below-the-fold se cargan con `ssr: false` vía lazy-sections.tsx.
+// el HTML estático de ISR (revalidate). Para reducir el impacto en PSI
+// mobile, las 3 secciones below-the-fold (UseCase, Testimonials, FinalCta)
+// se cargan con `ssr: false` vía lazy-sections.tsx.
 import { Hero } from "@/components/home/hero";
-import { TrustBar } from "@/components/home/trust-bar";
-import { Problem } from "@/components/home/problem";
-import { HowItWorks } from "@/components/home/how-it-works";
 import { DiplomaAndSharePreview } from "@/components/home/diploma-preview";
-import { WhatsHere } from "@/components/home/whats-here";
-import { Features } from "@/components/home/features";
 import {
   FeaturedRacesLazy,
-  CommunityRankingLazy,
   UseCaseLazy,
   TestimonialsLazy,
-  FaqLazy,
   FinalCtaLazy,
 } from "@/components/home/lazy-sections";
 import {
   ResultBannerIsland,
   WelcomeOverlayIsland,
-  ProTeaserIsland,
-  StickerEditorTeaserIsland,
+  ProBadgeIsland,
 } from "@/components/home/client-only-islands";
 
 // Revalidar cada 5 minutos. La home es la misma para todos los usuarios de
-// una ventana de 5 min; las queries a Convex (FeaturedRaces, CommunityRanking)
-// se hacen en cliente tras hidratación, así que no se cachean a nivel Next.
+// una ventana de 5 min; las queries a Convex (FeaturedRaces) se hacen en
+// cliente tras hidratación, así que no se cachean a nivel Next.
 export const revalidate = 300;
 
 /**
- * Home de mi-dorsal v2.0.
+ * Home de mi-dorsal v3.0 (minimalista).
  *
- * Estructura: 11 secciones, mobile-first, semánticas, accesibles.
+ * Estructura: 5 secciones, mobile-first, semánticas, accesibles.
+ *
+ *  1. Hero                  — propuesta de valor + CTAs + dorsal visual
+ *  2. DiplomaAndSharePreview — el "qué te llega al buzón" (sección estrella)
+ *  3. FeaturedRaces         — carreras cerca de ti (geo-personalizado)
+ *  4. UseCase               — storytelling corto: la Behobia
+ *  5. Testimonials          — voces de la comunidad
+ *  6. FinalCta              — último empujón (registro / Pro suave)
  *
  * El Schema.org FAQPage se inyecta inline como string JSON pre-serializado
  * para evitar el error `a.map is not a function` que aparecía al pasar
- * arrays desde un Server Component en producción.
+ * arrays desde un Server Component en producción. El bloque visible del
+ * FAQ se eliminó (recorte de home minimalista) pero el schema se mantiene
+ * para preservar los rich snippets de Google.
  */
 export default function HomePage() {
   return (
     <>
-      {/* Schema.org FAQPage (pre-serializado para evitar issues de SSR) */}
+      {/* Schema.org FAQPage (pre-serializado para evitar issues de SSR).
+          La sección visible del FAQ se eliminó en la v3.0 minimalista,
+          pero el schema se mantiene inline para preservar SEO. Si se
+          actualizan las preguntas, regenerar este string. */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: FAQ_PAGE_JSONLD }}
@@ -61,72 +66,39 @@ export default function HomePage() {
         {/* 1. HERO */}
         <Hero />
 
-        {/* 2. BARRA DE CONFIANZA */}
-        <TrustBar />
-
-        {/* 3. PROBLEMA */}
-        <Problem />
-
-        {/* 4. CÓMO FUNCIONA */}
-        <HowItWorks />
-
-        {/* 4b. DIPLOMA + SHARE CARD — la sección estrella (nuevo sep 2026).
+        {/* 2. DIPLOMA + SHARE CARD — la sección estrella.
             Muestra visualmente los DOS entregables que llegan al cruzar la meta:
             el diploma PDF A4 (izquierda) y la imagen PNG 1200×630 para redes
-            (derecha). Posicionada justo tras HowItWorks para capitalizar la
-            atención del "Recibe diploma PDF + imagen para redes" del paso 3. */}
+            (derecha). Posicionada justo tras el Hero para capitalizar la
+            atención del "recibe tu resultado oficial con diploma PDF". */}
         <DiplomaAndSharePreview />
 
-        {/* 4d. TEASER DEL EDITOR DE STICKER (nuevo sep 2026). Continúa la
-            narrativa de DiplomaAndSharePreview: "así te llega
-            automáticamente" → "así lo personalizas tú (Pro)". Se oculta
-            si el usuario ya es Pro (ver StickerEditorTeaserIsland). */}
-        <StickerEditorTeaserIsland />
-
-        {/* 4c. LO QUE YA ESTÁ FUNCIONANDO (nuevo sep 2026) */}
-        <WhatsHere />
-
-        {/* 5. FEATURES */}
-        <Features />
-
-        {/* 5b. TEASER DEL PLAN PRO (nuevo sep 2026). Se oculta si el
-            usuario ya es Pro (bug corregido sesión 10 sep 2026 — ver
-            ProTeaserIsland en client-only-islands.tsx). */}
-        <ProTeaserIsland />
-
-        {/* 6. CARRERAS DESTACADAS (lazy: ssr:false, ahorra ~12 KB del HTML inicial) */}
+        {/* 3. CARRERAS DESTACADAS (lazy: ssr:false, ahorra HTML inicial).
+            Geo-personalizado en cliente vía useUserRegion. */}
         <FeaturedRacesLazy />
 
-        {/* 7. RANKING COMUNIDAD (lazy: ssr:false, ahorra ~5 KB) */}
-        <CommunityRankingLazy />
-
-        {/* 8. CASO DE USO / STORYTELLING (lazy: ssr:false) */}
+        {/* 4. CASO DE USO / STORYTELLING (lazy: ssr:false) */}
         <UseCaseLazy />
 
-        {/* 9. TESTIMONIOS (lazy: ssr:false) */}
+        {/* 5. TESTIMONIOS (lazy: ssr:false) */}
         <TestimonialsLazy />
 
-        {/* 10. FAQ (lazy: ssr:false — el JSON-LD va inline arriba, SEO intacto) */}
-        <FaqLazy />
-
-        {/* 11. CTA FINAL (lazy: ssr:false) */}
+        {/* 6. CTA FINAL (lazy: ssr:false). Incluye mención suave a Pro. */}
         <FinalCtaLazy />
       </div>
 
-      {/* 12. RESULT BANNER (client-only island) — se muestra solo para
-          usuarios logueados con un resultado oficial reciente.
-          Envuelto en dynamic({ssr:false}) para que el prerender ISR
-          de la home no falle intentando ejecutar useUser de Clerk
-          sin provider. Posicionado tras las 11 secciones para no
-          romper el orden documentado en docs/core/home-structure.md. */}
+      {/* ResultBanner (client-only island) — se muestra solo para usuarios
+          logueados con un resultado oficial reciente. Envuelto en
+          dynamic({ssr:false}) para que el prerender ISR de la home no falle
+          intentando ejecutar useUser de Clerk sin provider. Posicionado
+          tras las secciones para no romper el flujo visual. */}
       <div className="mx-auto max-w-7xl px-4">
         <ResultBannerIsland />
       </div>
 
-      {/* 13. ONBOARDING WELCOME OVERLAY (client-only island).
+      {/* Onboarding welcome overlay (client-only island).
           Modal esquivable que aparece la primera vez que un usuario
-          logueado aterriza en la home. Mismo motivo del wrapper:
-          Clerk+Convex no están disponibles en el prerender. */}
+          logueado aterriza en la home. */}
       <WelcomeOverlayIsland />
     </>
   );
@@ -137,7 +109,8 @@ export default function HomePage() {
  *
  * Pre-serializar el JSON en build time evita el error `a.map is not a function`
  * que aparecía al construir el objeto en runtime. Google lee perfectamente
- * este formato. Si se actualiza el FAQ, regenerar este string.
+ * este formato. La sección visible del acordeón se eliminó en la v3.0
+ * minimalista, pero el schema se conserva para preservar los rich snippets.
  */
 const FAQ_PAGE_JSONLD = JSON.stringify({
   "@context": "https://schema.org",
@@ -148,7 +121,7 @@ const FAQ_PAGE_JSONLD = JSON.stringify({
       name: "¿Cuánto cuesta mi-dorsal?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "El plan Free es completo y 100% gratis: catálogo, predicción VDOT, voto 8D, calendario personal, resultados por email y diploma PDF. Pro Mensual cuesta 2,99 €/mes y Pro Anual 24,99 €/año (≈ 2,08 €/mes, ahorras 30%). Pro añade Strava en tiempo real y análisis ilimitado de tu perfil de corredor. Cancela cuando quieras.",
+        text: "El plan Free es completo y 100% gratis: catálogo, predicción de tiempo, voto 8D, calendario personal, resultados por email y diploma PDF. Pro Mensual cuesta 2,99 €/mes y Pro Anual 24,99 €/año (≈ 2,08 €/mes, ahorras 30%). Pro añade Strava en tiempo real y análisis ilimitado de tu perfil de corredor. Cancela cuando quieras.",
       },
     },
     {

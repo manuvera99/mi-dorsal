@@ -3,16 +3,13 @@
 /**
  * FinalCTA — el último empujón antes de que el visitante se vaya.
  *
- * Bloque grande con fondo runner-primary, texto blanco. Una sola frase,
- * un solo botón. El segundo CTA es discreto para los que no están listos.
- *
- * Es un CTA de REGISTRO ("Empieza gratis" → /sign-up), no de upgrade a
- * Pro — no tiene sentido para NINGÚN usuario ya logueado (free o
- * premium), ya tiene cuenta. Se oculta entera si hay sesión activa (bug
- * reportado sesión 10 sep 2026, tras corregir los upsells de Pro del
- * hero y el teaser de precios — este bloque tenía el mismo problema
- * pero por un motivo distinto: nunca comprobó sesión, ni de premium ni
- * de free).
+ * v3.0 minimalista (sep 2026):
+ * - Bloque más compacto y directo que la versión anterior.
+ * - CTA primario: registro gratis.
+ * - CTA secundario: enlace sutil a `/pro` con mención suave a Pro (sin tabla
+ *   de precios ni comparación Free/Pro — eso vivía en la sección ProTeaser,
+ *   eliminada).
+ * - Se oculta entera si hay sesión activa (free o premium): ya tienen cuenta.
  *
  * Ya se monta vía FinalCtaLazy (dynamic ssr:false, ver lazy-sections.tsx),
  * así que useUser() es seguro aquí sin necesitar un island propio — el
@@ -43,7 +40,7 @@ function RealFinalCta() {
 function FinalCtaSection() {
   return (
     <section
-      className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-runner-primary via-red-600 to-rose-700 text-white px-6 py-12 md:px-12 md:py-16 text-center"
+      className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-runner-primary via-red-600 to-rose-700 text-white px-6 py-12 md:px-12 md:py-14 text-center"
       aria-labelledby="final-cta-title"
     >
       <div
@@ -56,20 +53,15 @@ function FinalCtaSection() {
       />
 
       <div className="relative max-w-2xl mx-auto">
-        <p className="text-base md:text-lg text-red-50/90 mb-3">🏁</p>
         <h2
           id="final-cta-title"
-          className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight mb-4"
+          className="text-3xl md:text-4xl font-bold leading-tight mb-3"
         >
           Tu temporada empieza con un dorsal.
         </h2>
-        <p className="text-base md:text-lg text-red-50/90 mb-3 max-w-xl mx-auto">
-          Únete a los primeros corredores que ya planifican su año con mi-dorsal. Sin pagar, sin
-          trampa, sin excusas.
-        </p>
-        <p className="text-sm md:text-base text-yellow-100/95 mb-8 max-w-xl mx-auto font-semibold">
-          Cuando cruces tu próxima meta, te esperamos en tu buzón con el diploma PDF y la imagen
-          para tus redes. 📬
+        <p className="text-base md:text-lg text-red-50/90 mb-8 max-w-xl mx-auto">
+          Únete gratis. Cuando cruces tu próxima meta, te esperamos en tu buzón
+          con el diploma PDF y la imagen para tus redes.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
           <Link

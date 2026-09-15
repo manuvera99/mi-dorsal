@@ -23,6 +23,10 @@
  * Cada wrapper aquí es un Client Component que internamente usa
  * `next/dynamic` con `ssr: false`. El padre (Server Component) solo
  * importa este wrapper como si fuera un componente normal.
+ *
+ * v3.0 minimalista (sep 2026): se eliminaron ProTeaserIsland,
+ * StickerEditorTeaserIsland y HowItWorksCtaIsland (las secciones que
+ * usaban estos wrappers también desaparecieron de la home).
  */
 
 import dynamic from "next/dynamic";
@@ -50,35 +54,9 @@ export const WelcomeOverlayIsland = dynamic(
 // es Pro (bug corregido sesión 10 sep 2026 — antes se mostraba siempre,
 // incluso a usuarios premium). Mismo motivo de ssr:false que los demás
 // islands: el prerender ISR de la home no tiene providers de Convex
-// montados. loading: null (igual que ResultBannerIsland/WelcomeOverlayIsland)
-// — no aparece nada hasta que el cliente resuelve el estado real.
+// montados. loading: null — no aparece nada hasta que el cliente
+// resuelve el estado real.
 export const ProBadgeIsland = dynamic(
   () => import("./pro-badge").then((m) => m.ProBadge),
-  { ssr: false, loading: () => null }
-);
-
-// ProTeaser: sección de 3 cards de precios ("Empieza gratis. Mejora
-// cuando lo necesites") en la home. Mismo bug y mismo fix que
-// ProBadgeIsland — se oculta entera si el usuario ya es Pro.
-export const ProTeaserIsland = dynamic(
-  () => import("./pro-teaser").then((m) => m.ProTeaser),
-  { ssr: false, loading: () => null }
-);
-
-// StickerEditorTeaser: sección 4d que anuncia el editor de sticker
-// personalizable como feature Pro. Mismo patrón que ProTeaserIsland
-// (useHasPremium via Convex) — se oculta si el usuario ya es Pro.
-export const StickerEditorTeaserIsland = dynamic(
-  () => import("./sticker-editor-teaser").then((m) => m.StickerEditorTeaser),
-  { ssr: false, loading: () => null }
-);
-
-// HowItWorksCta: botón "Empieza tu temporada gratis" al final de
-// <HowItWorks>. Es un CTA de registro (no de upgrade a Pro) — se oculta
-// para cualquier usuario ya logueado, sea free o premium (bug reportado
-// sesión 10 sep 2026). <HowItWorks> en sí sigue siendo Server Component
-// estático (contenido SEO); solo este botón necesita el island.
-export const HowItWorksCtaIsland = dynamic(
-  () => import("./how-it-works-cta").then((m) => m.HowItWorksCta),
   { ssr: false, loading: () => null }
 );

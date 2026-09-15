@@ -1,24 +1,38 @@
-# Estructura de la home (11 secciones)
+# Estructura de la home (5 secciones, v3.0 minimalista)
 
 > Documento on-demand. Se carga cuando se toca la home o `app/page.tsx`.
 
-11 secciones en este orden, **no reordenar sin motivo**:
+5 secciones visibles en este orden, **no reordenar sin discutirlo**:
 
-1. **Hero** (`components/home/hero.tsx`) — H1 "Tu dorsal, de principio a fin" + subtítulo + CTAs + dorsal visual estilizado. Incluye el `RegionSwitcher` flotante.
-2. **TrustBar** (`components/home/trust-bar.tsx`) — 4 stats con números honestos. Disclaimer visible.
-3. **Problem** (`components/home/problem.tsx`) — 3 cards con dolor del corredor popular. Tono humorístico.
-4. **HowItWorks** (`components/home/how-it-works.tsx`) — Sección oscura con 3 pasos y línea conectora.
-4b. **DiplomaAndSharePreview** (`components/home/diploma-preview.tsx`) — **Sección estrella** añadida en sep 2026. Mockups lado a lado del diploma PDF A4 y la imagen PNG 1200×630 para redes, con la promesa "al cruzar la meta, llegan los dos a tu buzón". Posicionada tras HowItWorks para capitalizar la atención del paso 3.
-5. **Features** (`components/home/features.tsx`) — 4 features en grid.
-6. **FeaturedRaces** (`components/home/featured-races.tsx`) — Carrusel de carreras con geo-personalización.
-7. **CommunityRanking** (`components/home/community-ranking.tsx`) — Top 3 con medallas.
-8. **UseCase** (`components/home/use-case.tsx`) — Storytelling "Behobia" con mockups de email.
-9. **Testimonials** (`components/home/testimonials.tsx`) — 3 cards + **disclaimer explícito de placeholders**.
-10. **FAQ** (`components/home/faq.tsx`) — 8 preguntas, acordeón accesible. El JSON-LD de la home está pre-serializado en `app/page.tsx` como string literal (ver §6.2 del stack).
-11. **FinalCta** (`components/home/final-cta.tsx`) — CTA final con dos opciones.
+1. **Hero** (`components/home/hero.tsx`) — H1 "Tu dorsal, de principio a fin" + subtítulo + CTAs + dorsal visual estilizado. Incluye el `RegionSwitcher` flotante y el `ProBadgeIsland` (oculto si el usuario ya es Pro).
+2. **DiplomaAndSharePreview** (`components/home/diploma-preview.tsx`) — **Sección estrella**. Mockups lado a lado del diploma PDF A4 y la imagen PNG 1200×630 para redes, con la promesa "al cruzar la meta, llegan los dos a tu buzón".
+3. **FeaturedRaces** (`components/home/featured-races.tsx`, vía `FeaturedRacesLazy`) — Carrusel de carreras con geo-personalización en cliente.
+4. **UseCase** (`components/home/use-case.tsx`, vía `UseCaseLazy`) — Storytelling "Behobia" con mockups de email.
+5. **Testimonials** (`components/home/testimonials.tsx`, vía `TestimonialsLazy`) — 4 cards con voces de la comunidad.
+6. **FinalCta** (`components/home/final-cta.tsx`, vía `FinalCtaLazy`) — CTA final con "Empieza gratis" + enlace secundario "Solo quiero curiosear carreras" (sin tabla de precios Pro, ver `docs/ROADMAP.md` §1.4).
 
-> **Secciones extra (numeradas 4c, 4d y 5b en el código pero no en este doc para no romper la cuenta)**: entre la 4b y la 5 están `StickerEditorTeaser` ("El sticker de tu resultado, a tu manera" — reclamo del editor premium `/editor-sticker`, sep 2026) y `WhatsHere` ("Lo que ya está funcionando"), y entre la 5 y la 6 está `ProTeaser` (3 cards Free/Pro/Pro Anual). El orden en `app/page.tsx` es: Hero · TrustBar · Problem · HowItWorks · DiplomaAndSharePreview · StickerEditorTeaser · WhatsHere · Features · ProTeaser · FeaturedRaces · CommunityRanking · UseCase · Testimonials · Faq · FinalCta.
+## Eliminado en v3.0 (sep 2026)
 
-## Refinamiento crítico
+Las siguientes secciones vivían en la home v2 y se quitaron en el recorte minimalista:
 
-**`app/page.tsx` exporta `export const dynamic = "force-dynamic"`** porque la home depende de la IP del usuario (geo) y de queries a Convex. Si quitas esto, la build en Vercel falla con `a.map is not a function` durante el prerender.
+- `TrustBar` — 4 stats con números honestos (movida a la lógica del hero, no se duplica).
+- `Problem` — 3 cards con dolor del corredor.
+- `HowItWorks` — sección oscura con 3 pasos.
+- `WhatsHere` — "Lo que ya está funcionando".
+- `Features` — grid de 4 features.
+- `StickerEditorTeaser` — reclamo del editor premium.
+- `ProTeaser` — 3 cards Free/Pro/Pro Anual. La mención a Pro se hace ahora de forma suave dentro de `FinalCta` y en el `ProBadgeIsland` del hero.
+- `CommunityRanking` — top 3 con medallas.
+- `FAQ` (visible) — acordeón accesible. **El JSON-LD `FAQPage` sigue inyectado inline** en `app/page.tsx` para preservar los rich snippets de Google.
+
+Los archivos `.tsx` de las secciones eliminadas se borraron en la misma sesión (ver commit).
+
+## SEO
+
+El Schema.org `FAQPage` está pre-serializado en `app/page.tsx` como string literal (ver §6.2 del stack). Aunque la sección visible del FAQ se eliminó, el schema se mantiene inline para preservar los rich snippets en Google. Si se actualizan las preguntas, regenerar el string.
+
+## Reglas técnicas
+
+- **`app/page.tsx` usa `export const revalidate = 300`** (ISR de 5 min). NO lleva `force-dynamic` — eso es para `/carreras`. Las queries a Convex (`FeaturedRaces`) se hacen en cliente tras hidratación.
+- Las 3 secciones below-the-fold (`UseCase`, `Testimonials`, `FinalCta`) se cargan con `ssr: false` vía `components/home/lazy-sections.tsx` para reducir el HTML inicial.
+- Los componentes que dependen de `useUser`/`useQuery` van envueltos en `dynamic({ ssr: false })` vía `components/home/client-only-islands.tsx` (`ProBadgeIsland`, `ResultBannerIsland`, `WelcomeOverlayIsland`).

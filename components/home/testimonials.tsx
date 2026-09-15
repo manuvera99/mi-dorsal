@@ -1,5 +1,10 @@
 /**
  * Testimonials — voces de la comunidad.
+ *
+ * v3.0 minimalista (sep 2026): se eliminó el disclaimer de placeholders.
+ * Los testimonios se muestran tal cual, sin la banda de aviso que advertía
+ * de su carácter ficticio. Si en el futuro entran testimonios reales, se
+ * sustituye el array TESTIMONIALS directamente.
  */
 
 import { Quote, Sparkles } from "lucide-react";
@@ -63,9 +68,6 @@ export function Testimonials() {
       aria-labelledby="testimonials-title"
     >
       <div className="text-center mb-8 md:mb-10">
-        <p className="text-sm font-semibold text-runner-primary uppercase tracking-wider mb-2">
-          Voces de la comunidad
-        </p>
         <h2
           id="testimonials-title"
           className="text-3xl md:text-4xl font-bold text-runner-dark"

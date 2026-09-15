@@ -9,37 +9,36 @@
  *
  * ¿Por qué `ssr: false`?
  * - Reduce el HTML inicial (RSC payload + markup) que Vercel transfiere sin
- *   comprimir (~130 KB en la home).
+ *   comprimir.
  * - Mejora FCP/LCP en PSI mobile con 4G simulado.
- * - Las queries a Convex (FeaturedRaces, CommunityRanking) ya se hacían en cliente,
- *   así que en SSR solo se renderizaba el skeleton. Con `ssr: false` se ahorra
+ * - Las queries a Convex (FeaturedRaces) ya se hacían en cliente, así que
+ *   en SSR solo se renderizaba el skeleton. Con `ssr: false` se ahorra
  *   ese skeleton del HTML inicial.
  *
  * ¿Qué pasa con el SEO?
- * - FeaturedRaces, CommunityRanking, UseCase, Testimonials, FinalCta: Googlebot
- *   ejecuta JS, ve el contenido tras hidratación. No se pierde SEO.
- * - FAQ: el JSON-LD se inyecta inline en page.tsx (no se mueve), así que el
- *   SEO del FAQ está intacto. El contenido visible del acordeón se renderiza
- *   tras hidratación (también lo ve Googlebot).
+ * - FeaturedRaces, UseCase, Testimonials, FinalCta: Googlebot ejecuta JS,
+ *   ve el contenido tras hidratación. No se pierde SEO.
+ * - FAQ: el JSON-LD se inyecta inline en page.tsx (no se mueve), así que
+ *   el SEO del FAQ está intacto. El contenido visible del acordeón se
+ *   eliminó en la v3.0 minimalista de la home.
+ *
+ * v3.0 minimalista (sep 2026): se eliminaron CommunityRankingLazy y
+ * FaqLazy. La home ya no muestra ranking de comunidad ni acordeón FAQ
+ * visible.
  */
 
 import dynamic from "next/dynamic";
 
-// FeaturedRaces + CommunityRanking: client components que hacen queries a
-// Convex. En SSR solo se renderizaba un skeleton de 6+3 placeholders. Moviendo
-// a `ssr: false` ahorramos ese skeleton del HTML inicial.
+// FeaturedRaces: client component que hace queries a Convex. En SSR solo
+// se renderizaba un skeleton de 6 placeholders. Moviendo a `ssr: false`
+// ahorramos ese skeleton del HTML inicial.
 export const FeaturedRacesLazy = dynamic(
   () => import("./featured-races").then((m) => m.FeaturedRaces),
   { ssr: false, loading: () => <SectionSkeleton minH="500px" /> }
 );
 
-export const CommunityRankingLazy = dynamic(
-  () => import("./community-ranking").then((m) => m.CommunityRanking),
-  { ssr: false, loading: () => <SectionSkeleton minH="300px" /> }
-);
-
 // Below-the-fold: ya estaban en next/dynamic pero con ssr:true. Las movemos
-// a ssr:false para que no inflle el HTML inicial.
+// a ssr:false para que no inflen el HTML inicial.
 export const UseCaseLazy = dynamic(
   () => import("./use-case").then((m) => m.UseCase),
   { ssr: false, loading: () => <SectionSkeleton minH="500px" /> }
@@ -47,11 +46,6 @@ export const UseCaseLazy = dynamic(
 
 export const TestimonialsLazy = dynamic(
   () => import("./testimonials").then((m) => m.Testimonials),
-  { ssr: false, loading: () => <SectionSkeleton minH="400px" /> }
-);
-
-export const FaqLazy = dynamic(
-  () => import("./faq").then((m) => m.Faq),
   { ssr: false, loading: () => <SectionSkeleton minH="400px" /> }
 );
 

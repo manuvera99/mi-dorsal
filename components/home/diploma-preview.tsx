@@ -23,11 +23,9 @@
  * /editor-sticker/{myRaceId} (ver app/editor-sticker/[myRaceId]/client.tsx)
  * y se exporta client-side con html-to-image (lib/sticker-editor/export.ts).
  *
- * Posición en la home: 4b (entre HowItWorks y WhatsHere) para que el
- * visitante, tras leer "recibe tu resultado oficial con diploma PDF",
- * vea inmediatamente QUÉ recibe. Justo después va la sección 4d
- * (components/home/sticker-editor-teaser.tsx), que retoma este mismo
- * sticker para explicar la feature premium con más detalle y su CTA.
+ * Posición en la home: 2 (justo tras el Hero) para que el visitante,
+ * tras leer "recibe tu resultado oficial con diploma PDF", vea
+ * inmediatamente QUÉ recibe.
  *
  * NO interactivo. Sirve para visualizar la promesa. El CTA del diploma
  * lleva a diploma-preview.html (A4 imprimible de muestra); el del sticker

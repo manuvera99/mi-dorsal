@@ -374,6 +374,7 @@ export const markDone = internalMutation({
     stats: v.optional(
       v.object({
         photosScanned: v.number(),
+        photosOmitted: v.optional(v.number()),
         durationMs: v.number(),
         platform: v.string(),
       }),

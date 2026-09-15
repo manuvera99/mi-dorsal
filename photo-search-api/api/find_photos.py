@@ -58,6 +58,7 @@ from findmyrace.matcher import MatcherWeights
 from findmyrace.ocr import DorsalDetector
 from findmyrace.pipeline import Pipeline
 from findmyrace.sources import get_source_for_url
+from findmyrace.sources.base import AdaptiveRateLimiter, PhotoSource
 from findmyrace.sources.flickr import FlickrSource
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -71,9 +72,25 @@ app = FastAPI(title="mi-dorsal photo-search-api", version="0.1.0")
 API_SECRET = os.environ.get("PHOTO_SEARCH_API_SECRET")
 
 # Tope de duración interno, por debajo del máximo real de la función
-# (configurado en vercel.json / maxDuration) para poder devolver un error
-# controlado en vez de que Vercel corte la conexión en seco.
-SOFT_TIMEOUT_SECONDS = int(os.environ.get("PHOTO_SEARCH_SOFT_TIMEOUT", "700"))
+# (timeout=1500 en modal_app.py / maxDuration en vercel.json) para poder
+# devolver un error controlado antes de que la plataforma corte la
+# conexión en seco. Bug corregido en esta misma sesión: el valor anterior
+# (700) era MAYOR que el timeout real de Modal en ese momento (600), así
+# que este chequeo nunca llegaba a activarse a tiempo — el 500 lo daba
+# directamente la plataforma, sin este mensaje explicativo.
+SOFT_TIMEOUT_SECONDS = int(os.environ.get("PHOTO_SEARCH_SOFT_TIMEOUT", "1400"))
+
+# Tope de fotos analizadas por búsqueda, sumando TODOS los álbumes. Con el
+# selector de álbumes de perfil (hasta 3 álbumes reales, no solo 1) el
+# total puede superar de sobra lo que el matching puede procesar dentro
+# del timeout — confirmado en producción: 1044 fotos agotó un timeout de
+# 600s al 95% del matching sin devolver resultado (dato real: ~1.9
+# fotos/seg de ritmo de matching). Con 1500s de timeout, el límite teórico
+# ronda 2400-2500 fotos; 1500 deja margen real frente a esa cota (CPU
+# compartida, fotos más pesadas, variabilidad del backoff de descarga).
+# Por encima de esto, se analizan solo las primeras N y se avisa en el
+# resultado (ver Pipeline.run max_images / stats.photosOmitted).
+MAX_PHOTOS_PER_JOB = int(os.environ.get("PHOTO_SEARCH_MAX_PHOTOS", "1500"))
 
 # Descargas simultáneas del álbum. 5 es un punto medio: suficiente para
 # bajar bastante el tiempo total (medido: ~2m48s -> objetivo ~35-40s en
@@ -203,16 +220,35 @@ async def find_photos(payload: FindPhotosRequest, request: Request):
         # cualquier otra URL. Con varios álbumes, uno no soportado o que
         # falle no aborta el job entero: se sigue con los demás, y solo se
         # devuelve error si NINGUNO de los álbumes dio resultado.
+        #
+        # source/limiter por TIPO de fuente (no por álbum): con el selector
+        # de álbumes de perfil, los 3 álbumes de una búsqueda suelen ser
+        # del mismo fotógrafo/dominio. Descargarlos con una FlickrSource y
+        # un AdaptiveRateLimiter nuevos cada vez hacía que el 2º y 3er
+        # álbum reiniciaran el backoff desde cero, ignorando que Flickr ya
+        # estaba limitando por el álbum anterior — confirmado en
+        # producción (15 sep 2026): 3 álbumes seguidos, el 2º tuvo 94% de
+        # descargas fallidas por 429 (10/168) porque "no sabía" que el 1º
+        # ya había disparado el límite. Reutilizar ambos por tipo de
+        # fuente hace que el backoff persista entre álbumes del mismo
+        # proveedor, tal como ya persistía entre fotos de un mismo álbum.
         path_to_source_url: dict[Path, str] = {}
         unsupported_albums: list[str] = []
         failed_albums: list[str] = []
+        sources_by_type: dict[str, PhotoSource] = {}
+        limiters_by_type: dict[str, AdaptiveRateLimiter] = {}
 
         for i, album_url in enumerate(payload.album_urls):
             try:
-                source = get_source_for_url(album_url)
+                probe = get_source_for_url(album_url)
             except ValueError:
                 unsupported_albums.append(album_url)
                 continue
+
+            source = sources_by_type.setdefault(probe.name, probe)
+            limiter = limiters_by_type.setdefault(
+                probe.name, AdaptiveRateLimiter(base_delay=0.2, max_delay=5.0)
+            )
 
             # Subcarpeta por álbum, todas bajo "albums/" (no directamente
             # en tmpdir — ahí también viven selfies/ y face_cache/, que no
@@ -227,11 +263,13 @@ async def find_photos(payload: FindPhotosRequest, request: Request):
             #
             # max_workers=DOWNLOAD_WORKERS: descargas en paralelo con
             # backoff adaptativo COMPARTIDO entre workers (ver
-            # findmyrace/sources/base.py::_AdaptiveRateLimiter) — un 429
-            # visto por cualquier worker frena a todos por igual. Álbum
-            # real de 297 fotos: ~2m48s secuencial -> ~35-40s con 5 workers.
+            # findmyrace/sources/base.py::AdaptiveRateLimiter) — un 429
+            # visto por cualquier worker (de este álbum O de uno anterior
+            # del mismo tipo de fuente, ver rate_limiter=limiter) frena a
+            # todos por igual. Álbum real de 297 fotos: ~2m48s secuencial
+            # -> ~35-40s con 5 workers.
             album_results = source.download_with_source_urls(
-                album_url, album_dir, max_workers=DOWNLOAD_WORKERS
+                album_url, album_dir, max_workers=DOWNLOAD_WORKERS, rate_limiter=limiter
             )
             if not album_results:
                 failed_albums.append(album_url)
@@ -264,11 +302,14 @@ async def find_photos(payload: FindPhotosRequest, request: Request):
         # (no un único album_dir) + recursive=True: iter_images ya recorre
         # subcarpetas (findmyrace/pipeline.py), así que las N subcarpetas
         # album_0/album_1/... se analizan juntas en una sola pasada.
+        # max_images=MAX_PHOTOS_PER_JOB: protección real contra timeout —
+        # ver docstring de Pipeline.run para el caso real que lo motivó.
         photo_scores = pipeline.run(
             album=tmpdir / "albums",
             target_dorsal=payload.dorsal or "",
             min_score=payload.min_score,
             top_k=payload.top_k,
+            max_images=MAX_PHOTOS_PER_JOB,
         )
 
         results = [
@@ -292,13 +333,17 @@ async def find_photos(payload: FindPhotosRequest, request: Request):
             for r in photo_scores
         ]
 
+        omitted = pipeline.last_run_omitted
+        photos_scanned = len(path_to_source_url) - omitted
+
         return {
             "jobId": job_id,
             "status": "done",
             "results": results,
             "rejectedSelfies": rejected,
             "stats": {
-                "photosScanned": len(path_to_source_url),
+                "photosScanned": photos_scanned,
+                "photosOmitted": omitted,
                 "durationMs": round((time.time() - t0) * 1000),
                 "platform": os.environ.get("PHOTO_SEARCH_PLATFORM", "vercel"),
             },

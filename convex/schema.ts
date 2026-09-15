@@ -1513,6 +1513,12 @@ export default defineSchema({
     stats: v.optional(
       v.object({
         photosScanned: v.number(),
+        // >0 si la suma de fotos de todos los álbumes superó
+        // MAX_PHOTOS_PER_JOB (find_photos.py) — solo se analizaron las
+        // primeras photosScanned, el resto se omitió para no agotar el
+        // timeout de la plataforma. Ver PHOTO_SEARCH_TECH.md, incidente
+        // real: 1044 fotos agotó un timeout de 600s sin devolver nada.
+        photosOmitted: v.optional(v.number()),
         durationMs: v.number(),
         platform: v.string(), // "modal" | "vercel" — ver TECH.md §15.7
       }),

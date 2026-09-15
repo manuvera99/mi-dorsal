@@ -35,7 +35,12 @@ interface FindPhotosResponse {
   status: "done" | "error";
   results?: FindPhotosResult[];
   rejectedSelfies?: { index: number; reasons: string[] }[];
-  stats?: { photosScanned: number; durationMs: number; platform: string };
+  stats?: {
+    photosScanned: number;
+    photosOmitted?: number;
+    durationMs: number;
+    platform: string;
+  };
   error?: string;
 }
 

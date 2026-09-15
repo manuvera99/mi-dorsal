@@ -47,6 +47,12 @@ class Pipeline:
             self.dorsal, self.color, face_recognizer=face_recognizer, weights=weights
         )
         self.max_workers = max_workers or settings.max_workers
+        # Fotos omitidas por max_images en la última llamada a run() — 0 si
+        # no se omitió ninguna o si run() no se ha llamado todavía. Atributo
+        # simple en vez de cambiar la firma de retorno de run() (que sigue
+        # siendo list[PhotoScore] para no romper callers existentes, p. ej.
+        # find-my-race/src/findmyrace/cli.py).
+        self.last_run_omitted = 0
 
     def run(
         self,
@@ -58,6 +64,7 @@ class Pipeline:
         recursive: bool = True,
         progress_callback: Callable[[int, int, PhotoScore | None], None] | None = None,
         include_identity_matches: bool = True,
+        max_images: int | None = None,
     ) -> list[PhotoScore]:
         """Procesa todas las fotos del álbum y devuelve resultados ordenados.
 
@@ -85,14 +92,40 @@ class Pipeline:
                 era la persona correcta y no aparecía en los resultados.
                 Pon False para el comportamiento antiguo (un único filtro
                 sobre el score combinado, sin excepción para identidad).
+            max_images: si se da, procesa como máximo esta cantidad de
+                fotos (las primeras `max_images` de `iter_images`, que
+                itera ordenado — ver findmyrace/utils.py). Protección real
+                contra timeouts del caller (Vercel/Modal): sin esto, un
+                caller que junte varios álbumes grandes (ver
+                photo-search-api/api/find_photos.py, selector de álbumes
+                de perfil) puede acumular miles de fotos y agotar el
+                timeout de la plataforma a mitad del matching, sin devolver
+                ningún resultado — confirmado en producción: 1044 fotos
+                agotó un timeout de 600s al 95% sin responder nada. Con
+                este límite, el job siempre termina y devuelve lo que pudo
+                analizar, dejando claro en el log cuántas se omitieron.
 
         Returns:
             Lista de PhotoScore ordenada por score descendente.
         """
-        image_paths = list(iter_images(album, recursive=recursive))
-        if not image_paths:
+        all_image_paths = list(iter_images(album, recursive=recursive))
+        if not all_image_paths:
             logger.warning("Álbum vacío: %s", album)
             return []
+
+        image_paths = all_image_paths
+        self.last_run_omitted = 0
+        if max_images is not None and len(all_image_paths) > max_images:
+            self.last_run_omitted = len(all_image_paths) - max_images
+            image_paths = all_image_paths[:max_images]
+            logger.warning(
+                "Álbum con %d fotos supera max_images=%d — se analizan solo las "
+                "primeras %d, %d omitidas para no agotar el timeout de la plataforma",
+                len(all_image_paths),
+                max_images,
+                max_images,
+                self.last_run_omitted,
+            )
 
         logger.info(
             "Procesando %d fotos de %s (workers=%d, dorsal='%s', color=%s)",

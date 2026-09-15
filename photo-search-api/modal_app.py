@@ -81,7 +81,16 @@ _secrets = [modal.Secret.from_name("photo-search-api-secret")]
     # pasen un directorio explícito — redirigimos HOME al volumen montado
     # para que esos pesos persistan entre invocaciones (y entre despliegues).
     env={"HOME": "/cache"},
-    timeout=600,
+    # 1500s (25 min): con el selector de álbumes de perfil (hasta 3
+    # álbumes reales, no solo 1) el total de fotos a analizar puede
+    # superar de sobra las ~300-500 fotos de un álbum único — medido en
+    # producción: 1044 fotos agotó el timeout anterior de 600s a mitad
+    # del matching (95% completado, sin devolver resultado). SOFT_TIMEOUT
+    # en find_photos.py debe quedar por debajo de este valor, no por
+    # encima (bug corregido en la misma sesión: antes SOFT_TIMEOUT=700 >
+    # este timeout=600, así que el soft-timeout nunca llegaba a activarse
+    # a tiempo).
+    timeout=1500,
     cpu=2,
     memory=4096,
     min_containers=0,

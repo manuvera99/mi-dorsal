@@ -146,6 +146,9 @@ function DoneResults({
             ? `Revisamos ${full.stats.photosScanned} fotos del álbum sin encontrar tu cara.`
             : "Prueba con una selfie más clara, de frente y con buena luz."}
         </p>
+        {!!full?.stats?.photosOmitted && (
+          <OmittedPhotosNotice photosOmitted={full.stats.photosOmitted} />
+        )}
         <button type="button" onClick={onSearchAgain} className="btn-secondary mt-4 mx-auto flex">
           <RotateCcw className="h-4 w-4 mr-2" />
           Buscar con otra selfie
@@ -166,6 +169,10 @@ function DoneResults({
           Buscar de nuevo
         </button>
       </div>
+
+      {!!full.stats?.photosOmitted && (
+        <OmittedPhotosNotice photosOmitted={full.stats.photosOmitted} />
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {full.results.map((r, i) => (
@@ -191,5 +198,19 @@ function DoneResults({
         ))}
       </div>
     </div>
+  );
+}
+
+/** Aviso cuando el álbum (o suma de álbumes) tenía más fotos de las que
+ *  pudimos analizar en esta búsqueda — ver MAX_PHOTOS_PER_JOB en
+ *  photo-search-api/api/find_photos.py. No es un error: el job terminó
+ *  con éxito, solo no llegó a revisar todo. */
+function OmittedPhotosNotice({ photosOmitted }: { photosOmitted: number }) {
+  return (
+    <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-amber-600 justify-center">
+      <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+      El álbum tenía más fotos de las que pudimos revisar — nos quedaron {photosOmitted} sin
+      analizar. Prueba con menos álbumes a la vez si crees que puedes estar ahí.
+    </p>
   );
 }

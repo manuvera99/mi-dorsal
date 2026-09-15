@@ -31,7 +31,7 @@ DEFAULT_HEADERS: dict[str, str] = {
 }
 
 
-class _AdaptiveRateLimiter:
+class AdaptiveRateLimiter:
     """Backoff adaptativo thread-safe: la misma lógica que antes vivía como
     variables locales del bucle secuencial (``current_delay``,
     ``consecutive_ok``), ahora compartida entre varios workers.
@@ -43,6 +43,18 @@ class _AdaptiveRateLimiter:
     ``N / delay_medio`` — subir ``current_delay`` cuando cualquiera de
     ellos ve un 429 frena a todos por igual, igual que en el modo
     secuencial frenaba las siguientes descargas.
+
+    Público (sin guión bajo) desde esta sesión: un caller que descarga
+    VARIOS álbumes del mismo proveedor en la misma búsqueda (ver
+    photo-search-api/api/find_photos.py, selector de álbumes de perfil)
+    debe crear UNA instancia y pasarla a cada llamada de
+    ``download_with_source_urls`` — si no, cada álbum reinicia el backoff
+    desde cero e ignora que Flickr ya estaba limitando por el álbum
+    anterior. Confirmado en producción (15 sep 2026): 3 álbumes seguidos
+    del mismo perfil, cada uno con su propio limitador nuevo, provocó que
+    el segundo álbum tuviera un 94% de descargas fallidas por 429 (10/168)
+    — el primero ya había "quemado" el margen de Flickr y el segundo
+    empezaba como si nada hubiera pasado.
     """
 
     def __init__(self, base_delay: float, max_delay: float) -> None:
@@ -131,6 +143,7 @@ class PhotoSource(ABC):
         max_retries: int = 3,
         max_delay: float = 5.0,
         max_workers: int = 1,
+        rate_limiter: AdaptiveRateLimiter | None = None,
     ) -> list[Path]:
         """Descarga todas las fotos a dest_dir y devuelve sus paths locales.
 
@@ -159,16 +172,23 @@ class PhotoSource(ABC):
             max_workers: descargas simultáneas. 1 (por defecto) mantiene
                 el comportamiento secuencial original. >1 usa un pool de
                 hilos con el mismo backoff adaptativo, pero compartido
-                entre workers (ver ``_AdaptiveRateLimiter``) — la tasa
+                entre workers (ver ``AdaptiveRateLimiter``) — la tasa
                 total de peticiones/segundo sigue respondiendo a los
                 429/5xx de la misma forma, solo se reparte entre varias
                 conexiones a la vez en lugar de una.
+            rate_limiter: si se da (solo aplica con max_workers>1), se
+                reutiliza este limitador en vez de crear uno nuevo — usar
+                cuando el caller descarga VARIOS álbumes en la misma
+                búsqueda (ver docstring de ``AdaptiveRateLimiter``), para
+                que el backoff de un álbum persista al pasar al siguiente
+                en vez de reiniciarse desde cero.
 
         Returns:
             Lista de paths a las imágenes descargadas.
         """
         mapping = self._download_impl(
-            url, dest_dir, delay, timeout, max_photos, max_retries, max_delay, max_workers
+            url, dest_dir, delay, timeout, max_photos, max_retries, max_delay, max_workers,
+            rate_limiter,
         )
         return list(mapping.keys())
 
@@ -182,6 +202,7 @@ class PhotoSource(ABC):
         max_retries: int = 3,
         max_delay: float = 5.0,
         max_workers: int = 1,
+        rate_limiter: AdaptiveRateLimiter | None = None,
     ) -> dict[Path, str]:
         """Como ``download``, pero además devuelve de qué URL vino cada
         foto — necesario cuando el caller no aloja copia propia de los
@@ -189,7 +210,8 @@ class PhotoSource(ABC):
         photo-search-api, que no tiene storage propio, ver find_photos.py).
         """
         return self._download_impl(
-            url, dest_dir, delay, timeout, max_photos, max_retries, max_delay, max_workers
+            url, dest_dir, delay, timeout, max_photos, max_retries, max_delay, max_workers,
+            rate_limiter,
         )
 
     def _download_impl(
@@ -202,6 +224,7 @@ class PhotoSource(ABC):
         max_retries: int,
         max_delay: float,
         max_workers: int = 1,
+        rate_limiter: AdaptiveRateLimiter | None = None,
     ) -> dict[Path, str]:
         dest_dir.mkdir(parents=True, exist_ok=True)
         photo_urls = self.list_photo_urls(url, max_photos=max_photos)
@@ -221,7 +244,8 @@ class PhotoSource(ABC):
             )
         else:
             downloaded = self._download_parallel(
-                photo_urls, dest_dir, delay, timeout, max_retries, max_delay, max_workers
+                photo_urls, dest_dir, delay, timeout, max_retries, max_delay, max_workers,
+                rate_limiter,
             )
 
         logger.info(
@@ -283,6 +307,7 @@ class PhotoSource(ABC):
         max_retries: int,
         max_delay: float,
         max_workers: int,
+        rate_limiter: AdaptiveRateLimiter | None = None,
     ) -> dict[Path, str]:
         """Pool de hilos con backoff adaptativo compartido.
 
@@ -292,8 +317,12 @@ class PhotoSource(ABC):
         entre N conexiones. Un 429 visto por cualquier worker sube el
         delay para todos; una racha sin problemas (contada de forma
         global, no por worker) lo relaja igual que antes.
+
+        rate_limiter: si se pasa, se reutiliza en vez de crear uno nuevo —
+        ver docstring de ``download``/``AdaptiveRateLimiter`` para el caso
+        real que lo motivó (varios álbumes en la misma búsqueda).
         """
-        limiter = _AdaptiveRateLimiter(base_delay=delay, max_delay=max_delay)
+        limiter = rate_limiter or AdaptiveRateLimiter(base_delay=delay, max_delay=max_delay)
         downloaded: dict[Path, str] = {}
         downloaded_lock = threading.Lock()
 

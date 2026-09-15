@@ -42,7 +42,16 @@ export function ConvexClientProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ClerkProvider publishableKey={clerkPublishableKey}>
+    <ClerkProvider
+      publishableKey={clerkPublishableKey}
+      // mi-dorsal.com es el dominio primario de esta instancia de Clerk.
+      // DorsalSwap (dorswap.vercel.app / futuro dominio propio) comparte
+      // el mismo pool de usuarios como "satellite domain" — Clerk exige
+      // que el primario autorice explícitamente el retorno del handshake
+      // de sincronización desde cada satélite, o el satélite se queda en
+      // blanco al intentar sincronizar la sesión.
+      allowedRedirectOrigins={["https://dorswap.vercel.app"]}
+    >
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
         {children}
       </ConvexProviderWithClerk>

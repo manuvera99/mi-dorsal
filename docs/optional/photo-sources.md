@@ -8,11 +8,11 @@
 > carreras populares españolas, con URLs reales verificadas, para evaluar
 > cuáles pueden integrarse en la feature "Encuentra tus fotos" descrita en
 > `docs/plans/PHOTO_SEARCH_TECH.md` y `docs/plans/PHOTO_SEARCH_PRD.md`.
-> **Adapters de FOTOS reales hoy: Flickr y ChipLevante** (ambos en
-> producción, ver §0). El resto de proveedores de esta lista han sido
-> investigados y en su mayoría **descartados con datos reales** (§3.1,
-> §3.1.1, §7.1) — no por falta de tiempo, sino porque no se sostenían al
-> verificarlos contra el catálogo real de mi-dorsal.
+> **Adapters de FOTOS reales hoy: Flickr, ChipLevante y Grupo Brotons**
+> (los tres en producción, ver §0). El resto de proveedores de esta lista
+> han sido investigados y en su mayoría **descartados con datos reales**
+> (§3.1, §3.1.3, §7.1) — no por falta de tiempo, sino porque no se
+> sostenían al verificarlos contra el catálogo real de mi-dorsal.
 
 ---
 
@@ -25,6 +25,7 @@
 | Descarga con backoff adaptativo compartido entre álbumes (`AdaptiveRateLimiter`) | ✅ Producción |
 | Source adapter Flickr | ✅ Producción |
 | Source adapter ChipLevante (con atajo por dorsal, ver §3.1) | ✅ Producción (15 sep 2026) |
+| Source adapter Grupo Brotons (Alicante/Benidorm/El Campello, ver §3.1) | ✅ Producción (15 sep 2026) |
 | Caché persistente de álbumes entre búsquedas (Modal Volume) | ✅ Producción (15 sep 2026) |
 | Alerta si Flickr rompe la extracción del `site_key` público | ✅ Producción (15 sep 2026) |
 | Schema Convex `photoSearchJobs` | ✅ Producción |
@@ -159,6 +160,41 @@ ya ofrecen "búsqueda por selfie" — antes hay que saber:
   de fotos para ChipLevante" (find-my-race) y "feat(photo-search): soporte
   para álbumes de ChipLevante" (mi-dorsal), 15 sep 2026.
 
+#### Grupo Brotons (Alicante/Benidorm/El Campello) — ✅ EN PRODUCCIÓN (15 sep 2026)
+- Organizador real (no agregador) de carreras populares/solidarias de la
+  zona de Alicante — confirmado en `officialUrl` de 5-6 carreras del
+  catálogo, pero con **47 álbumes de fotos reales** en su índice
+  (`grupobrotons.com/fotografias/`), muchos correspondientes a eventos del
+  catálogo que hoy no tienen ese enlace vinculado en `officialUrl` (p. ej.
+  "Elche Carrera contra el Cáncer de Páncreas", con hasta 3 álbumes
+  distintos del mismo evento).
+- **Más simple que ChipLevante**: galería propia con plugin **NextGEN
+  Gallery de WordPress**, HTML estático **sin JS ni sesión** — a
+  diferencia de ChipLevante (que exige cookie de sesión) o Flickr (API
+  REST), aquí el HTML de la propia página del álbum ya trae los `<a
+  href>` a las fotos de tamaño completo. Patrón:
+  `grupobrotons.com/fotografias/nggallery/album/{slug}[/page/N]`.
+  Confirmado con un álbum real: 370 fotos únicas en 4 páginas
+  (100+100+100+70), fin de paginación cuando una página no devuelve
+  ninguna foto.
+- La ficha de un evento **no enlaza directamente a su álbum** — solo al
+  índice general. El usuario tiene que pegar la URL del álbum concreto,
+  igual que ya hace con Flickr/ChipLevante.
+- **⚠️ Hallazgo de infraestructura, no solo de este proveedor**: el
+  servidor sirve `Content-Encoding: br` (Brotli). Sin el paquete `brotli`
+  instalado, `requests` devuelve el body comprimido tal cual dentro de
+  `resp.text`, **sin lanzar ninguna excepción** — la búsqueda de fotos
+  fallaba en silencio (0 resultados, indistinguible de "sin fotos") hasta
+  detectarlo comparando el tamaño real de la respuesta (18KB comprimido
+  vs. 210KB real). Corregido añadiendo `brotli` como dependencia en los
+  tres sitios que instalan paquetes Python de este proyecto
+  (`photo-search-api/pyproject.toml`, `requirements.txt`,
+  `modal_app.py`, y también `find-my-race/pyproject.toml`+
+  `requirements.txt` por el mismo motivo) — relevante para cualquier
+  adapter futuro contra un servidor que también use Brotli.
+- **Veredicto:** ✅ **Ya implementado.** Ver
+  `findmyrace/sources/grupobrotons.py`, `GrupoBrotonsPhotoSource`.
+
 #### Masatletismo — ❌ DESCARTADO (15 sep 2026, datos reales)
 - **Media library WordPress estándar, galería SÍ real** (a diferencia de
   Sportmaniacs): confirmado con la carrera de ejemplo, ~150 `<img>` reales
@@ -213,7 +249,43 @@ ya ofrecen "búsqueda por selfie" — antes hay que saber:
 
 ---
 
-### 3.1.1. Genéricos — link-out, salvo Drive (reconsiderar si aparece demanda real)
+### 3.1.2. Ronda de investigación por dominio real (`officialUrl`) — 15 sep 2026
+
+Tras confirmar Flickr/ChipLevante/Grupo Brotons, se revisaron los
+dominios reales de `race.officialUrl` con más carreras del catálogo que
+aún no tenían veredicto (top ~30 por volumen, más una comprobación
+cruzada con `registrationUrl`/`resultsUrl`). Resumen — detalle completo
+de cada uno en los apartados anteriores o abajo según el caso:
+
+| Dominio | Carreras | Veredicto |
+|---|---|---|
+| alcanzatumeta.es | 50 | ❌ Plataforma de inscripción/resultados, sin fotos ni link-out, confirmado en una carrera real |
+| deportes.dipualba.es | 20 | ✅ **Palanca B** — enlaza directamente a un perfil real de Flickr (24+ álbumes), pero la ficha de cada carrera no enlaza al álbum concreto (solo al índice general `/home/fotos`) — requiere catalogar manualmente qué álbum corresponde a qué carrera |
+| babelsport.com | 14 | ❌ Plataforma de inscripción pura, sin fotos, confirmado en un evento futuro y uno celebrado |
+| atletaspopulares.es | 12 | ⚠️ No concluyente — el dominio bloqueó las peticiones de investigación repetidamente; pendiente de revisar con más cuidado si se decide invertir tiempo |
+| lineadesalida.net | 11 | ❌ Organizador real, pero sin galería propia — enlaza puntualmente a Google Photos solo cuando el organizador lo añade a mano, sin patrón sistemático. Ya cubierto por el link-out de Google Photos existente |
+| grupobrotons.com | 6 en `officialUrl`, 47 álbumes reales | ✅ **Implementado** (ver §3.1) |
+| carreraspopularesalmeria.com | 8 | ⚠️ No concluyente — tiene sección "GALERÍA"/"Fotografías" en el menú pero aparece vacía en el HTML estático (puede requerir JS); las inscripciones reales van vía Cruzando la Meta |
+| dorsal21.com | 7 | ❌ Cronometrador RFEA puro, sin ninguna mención de fotos |
+| correpormurcia.com | 6 | ❌ Reutiliza babelsport.com para inscripciones, sin nada propio |
+| cruzandolameta.es / rankings.cruzandolameta.es | 0 en el catálogo hoy (adapter de resultados existe en `convex/scraper.ts` pero sin carreras pobladas todavía) | ❌ Sin evidencia de fotos en ninguna web relacionada (`almeriactiva.es`); SPA sin contenido en el HTML inicial |
+| Facebook / Google Photos / Google Drive | 21 / 0 / 0 | Ver §3.1.3 |
+| Google Maps (`goo.gl/maps`) | 9 | ❌ No es fotos — enlaces de recorrido/mapa en `mapUrl`/`mapEmbedUrl` |
+| Dropbox / OneDrive / iCloud / Imgur | 0 cada uno | ❌ Sin presencia en el catálogo |
+| Media Elche (mediaelche.es) | — | Enlaza a Facebook + Flickr (`mikemanitasdpm`, ya conocido) + BuscoDorsal + ChipLevante — todo ya cubierto, sin adapter nuevo que aportar |
+| Benidorm Half | — | Usa fotoscarreras.com (plataforma comercial cerrada, ya en §3.2) |
+| Maratón Valencia | — | Sin galería propia visible — los grandes maratones suelen ir por proveedor comercial externo, no scrapeable |
+| FEDME | 5 | ❌ Sin galería de fotos, solo "FEDME TV" (vídeo) |
+
+**Pendiente si se retoma esta línea de investigación**: `atletaspopulares.es`
+y `carreraspopularesalmeria.com` quedaron sin veredicto firme (bloqueos de
+red / posible contenido cargado por JS) — repetirlos con un navegador
+real (Playwright/Selenium) en vez de fetch simple antes de descartarlos
+del todo.
+
+---
+
+### 3.1.3. Genéricos — link-out, salvo Drive (reconsiderar si aparece demanda real)
 
 A diferencia de los proveedores anteriores (dominios propios de carreras/
 cronometradores), estos son plataformas genéricas de terceros donde
@@ -469,37 +541,42 @@ tirar de ambas, no solo de una:
 |---|---|---|---|---|
 | ~~1~~ | ~~Sportmaniacs~~ | ~~2162 carreras (81.5%)~~ | ~~~4-8h~~ | ❌ **Descartado** — verificado con 71 carreras reales, 0% tenían fotos activadas (ver §3.1). La promesa de "cobertura automática masiva" no se sostiene en la práctica. |
 | ~~2~~ | ~~ChipLevante~~ | ~~113 carreras (4.3%)~~ | ~~~1 día~~ | ✅ **Hecho** (15 sep 2026) — con atajo por dorsal, no solo álbum general. Ver §3.1. |
-| 1 | **Flickr — más álbumes enlazados** (Palanca B) | Todo lo demás, pero requiere catalogación | 0 código | Sigue siendo el mayor ROI restante — máxima cobertura posible sin escribir una línea de adapter nuevo. Ver §7.4. |
-| 2 | **UI: autocompletar álbum de ChipLevante desde la carrera** | Las 113 carreras de ChipLevante, sin que el usuario pegue URL | ~horas-1 día | El adapter ya existe; falta que `photoSearch.create` ofrezca la URL automáticamente cuando `race.scraperAdapter === "chiplevante"`. **Sigue pendiente**, ver §7.3. |
+| ~~—~~ | ~~Grupo Brotons~~ | ~~5-6 en `officialUrl`, 47 álbumes reales~~ | ~~~horas~~ | ✅ **Hecho** (15 sep 2026) — HTML estático sin JS, más simple que ChipLevante. Ver §3.1. Hallazgo colateral: `brotli` como dependencia nueva (ver §3.1). |
+| 1 | **Flickr — más álbumes enlazados** (Palanca B) | Todo lo demás, pero requiere catalogación | 0 código | Sigue siendo el mayor ROI restante — máxima cobertura posible sin escribir una línea de adapter nuevo. Ver §7.4. Candidato concreto nuevo: `deportes.dipualba.es` ya enlaza a un perfil de Flickr real con 24+ álbumes (ver §3.1.2) — falta solo catalogar qué álbum va con qué carrera. |
+| 2 | **UI: autocompletar álbum de ChipLevante/Grupo Brotons desde la carrera** | Las 113 de ChipLevante + las de Grupo Brotons, sin que el usuario pegue URL | ~horas-1 día | Los adapters ya existen; falta que `photoSearch.create` ofrezca la URL automáticamente cuando `race.scraperAdapter`/`officialUrl` ya apunte a uno de ellos. **Sigue pendiente**, ver §7.3. |
+| — | **Candidatos sin veredicto firme**: atletaspopulares.es, carreraspopularesalmeria.com | 12 + 8 | ~horas de investigación | ⚠️ Bloqueos de red / posible contenido cargado por JS en la investigación con fetch simple (ver §3.1.2) — repetir con navegador real antes de descartar o implementar. |
 | ~~3~~ | ~~Masatletismo / FDMValencia / A Coruña~~ | ~~Bajo (regional)~~ | ~~~1-2 días cada uno~~ | ❌ **Los tres descartados** (15 sep 2026, ver §3.1): Masatletismo cubre Andalucía/Córdoba (no CyL como se pensaba) con solo 6 carreras candidatas reales en el catálogo; FDMValencia enlaza a Facebook, no tiene galería propia; A Coruña solo tiene 2 carreras en el catálogo. |
 | ~~—~~ | ~~"correbirras" / "carreraspopulares"~~ | ~~231 + 117 carreras~~ | — | ❌ **Descartados por estructura** — son agregadores de calendario (cada carrera vive en su propio dominio distinto: `lineadesalida.net`, `ayto.mutxamel.org`, etc.), no proveedores de fotos con patrón común. Un solo adapter no puede cubrir decenas de dominios sin estructura compartida. |
-| ~~—~~ | ~~Facebook / Google Photos~~ | ~~21 carreras a Facebook, 0 a Google Photos~~ | — | ❌ **Descartados como búsqueda automática** (ver §3.1.1): Facebook prohíbe scraping en ToS; Google Photos exige OAuth del propietario y su HTML no trae el álbum completo. ✅ **Implementado como link-out** (15 sep 2026, `lib/photo-source-support.ts`) — botón "Abrir álbum" en vez de búsqueda por selfie. |
-| — | **Google Drive** | **0 carreras hoy** — pero técnicamente viable | ~1 día si aparece demanda | ⏸️ **No descartado, aplazado.** Confirmado con prueba real (cuenta de servicio, sin OAuth del propietario, SÍ lee una carpeta "cualquiera con el enlace") — a diferencia de Facebook/Google Photos, aquí el bloqueo es solo de volumen, no técnico ni legal. Hoy tratado como link-out por pragmatismo (0 casos reales); ver §3.1.1. |
+| ~~—~~ | ~~Facebook / Google Photos~~ | ~~21 carreras a Facebook, 0 a Google Photos~~ | — | ❌ **Descartados como búsqueda automática** (ver §3.1.3): Facebook prohíbe scraping en ToS; Google Photos exige OAuth del propietario y su HTML no trae el álbum completo. ✅ **Implementado como link-out** (15 sep 2026, `lib/photo-source-support.ts`) — botón "Abrir álbum" en vez de búsqueda por selfie. |
+| — | **Google Drive** | **0 carreras hoy** — pero técnicamente viable | ~1 día si aparece demanda | ⏸️ **No descartado, aplazado.** Confirmado con prueba real (cuenta de servicio, sin OAuth del propietario, SÍ lee una carpeta "cualquiera con el enlace") — a diferencia de Facebook/Google Photos, aquí el bloqueo es solo de volumen, no técnico ni legal. Hoy tratado como link-out por pragmatismo (0 casos reales); ver §3.1.3. |
 | 4 | **SportPXL partner** | Alto potencial, pero requiere acuerdo comercial + fee | ~1 semana + negociación | Decisión de negocio (Manu), no bloqueante |
 | — | **Resto de plataformas cerradas (§3.2)** | — | — | Nunca scraping — solo link-out o contacto comercial |
 
-**Lección del proceso Sportmaniacs→ChipLevante→Masatletismo/FDMValencia/
-A Coruña:** la API/HTML/descripción de un proveedor puede prometer algo
-(campo `has_photos`, columna "FOTODIPLOMA", "galería de fotos de la
+**Lección del proceso Sportmaniacs→ChipLevante→Grupo Brotons→resto:** la
+API/HTML/descripción de un proveedor puede prometer algo (campo
+`has_photos`, columna "FOTODIPLOMA", "galería de fotos de la
 federación") sin que se sostenga con datos reales — verificar contra
 **decenas de carreras reales del catálogo de mi-dorsal**, no una o dos ni
 la descripción de la web del proveedor, antes de invertir tiempo en un
-adapter. ChipLevante pasó ese filtro (77.5% de 40 carreras muestreadas con
-fotos activadas); los otros cuatro candidatos no (Sportmaniacs: 0% de 71;
-Masatletismo/FDMValencia/A Coruña: volumen real insuficiente o sin
-galería propia). **Con esto, la lista original de proveedores candidatos
-queda agotada** — el trabajo de mayor ROI que queda es la Palanca B
-(catalogar más álbumes de Flickr/ChipLevante, §7.4) y el pendiente de UX
-de §7.3, no buscar un proveedor nuevo.
+adapter. ChipLevante y Grupo Brotons pasaron ese filtro; Sportmaniacs,
+Masatletismo, FDMValencia, A Coruña, correbirras/carreraspopulares,
+alcanzatumeta.es, babelsport.com, lineadesalida.net, dorsal21.com y
+correpormurcia.com no (ver §3.1.2 y §3.1 para el detalle de cada uno).
+**La lista original de proveedores candidatos con volumen alto está
+agotada** — quedan dos candidatos sin veredicto firme por limitaciones
+de la investigación (no por indicios negativos, ver fila de arriba), y
+el trabajo de mayor ROI confirmado es la Palanca B (catalogar más
+álbumes de Flickr/ChipLevante/Grupo Brotons, §7.4) y el pendiente de UX
+de §7.3.
 
-### 7.3. Pendiente: autocompletar el álbum de ChipLevante desde la carrera
+### 7.3. Pendiente: autocompletar el álbum de ChipLevante/Grupo Brotons desde la carrera
 
-El adapter (`ChipLevantePhotoSource`) ya está en producción, pero hoy el
-usuario tiene que **pegar la URL de la carrera a mano** en el formulario
-(igual que con Flickr) — a diferencia de lo que este documento proponía
-para Sportmaniacs, no se implementó el autocompletado desde `raceId`.
-Como ChipLevante SÍ tiene adapter de resultados en producción con la URL
-de cada carrera ya conocida (`race.officialUrl`/`extractedFromUrl`, ver
+Los adapters (`ChipLevantePhotoSource`, `GrupoBrotonsPhotoSource`) ya
+están en producción, pero hoy el usuario tiene que **pegar la URL del
+álbum a mano** en el formulario (igual que con Flickr) — no se
+implementó el autocompletado desde `raceId`. Para ChipLevante, que SÍ
+tiene adapter de resultados en producción con la URL de cada carrera ya
+conocida (`race.officialUrl`/`extractedFromUrl`, ver
 `convex/scraper.ts::parseChiplevanteUrl`), esto sería:
 
 1. En `convex/photoSearch.ts::create`, si `race.scraperAdapter ===
@@ -511,9 +588,18 @@ de cada carrera ya conocida (`race.officialUrl`/`extractedFromUrl`, ver
 3. Test contra una carrera real de ChipLevante que el usuario haya
    corrido (o simulando `myRaces` con dorsal conocido) antes de producción.
 
-Esto es más barato y de mayor ROI inmediato que investigar un proveedor
-nuevo (fila 3 de §7.1), porque el adapter ya funciona — solo falta la
-UX para no depender de que el usuario copie una URL.
+**Para Grupo Brotons es más difícil**: la ficha del evento no enlaza a su
+álbum concreto (confirmado en §3.1 — solo al índice general), y
+`race.officialUrl` apunta a la ficha del evento, no al álbum, así que no
+hay una URL ya conocida que reutilizar automáticamente. Necesitaría
+catalogación manual real (relacionar el nombre de la carrera con el
+slug del álbum correspondiente en `grupobrotons.com/fotografias/`) —
+Palanca B, no un simple cambio de código como en ChipLevante.
+
+Esto (al menos la parte de ChipLevante) es más barato y de mayor ROI
+inmediato que investigar un proveedor nuevo, porque el adapter ya
+funciona — solo falta la UX para no depender de que el usuario copie
+una URL.
 
 ### 7.4. Palanca B, aparte de este doc
 

@@ -100,18 +100,18 @@ export const create = mutation({
       albumUrls.push(parsed.toString());
     }
 
-    // Flickr y ChipLevante (15 sep 2026, ver
-    // findmyrace/sources/chiplevante.py) tienen downloader real hoy —
-    // get_source_for_url en el servicio lanza un 400 explícito para
-    // cualquier otra URL. Rechazamos aquí solo si NINGÚN álbum es
+    // Flickr, ChipLevante y Grupo Brotons (15 sep 2026, ver
+    // findmyrace/sources/{chiplevante,grupobrotons}.py) tienen downloader
+    // real hoy — get_source_for_url en el servicio lanza un 400 explícito
+    // para cualquier otra URL. Rechazamos aquí solo si NINGÚN álbum es
     // soportado — evita gastar un job y una llamada a Modal por algo que
     // sabemos que va a fallar del todo; si al menos uno es soportado, se
     // deja pasar (el servicio ya ignora los no soportados y sigue con
     // los demás, ver photo-search-api/api/find_photos.py).
-    const SUPPORTED_ALBUM_DOMAINS = ["flickr.com", "chiplevante.com"];
+    const SUPPORTED_ALBUM_DOMAINS = ["flickr.com", "chiplevante.com", "grupobrotons.com"];
     if (!albumUrls.some((u) => SUPPORTED_ALBUM_DOMAINS.some((d) => u.includes(d)))) {
       throw new Error(
-        "Ninguno de los álbumes es de un proveedor soportado (Flickr o ChipLevante por ahora).",
+        "Ninguno de los álbumes es de un proveedor soportado (Flickr, ChipLevante o Grupo Brotons por ahora).",
       );
     }
 

@@ -16,6 +16,11 @@ dependencies = [
     "requests>=2.31",
     "httpx>=0.27",
     "python-dotenv>=1.0",
+    # requests no descomprime Brotli sin esto — un servidor que sirva
+    # Content-Encoding: br (confirmado real: grupobrotons.com) devuelve
+    # el body comprimido sin lanzar excepción, la búsqueda falla en
+    # silencio con 0 resultados en vez de un error claro.
+    "brotli",
 ]
 
 [tool.vercel]

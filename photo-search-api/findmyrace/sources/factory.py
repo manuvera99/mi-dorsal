@@ -9,6 +9,7 @@ from .base import PhotoSource
 from .chiplevante import ChipLevantePhotoSource
 from .direct import DirectUrlSource
 from .flickr import FlickrSource
+from .grupobrotons import GrupoBrotonsPhotoSource
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,7 @@ logger = logging.getLogger(__name__)
 _SOURCE_REGISTRY: list[Type[PhotoSource]] = [
     FlickrSource,
     ChipLevantePhotoSource,
+    GrupoBrotonsPhotoSource,
     DirectUrlSource,
 ]
 

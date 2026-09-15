@@ -53,6 +53,14 @@ image = (
         "easyocr>=1.7",
         "requests>=2.31",
         "httpx>=0.27",
+        # requests no descomprime Brotli (Content-Encoding: br) sin este
+        # paquete — sin él, un servidor que sirva `br` (confirmado real:
+        # grupobrotons.com) devuelve el body comprimido tal cual dentro de
+        # `resp.text`, sin lanzar ninguna excepción: la búsqueda de fotos
+        # falla en silencio (0 resultados) en vez de dar un error claro.
+        # Encontrado al probar findmyrace/sources/grupobrotons.py con una
+        # petición real (15 sep 2026).
+        "brotli",
         # No es un descuido: api/album_cache.py hace `import modal` en
         # tiempo de ejecución (perezoso, no a nivel de módulo) para llamar
         # a Volume.from_name()/.reload()/.commit() desde dentro de la

@@ -13,6 +13,9 @@ easyocr>=1.7
 # Descarga de álbumes/selfies
 requests>=2.31
 httpx>=0.27
+# requests no descomprime Brotli (Content-Encoding: br) sin esto —
+# confirmado real contra grupobrotons.com, falla en silencio sin ello.
+brotli
 
 # Config (dotenv es opcional — ver findmyrace/config.py, solo para dev local)
 python-dotenv>=1.0

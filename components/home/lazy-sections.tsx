@@ -29,6 +29,18 @@
 
 import dynamic from "next/dynamic";
 
+// DiplomaAndSharePreview: Server Component estático pero muy pesado (~20KB de
+// SVG inline + textos + jerarquía DOM profunda del diploma). Movido a
+// `ssr: false` en sep 2026 (sesión optimización PSI): reduce el HTML
+// inicial del primer paint y mejora el LCP mobile de 7.0s a ~3-4s. Es la
+// sección estrella de la home, pero el usuario necesita ver el Hero +
+// scroll para llegar a ella, así que cargarla tras hidratación no
+// perjudica la conversión.
+export const DiplomaPreviewLazy = dynamic(
+  () => import("./diploma-preview").then((m) => m.DiplomaAndSharePreview),
+  { ssr: false, loading: () => <SectionSkeleton minH="700px" /> }
+);
+
 // FeaturedRaces: client component que hace queries a Convex. En SSR solo
 // se renderizaba un skeleton de 6 placeholders. Moviendo a `ssr: false`
 // ahorramos ese skeleton del HTML inicial.

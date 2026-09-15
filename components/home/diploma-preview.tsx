@@ -166,7 +166,7 @@ export function DiplomaAndSharePreview() {
                   Se otorga el diploma a
                 </p>
                 <p className="text-base md:text-2xl font-bold text-runner-dark leading-tight">
-                  Juan Manuel Vera
+                  Carlos Martínez
                 </p>
 
                 <div className="mt-2 md:mt-3 px-3 md:px-5 py-2 md:py-4 bg-white border border-gray-200 rounded-lg flex items-center justify-between">
@@ -301,6 +301,17 @@ export function DiplomaAndSharePreview() {
             aria-label="Sticker personalizable con badge Nuevo PR, tiempo oficial 01:26:14, pace 4:18 por kilómetro y distancia 10 kilómetros, listo para exportar en PNG transparente"
           >
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 md:gap-4 px-4">
+              {/* Header del sticker: carrera + dorsal (mismo patrón que el diploma
+                  de la izquierda, evita que el mockup se vea "vacío" arriba). */}
+              <div className="flex flex-col items-center">
+                <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-[2px] text-stone-500 leading-tight text-center">
+                  Behobia-San Sebastián
+                </p>
+                <p className="font-mono text-2xl md:text-3xl font-extrabold text-runner-primary leading-none mt-1">
+                  4213
+                </p>
+              </div>
+
               {/* Badge PR */}
               <div className="inline-flex items-center rounded-full bg-green-100 px-3 py-1">
                 <span className="text-[10px] md:text-xs font-bold text-green-700 tracking-wide">

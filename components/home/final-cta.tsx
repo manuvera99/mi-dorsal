@@ -40,7 +40,12 @@ function RealFinalCta() {
 function FinalCtaSection() {
   return (
     <section
-      className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-runner-primary via-red-600 to-rose-700 text-white px-6 py-12 md:px-12 md:py-14 text-center"
+      // v3.1 (sep 2026): py-12→py-10 md:py-14→md:py-12. Antes el H2 quedaba
+      // fuera del primer viewport en mobile cuando el usuario llegaba
+      // scrolleando (el bloque empezaba muy abajo y se perdía el titular que
+      // justifica el CTA). Compacto para que entre título + párrafo + botones
+      // en ~2 viewports mobile.
+      className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-runner-primary via-red-600 to-rose-700 text-white px-6 py-10 md:px-12 md:py-12 text-center"
       aria-labelledby="final-cta-title"
     >
       <div
@@ -55,11 +60,11 @@ function FinalCtaSection() {
       <div className="relative max-w-2xl mx-auto">
         <h2
           id="final-cta-title"
-          className="text-3xl md:text-4xl font-bold leading-tight mb-3"
+          className="text-2xl md:text-4xl font-bold leading-tight mb-3"
         >
           Tu temporada empieza con un dorsal.
         </h2>
-        <p className="text-base md:text-lg text-red-50/90 mb-8 max-w-xl mx-auto">
+        <p className="text-sm md:text-lg text-red-50/90 mb-6 md:mb-8 max-w-xl mx-auto">
           Únete gratis. Cuando cruces tu próxima meta, te esperamos en tu buzón
           con el diploma PDF y la imagen para tus redes.
         </p>

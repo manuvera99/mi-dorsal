@@ -77,9 +77,22 @@ export function useUserRegion(): UseUserRegionReturn {
         // localStorage puede fallar (modo privado, etc) — seguimos
       }
 
-      // 2) Detectar vía endpoint
+      // 2) Detectar vía endpoint con timeout de 3s.
+      // Antes (sep 2026): el fetch no tenía timeout → si la red colgaba
+      // o la respuesta tardaba >5s, loading se quedaba en true para siempre
+      // y el hero mostraba "Detectando…" perpetuamente en lugar del fallback
+      // "Elige tu comunidad". Ahora: AbortController a 3s + fallback a
+      // default (CCAA = null, source = "default") para que el UX siempre
+      // avance.
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+
       try {
-        const res = await fetch("/api/geo/region", { cache: "no-store" });
+        const res = await fetch("/api/geo/region", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
         if (!res.ok) throw new Error("geo endpoint failed");
         const data = (await res.json()) as RegionState;
         if (!cancelled) {
@@ -87,6 +100,7 @@ export function useUserRegion(): UseUserRegionReturn {
           setLoading(false);
         }
       } catch {
+        clearTimeout(timeoutId);
         if (!cancelled) {
           setState({ community: null, source: "default", city: null, country: "ES" });
           setLoading(false);

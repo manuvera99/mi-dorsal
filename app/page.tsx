@@ -14,8 +14,8 @@
 // mobile, las 3 secciones below-the-fold (UseCase, Testimonials, FinalCta)
 // se cargan con `ssr: false` vía lazy-sections.tsx.
 import { Hero } from "@/components/home/hero";
-import { DiplomaAndSharePreview } from "@/components/home/diploma-preview";
 import {
+  DiplomaPreviewLazy,
   FeaturedRacesLazy,
   UseCaseLazy,
   TestimonialsLazy,
@@ -66,12 +66,17 @@ export default function HomePage() {
         {/* 1. HERO */}
         <Hero />
 
-        {/* 2. DIPLOMA + SHARE CARD — la sección estrella.
+        {/* 2. DIPLOMA + SHARE CARD — la sección estrella (lazy: ssr:false).
             Muestra visualmente los DOS entregables que llegan al cruzar la meta:
             el diploma PDF A4 (izquierda) y la imagen PNG 1200×630 para redes
             (derecha). Posicionada justo tras el Hero para capitalizar la
-            atención del "recibe tu resultado oficial con diploma PDF". */}
-        <DiplomaAndSharePreview />
+            atención del "recibe tu resultado oficial con diploma PDF".
+
+            v3.0 (sep 2026): movida a lazy para bajar el LCP mobile de 7s a
+            ~3-4s. La sección es la más pesada de la home (~20KB SVG inline) y
+            cargar tras hidratación no perjudica la conversión porque el
+            usuario tiene que hacer scroll para verla. */}
+        <DiplomaPreviewLazy />
 
         {/* 3. CARRERAS DESTACADAS (lazy: ssr:false, ahorra HTML inicial).
             Geo-personalizado en cliente vía useUserRegion. */}

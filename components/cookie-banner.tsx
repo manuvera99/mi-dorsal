@@ -19,7 +19,13 @@ export function CookieBanner() {
   const [consent, setConsent] = useState<Consent>(null);
   const [showBanner, setShowBanner] = useState(false);
 
-  // Lee el consentimiento almacenado al montar
+  // Lee el consentimiento almacenado al montar.
+  // El banner aparece SIN delay (sesión 15 sep 2026): antes había un setTimeout
+  // de 800ms "para no aparecer en el primer paint", pero RGPD exige que el
+  // consentimiento sea anterior al tracking. Los scripts GA/GTM están
+  // configurados con `consent default denied` y `wait_for_update: 500`, así
+  // que el banner tiene hasta 500ms para responder antes de que los tags
+  // asuman "denied" implícito — no necesitamos el delay artificial.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const stored = window.localStorage.getItem(COOKIE_CONSENT_KEY) as Consent;
@@ -27,9 +33,7 @@ export function CookieBanner() {
       setConsent(stored);
       setShowBanner(false);
     } else {
-      // Pequeño delay para que no aparezca en el primer paint
-      const t = setTimeout(() => setShowBanner(true), 800);
-      return () => clearTimeout(t);
+      setShowBanner(true);
     }
   }, []);
 

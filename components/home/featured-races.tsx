@@ -52,7 +52,7 @@ export function FeaturedRaces() {
   const loading = races === undefined;
   const sectionTitle = community
     ? `Cerca de ti · ${community.shortName}`
-    : "Las que más molan este mes";
+    : "Carreras destacadas este mes";
 
   return (
     <section className="py-8 md:py-10" aria-labelledby="featured-title">
@@ -83,7 +83,7 @@ export function FeaturedRaces() {
           <p className="text-sm text-gray-600 mt-1 max-w-2xl">
             {community
               ? `Carreras en ${community.name} y, si no hay suficientes, las mejores del resto de España.`
-              : "Las que más vota la comunidad. Elige tu comunidad arriba para ver las que tienes cerca."}
+              : "Las 6 mejores carreras populares con dorsal abierto este mes, según los votos de la comunidad."}
           </p>
         </div>
         <Link

@@ -23,8 +23,14 @@ import { isMockMode } from "@/lib/mock/provider";
 
 function BadgeLink() {
   return (
+    // prefetch={false}: antes Next/React hacía prefetch del RSC de /premium
+    // (13 KB de payload) cada vez que el badge aparecía en el hero, inflando
+    // el HTML inicial y bajando el LCP mobile. El usuario que pincha el badge
+    // puede esperar 200ms extra para tener la página Pro; los que no pinchan
+    // ahorran 13 KB de payload + un round-trip a Vercel.
     <Link
       href="/premium"
+      prefetch={false}
       className="inline-flex items-center gap-1.5 bg-yellow-300/95 text-runner-dark text-xs font-bold rounded-full px-3 py-1 mb-5 hover:bg-yellow-200 transition-colors"
     >
       <Sparkles className="h-3 w-3 text-runner-primary" aria-hidden="true" />

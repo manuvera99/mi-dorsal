@@ -10,7 +10,7 @@
  *  - H1 (la frase que se recuerda)
  *  - Subtítulo (promesa)
  *  - Sub-subtítulo (diferenciador, "sin smartwatch")
- *  - Trust badges (gratis, sin tarjeta, RGPD)
+ *  - Trust badges (Free completo + sin tarjeta en Pro Anual, RGPD, Strava en Pro)
  *  - CTAs primario + secundario
  *  - Lado derecho: simulación 3D de dorsal (versión estática, sin JS)
  *
@@ -106,7 +106,7 @@ export function Hero() {
           <ul className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-red-50/90">
             <li className="inline-flex items-center gap-1.5">
               <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Plan Free completo · sin tarjeta</span>
+              <span>Plan Free completo · Pro Anual 14 días sin tarjeta</span>
             </li>
             <li className="inline-flex items-center gap-1.5">
               <Lock className="h-3.5 w-3.5" aria-hidden="true" />

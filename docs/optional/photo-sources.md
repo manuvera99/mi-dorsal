@@ -1,20 +1,18 @@
 # Fuentes de fotos de carreras populares en España
 
-> **Estado:** investigación de proveedores hecha sep 2026; **re-revisado
-> 15 sep 2026** tras cerrar Sprint 0+1 completos (ver tabla abajo — a
-> diferencia de una versión anterior de este doc, la feature YA está en
-> producción, no es un plan pendiente).
+> **Estado:** investigación de proveedores hecha sep 2026; **re-revisado y
+> ampliado 15 sep 2026** tras cerrar Sprint 0+1 y, en la misma sesión,
+> investigar y descartar/implementar la mayoría de candidatos de esta
+> lista con datos reales (ver §0 y §7).
 > **Propósito:** inventario de proveedores que alojan galerías de fotos de
 > carreras populares españolas, con URLs reales verificadas, para evaluar
 > cuáles pueden integrarse en la feature "Encuentra tus fotos" descrita en
 > `docs/plans/PHOTO_SEARCH_TECH.md` y `docs/plans/PHOTO_SEARCH_PRD.md`.
-> **Sigue sin implementarse ningún adapter de FOTOS nuevo.** Solo el de
-> Flickr (`photo-search-api/findmyrace/sources/flickr.py`) descarga fotos
-> reales hoy — el resto de proveedores de esta lista son candidatos
-> investigados, no código. (Sportmaniacs y ChipLevante SÍ tienen adapter
-> en producción, pero para **resultados por dorsal**, un sistema
-> completamente distinto — no reutilizable para fotos sin escribir código
-> nuevo.)
+> **Adapters de FOTOS reales hoy: Flickr y ChipLevante** (ambos en
+> producción, ver §0). El resto de proveedores de esta lista han sido
+> investigados y en su mayoría **descartados con datos reales** (§3.1,
+> §3.1.1, §7.1) — no por falta de tiempo, sino porque no se sostenían al
+> verificarlos contra el catálogo real de mi-dorsal.
 
 ---
 
@@ -25,7 +23,8 @@
 | Pipeline InsightFace+EasyOCR+Matcher | ✅ Producción |
 | Endpoint FastAPI en Modal (`manuvera08--photo-search-api-fastapi-app.modal.run`) | ✅ Producción |
 | Descarga con backoff adaptativo compartido entre álbumes (`AdaptiveRateLimiter`) | ✅ Producción |
-| Source adapter Flickr (único proveedor de FOTOS) | ✅ Producción |
+| Source adapter Flickr | ✅ Producción |
+| Source adapter ChipLevante (con atajo por dorsal, ver §3.1) | ✅ Producción (15 sep 2026) |
 | Caché persistente de álbumes entre búsquedas (Modal Volume) | ✅ Producción (15 sep 2026) |
 | Alerta si Flickr rompe la extracción del `site_key` público | ✅ Producción (15 sep 2026) |
 | Schema Convex `photoSearchJobs` | ✅ Producción |
@@ -34,7 +33,8 @@
 | Email "photos_found" | ✅ Producción |
 | Gate Pro + límite de fotos por job (`MAX_PHOTOS_PER_JOB=1500`) | ✅ Producción |
 | API key propia de Flickr (vs. `site_key` público reutilizado) | ⏸️ Aplazado — exige cuenta Flickr Pro (82€/año), se revisita cuando la feature facture |
-| Source adapters para Sportmaniacs/ChipLevante/etc. (este doc) | ❌ No implementado |
+| Source adapter Sportmaniacs | ❌ **Descartado** (15 sep 2026) — ver §3.1, campo `photos.sm` existe en su API pero 0 de 71 carreras reales muestreadas (incluyendo maratones grandes) tenían `has_photos: true` |
+| Source adapters Masatletismo/FDMValencia/A Coruña/etc. | ❌ No investigado con datos reales todavía — ver §7.1 |
 
 **Dato real del catálogo (medido 15 sep 2026, `npx convex run --inline-query` sobre `races`):**
 
@@ -104,7 +104,7 @@ ya ofrecen "búsqueda por selfie" — antes hay que saber:
 
 ### 3.1. Con API pública o bucket público — viables como adapter
 
-#### Sportmaniacs (Localbi/Evide)
+#### Sportmaniacs (Localbi/Evide) — ❌ DESCARTADO (15 sep 2026, datos reales)
 - **Bucket S3 público** con PDFs y fotos por raceId:
   `https://s3.eu-west-1.amazonaws.com/sm-fotos.sportmaniacs.com/...-{raceId-GUID}-...`
 - **API de rankings pública** devuelve `photos.sm` por participante en el JSON:
@@ -116,53 +116,92 @@ ya ofrecen "búsqueda por selfie" — antes hay que saber:
   `docs/plans/PHOTO_SEARCH_TECH.md` §15.6 (incluye rate-limit real y
   mitigaciones), `docs/plans/SOURCES_RESEARCH.md` §1 (adapter ya en
   producción para **resultados por dorsal**, no para fotos).
-- **Galería de ejemplo:**
-  `https://sportmaniacs.com/en/races/rankings/67fac772-ba88-4768-9f80-4174ac1f1368`
-  → ver atributos `photos.sm` y `externalPhotos` por participante.
-- **Ventaja real confirmada (15 sep 2026):** `races.sportmaniacsEventIds`
-  (ver `convex/schema.ts`) ya está poblado para las 2162 carreras con
-  `scraperAdapter === "sportmaniacs"` — el UUID de evento real (el que
-  acepta el endpoint de ranking) ya está cacheado desde el backfill de
-  resultados. Un adapter de fotos NO necesitaría volver a resolver ese
-  UUID desde el HTML, solo llamar directamente al ranking con el UUID ya
-  guardado — reduce aún más el coste estimado abajo.
-- **Veredicto:** ⚙️ **Adaptable** como `SportmaniacsPhotoSource`. La URL
-  pública de cada foto ya viene dada por el JSON de ranking — no hay nada
-  que descargar ni OCR. Coste de desarrollo: ~4-8 horas.
+- **`races.sportmaniacsEventIds`** (ver `convex/schema.ts`) ya está poblado
+  para las 2162 carreras con `scraperAdapter === "sportmaniacs"` — el UUID
+  de evento real ya está cacheado desde el backfill de resultados, así que
+  técnicamente esta fuente sí tendría el efecto de "un despliegue, cobertura
+  masiva instantánea" que ninguna otra fuente de esta lista tiene.
+- **✅ Verificado con datos reales, ❌ descartado en la práctica:** el campo
+  `photos.sm` / `has_photos` SÍ existe en la API (confirmado contra
+  `https://sportmaniacs.com/en/races/rankings/{eventId}`, campo
+  `Race.has_photos` y `Rankings[].photos.sm`), pero **0 de 71 carreras
+  reales muestreadas** (incluyendo maratones grandes como Ibiza Marathon
+  2025, y muestreo aleatorio de 50 carreras más entre las 949 con
+  `sportmaniacsEventIds` cacheado) tenían `has_photos: true` — todas
+  devolvían un avatar genérico placeholder (`avatar_boy.png`,
+  `defaultImage: true`), no una foto real. La función existe en la
+  plataforma de Sportmaniacs pero prácticamente ningún organizador la usa.
+- **Veredicto:** ❌ **Descartado.** Construir `SportmaniacsPhotoSource` daría
+  cobertura real ≈0% hoy, pese a la promesa teórica del 81.5% del catálogo.
+  Revisitar solo si se confirma que algún organizador grande la activa en
+  el futuro — el coste de detectarlo (una llamada extra al ranking por
+  búsqueda) no compensa mientras la tasa de adopción real sea esta.
 
-#### ChipLevante (Levante: Alicante, Murcia, Albacete, Cuenca, Castellón)
+#### ChipLevante (Levante: Alicante, Murcia, Albacete, Cuenca, Castellón) — ✅ EN PRODUCCIÓN (15 sep 2026)
 - **HTML scrapeable** en la ficha de cada carrera:
-  `https://www.chiplevante.com/es/prueba/{slug}`
-  columna `FOTODIPLOMA` con enlace por dorsal.
+  `https://www.chiplevante.com/es/prueba/{slug}-{evento}-{edicion}`
 - **Histórico legacy:**
   `http://www.chiplevante.net/{YEAR}{NOMBRECARRERA}/clasificaciones.asp`
-- **Estado actual del adapter:** `scraperAdapter: "chiplevante"` para
-  **resultados por dorsal** ya en producción
-  (`docs/plans/SOURCES_RESEARCH.md` §2, 114 carreras).
-  **No hay adapter de fotos todavía.**
-- **Veredicto:** ⚙️ **Adaptable** como `ChipLevantePhotoSource`. Spider HTML
-  simple (~100 líneas), reutiliza el `PhotoSource.download()` con backoff.
-  Coste: ~1 día.
+- **Estado del adapter de resultados:** `scraperAdapter: "chiplevante"`
+  ya en producción (`docs/plans/SOURCES_RESEARCH.md` §2, 113 carreras).
+- **Adapter de fotos implementado y desplegado** —
+  `findmyrace/sources/chiplevante.py`, `ChipLevantePhotoSource`. Endpoint
+  real descubierto (no el `FOTODIPLOMA` que asumía una versión anterior de
+  este doc): `POST /modulos/inc/dame_mm.php` con `{ev, ed, cr, pc:"0",
+  tp:"I", dr, ti:"", pag}` — sirve tanto el álbum general paginado (24
+  fotos/página, confirmado real: 513 fotos en 22 páginas para una carrera)
+  como un atajo por dorsal (`dr=<dorsal>`), porque ChipLevante ya asocia
+  fotos a dorsales cruzando tiempo de cronometraje + marca de tiempo de
+  cámara — sin necesidad de nuestro pipeline de cara/OCR en ese caso.
+  Confirmado con 40 carreras reales muestreadas: 77.5% tenían fotos
+  activadas (`configuracion_cert` con el flag de fotos en `1`).
+- **Veredicto:** ✅ **Ya implementado.** Ver commit "feat(sources): adapter
+  de fotos para ChipLevante" (find-my-race) y "feat(photo-search): soporte
+  para álbumes de ChipLevante" (mi-dorsal), 15 sep 2026.
 
-#### Masatletismo (Federación Atletismo Castilla y León + nacionales)
-- **Media library WordPress estándar**:
-  `https://masatletismo.com/wp-content/uploads/YYYY/MM/*.jpg`
-- **Sitemap XML** listado en `docs/plans/SOURCES_RESEARCH.md` §5.
-- **Galería ejemplo:**
-  `https://masatletismo.com/2026/08/08/mas-de-5-000-fotos-en-la-galeria-fotografica-de-la-recogidas-de-dorsales-y-carrera-de-la-42-edicion-de-la-subida-al-pico-veleta/`
-- **Veredicto:** ⚙️ **Adaptable** como `MasAtletismoSource`. Gallery page
-  HTML con texto plano + media library scrapable. Coste: ~1-2 días.
+#### Masatletismo — ❌ DESCARTADO (15 sep 2026, datos reales)
+- **Media library WordPress estándar, galería SÍ real** (a diferencia de
+  Sportmaniacs): confirmado con la carrera de ejemplo, ~150 `<img>` reales
+  servidos vía `i0.wp.com/masatletismo.com/wp-content/uploads/...jpg`.
+- **⚠️ Error corregido en este doc:** la versión anterior lo describía como
+  "Federación Atletismo Castilla y León" — **incorrecto**. Verificado
+  contra la home real: Masatletismo cubre **Córdoba/Andalucía**, no
+  Castilla y León (la confusión venía de que la carrera de ejemplo, Subida
+  al Pico Veleta, es en Granada — Andalucía, no CyL).
+- **Volumen real insuficiente:** el catálogo de mi-dorsal tiene solo **6
+  carreras en la provincia de Córdoba**, todas con `scraperAdapter`
+  distinto (sportmaniacs/carreraspopulares) — ninguna vinculada a
+  Masatletismo como fuente. Masatletismo es un medio editorial que cubre
+  los eventos que decide cubrir, no la fuente oficial de esas carreras;
+  no hay campo en el catálogo que confirme cobertura real sin comprobar
+  carrera por carrera.
+- **Veredicto:** ❌ **Descartado por volumen**, no por viabilidad técnica
+  (la galería SÍ es real y scrapeable). 6 carreras candidatas no
+  justifican ~1-2 días de desarrollo — mismo criterio que descartó
+  Sportmaniacs (verificar cobertura real antes de invertir), aplicado
+  aquí al volumen en vez de a la existencia de fotos.
 
-#### FDM Valencia (Federación)
-- **Galería del circuito oficial**:
-  `https://carreras.fdmvalencia.es/es/fotos-carreras-populares-valencia/`
-- **Veredicto:** ⚙️ **Adaptable**. HTML estático con grid de fotos por
-  carrera/edición. Coste: ~1 día.
+#### FDM Valencia — ❌ DESCARTADO (15 sep 2026, datos reales)
+- **La "galería" no es tal**: verificado contra
+  `carreras.fdmvalencia.es/es/fotos-carreras-populares-valencia/` — cada
+  enlace "Ver" de cada carrera apunta al mismo perfil de Facebook
+  (`facebook.com/carreraspopularesvalencia`), no a una página propia por
+  carrera. Sin URL individual por evento, no hay nada que scrapear con un
+  `PhotoSource` — y Facebook no es plataforma para scraping (política +
+  viabilidad, mismo criterio que las plataformas cerradas de §3.2).
+- **Veredicto:** ❌ **Descartado.** A pesar de que Valencia es la provincia
+  con más carreras del catálogo (828, 31%), esta fuente concreta no tiene
+  fotos propias que descargar.
 
-#### A Coruña (Ayuntamiento)
+#### A Coruña (Ayuntamiento) — ❌ DESCARTADO por volumen (15 sep 2026)
 - **Galería federaciones locales**:
   `https://www.coruna.gal/carreraspopulares/es/galerias-de-fotos?argIdioma=es`
-- **Veredicto:** ⚙️ **Adaptable**. Mismo patrón.
+  — no se ha verificado si la galería en sí es real (a diferencia de FDM
+  Valencia) porque no hace falta: el catálogo de mi-dorsal tiene solo
+  **2 carreras** en la provincia de A Coruña. Volumen demasiado bajo para
+  justificar la verificación siquiera.
+- **Veredicto:** ❌ **Descartado por volumen**, sin necesidad de verificar
+  la fuente en sí.
 
 #### Subida Internacional Granada – Pico Veleta
 - **Sección GALERÍA** en `subidaveleta.com` con colaboradores externos
@@ -171,6 +210,43 @@ ya ofrecen "búsqueda por selfie" — antes hay que saber:
   como punto de partida, no como fuente propia.
 - **Veredicto:** ⚙️ **Adaptable parcialmente**. Solo si los colaboradores son
   Flickr público; si no, son links externos a webs con sus propias políticas.
+
+---
+
+### 3.1.1. Genéricos descartados como fuente de búsqueda — solo link-out (15 sep 2026)
+
+A diferencia de los proveedores anteriores (dominios propios de carreras/
+cronometradores), estos son plataformas genéricas de terceros donde
+organizadores comparten álbumes sueltos — investigados porque
+`races.officialUrl` de algunas carreras del catálogo apunta directamente
+ahí (17 carreras a `facebook.com` en la muestra de dominios, más las que
+usan Google Photos vía links puntuales tipo `correbirras.com`).
+
+#### Facebook (álbumes de página/evento)
+- Verificado: Meta prohíbe explícitamente scraping/extracción automatizada
+  en sus Términos de Servicio, con enforcement legal activo (litigios
+  recientes contra scrapers). Además, el contenido "público" de un álbum
+  suele requerir JS pesado y a menudo un muro de login parcial incluso
+  para visitantes no logueados.
+- **Veredicto:** ❌ **Nunca scraping.** Implementado como **link-out**
+  simple en la UI (`lib/photo-source-support.ts` +
+  `app/perfil/fotos/[raceId]/client.tsx`, 15 sep 2026): si
+  `race.photosUrl` es de Facebook, se muestra un botón "Abrir álbum" en
+  vez de intentar precargarlo en el formulario de búsqueda por selfie
+  (que el backend rechazaría con un 400 igualmente).
+
+#### Google Photos / Google Drive (álbumes compartidos)
+- Verificado con un enlace real (`photos.app.goo.gl/...` citado en
+  correbirras.com): el HTML inicial de la página de álbum compartido solo
+  trae 1 foto (la portada) — el resto carga por scroll infinito vía JS, no
+  hay forma de listar el álbum completo sin ejecutar ese JS.
+- La Google Photos Library API oficial exige **OAuth del propietario del
+  álbum** para leer su contenido — no hay vía pública de solo lectura sin
+  esa autorización, que no tenemos ni es viable pedir a cada fotógrafo.
+- Google Drive tiene el mismo problema estructural: sin OAuth del
+  propietario, no hay acceso programático fiable a una carpeta compartida.
+- **Veredicto:** ❌ **Descartado técnicamente** (no solo por políticas).
+  Mismo tratamiento de link-out que Facebook — ver arriba.
 
 ---
 
@@ -338,71 +414,65 @@ carrera de 2652 con `photosUrl`), hay DOS palancas distintas y hay que
 tirar de ambas, no solo de una:
 
 - **Palanca A — más proveedores soportados** (este plan, abajo): sin
-  esto, aunque se enlacen álbumes, solo los de Flickr son buscables.
+  esto, aunque se enlacen álbumes, solo los de Flickr/ChipLevante son
+  buscables.
 - **Palanca B — enlazar álbumes existentes** (fuera del scope de este
   doc, es trabajo de catalogación/scraping de URLs, no de nuevos
-  adapters): sin esto, tener 5 proveedores soportados no ayuda si ninguna
-  carrera tiene su álbum enlazado. Sportmaniacs es la excepción — ver
-  más abajo, no depende de que nadie "enlace" nada.
+  adapters): sin esto, tener más proveedores soportados no ayuda si
+  ninguna carrera tiene su álbum enlazado. La excepción real resultó ser
+  ChipLevante (vía su URL de resultados ya conocida, ver §7.3), no
+  Sportmaniacs como se pensaba inicialmente — ver §3.1 para por qué.
 
-### 7.1. Orden de implementación (por ratio impacto/esfuerzo)
+### 7.1. Orden de implementación (por ratio impacto/esfuerzo) — actualizado tras verificar con datos reales
 
-| # | Proveedor | Cobertura potencial | Esfuerzo | Por qué este orden |
+| # | Proveedor | Cobertura potencial | Esfuerzo | Estado |
 |---|---|---|---|---|
-| 1 | **Sportmaniacs** | 2162 carreras (81.5% del catálogo) — **automático**, no depende de que nadie enlace nada (`sportmaniacsEventIds` ya poblado) | ~4-8h | Mayor cobertura posible por lejos, y la única fuente que no depende de la Palanca B — se activa sola en las 2162 carreras el día que se despliega |
-| 2 | **ChipLevante** | 113 carreras (4.3%), adapter de resultados ya en producción (mismo dominio, mismo patrón de URL por carrera) | ~1 día | Segunda mayor cobertura automática — mismo argumento que Sportmaniacs, ya sabemos qué carreras son (`scraperAdapter === "chiplevante"`) |
-| 3 | **Flickr — más álbumes enlazados** | Todo lo demás, pero requiere Palanca B | 0 (ya soportado) | No es un adapter nuevo — es simplemente pedirle al equipo de contenido/scraping que rellene `photosUrl` en más carreras. Máximo ROI con cero código. |
-| 4 | **Masatletismo / FDMValencia / A Coruña** | Bajo (regional, sin ID cacheado — requiere Palanca B) | ~1-2 días cada uno | Solo rentable si se confirma que alguna de estas regiones tiene demanda real (CyL, Valencia, Galicia) |
-| 5 | **SportPXL partner** | Alto potencial, pero requiere acuerdo comercial + fee | ~1 semana + negociación | Decisión de negocio (Manu), no bloqueante para 1-4 |
-| — | **Resto de plataformas cerradas (§3.2)** | — | — | Nunca scraping — solo link-out o contacto comercial, sin cambios respecto a antes |
+| ~~1~~ | ~~Sportmaniacs~~ | ~~2162 carreras (81.5%)~~ | ~~~4-8h~~ | ❌ **Descartado** — verificado con 71 carreras reales, 0% tenían fotos activadas (ver §3.1). La promesa de "cobertura automática masiva" no se sostiene en la práctica. |
+| ~~2~~ | ~~ChipLevante~~ | ~~113 carreras (4.3%)~~ | ~~~1 día~~ | ✅ **Hecho** (15 sep 2026) — con atajo por dorsal, no solo álbum general. Ver §3.1. |
+| 1 | **Flickr — más álbumes enlazados** (Palanca B) | Todo lo demás, pero requiere catalogación | 0 código | Sigue siendo el mayor ROI restante — máxima cobertura posible sin escribir una línea de adapter nuevo. Ver §7.4. |
+| 2 | **UI: autocompletar álbum de ChipLevante desde la carrera** | Las 113 carreras de ChipLevante, sin que el usuario pegue URL | ~horas-1 día | El adapter ya existe; falta que `photoSearch.create` ofrezca la URL automáticamente cuando `race.scraperAdapter === "chiplevante"`. **Sigue pendiente**, ver §7.3. |
+| ~~3~~ | ~~Masatletismo / FDMValencia / A Coruña~~ | ~~Bajo (regional)~~ | ~~~1-2 días cada uno~~ | ❌ **Los tres descartados** (15 sep 2026, ver §3.1): Masatletismo cubre Andalucía/Córdoba (no CyL como se pensaba) con solo 6 carreras candidatas reales en el catálogo; FDMValencia enlaza a Facebook, no tiene galería propia; A Coruña solo tiene 2 carreras en el catálogo. |
+| ~~—~~ | ~~"correbirras" / "carreraspopulares"~~ | ~~231 + 117 carreras~~ | — | ❌ **Descartados por estructura** — son agregadores de calendario (cada carrera vive en su propio dominio distinto: `lineadesalida.net`, `ayto.mutxamel.org`, etc.), no proveedores de fotos con patrón común. Un solo adapter no puede cubrir decenas de dominios sin estructura compartida. |
+| ~~—~~ | ~~Facebook / Google Photos / Drive~~ | ~~17+ carreras a Facebook~~ | — | ❌ **Descartados como búsqueda automática** (ver §3.1.1): Facebook prohíbe scraping en ToS; Google Photos/Drive exigen OAuth del propietario. ✅ **Implementado como link-out** (15 sep 2026, `lib/photo-source-support.ts`) — botón "Abrir álbum" en vez de búsqueda por selfie. |
+| 4 | **SportPXL partner** | Alto potencial, pero requiere acuerdo comercial + fee | ~1 semana + negociación | Decisión de negocio (Manu), no bloqueante |
+| — | **Resto de plataformas cerradas (§3.2)** | — | — | Nunca scraping — solo link-out o contacto comercial |
 
-### 7.2. Por qué Sportmaniacs primero (y con diferencia)
+**Lección del proceso Sportmaniacs→ChipLevante→Masatletismo/FDMValencia/
+A Coruña:** la API/HTML/descripción de un proveedor puede prometer algo
+(campo `has_photos`, columna "FOTODIPLOMA", "galería de fotos de la
+federación") sin que se sostenga con datos reales — verificar contra
+**decenas de carreras reales del catálogo de mi-dorsal**, no una o dos ni
+la descripción de la web del proveedor, antes de invertir tiempo en un
+adapter. ChipLevante pasó ese filtro (77.5% de 40 carreras muestreadas con
+fotos activadas); los otros cuatro candidatos no (Sportmaniacs: 0% de 71;
+Masatletismo/FDMValencia/A Coruña: volumen real insuficiente o sin
+galería propia). **Con esto, la lista original de proveedores candidatos
+queda agotada** — el trabajo de mayor ROI que queda es la Palanca B
+(catalogar más álbumes de Flickr/ChipLevante, §7.4) y el pendiente de UX
+de §7.3, no buscar un proveedor nuevo.
 
-A diferencia de todo lo demás en esta tabla, Sportmaniacs **no necesita
-que nadie enlace un álbum a mano**: `races.sportmaniacsEventIds` ya tiene
-el UUID real de evento cacheado para las 2162 carreras con
-`scraperAdapter === "sportmaniacs"` (ver §3.1). Un
-`SportmaniacsPhotoSource` que reciba ese UUID y llame al JSON de ranking
-público (`photos.sm` por participante) queda automáticamente disponible
-para el 81.5% del catálogo el día que se despliega — sin trabajo de
-catalogación previo, sin depender de que el fotógrafo/organizador haga
-nada. Es la única fuente de esta lista con ese efecto de "un solo
-despliegue, cobertura masiva instantánea".
+### 7.3. Pendiente: autocompletar el álbum de ChipLevante desde la carrera
 
-### 7.3. Cómo implementar Sportmaniacs y ChipLevante (pasos 1-2)
+El adapter (`ChipLevantePhotoSource`) ya está en producción, pero hoy el
+usuario tiene que **pegar la URL de la carrera a mano** en el formulario
+(igual que con Flickr) — a diferencia de lo que este documento proponía
+para Sportmaniacs, no se implementó el autocompletado desde `raceId`.
+Como ChipLevante SÍ tiene adapter de resultados en producción con la URL
+de cada carrera ya conocida (`race.officialUrl`/`extractedFromUrl`, ver
+`convex/scraper.ts::parseChiplevanteUrl`), esto sería:
 
-Reutilizando exactamente el patrón de §4 (`PhotoSource` +
-`get_source_for_url()`) y la infraestructura ya construida (caché de
-álbumes, rate limiter compartido, `max_images`/timeout):
+1. En `convex/photoSearch.ts::create`, si `race.scraperAdapter ===
+   "chiplevante"` y no se pasó `albumUrls`, usar `race.officialUrl` como
+   álbum por defecto (mismo patrón que ya existe para `race.photosUrl`
+   con Flickr).
+2. UI: mostrar al usuario que "esta carrera tiene fotos de ChipLevante
+   disponibles automáticamente" en vez de pedirle pegar un enlace.
+3. Test contra una carrera real de ChipLevante que el usuario haya
+   corrido (o simulando `myRaces` con dorsal conocido) antes de producción.
 
-1. `findmyrace/sources/sportmaniacs.py` — `SportmaniacsPhotoSource`:
-   - `can_handle()`: URL de ranking (`sportmaniacs.com/.../races/rankings/{uuid}`)
-     o, mejor, aceptar directamente el UUID desde `races.sportmaniacsEventIds`
-     sin depender de que el usuario pegue una URL (a decidir en la UI —
-     ver punto 4).
-   - `list_photo_urls()`: GET al JSON de ranking (header
-     `X-Requested-With: XMLHttpRequest`), extrae `photos.sm` de cada
-     participante, deduplicado.
-   - `cache_key_for_url()`: el UUID del evento — mismo patrón que
-     `FlickrSource.cache_key_for_url()`, entra gratis en la caché de
-     álbumes de `api/album_cache.py`.
-   - Respetar `externalPhotos: true` (ver Riesgos, tabla de §5) —
-     excluir esas fotos si el flag indica que Sportmaniacs no tiene
-     derecho a redistribuirlas directamente.
-2. `findmyrace/sources/chiplevante.py` — spider HTML de la columna
-   `FOTODIPLOMA` en `chiplevante.com/es/prueba/{slug}`.
-3. Registrar ambos en `findmyrace/sources/factory.py::get_source_for_url()`.
-4. **UI/Convex**: en vez de depender solo de que el usuario pegue una URL
-   de álbum (como hoy con Flickr), para Sportmaniacs/ChipLevante se puede
-   **autocompletar el álbum de la propia carrera** — `photoSearch.create`
-   ya conoce `raceId`, y `races.scraperAdapter`+`sportmaniacsEventIds` ya
-   identifican si esa carrera es candidata, sin que el usuario tenga que
-   pegar ningún enlace. Esto es lo que realmente destraba la cobertura
-   masiva de §7.2 — un cambio de UI, no solo de backend.
-5. Test contra una carrera real de cada proveedor antes de producción
-   (mismo patrón que se usó para validar Flickr con mikemanitasdpm).
-6. Deploy a Modal + Convex, mismo checklist que el resto de esta sesión
-   (tests, tsc --noEmit, build, deploy).
+Esto es más barato y de mayor ROI inmediato que investigar un proveedor
+nuevo (fila 3 de §7.1), porque el adapter ya funciona — solo falta la
+UX para no depender de que el usuario copie una URL.
 
 ### 7.4. Palanca B, aparte de este doc
 

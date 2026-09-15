@@ -34,6 +34,50 @@ class TestHealth:
         assert resp.status_code == 200
 
 
+class TestFlickrSiteKeyHealth:
+    """GET /api/health/flickr_site_key — ver docstring del endpoint: sin
+    esto, un cambio del HTML de flickr.com que rompa la extracción del
+    site_key/NSID (vía principal de listado de álbumes/fotos hoy, sin key
+    de API propia) pasaría desapercibido hasta fallar en una búsqueda
+    real."""
+
+    def test_ok_when_site_key_and_nsid_found(self) -> None:
+        with patch(
+            "api.find_photos.FlickrSource._extract_site_key_and_nsid_from_profile",
+            return_value=("abc123", "12345@N01"),
+        ):
+            resp = client.get("/api/health/flickr_site_key")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body == {"ok": True, "siteKeyFound": True, "nsidFound": True}
+
+    def test_not_ok_when_site_key_missing(self) -> None:
+        """Si Flickr deja de exponer site_key en el HTML (el escenario
+        real que motivó este endpoint), ok debe ser False para que el
+        cron externo lo detecte — nunca un 200 genérico sin distinguir."""
+        with patch(
+            "api.find_photos.FlickrSource._extract_site_key_and_nsid_from_profile",
+            return_value=(None, "12345@N01"),
+        ):
+            resp = client.get("/api/health/flickr_site_key")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body == {"ok": False, "siteKeyFound": False, "nsidFound": True}
+
+    def test_not_ok_when_both_missing(self) -> None:
+        with patch(
+            "api.find_photos.FlickrSource._extract_site_key_and_nsid_from_profile",
+            return_value=(None, None),
+        ):
+            resp = client.get("/api/health/flickr_site_key")
+        assert resp.json() == {"ok": False, "siteKeyFound": False, "nsidFound": False}
+
+    def test_requires_auth(self) -> None:
+        with patch("api.find_photos.API_SECRET", "supersecret"):
+            resp = client.get("/api/health/flickr_site_key")
+        assert resp.status_code == 401
+
+
 class TestPayloadValidation:
     def test_missing_required_fields_rejected(self) -> None:
         resp = client.post("/api/find_photos", json={})

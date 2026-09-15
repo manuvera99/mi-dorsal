@@ -88,4 +88,14 @@ crons.cron(
   internal.crons.cleanupPhotoSearch.cleanupPhotoSearch,
 );
 
+// Comprueba que seguimos pudiendo extraer el site_key/NSID público del
+// HTML de flickr.com — vía principal para listar álbumes/fotos hoy, sin
+// API key propia (ver convex/crons/checkFlickrSiteKeyHealth.ts). Avisa
+// por email al admin si Flickr cambia el HTML y rompe la extracción.
+crons.cron(
+  "check-flickr-site-key-health",
+  "40 8 * * *", // 08:40 UTC diario
+  internal.crons.checkFlickrSiteKeyHealth.checkFlickrSiteKeyHealth,
+);
+
 export default crons;

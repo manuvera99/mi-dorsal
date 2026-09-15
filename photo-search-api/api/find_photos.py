@@ -141,6 +141,43 @@ async def health():
     return {"status": "ok", "service": "photo-search-api"}
 
 
+# Perfil oficial de Flickr, usado solo como diana estable para el
+# health-check de abajo — no depende de ningún dato nuestro, así que no se
+# rompe si borramos/cambiamos álbumes propios.
+_SITE_KEY_HEALTHCHECK_PROFILE = "https://www.flickr.com/photos/flickr/albums/"
+
+
+@app.get("/api/health/flickr_site_key")
+async def health_flickr_site_key(request: Request):
+    """Comprueba que seguimos pudiendo extraer el ``site_key``/NSID
+    público del HTML de flickr.com (ver FlickrSource, docstring del
+    módulo) — la vía principal para listar álbumes/fotos hoy, sin key de
+    API propia. Pensado para un cron externo (ver convex/crons/, sep
+    2026): si Flickr cambia cómo expone estos valores en el HTML, esta
+    vía deja de funcionar en silencio (cae al scraper HTML por página,
+    más limitado) hasta que alguien lo note en una búsqueda real. Este
+    endpoint permite detectarlo antes, con una alerta explícita.
+    """
+    _check_auth(request)
+    source = FlickrSource()
+    site_key, owner_nsid = source._extract_site_key_and_nsid_from_profile("flickr")
+    ok = bool(site_key and owner_nsid)
+    if not ok:
+        logger.error(
+            "[health] No se pudo extraer site_key/NSID de %s — site_key=%s, "
+            "nsid=%s. La vía principal de listado de álbumes/fotos puede "
+            "haber dejado de funcionar; revisar findmyrace/sources/flickr.py",
+            _SITE_KEY_HEALTHCHECK_PROFILE,
+            "presente" if site_key else "AUSENTE",
+            "presente" if owner_nsid else "AUSENTE",
+        )
+    return {
+        "ok": ok,
+        "siteKeyFound": bool(site_key),
+        "nsidFound": bool(owner_nsid),
+    }
+
+
 @app.post("/api/list_albums")
 async def list_albums(payload: ListAlbumsRequest, request: Request):
     """Lista los álbumes públicos de un fotógrafo dada la URL de su

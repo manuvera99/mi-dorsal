@@ -13,18 +13,19 @@ import Script from "next/script";
  * wait_for_update: 500 = el banner tiene 500ms para responder antes de que
  * GTM asuma "denied" implícito.
  *
- * strategy="lazyOnload" (16 sep 2026): antes era "afterInteractive" (que
- * bloquea el interactive TTI hasta que carga). Con lazyOnload, el script
- * de GTM (~76 KB) se carga DESPUÉS del primer paint y DESPUÉS de que el
- * browser esté idle. Reduce el TBT y mejora el LCP en ~100-200ms en mobile
- * 4G. Trade-off: perdemos 1-2s de tracking para usuarios que abandonan la
- * página en los primeros segundos. Aceptable porque GTM no afecta la
- * funcionalidad del producto, solo el tracking.
+ * strategy (sep 2026): probado `lazyOnload` esperando bajar TTI/LCP. NO
+ * funcionó en PSI mobile (Performance 90 → 85, TTI 3.9s → 7.5s). Causa:
+ * PSI simula mobile 4G donde el browser tarda más en llegar al idle, así
+ * que lazyOnload termina bloqueando el TTI igual pero más tarde.
+ * Volvemos a `afterInteractive` para PSI-friendly. Si en producción real
+ * (conexiones rápidas) lazyOnload fuera mejor, habría que hacerlo por
+ * feature flag midiendo RUM, no por PSI.
  */
 export function GoogleTagManager({ gtmId }: { gtmId: string }) {
   return (
-    <Script id="gtm-init" strategy="lazyOnload">
-      {`
+    <>
+      <Script id="gtm-init" strategy="afterInteractive">
+        {`
           window.dataLayer = window.dataLayer || [];
           window.dataLayer.push({
             'gtm.start': new Date().getTime(),
@@ -43,6 +44,7 @@ export function GoogleTagManager({ gtmId }: { gtmId: string }) {
           'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
           })(window,document,'script','dataLayer','${gtmId}');
         `}
-    </Script>
+      </Script>
+    </>
   );
 }

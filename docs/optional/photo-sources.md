@@ -213,14 +213,22 @@ ya ofrecen "búsqueda por selfie" — antes hay que saber:
 
 ---
 
-### 3.1.1. Genéricos descartados como fuente de búsqueda — solo link-out (15 sep 2026)
+### 3.1.1. Genéricos — link-out, salvo Drive (reconsiderar si aparece demanda real)
 
 A diferencia de los proveedores anteriores (dominios propios de carreras/
 cronometradores), estos son plataformas genéricas de terceros donde
-organizadores comparten álbumes sueltos — investigados porque
-`races.officialUrl` de algunas carreras del catálogo apunta directamente
-ahí (17 carreras a `facebook.com` en la muestra de dominios, más las que
-usan Google Photos vía links puntuales tipo `correbirras.com`).
+organizadores comparten álbumes sueltos. Medido en el catálogo real de
+mi-dorsal (15 sep 2026, `npx convex run --inline-query` sobre todos los
+campos URL de `races` — `officialUrl`, `photosUrl`, `registrationUrl`,
+`resultsUrl`, `rulesUrl`, `mapUrl`, `mapEmbedUrl`, `extractedFromUrl`,
+`sourceUrl`, `organizerUrl` — más `description`/`longDescription` como
+texto libre):
+
+| Proveedor | Carreras en el catálogo |
+|---|---|
+| Facebook | **21** |
+| Google Photos | **0** |
+| Google Drive | **0** |
 
 #### Facebook (álbumes de página/evento)
 - Verificado: Meta prohíbe explícitamente scraping/extracción automatizada
@@ -235,7 +243,7 @@ usan Google Photos vía links puntuales tipo `correbirras.com`).
   vez de intentar precargarlo en el formulario de búsqueda por selfie
   (que el backend rechazaría con un 400 igualmente).
 
-#### Google Photos / Google Drive (álbumes compartidos)
+#### Google Photos (álbumes compartidos)
 - Verificado con un enlace real (`photos.app.goo.gl/...` citado en
   correbirras.com): el HTML inicial de la página de álbum compartido solo
   trae 1 foto (la portada) — el resto carga por scroll infinito vía JS, no
@@ -243,10 +251,42 @@ usan Google Photos vía links puntuales tipo `correbirras.com`).
 - La Google Photos Library API oficial exige **OAuth del propietario del
   álbum** para leer su contenido — no hay vía pública de solo lectura sin
   esa autorización, que no tenemos ni es viable pedir a cada fotógrafo.
-- Google Drive tiene el mismo problema estructural: sin OAuth del
-  propietario, no hay acceso programático fiable a una carpeta compartida.
 - **Veredicto:** ❌ **Descartado técnicamente** (no solo por políticas).
-  Mismo tratamiento de link-out que Facebook — ver arriba.
+  Link-out, igual que Facebook. Además, 0 carreras del catálogo lo usan
+  hoy (tabla arriba) — sin caso de uso real ni aunque fuera viable.
+
+#### Google Drive (carpetas compartidas) — ⚠️ técnicamente viable, sin demanda real hoy
+- **Corrección respecto a una versión anterior de este doc**, que
+  agrupaba Drive con Google Photos como "mismo problema estructural" —
+  **incorrecto para Drive**, confirmado con una prueba real (15 sep 2026):
+  una cuenta de servicio propia de Google Cloud (gratis, sin coste por
+  este volumen), **sin ser añadida como colaboradora**, pudo listar
+  (`files.list`) y descargar el contenido real (`files.get?alt=media`,
+  HTTP 200) de una carpeta compartida solo como "Cualquiera con el enlace
+  puede ver". Confirmado también por qué: una API key simple NO basta
+  (Drive exige una identidad real para evaluar el ACL de cada archivo,
+  ver `cloud.google.com/docs/authentication/api-keys` — *"a standard API
+  key doesn't identify a principal"*), pero una cuenta de servicio SÍ
+  tiene una identidad propia (email `@proyecto.iam.gserviceaccount.com`)
+  que Drive evalúa exactamente igual que la de cualquier cuenta de Gmail
+  que abriera el enlace a mano.
+- **Pero: 0 de 2652 carreras del catálogo apuntan a Drive hoy** (tabla
+  arriba) — a diferencia de Facebook (21) o de la promesa (no cumplida)
+  de Sportmaniacs, aquí no hay ningún caso de uso real que mover.
+- **Veredicto:** ⏸️ **Capacidad técnica confirmada, implementación
+  aplazada por falta de demanda.** No es un descarte por inviabilidad —
+  es la única de las plataformas genéricas que SÍ sería adaptable como
+  fuente real de búsqueda (mismo patrón que Flickr: recurso público que
+  cualquier identidad puede leer), pero construir el adapter hoy no
+  tendría ningún efecto medible. Hoy tratado como **link-out**
+  (`lib/photo-source-support.ts`, `google_drive` en
+  `UNSEARCHABLE_DOMAIN_PATTERNS`) exactamente igual que Facebook/Google
+  Photos — la diferencia es que aquí el link-out es una decisión
+  temporal por falta de volumen, no un tope técnico. **Siguiente paso si
+  aparece demanda real:** quitar `google_drive` de esa lista y construir
+  `findmyrace/sources/google_drive.py` (`GoogleDrivePhotoSource`) con
+  credenciales de cuenta de servicio guardadas como secret de Modal —
+  no haría falta reinvestigar la viabilidad, ya está confirmada.
 
 ---
 
@@ -433,7 +473,8 @@ tirar de ambas, no solo de una:
 | 2 | **UI: autocompletar álbum de ChipLevante desde la carrera** | Las 113 carreras de ChipLevante, sin que el usuario pegue URL | ~horas-1 día | El adapter ya existe; falta que `photoSearch.create` ofrezca la URL automáticamente cuando `race.scraperAdapter === "chiplevante"`. **Sigue pendiente**, ver §7.3. |
 | ~~3~~ | ~~Masatletismo / FDMValencia / A Coruña~~ | ~~Bajo (regional)~~ | ~~~1-2 días cada uno~~ | ❌ **Los tres descartados** (15 sep 2026, ver §3.1): Masatletismo cubre Andalucía/Córdoba (no CyL como se pensaba) con solo 6 carreras candidatas reales en el catálogo; FDMValencia enlaza a Facebook, no tiene galería propia; A Coruña solo tiene 2 carreras en el catálogo. |
 | ~~—~~ | ~~"correbirras" / "carreraspopulares"~~ | ~~231 + 117 carreras~~ | — | ❌ **Descartados por estructura** — son agregadores de calendario (cada carrera vive en su propio dominio distinto: `lineadesalida.net`, `ayto.mutxamel.org`, etc.), no proveedores de fotos con patrón común. Un solo adapter no puede cubrir decenas de dominios sin estructura compartida. |
-| ~~—~~ | ~~Facebook / Google Photos / Drive~~ | ~~17+ carreras a Facebook~~ | — | ❌ **Descartados como búsqueda automática** (ver §3.1.1): Facebook prohíbe scraping en ToS; Google Photos/Drive exigen OAuth del propietario. ✅ **Implementado como link-out** (15 sep 2026, `lib/photo-source-support.ts`) — botón "Abrir álbum" en vez de búsqueda por selfie. |
+| ~~—~~ | ~~Facebook / Google Photos~~ | ~~21 carreras a Facebook, 0 a Google Photos~~ | — | ❌ **Descartados como búsqueda automática** (ver §3.1.1): Facebook prohíbe scraping en ToS; Google Photos exige OAuth del propietario y su HTML no trae el álbum completo. ✅ **Implementado como link-out** (15 sep 2026, `lib/photo-source-support.ts`) — botón "Abrir álbum" en vez de búsqueda por selfie. |
+| — | **Google Drive** | **0 carreras hoy** — pero técnicamente viable | ~1 día si aparece demanda | ⏸️ **No descartado, aplazado.** Confirmado con prueba real (cuenta de servicio, sin OAuth del propietario, SÍ lee una carpeta "cualquiera con el enlace") — a diferencia de Facebook/Google Photos, aquí el bloqueo es solo de volumen, no técnico ni legal. Hoy tratado como link-out por pragmatismo (0 casos reales); ver §3.1.1. |
 | 4 | **SportPXL partner** | Alto potencial, pero requiere acuerdo comercial + fee | ~1 semana + negociación | Decisión de negocio (Manu), no bloqueante |
 | — | **Resto de plataformas cerradas (§3.2)** | — | — | Nunca scraping — solo link-out o contacto comercial |
 

@@ -14,16 +14,12 @@ import { ReactNode } from "react";
 // En SSR: process existe, retorna la URL.
 // En cliente: Next.js ya reemplazó NEXT_PUBLIC_CONVEX_URL con el literal.
 //
-// logger: false (sep 2026): sin esto, el cliente Convex loguea por consola
-// cada vez que el WebSocket sync falla al conectar (3 entradas en PSI Best
-// Practices por cada intento). En usuarios reales esos logs son útiles,
-// pero penalizan Lighthouse Best Practices (score 92 → esperado 100). El
-// comportamiento del cliente es idéntico: si el WebSocket falla, sigue
-// reintentando en background con backoff. Solo silenciamos el log.
+// Nota sep 2026: probamos pasar `logger: false, verbose: false` para
+// silenciar los warnings de WebSocket (afectan Lighthouse Best Practices).
+// NO funcionó — los logs siguen apareciendo en consola (probablemente la
+// opción cambió de nombre en Convex 1.45). Mantener el constructor simple.
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
-const convex = convexUrl
-  ? new ConvexReactClient(convexUrl, { logger: false, verbose: false })
-  : null;
+const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
 
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
   // Acceso directo (mismo motivo: inline replacement en build time).

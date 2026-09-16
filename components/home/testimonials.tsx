@@ -1,125 +1,146 @@
 /**
- * Testimonials — voces de la comunidad.
+ * Testimonials — voces de la comunidad (v3.1, sep 2026).
  *
- * v3.0 minimalista (sep 2026): se eliminó el disclaimer de placeholders.
- * Los testimonios se muestran tal cual, sin la banda de aviso que advertía
- * de su carácter ficticio. Si en el futuro entran testimonios reales, se
- * sustituye el array TESTIMONIALS directamente.
+ * Cambio respecto a v3.0:
+ *  - Quitadas estrellas, badge "Pro", iconos Quote decorativos y datos extra
+ *    (edad, ciudad, carrera, tiempo, emoji). Se mantienen solo cita + nombre
+ *    + inicial.
+ *  - Las citas siguen siendo representativas (no testimonios verificados
+ *    uno a uno). Cuando entren voces reales, se sustituye TESTIMONIALS.
+ *  - Disclaimer pequeño al pie, fuera del grid, para ser honestos sobre el
+ *    carácter placeholder (v3.0 lo quitó, v3.1 lo reintroduce porque sin él
+ *    parece marketing inflado).
  */
-
-import { Quote, Sparkles } from "lucide-react";
 
 interface Testimonial {
   name: string;
-  age: number;
-  city: string;
-  race: string;
-  time: string;
+  initials: string;
   text: string;
-  avatar: string; // emoji o inicial
-  /** Si true, se renderiza con accent dorado (testimonial de Pro). */
-  pro?: boolean;
+  /** Gradiente para el avatar (red/green/amber/etc) */
+  gradient: string;
 }
 
 const TESTIMONIALS: Testimonial[] = [
   {
-    name: "Carlos M.",
-    age: 38,
-    city: "Valencia",
-    race: "10K Valencia 2026",
-    time: "44:21",
-    text: "Metí mi marca en 10K y la predicción para la media me la clavó a 40 segundos. Y cuando publicaron la clasificación, el resultado me llegó al correo antes de que yo entrara a mirarlo.",
-    avatar: "🏃",
+    name: "Lucía",
+    initials: "LM",
+    gradient: "linear-gradient(135deg, #dc2626, #b91c1c)",
+    text:
+      "Crucé la meta y pensé: ya está. Pero en cuanto salieron las clasificaciones, tenía un diploma precioso en el buzón.",
   },
   {
-    name: "Lucía R.",
-    age: 31,
-    city: "Madrid",
-    race: "Media Maratón Madrid 2026",
-    time: "1:42:08",
-    text: "Ahora mismo tengo 6 carreras en el calendario, cada una con su dorsal y su predicción. Antes esto vivía repartido entre notas del móvil y capturas de WhatsApp.",
-    avatar: "🧡",
+    name: "Roberto",
+    initials: "RM",
+    gradient: "linear-gradient(135deg, #16a34a, #15803d)",
+    text:
+      "Clavé el tiempo de la Behobia al minuto. En cuanto la organización publicó las clasificaciones, el diploma ya estaba en mi buzón.",
   },
   {
-    name: "Roberto S.",
-    age: 45,
-    city: "Bilbao",
-    race: "Behobia 2025",
-    time: "1:26:14",
-    text: "El diploma en PDF me llegó al día siguiente con mi dorsal, mi tiempo y mi posición ya puestos. Lo mandé al grupo del club antes de que nadie preguntara cómo me había ido.",
-    avatar: "⚡",
+    name: "Andrea",
+    initials: "AP",
+    gradient: "linear-gradient(135deg, #f59e0b, #d97706)",
+    text:
+      "Por fin alguien que entiende lo que significa el dorsal. No es Strava, es otra cosa. Es tu línea de meta.",
   },
   {
-    name: "Nerea P.",
-    age: 34,
-    city: "Sevilla",
-    race: "Maratón Sevilla 2026",
-    time: "3:48:12",
-    text: "Conecté Strava una vez y ya no subo nada a mano: mis PRs se actualizan solos con cada actividad. Por 2,99 € al mes me quito de encima el ZIP y el rollo de exportar cada temporada.",
-    avatar: "✨",
-    pro: true,
+    name: "Javier",
+    initials: "JG",
+    gradient: "linear-gradient(135deg, #0a0a0a, #404040)",
+    text:
+      "Subí el dorsal una vez y se sincronizó todo. Llegué a casa y el diploma ya estaba esperándome en el email.",
   },
 ];
 
 export function Testimonials() {
   return (
     <section
-      className="py-8 md:py-12 bg-runner-warm rounded-3xl px-5 md:px-10"
+      className="py-10 md:py-14"
       aria-labelledby="testimonials-title"
+      style={{ background: "#fff" }}
     >
-      <div className="text-center mb-8 md:mb-10">
+      <div className="container">
         <h2
           id="testimonials-title"
-          className="text-3xl md:text-4xl font-bold text-runner-dark"
+          className="text-center mb-10"
+          style={{
+            fontFamily: "var(--font-display, 'Sora', system-ui)",
+            fontWeight: 700,
+            fontSize: "clamp(1.75rem, 4vw, 2.5rem)",
+            color: "#0a0a0a",
+            letterSpacing: "-0.015em",
+            lineHeight: 1.12,
+          }}
         >
-          Lo que dicen los que ya están dentro
+          Lo que dicen los corredores
         </h2>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-        {TESTIMONIALS.map((t) => (
-          <article
-            key={t.name}
-            className={`relative rounded-2xl border p-5 md:p-6 ${
-              t.pro
-                ? "bg-gradient-to-br from-yellow-50 to-amber-50 border-yellow-200"
-                : "bg-white border-gray-200"
-            }`}
-          >
-            <Quote
-              className="absolute -top-3 -left-2 h-8 w-8 text-runner-primary bg-white rounded-full p-1.5"
-              aria-hidden="true"
-            />
-            {t.pro && (
-              <span className="absolute -top-2.5 right-3 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-yellow-300 text-runner-dark px-2 py-0.5 border border-yellow-400">
-                <Sparkles className="h-3 w-3" aria-hidden="true" />
-                Pro
-              </span>
-            )}
-            <p className="text-sm md:text-base text-gray-700 leading-relaxed mb-4 italic">
-              &ldquo;{t.text}&rdquo;
-            </p>
-            <div className="flex items-center gap-3 pt-3 border-t border-gray-100">
-              <div
-                className="h-10 w-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-lg"
-                aria-hidden="true"
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {TESTIMONIALS.map((t) => (
+            <article
+              key={t.name}
+              className="flex flex-col gap-5"
+              style={{
+                background: "#fff",
+                borderRadius: "16px",
+                border: "1px solid rgba(10,10,10,0.05)",
+                padding: "24px",
+              }}
+            >
+              <p
+                style={{
+                  fontFamily: "var(--font-display, 'Sora', system-ui)",
+                  fontSize: "0.9375rem",
+                  lineHeight: 1.55,
+                  color: "#0a0a0a",
+                  margin: 0,
+                  flex: 1,
+                }}
               >
-                {t.avatar}
-              </div>
-              <div className="text-sm">
-                <p className="font-semibold text-runner-dark">
-                  {t.name}, {t.age}
-                </p>
-                <p className="text-xs text-gray-500">{t.city}</p>
-                <p className="text-[11px] text-runner-primary font-mono mt-0.5">
-                  {t.race} · {t.time}
-                </p>
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
+                &ldquo;{t.text}&rdquo;
+              </p>
 
+              <div
+                className="flex items-center gap-3"
+                style={{ paddingTop: "16px", borderTop: "1px solid rgba(10,10,10,0.06)" }}
+              >
+                <div
+                  aria-hidden="true"
+                  className="flex items-center justify-center"
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: "50%",
+                    background: t.gradient,
+                    color: "#fff",
+                    fontFamily: "var(--font-display, 'Sora', system-ui)",
+                    fontWeight: 700,
+                    fontSize: "0.75rem",
+                  }}
+                >
+                  {t.initials}
+                </div>
+                <span
+                  style={{
+                    fontSize: "0.8125rem",
+                    fontWeight: 600,
+                    color: "#0a0a0a",
+                  }}
+                >
+                  {t.name}
+                </span>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <p
+          className="text-center mt-8"
+          style={{ fontSize: "0.75rem", color: "#525252" }}
+        >
+          * Citas representativas. Los testimonios se irán reemplazando por
+          voces reales de la comunidad conforme crezca la base de usuarios.
+        </p>
+      </div>
     </section>
   );
 }

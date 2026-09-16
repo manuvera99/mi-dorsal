@@ -1,26 +1,35 @@
-// Home de mi-dorsal — versión minimalista (sep 2026).
+// Home de mi-dorsal — v3.1 (sep 2026).
 //
-// Estructura: 5 secciones visibles + JSON-LD FAQ inline para SEO.
-// Las queries a Convex (FeaturedRaces) se hacen en cliente tras hidratación.
-// El resto de la home es estática y se sirve vía ISR con revalidate=300,
-// así el HTML inicial se transfiere cacheado y solo cambia cada 5 min.
+// Restyling visual + sección nueva "Tus fotos, sin rebuscar" (PhotosSection).
+// Se elimina la sección FeaturedRaces (geo-personalizada) en esta iteración
+// para mantener el minimalismo pedido por Manu. El archivo
+// components/home/featured-races.tsx se conserva sin uso por si se quiere
+// recuperar en otra iteración.
+//
+// Estructura actual de la home:
+//   1. Hero                  — fondo rojo estilo Pro, dorsal minimal
+//   2. DiplomaAndSharePreview — diploma + sticker fieles al email real
+//   3. PhotosSection          — "te avisamos" + "te encontramos con IA" (Pro)
+//   4. UseCase                — quote + autor
+//   5. Testimonials           — 4 voces simples
+//   6. FinalCta               — botón único "Empieza gratis"
+//
+// Se preserva:
+//  - JSON-LD FAQ inline pre-serializado (regla §2.1 AGENTS.md)
+//  - revalidate = 300 (ISR de 5 min)
+//  - lazy ssr:false para secciones below-the-fold
+//  - client-only islands para ProBadgeIsland, ResultBannerIsland, WelcomeOverlayIsland
 //
 // Ver docs/core/anti-patterns.md (la nota sobre force-dynamic aplica a
 // /carreras, no a /). Esta home no necesita force-dynamic.
-//
-// Sobre el HTML inicial: Vercel comprime con brotli los HTML dinámicos
-// (/carreras) y los assets estáticos (CSS, JS, fuentes), pero NO comprime
-// el HTML estático de ISR (revalidate). Para reducir el impacto en PSI
-// mobile, las 3 secciones below-the-fold (UseCase, Testimonials, FinalCta)
-// se cargan con `ssr: false` vía lazy-sections.tsx.
 import { Hero } from "@/components/home/hero";
 import {
   DiplomaPreviewLazy,
-  FeaturedRacesLazy,
   UseCaseLazy,
   TestimonialsLazy,
   FinalCtaLazy,
 } from "@/components/home/lazy-sections";
+import { PhotosSection } from "@/components/home/photos-section";
 import {
   ResultBannerIsland,
   WelcomeOverlayIsland,
@@ -33,22 +42,7 @@ import {
 export const revalidate = 300;
 
 /**
- * Home de mi-dorsal v3.0 (minimalista).
- *
- * Estructura: 5 secciones, mobile-first, semánticas, accesibles.
- *
- *  1. Hero                  — propuesta de valor + CTAs + dorsal visual
- *  2. DiplomaAndSharePreview — el "qué te llega al buzón" (sección estrella)
- *  3. FeaturedRaces         — carreras cerca de ti (geo-personalizado)
- *  4. UseCase               — storytelling corto: la Behobia
- *  5. Testimonials          — voces de la comunidad
- *  6. FinalCta              — último empujón (registro / Pro suave)
- *
- * El Schema.org FAQPage se inyecta inline como string JSON pre-serializado
- * para evitar el error `a.map is not a function` que aparecía al pasar
- * arrays desde un Server Component en producción. El bloque visible del
- * FAQ se eliminó (recorte de home minimalista) pero el schema se mantiene
- * para preservar los rich snippets de Google.
+ * Home de mi-dorsal v3.1 (minimalista con sección de fotos).
  */
 export default function HomePage() {
   return (
@@ -66,21 +60,12 @@ export default function HomePage() {
         {/* 1. HERO */}
         <Hero />
 
-        {/* 2. DIPLOMA + SHARE CARD — la sección estrella (lazy: ssr:false).
-            Muestra visualmente los DOS entregables que llegan al cruzar la meta:
-            el diploma PDF A4 (izquierda) y la imagen PNG 1200×630 para redes
-            (derecha). Posicionada justo tras el Hero para capitalizar la
-            atención del "recibe tu resultado oficial con diploma PDF".
-
-            v3.0 (sep 2026): movida a lazy para bajar el LCP mobile de 7s a
-            ~3-4s. La sección es la más pesada de la home (~20KB SVG inline) y
-            cargar tras hidratación no perjudica la conversión porque el
-            usuario tiene que hacer scroll para verla. */}
+        {/* 2. DIPLOMA + STICKER — la sección estrella (lazy: ssr:false). */}
         <DiplomaPreviewLazy />
 
-        {/* 3. CARRERAS DESTACADAS (lazy: ssr:false, ahorra HTML inicial).
-            Geo-personalizado en cliente vía useUserRegion. */}
-        <FeaturedRacesLazy />
+        {/* 3. FOTOS — "te avisamos" + "te encontramos con IA" (Pro).
+            Server component declarativo (sin fetches, sin JS). */}
+        <PhotosSection />
 
         {/* 4. CASO DE USO / STORYTELLING (lazy: ssr:false) */}
         <UseCaseLazy />
@@ -88,7 +73,7 @@ export default function HomePage() {
         {/* 5. TESTIMONIOS (lazy: ssr:false) */}
         <TestimonialsLazy />
 
-        {/* 6. CTA FINAL (lazy: ssr:false). Incluye mención suave a Pro. */}
+        {/* 6. CTA FINAL (lazy: ssr:false). */}
         <FinalCtaLazy />
       </div>
 

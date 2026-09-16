@@ -1,139 +1,65 @@
 /**
- * UseCase — "Imagina: te has apuntado a la Behobia".
+ * UseCase — solo quote + autor (v3.1, sep 2026).
  *
- * Storytelling > lista de features. Mostramos 3 momentos reales del
- * journey del usuario con mockups de los emails que recibiría.
+ * Cambio respecto a v3.0: se eliminan los 4 momentos con timeline vertical
+ * y los 2 mockups de email. Solo queda una cita editorial centrada con
+ * nombre y carrera. Sin emojis decorativos, sin mockups.
  *
- * El objetivo: que el visitante se imagine usando la app.
+ * Copy alineado con brand-guide §2 (tuteo, honestidad) y la promesa "en
+ * cuanto publican clasificaciones" sin sugerir un tiempo concreto.
  */
-
-import { Mail, Calendar, Trophy, Zap } from "lucide-react";
-
-const MOMENTS = [
-  {
-    icon: Calendar,
-    when: "Enero. Abres midorsal.",
-    body: "Las 6 carreras que has marcado este año están ahí, con tu dorsal 4213. La Behobia, la San Silvestre, la media de tu ciudad. Todo en una pantalla.",
-  },
-  {
-    icon: Mail,
-    when: "Noviembre, 7 días antes.",
-    body: "Te llega un email: \"Faltan 7 días para la Behobia. Tu predicción: 1h 28'. ¿Vas a por el sub-1:30?\". Lo lees mientras atas las zapatillas.",
-  },
-  {
-    icon: Trophy,
-    when: "Noviembre, el día después.",
-    body: "Te llega un email con tu tiempo: 1h 26′ 14\". Nuevo PR en 10K. Adjuntos: el diploma PDF A4 (para enmarcar) y la imagen PNG con tu dorsal, lista para publicar en el grupo de WhatsApp del club o en tu Instagram. Un clic y compartido. 🎉",
-  },
-  {
-    icon: Zap,
-    when: "Diciembre. Te haces Pro.",
-    body: "Conectas Strava una vez. Tus actividades de la temporada entran solas, los PRs se actualizan y un análisis de tu perfil de corredor te dice dónde apretar para bajar de 1:25 en la Behobia 2027.",
-    pro: true,
-  },
-];
 
 export function UseCase() {
   return (
-    <section className="py-8 md:py-12" aria-labelledby="usecase-title">
-      <div className="text-center mb-8 md:mb-10">
-        <p className="text-sm font-semibold text-runner-primary uppercase tracking-wider mb-2">
-          Caso real
-        </p>
-        <h2 id="usecase-title" className="text-3xl md:text-4xl font-bold text-runner-dark">
-          Imagina: te apuntas a la Behobia.
+    <section
+      className="py-10 md:py-14 text-center"
+      aria-labelledby="usecase-title"
+      style={{
+        background:
+          "radial-gradient(800px 400px at 50% 50%, rgba(245, 158, 11, 0.06), transparent 60%), #f5f5f4",
+      }}
+    >
+      <div className="max-w-3xl mx-auto px-5">
+        <h2
+          id="usecase-title"
+          className="mb-8"
+          style={{
+            fontFamily: "var(--font-display, 'Sora', system-ui)",
+            fontWeight: 600,
+            fontSize: "clamp(1.5rem, 3.5vw, 2.5rem)",
+            lineHeight: 1.2,
+            letterSpacing: "-0.015em",
+            color: "#0a0a0a",
+            margin: 0,
+          }}
+        >
+          &ldquo;Crucé la meta y, en cuanto la organización publicó las
+          clasificaciones, tenía mi diploma en el buzón.&rdquo;
         </h2>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
-        {/* Columna izquierda: narrativa */}
-        <ol className="lg:col-span-3 space-y-6">
-          {MOMENTS.map((m, i) => {
-            const Icon = m.icon;
-            return (
-              <li key={i} className="flex gap-4 items-start group">
-                <div className="flex-shrink-0 flex flex-col items-center">
-                  <div
-                    className={`flex h-12 w-12 items-center justify-center rounded-full text-white shadow-md group-hover:scale-105 transition-transform ${
-                      m.pro
-                        ? "bg-gradient-to-br from-yellow-400 to-amber-500"
-                        : "bg-runner-primary"
-                    }`}
-                  >
-                    <Icon className="h-5 w-5" aria-hidden="true" />
-                  </div>
-                  {i < MOMENTS.length - 1 && (
-                    <div
-                      aria-hidden="true"
-                      className="w-0.5 flex-1 bg-gradient-to-b from-runner-primary/40 to-transparent mt-2 mb-2 min-h-[40px]"
-                    />
-                  )}
-                </div>
-                <div className="pt-1 flex-1">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <p className="text-base font-semibold text-runner-primary">{m.when}</p>
-                    {m.pro && (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-yellow-300 text-runner-dark px-2 py-0.5">
-                        <Zap className="h-3 w-3" aria-hidden="true" />
-                        Pro
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-base text-gray-700 leading-relaxed">{m.body}</p>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-
-        {/* Columna derecha: mockups de emails */}
-        <div className="lg:col-span-2 space-y-4">
-          <EmailMockup
-            label="T-7 días · recordatorio"
-            title="Faltan 7 días para la Behobia"
-            body="Tu predicción: 01:28:00. ¿Vas a por el sub-1:30? Salida a las 17:00 desde el Boulevard."
-            footer="mi-dorsal · Behotiburu, esto va en serio"
-          />
-          <EmailMockup
-            label="Día D+1 · resultado oficial"
-            title="🏁 Tu Behobia: 01:26:14"
-            body="Has batido tu marca en 1:52. Adjuntos: diploma PDF (para imprimir) + imagen PNG (para tu club o redes). Comparte con un clic."
-            footer="mi-dorsal · Nuevo PR desbloqueado 🎉"
-            highlight
-          />
+        <div
+          className="inline-flex items-center gap-3"
+          style={{ color: "#525252", fontSize: "0.875rem" }}
+        >
+          <span
+            aria-hidden="true"
+            className="flex items-center justify-center"
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: "50%",
+              background: "#f5f5f4",
+              color: "#0a0a0a",
+              fontFamily: "var(--font-display, 'Sora', system-ui)",
+              fontWeight: 700,
+              fontSize: "0.75rem",
+            }}
+          >
+            CV
+          </span>
+          <span>Carlos · Behobia 2026</span>
         </div>
       </div>
     </section>
-  );
-}
-
-interface EmailMockupProps {
-  label: string;
-  title: string;
-  body: string;
-  footer: string;
-  highlight?: boolean;
-}
-
-function EmailMockup({ label, title, body, footer, highlight }: EmailMockupProps) {
-  return (
-    <div
-      className={`rounded-xl border ${
-        highlight ? "border-runner-primary/50 shadow-lg" : "border-gray-200 shadow-sm"
-      } bg-white overflow-hidden`}
-    >
-      <div
-        className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider ${
-          highlight ? "bg-runner-primary text-white" : "bg-runner-warm text-gray-600"
-        }`}
-      >
-        {label}
-      </div>
-      <div className="p-4">
-        <p className="text-sm font-bold text-runner-dark mb-1.5">{title}</p>
-        <p className="text-sm text-gray-600 leading-relaxed mb-3">{body}</p>
-        <p className="text-[11px] text-gray-500 italic">{footer}</p>
-      </div>
-    </div>
   );
 }

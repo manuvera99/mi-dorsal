@@ -1,38 +1,31 @@
 "use client";
 
 /**
- * FinalCTA — el último empujón antes de que el visitante se vaya.
+ * FinalCTA — el último empujón antes de que el visitante se vaya (v3.1).
  *
- * v3.0 minimalista (sep 2026):
- * - Bloque más compacto y directo que la versión anterior.
- * - CTA primario: registro gratis.
- * - CTA secundario: enlace sutil a `/pro` con mención suave a Pro (sin tabla
- *   de precios ni comparación Free/Pro — eso vivía en la sección ProTeaser,
- *   eliminada).
- * - Se oculta entera si hay sesión activa (free o premium): ya tienen cuenta.
- *
- * Ya se monta vía FinalCtaLazy (dynamic ssr:false, ver lazy-sections.tsx),
- * así que useUser() es seguro aquí sin necesitar un island propio — el
- * ISR de la home nunca intenta prerenderizar este componente server-side.
+ * Cambio respecto a v3.0:
+ *  - Se elimina el lede largo y el segundo CTA "Solo quiero curiosear
+ *    carreras". Solo queda: H2 + un botón primario "Empieza gratis".
+ *  - Se mantiene la lógica de useUser para ocultar el bloque si el
+ *    visitante ya tiene cuenta (igual que v3.0).
+ *  - Se mantiene el fondo rojo de v3.0 (la home ya tiene hero rojo;
+ *    cerrar con el mismo color refuerza la marca).
  */
 
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
 import { isMockMode } from "@/lib/mock/provider";
 
 export function FinalCta() {
   // Mock mode: no hay ClerkProvider real montado, useUser crashearía.
-  // Sin sesión real que detectar, se muestra siempre (comportamiento
-  // anterior sin cambios en mock).
   if (isMockMode()) return <FinalCtaSection />;
   return <RealFinalCta />;
 }
 
 function RealFinalCta() {
   const { isLoaded, isSignedIn } = useUser();
-  // Mientras carga, no mostramos nada — evita el parpadeo de "aparece
-  // y luego desaparece" para usuarios logueados.
+  // Mientras carga, no mostramos nada — evita el parpadeo para usuarios
+  // logueados.
   if (!isLoaded || isSignedIn) return null;
   return <FinalCtaSection />;
 }
@@ -40,49 +33,44 @@ function RealFinalCta() {
 function FinalCtaSection() {
   return (
     <section
-      // v3.1 (sep 2026): py-12→py-10 md:py-14→md:py-12. Antes el H2 quedaba
-      // fuera del primer viewport en mobile cuando el usuario llegaba
-      // scrolleando (el bloque empezaba muy abajo y se perdía el titular que
-      // justifica el CTA). Compacto para que entre título + párrafo + botones
-      // en ~2 viewports mobile.
-      className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-runner-primary via-red-600 to-rose-700 text-white px-6 py-10 md:px-12 md:py-12 text-center"
+      className="text-center"
       aria-labelledby="final-cta-title"
+      style={{
+        background:
+          "radial-gradient(800px 400px at 50% 50%, rgba(220, 38, 38, 0.08), transparent 60%), #fafaf9",
+        padding: "5rem 1.25rem",
+      }}
     >
-      <div
-        aria-hidden="true"
-        className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-white/5 blur-3xl"
-      />
-      <div
-        aria-hidden="true"
-        className="absolute -left-20 -bottom-20 h-72 w-72 rounded-full bg-rose-900/30 blur-3xl"
-      />
-
-      <div className="relative max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto">
         <h2
           id="final-cta-title"
-          className="text-2xl md:text-4xl font-bold leading-tight mb-3"
+          className="mb-8"
+          style={{
+            fontFamily: "var(--font-display, 'Sora', system-ui)",
+            fontWeight: 700,
+            fontSize: "clamp(1.75rem, 4vw, 2.5rem)",
+            color: "#0a0a0a",
+            letterSpacing: "-0.02em",
+            lineHeight: 1.12,
+            margin: 0,
+          }}
         >
-          Tu temporada empieza con un dorsal.
+          Tu próxima línea de salida empieza aquí.
         </h2>
-        <p className="text-sm md:text-lg text-red-50/90 mb-6 md:mb-8 max-w-xl mx-auto">
-          Únete gratis. Cuando cruces tu próxima meta, te esperamos en tu buzón
-          con el diploma PDF y la imagen para tus redes.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-          <Link
-            href="/sign-up"
-            className="inline-flex items-center gap-2 bg-white text-runner-primary font-semibold px-6 py-3 rounded-md hover:bg-red-50 transition-colors shadow-lg"
-          >
-            Empieza gratis
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </Link>
-          <Link
-            href="/carreras"
-            className="text-sm font-medium text-white/90 hover:text-white underline underline-offset-4"
-          >
-            Solo quiero curiosear carreras
-          </Link>
-        </div>
+
+        <Link
+          href="/sign-up"
+          className="inline-flex items-center gap-2 font-semibold transition-colors"
+          style={{
+            background: "#dc2626",
+            color: "#fff",
+            padding: "1rem 2rem",
+            borderRadius: "9999px",
+            fontSize: "1rem",
+          }}
+        >
+          Empieza gratis
+        </Link>
       </div>
     </section>
   );

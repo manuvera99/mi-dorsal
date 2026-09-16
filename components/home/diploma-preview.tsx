@@ -1,41 +1,22 @@
 /**
- * DiplomaAndSharePreview — la sección estrella "lo que llega cuando cruzas la meta".
+ * DiplomaAndSharePreview — sección estrella de la home.
  *
- * Muestra DOS cosas relacionadas con el resultado oficial de una carrera,
- * visualizadas lado a lado en desktop:
+ * v3.1 (sep 2026): restyling visual. Diploma y sticker son **réplicas
+ * fieles** de los assets reales que recibe el usuario por email:
+ *  - Diploma (PNG preview del email):  lib/pdf/diploma-image.tsx
+ *  - Sticker vertical (PNG 1080×1920): lib/share-card/story-sticker.tsx
+ *    con theme "email" (fondo crema opaco + paneles blancos).
  *
- *   IZQUIERDA — Diploma PDF A4 (replica visual de convex/pdf/diploma.tsx)
- *               Adjunto automático en el email de resultado. Para
- *               imprimir, enmarcar, llevar a la oficina o regalar.
+ * Los mockups son **declarativos** (no fetchean ni renderizan en runtime).
+ * El diploma real se sirve desde /api/diploma/[myRaceId]; el sticker se
+ * edita/exporta en /editor-sticker/[myRaceId].
  *
- *   DERECHA  — Sticker vertical personalizable (replica visual de
- *               lib/sticker-editor/StickerCanvas.tsx y su plantilla
- *               "classic" en lib/sticker-editor/templates.ts).
- *               A diferencia del diploma (fijo, automático), este es el
- *               reclamo de la feature premium /editor-sticker: el usuario
- *               mueve, redimensiona y elige qué datos mostrar, y lo
- *               exporta en PNG transparente o se lo manda por email.
+ * Se preserva: la lógica de StickerEditorCta (client component) que decide
+ * destino según si el usuario es premium.
  *
- * La sección es declarativa (no hace fetches ni genera imágenes en runtime
- * — solo muestra el mockup, ninguna de las dos mitades importa el
- * componente real). El diploma real se genera por el cron `check-results`
- * y se sirve desde /api/diploma/[myRaceId]; el sticker real se edita en
- * /editor-sticker/{myRaceId} (ver app/editor-sticker/[myRaceId]/client.tsx)
- * y se exporta client-side con html-to-image (lib/sticker-editor/export.ts).
- *
- * Posición en la home: 2 (justo tras el Hero) para que el visitante,
- * tras leer "recibe tu resultado oficial con diploma PDF", vea
- * inmediatamente QUÉ recibe.
- *
- * NO interactivo. Sirve para visualizar la promesa. El CTA del diploma
- * lleva a diploma-preview.html (A4 imprimible de muestra); el del sticker
- * (StickerEditorCta, componente cliente aparte) decide destino según si
- * el usuario ya es premium: /mi-sticker para elegir carrera y entrar al
- * editor, o /premium si aún no tiene acceso.
+ * Posición en la home: 2 (justo tras el Hero).
  */
 
-import Link from "next/link";
-import { Award, Download, FileText, Sparkles, Mail } from "lucide-react";
 import { StickerEditorCta } from "./sticker-editor-cta";
 
 export function DiplomaAndSharePreview() {
@@ -43,367 +24,603 @@ export function DiplomaAndSharePreview() {
     <section
       className="py-10 md:py-14"
       aria-labelledby="diploma-title"
+      style={{ background: "var(--runner-warm-2, #f5f5f4)" }}
     >
-      <div className="text-center mb-8 md:mb-10 max-w-3xl mx-auto">
-        <p className="text-sm font-semibold text-runner-primary uppercase tracking-wider mb-2 flex items-center justify-center gap-2">
-          <Award className="h-4 w-4" aria-hidden="true" />
-          Lo que llega cuando cruzas la meta
-        </p>
+      <div className="text-center mb-8 md:mb-10 max-w-3xl mx-auto px-4">
         <h2
           id="diploma-title"
-          className="text-3xl md:text-4xl font-bold text-runner-dark"
+          className="text-3xl md:text-4xl font-bold"
+          style={{
+            fontFamily: "var(--font-display, 'Sora', system-ui)",
+            color: "#0a0a0a",
+            letterSpacing: "-0.015em",
+            lineHeight: 1.12,
+          }}
         >
-          Tu diploma PDF + tu imagen para redes, en el buzón al día siguiente
+          Cuando cruzas la meta, llega a tu buzón.
         </h2>
-        <p className="text-gray-600 mt-3 max-w-2xl mx-auto">
-          Cuando la carrera publica clasificaciones, te llega un email con tu tiempo oficial,
-          tu posición, comparativa con tu predicción, y <strong className="text-runner-dark">dos archivos adjuntos</strong>:
-          el diploma para imprimir y la imagen lista para compartir en tu club o en redes.
-        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 max-w-6xl mx-auto px-2 md:px-0">
-        {/* ============================================================ */}
-        {/* IZQUIERDA — Diploma A4 imprimible                              */}
-        {/* ============================================================ */}
-        <article className="flex flex-col">
-          <header className="flex items-center gap-2 mb-3 px-1">
-            <span
-              className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-runner-primary text-white"
-              aria-hidden="true"
-            >
-              <FileText className="h-4 w-4" />
-            </span>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-base md:text-lg font-bold text-runner-dark leading-tight">
-                Diploma PDF A4
-              </h3>
-              <p className="text-xs text-gray-500">Para imprimir, enmarcar o regalar</p>
-            </div>
-            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-runner-warm text-runner-primary border border-runner-primary/30 px-2 py-0.5">
-              <Download className="h-3 w-3" aria-hidden="true" />
-              Adjunto en el email
-            </span>
-          </header>
-
-          {/* Diploma card. Aspect ratio 297:210 (A4 landscape). */}
+        {/* ============================================================
+            IZQUIERDA — Diploma (réplica de lib/pdf/diploma-image.tsx)
+            ============================================================ */}
+        <article aria-label="Diploma PDF A4">
           <div
-            className="relative w-full overflow-hidden rounded-2xl border border-gray-200 shadow-xl bg-runner-warm"
-            style={{ aspectRatio: "297 / 210" }}
+            className="relative w-full overflow-hidden rounded-2xl border"
+            style={{
+              aspectRatio: "842 / 595",
+              background: "#fafaf9",
+              borderColor: "rgba(10,10,10,0.06)",
+            }}
             role="img"
-            aria-label="Diploma finisher de la Behobia-San Sebastián. Dorsal 2501, tiempo oficial 01:26:14, nuevo PR en 10K, posición 521 de 14.820"
+            aria-label="Diploma finisher de la Behobia-San Sebastián. Dorsal 2501, tiempo 01:26:14, nuevo PR en 10K."
           >
-            {/* Doble marco decorativo rojo (mismo estilo que diploma-preview.html) */}
+            {/* Marco decorativo doble */}
             <div
               aria-hidden="true"
-              className="absolute inset-2 border-[1.5px] border-runner-primary rounded-sm"
+              className="absolute"
+              style={{
+                inset: "3.4%",
+                border: "1.5px solid #dc2626",
+                borderRadius: "4px",
+              }}
             />
             <div
               aria-hidden="true"
-              className="absolute inset-3.5 border-[0.5px] border-runner-primary/40 rounded-sm"
+              className="absolute"
+              style={{
+                inset: "4.9%",
+                border: "0.5px solid rgba(220,38,38,0.35)",
+                borderRadius: "3px",
+              }}
             />
 
-            {/* Layout interno. En móvil, dorsal arriba + datos abajo. En md+, grid 2 cols. */}
-            <div className="absolute inset-6 md:inset-10 grid grid-cols-1 md:grid-cols-[1.05fr_1fr] gap-3 md:gap-8">
-              {/* === COL IZQUIERDA: DORSAL + carrera === */}
-              <div className="flex flex-col items-center justify-center relative">
-                {/* Badge "Nuevo PR" arriba a la derecha */}
-                <div className="absolute -top-1 right-0 md:-top-2 md:-right-2">
-                  <span className="inline-flex items-center gap-1 text-[10px] md:text-xs font-bold uppercase tracking-wider rounded-full bg-green-100 text-green-800 border-2 border-green-600 px-2 md:px-3 py-0.5 md:py-1">
-                    🎉 Nuevo PR en 10K
-                  </span>
-                </div>
-
-                {/* Dorsal card (rotado -3deg) */}
-                <div
-                  className="relative w-32 h-44 md:w-44 md:h-60 rounded-lg shadow-lg flex flex-col items-center justify-center text-white"
-                  style={{
-                    background:
-                      "linear-gradient(180deg, #dc2626 0%, #b91c1c 100%)",
-                    transform: "rotate(-3deg)",
-                    boxShadow:
-                      "0 8px 24px rgba(220,38,38,.30), 0 2px 4px rgba(0,0,0,.08)",
-                  }}
-                >
-                  <div
+            <div
+              className="absolute flex flex-col"
+              style={{ inset: "6.4%" }}
+            >
+              {/* Header: brand + PR badge */}
+              <header
+                className="flex justify-between items-center"
+                style={{ marginBottom: "4%" }}
+              >
+                <div className="flex items-center gap-2">
+                  <span
                     aria-hidden="true"
-                    className="absolute top-2 left-3 w-1.5 h-1.5 rounded-full bg-white/70"
-                  />
-                  <div
-                    aria-hidden="true"
-                    className="absolute top-2 right-3 w-1.5 h-1.5 rounded-full bg-white/70"
-                  />
-                  <p className="text-[9px] md:text-[11px] font-bold tracking-[3px] opacity-85 uppercase mb-1">
-                    Dorsal
-                  </p>
-                  <p
-                    className="font-mono text-4xl md:text-6xl font-extrabold tracking-tighter leading-none"
-                    style={{ fontFamily: "JetBrains Mono, monospace" }}
+                    className="flex items-center justify-center rounded"
+                    style={{
+                      width: 22,
+                      height: 22,
+                      background: "#dc2626",
+                      color: "#fff",
+                      fontFamily: "var(--font-mono, monospace)",
+                      fontWeight: 700,
+                      fontSize: "0.65rem",
+                      borderRadius: "5px",
+                    }}
                   >
-                    2501
-                  </p>
-                  <div
-                    className="absolute -bottom-3 -right-3 bg-white text-runner-dark w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center font-mono font-extrabold text-xs md:text-base shadow"
-                    style={{ transform: "rotate(6deg)" }}
-                  >
-                    10<span className="text-[9px] md:text-[11px] opacity-70 ml-0.5">K</span>
-                  </div>
-                </div>
-
-                <div className="mt-8 md:mt-10 text-center max-w-[200px] md:max-w-[280px]">
-                  <p className="text-xs md:text-base font-bold text-runner-dark leading-tight">
-                    Behobia-San Sebastián
-                  </p>
-                  <p className="text-[10px] md:text-xs text-gray-500 tracking-[1.5px] uppercase mt-1">
-                    12 nov 2026 · San Sebastián
-                  </p>
-                </div>
-              </div>
-
-              {/* === COL DERECHA: DATOS DEL CORREDOR === */}
-              <div className="flex flex-col justify-center gap-2 md:gap-3">
-                <p className="text-[9px] md:text-[11px] text-gray-500 tracking-[1px] uppercase">
-                  Se otorga el diploma a
-                </p>
-                <p className="text-base md:text-2xl font-bold text-runner-dark leading-tight">
-                  Carlos Martínez
-                </p>
-
-                <div className="mt-2 md:mt-3 px-3 md:px-5 py-2 md:py-4 bg-white border border-gray-200 rounded-lg flex items-center justify-between">
-                  <span className="text-[9px] md:text-[10px] text-gray-500 tracking-[1.5px] uppercase">
-                    Tiempo oficial
+                    m
                   </span>
                   <span
-                    className="font-mono text-2xl md:text-5xl font-extrabold text-green-700 tracking-tighter leading-none"
-                    style={{ fontFamily: "JetBrains Mono, monospace" }}
+                    style={{
+                      fontWeight: 700,
+                      fontSize: "clamp(0.7rem, 1.3vw, 0.95rem)",
+                      letterSpacing: "-0.3px",
+                      color: "#0a0a0a",
+                    }}
                   >
-                    01:26:14
+                    mi-dorsal
                   </span>
                 </div>
+                <div
+                  style={{
+                    background: "#dcfce7",
+                    border: "1.5px solid #16a34a",
+                    borderRadius: "999px",
+                    padding: "0.25rem 0.6rem",
+                    fontSize: "clamp(0.45rem, 0.7vw, 0.6rem)",
+                    fontWeight: 700,
+                    color: "#15803d",
+                    letterSpacing: "0.5px",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  🎉 NUEVO PR EN 10K
+                </div>
+              </header>
 
-                <div className="grid grid-cols-2 gap-2 md:gap-3 mt-1 md:mt-2">
-                  <div className="pb-1 md:pb-2 border-b border-dashed border-gray-300">
-                    <p className="text-[9px] md:text-[10px] text-gray-500 tracking-[1.2px] uppercase">
-                      Posición
+              {/* Body: dos columnas */}
+              <div className="flex flex-1" style={{ gap: "2.5%" }}>
+                {/* Columna izquierda: dorsal rojo */}
+                <div
+                  className="flex flex-col items-center justify-center"
+                  style={{ width: "38%", paddingRight: "2%" }}
+                >
+                  <div
+                    className="relative flex flex-col items-center justify-center"
+                    style={{
+                      width: "62%",
+                      aspectRatio: "180 / 250",
+                      background: "#dc2626",
+                      borderRadius: "7px",
+                      color: "#fff",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <p
+                      style={{
+                        fontSize: "clamp(0.5rem, 0.85vw, 0.7rem)",
+                        fontWeight: 700,
+                        letterSpacing: "3px",
+                        margin: 0,
+                      }}
+                    >
+                      DORSAL
                     </p>
                     <p
-                      className="font-mono text-sm md:text-lg font-bold text-runner-dark mt-0.5"
-                      style={{ fontFamily: "JetBrains Mono, monospace" }}
+                      style={{
+                        fontWeight: 800,
+                        fontSize: "clamp(1.5rem, 3.6vw, 2.4rem)",
+                        letterSpacing: "-0.04em",
+                        lineHeight: 1,
+                        margin: 0,
+                        maxWidth: "88%",
+                        textAlign: "center",
+                      }}
                     >
-                      521{" "}
-                      <span className="text-[10px] md:text-xs text-gray-500 font-medium">
-                        / 14.820
-                      </span>
+                      2501
+                    </p>
+                    {/* Badge redondo distancia */}
+                    <span
+                      aria-hidden="true"
+                      className="absolute flex items-center justify-center"
+                      style={{
+                        bottom: "-10%",
+                        right: "-10%",
+                        width: "26%",
+                        aspectRatio: "1",
+                        borderRadius: "50%",
+                        background: "#fff",
+                        color: "#0a0a0a",
+                        border: "2px solid #dc2626",
+                        fontWeight: 800,
+                        fontSize: "clamp(0.5rem, 0.85vw, 0.7rem)",
+                      }}
+                    >
+                      10K
+                    </span>
+                  </div>
+
+                  {/* Race meta */}
+                  <div
+                    className="text-center"
+                    style={{ marginTop: "8%", maxWidth: "90%" }}
+                  >
+                    <p
+                      style={{
+                        fontSize: "clamp(0.65rem, 1vw, 0.85rem)",
+                        fontWeight: 700,
+                        color: "#0a0a0a",
+                        margin: 0,
+                        lineHeight: 1.3,
+                      }}
+                    >
+                      Behobia-San Sebastián
+                    </p>
+                    <p
+                      style={{
+                        fontSize: "clamp(0.5rem, 0.7vw, 0.6rem)",
+                        color: "#78716c",
+                        letterSpacing: "1.5px",
+                        margin: "4px 0 0",
+                      }}
+                    >
+                      12 NOV 2026
                     </p>
                   </div>
-                  <div className="pb-1 md:pb-2 border-b border-dashed border-gray-300">
-                    <p className="text-[9px] md:text-[10px] text-gray-500 tracking-[1.2px] uppercase">
-                      Pace
-                    </p>
-                    <p
-                      className="font-mono text-sm md:text-lg font-bold text-runner-dark mt-0.5"
-                      style={{ fontFamily: "JetBrains Mono, monospace" }}
+                </div>
+
+                {/* Columna derecha: saludo + tiempo + stats */}
+                <div
+                  className="flex flex-col"
+                  style={{ width: "62%", paddingLeft: "2.5%" }}
+                >
+                  <p
+                    style={{
+                      fontSize: "clamp(0.5rem, 0.8vw, 0.7rem)",
+                      color: "#78716c",
+                      letterSpacing: "1.2px",
+                      margin: 0,
+                    }}
+                  >
+                    SE OTORGA EL DIPLOMA A
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "clamp(0.95rem, 1.7vw, 1.45rem)",
+                      fontWeight: 700,
+                      color: "#0a0a0a",
+                      letterSpacing: "-0.2px",
+                      margin: "0 0 3.5%",
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    Carlos Martínez
+                  </p>
+
+                  {/* Time card */}
+                  <div
+                    className="flex justify-between items-center"
+                    style={{
+                      background: "#fff",
+                      border: "1px solid #e7e5e4",
+                      borderRadius: "6px",
+                      padding: "3% 5%",
+                      marginBottom: "3.5%",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: "clamp(0.45rem, 0.7vw, 0.6rem)",
+                        color: "#78716c",
+                        letterSpacing: "1.5px",
+                      }}
                     >
-                      4:18{" "}
-                      <span className="text-[10px] md:text-xs text-gray-500 font-medium">
-                        /km
-                      </span>
-                    </p>
+                      TIEMPO OFICIAL
+                    </span>
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        fontSize: "clamp(1.2rem, 2.5vw, 2rem)",
+                        color: "#16a34a",
+                        letterSpacing: "-1.2px",
+                        lineHeight: 1,
+                      }}
+                    >
+                      01:26:14
+                    </span>
                   </div>
-                  <div className="pb-1 md:pb-2 border-b border-dashed border-gray-300">
-                    <p className="text-[9px] md:text-[10px] text-gray-500 tracking-[1.2px] uppercase">
-                      Cat. M40
-                    </p>
-                    <p
-                      className="font-mono text-sm md:text-lg font-bold text-runner-dark mt-0.5"
-                      style={{ fontFamily: "JetBrains Mono, monospace" }}
+
+                  {/* Stats grid 2×2 */}
+                  <div
+                    className="grid grid-cols-2"
+                    style={{ gap: "0 3%" }}
+                  >
+                    <div
+                      style={{
+                        padding: "2.5% 0",
+                        borderBottom: "0.5px dashed #e7e5e4",
+                      }}
                     >
-                      97
-                    </p>
-                  </div>
-                  <div className="pb-1 md:pb-2 border-b border-dashed border-gray-300">
-                    <p className="text-[9px] md:text-[10px] text-gray-500 tracking-[1.2px] uppercase">
-                      PR 10K
-                    </p>
-                    <p
-                      className="font-mono text-sm md:text-lg font-bold text-runner-dark mt-0.5"
-                      style={{ fontFamily: "JetBrains Mono, monospace" }}
+                      <p
+                        style={{
+                          fontSize: "clamp(0.4rem, 0.6vw, 0.55rem)",
+                          color: "#78716c",
+                          letterSpacing: "1px",
+                          fontWeight: 600,
+                          margin: 0,
+                        }}
+                      >
+                        POSICIÓN GENERAL
+                      </p>
+                      <p
+                        style={{
+                          fontWeight: 700,
+                          fontSize: "clamp(0.7rem, 1vw, 0.9rem)",
+                          color: "#0a0a0a",
+                          margin: "2px 0 0",
+                        }}
+                      >
+                        521<span style={{ fontSize: "clamp(0.5rem, 0.75vw, 0.65rem)", color: "#78716c", fontWeight: 400 }}> / 14.820</span>
+                      </p>
+                    </div>
+                    <div
+                      style={{
+                        padding: "2.5% 0",
+                        borderBottom: "0.5px dashed #e7e5e4",
+                      }}
                     >
-                      00:43{" "}
-                      <span className="text-[10px] md:text-xs text-gray-400 font-medium line-through ml-1">
-                        00:48
-                      </span>
-                    </p>
+                      <p
+                        style={{
+                          fontSize: "clamp(0.4rem, 0.6vw, 0.55rem)",
+                          color: "#78716c",
+                          letterSpacing: "1px",
+                          fontWeight: 600,
+                          margin: 0,
+                        }}
+                      >
+                        POSICIÓN CATEGORÍA
+                      </p>
+                      <p
+                        style={{
+                          fontWeight: 700,
+                          fontSize: "clamp(0.7rem, 1vw, 0.9rem)",
+                          color: "#0a0a0a",
+                          margin: "2px 0 0",
+                        }}
+                      >
+                        97
+                      </p>
+                    </div>
+                    <div
+                      style={{
+                        padding: "2.5% 0",
+                        borderBottom: "0.5px dashed #e7e5e4",
+                      }}
+                    >
+                      <p
+                        style={{
+                          fontSize: "clamp(0.4rem, 0.6vw, 0.55rem)",
+                          color: "#78716c",
+                          letterSpacing: "1px",
+                          fontWeight: 600,
+                          margin: 0,
+                        }}
+                      >
+                        PACE MEDIO
+                      </p>
+                      <p
+                        style={{
+                          fontWeight: 700,
+                          fontSize: "clamp(0.7rem, 1vw, 0.9rem)",
+                          color: "#0a0a0a",
+                          margin: "2px 0 0",
+                        }}
+                      >
+                        4:18<span style={{ fontSize: "clamp(0.5rem, 0.75vw, 0.65rem)", color: "#78716c", fontWeight: 400 }}> /km</span>
+                      </p>
+                    </div>
+                    <div
+                      style={{
+                        padding: "2.5% 0",
+                        borderBottom: "0.5px dashed #e7e5e4",
+                      }}
+                    >
+                      <p
+                        style={{
+                          fontSize: "clamp(0.4rem, 0.6vw, 0.55rem)",
+                          color: "#78716c",
+                          letterSpacing: "1px",
+                          fontWeight: 600,
+                          margin: 0,
+                        }}
+                      >
+                        PR EN 10K
+                      </p>
+                      <p
+                        style={{
+                          fontWeight: 700,
+                          fontSize: "clamp(0.7rem, 1vw, 0.9rem)",
+                          color: "#0a0a0a",
+                          margin: "2px 0 0",
+                        }}
+                      >
+                        -5:00
+                        <span
+                          style={{
+                            fontSize: "clamp(0.45rem, 0.65vw, 0.55rem)",
+                            color: "#a8a29e",
+                            textDecoration: "line-through",
+                            marginLeft: "4px",
+                            fontWeight: 400,
+                          }}
+                        >
+                          00:48
+                        </span>
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-
-          <div className="mt-3 flex items-center justify-between gap-3 text-xs text-gray-500 px-1">
-            <p>
-              <span className="font-mono font-semibold text-runner-dark">
-                ID · MD-2501-20261112
-              </span>
-              <span className="hidden sm:inline"> · verificable en tu perfil</span>
-            </p>
-            <Link
-              href="/diploma-preview.html"
-              className="inline-flex items-center gap-1.5 text-runner-primary font-semibold hover:underline"
-            >
-              <FileText className="h-3.5 w-3.5" aria-hidden="true" />
-              Ver plantilla A4
-              <Download className="h-3 w-3" aria-hidden="true" />
-            </Link>
           </div>
         </article>
 
-        {/* ============================================================ */}
-        {/* DERECHA — Sticker vertical personalizable (editor Pro)         */}
-        {/* Mockup Tailwind (mismo patrón que el diploma de la izquierda,  */}
-        {/* no importa StickerCanvas real — ver cabecera del archivo).    */}
-        {/* Colores y layout replican lib/sticker-editor/StickerCanvas.tsx */}
-        {/* y la plantilla "classic" de lib/sticker-editor/templates.ts:   */}
-        {/* badge PR arriba, tiempo hero, fila pace+distancia debajo.      */}
-        {/* ============================================================ */}
-        <article className="flex flex-col">
-          <header className="flex items-center gap-2 mb-3 px-1">
-            <span
-              className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-runner-primary text-white"
-              aria-hidden="true"
-            >
-              <Sparkles className="h-4 w-4" />
-            </span>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-base md:text-lg font-bold text-runner-dark leading-tight">
-                Tu sticker, a tu gusto
-              </h3>
-              <p className="text-xs text-gray-500">Mueve, redimensiona y elige qué mostrar</p>
-            </div>
-            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5">
-              <Sparkles className="h-3 w-3" aria-hidden="true" />
-              Editor Pro
-            </span>
-          </header>
-
-          {/* Sticker mockup vertical 1080x1920 (aspect ratio 9:16), con
-              checkerboard sutil de fondo igual que el editor real
-              (transparencia = el sticker se exporta sin fondo). */}
+        {/* ============================================================
+            DERECHA — Sticker (réplica de lib/share-card/story-sticker.tsx,
+            theme "email")
+            ============================================================ */}
+        <article aria-label="Story sticker con el resultado">
           <div
-            className="relative w-full max-w-[280px] mx-auto overflow-hidden rounded-2xl border border-gray-200 shadow-xl"
+            className="relative w-full max-w-[280px] mx-auto overflow-hidden rounded-2xl border shadow-xl"
             style={{
               aspectRatio: "1080 / 1920",
-              backgroundImage:
-                "repeating-conic-gradient(#e5e5e5 0% 25%, #f5f5f5 0% 50%)",
-              backgroundSize: "16px 16px",
+              background: "#fafaf9",
+              borderColor: "rgba(10,10,10,0.06)",
             }}
             role="img"
-            aria-label="Sticker personalizable con badge Nuevo PR, tiempo oficial 01:26:14, pace 4:18 por kilómetro y distancia 10 kilómetros, listo para exportar en PNG transparente"
+            aria-label="Sticker 1080x1920 con tiempo oficial 01:26:14, pace 4:18 por kilómetro y 10,0 kilómetros, badge de nuevo PR"
           >
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 md:gap-4 px-4">
-              {/* Header del sticker: carrera + dorsal (mismo patrón que el diploma
-                  de la izquierda, evita que el mockup se vea "vacío" arriba). */}
-              <div className="flex flex-col items-center">
-                <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-[2px] text-stone-500 leading-tight text-center">
-                  Behobia-San Sebastián
-                </p>
-                <p className="font-mono text-2xl md:text-3xl font-extrabold text-runner-primary leading-none mt-1">
-                  4213
-                </p>
+            <div
+              className="absolute flex flex-col items-center justify-center"
+              style={{
+                inset: 0,
+                padding: "6%",
+                gap: "3.5%",
+              }}
+            >
+              {/* PR badge */}
+              <div
+                style={{
+                  background: "#dcfce7",
+                  border: "1.5px solid #16a34a",
+                  borderRadius: "999px",
+                  padding: "2.5% 5.5%",
+                  fontSize: "clamp(0.55rem, 0.95vw, 0.8rem)",
+                  fontWeight: 700,
+                  color: "#15803d",
+                  letterSpacing: "0.5px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                🎉 Nuevo PR
               </div>
 
-              {/* Badge PR */}
-              <div className="inline-flex items-center rounded-full bg-green-100 px-3 py-1">
-                <span className="text-[10px] md:text-xs font-bold text-green-700 tracking-wide">
-                  🎉 Nuevo PR
-                </span>
-              </div>
-
-              {/* Panel tiempo hero */}
-              <div className="flex flex-col items-center rounded-2xl bg-white/90 px-4 py-3 md:px-5 md:py-4">
-                <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-[2px] text-stone-500 mb-1">
+              {/* Tiempo hero */}
+              <div
+                className="flex flex-col items-center text-center"
+                style={{
+                  width: "88%",
+                  background: "#fff",
+                  border: "1.5px solid #e7e5e4",
+                  borderRadius: "24px",
+                  padding: "6% 8%",
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: "clamp(0.5rem, 0.8vw, 0.65rem)",
+                    fontWeight: 700,
+                    color: "#0a0a0a",
+                    letterSpacing: "3px",
+                    textTransform: "uppercase",
+                    margin: "0 0 4%",
+                  }}
+                >
                   Tu tiempo oficial
                 </p>
                 <p
-                  className="text-2xl md:text-3xl font-bold leading-none text-green-600"
-                  style={{ fontFamily: "JetBrains Mono, monospace" }}
+                  style={{
+                    fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                    fontWeight: 700,
+                    fontSize: "clamp(2.2rem, 4vw, 3.5rem)",
+                    color: "#16a34a",
+                    letterSpacing: "-4px",
+                    lineHeight: 1,
+                    margin: 0,
+                  }}
                 >
                   01:26:14
                 </p>
               </div>
 
-              {/* Fila pace + distancia */}
-              <div className="flex gap-2 md:gap-3">
-                <div className="flex flex-col items-center rounded-2xl bg-white/90 px-3 py-2 md:px-4 md:py-2.5">
-                  <p className="text-[7px] md:text-[8px] font-bold uppercase tracking-[2px] text-stone-500 mb-0.5">
+              {/* Fila pace + km */}
+              <div className="flex" style={{ width: "88%", gap: "3%" }}>
+                <div
+                  className="flex flex-col items-center text-center"
+                  style={{
+                    flex: 1,
+                    background: "#fff",
+                    border: "1.5px solid #e7e5e4",
+                    borderRadius: "18px",
+                    padding: "5% 4%",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: "clamp(0.4rem, 0.65vw, 0.55rem)",
+                      fontWeight: 700,
+                      color: "#0a0a0a",
+                      letterSpacing: "2px",
+                      textTransform: "uppercase",
+                      margin: "0 0 3%",
+                    }}
+                  >
                     Pace
                   </p>
                   <p
-                    className="text-sm md:text-base font-bold text-stone-800"
-                    style={{ fontFamily: "JetBrains Mono, monospace" }}
+                    className="flex items-baseline"
+                    style={{
+                      fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                      fontWeight: 700,
+                      fontSize: "clamp(0.95rem, 1.6vw, 1.4rem)",
+                      color: "#0a0a0a",
+                      margin: 0,
+                      lineHeight: 1,
+                    }}
                   >
-                    4:18 /km
+                    4:18<span style={{ fontSize: "clamp(0.55rem, 0.9vw, 0.7rem)", marginLeft: "2px" }}>/km</span>
                   </p>
                 </div>
-                <div className="flex flex-col items-center rounded-2xl bg-white/90 px-3 py-2 md:px-4 md:py-2.5">
-                  <p className="text-[7px] md:text-[8px] font-bold uppercase tracking-[2px] text-stone-500 mb-0.5">
-                    Distancia
+                <div
+                  className="flex flex-col items-center text-center"
+                  style={{
+                    flex: 1,
+                    background: "#fff",
+                    border: "1.5px solid #e7e5e4",
+                    borderRadius: "18px",
+                    padding: "5% 4%",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: "clamp(0.4rem, 0.65vw, 0.55rem)",
+                      fontWeight: 700,
+                      color: "#0a0a0a",
+                      letterSpacing: "2px",
+                      textTransform: "uppercase",
+                      margin: "0 0 3%",
+                    }}
+                  >
+                    Kilómetros
                   </p>
                   <p
-                    className="text-sm md:text-base font-bold text-stone-800"
-                    style={{ fontFamily: "JetBrains Mono, monospace" }}
+                    className="flex items-baseline"
+                    style={{
+                      fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                      fontWeight: 700,
+                      fontSize: "clamp(0.95rem, 1.6vw, 1.4rem)",
+                      color: "#0a0a0a",
+                      margin: 0,
+                      lineHeight: 1,
+                    }}
                   >
-                    10,000km
+                    10,0<span style={{ fontSize: "clamp(0.55rem, 0.9vw, 0.7rem)", marginLeft: "2px" }}>km</span>
                   </p>
                 </div>
               </div>
-            </div>
 
-            {/* Logo mi-dorsal anclado hacia el final, igual que el real */}
-            <div className="absolute bottom-6 left-0 right-0 flex items-center justify-center gap-1.5">
-              <div className="w-5 h-5 rounded bg-runner-primary flex items-center justify-center">
-                <span
-                  className="text-white text-[10px] font-bold leading-none"
-                  style={{ fontFamily: "JetBrains Mono, monospace" }}
-                >
-                  m
-                </span>
-              </div>
-              <span className="text-xs font-bold text-white" style={{ textShadow: "0 1px 3px rgba(0,0,0,.5)" }}>
+              {/* Brand */}
+              <p
+                style={{
+                  fontSize: "clamp(0.55rem, 0.9vw, 0.75rem)",
+                  fontWeight: 700,
+                  color: "rgba(10,10,10,0.45)",
+                  letterSpacing: "1px",
+                  margin: 0,
+                }}
+              >
                 mi-dorsal
-              </span>
+              </p>
             </div>
           </div>
 
-          <div className="mt-3 flex items-center justify-between gap-3 text-xs text-gray-500 px-1">
-            <p className="inline-flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5 text-runner-primary" aria-hidden="true" />
-              Descarga en PNG o mándatelo por email
-            </p>
-            <StickerEditorCta className="inline-flex items-center gap-1.5 text-runner-primary font-semibold hover:underline">
+          {/* CTA del sticker — componente client que decide destino según Pro */}
+          <div className="mt-3 flex items-center justify-between gap-3 text-xs px-1" style={{ color: "#525252" }}>
+            <p>Descarga en PNG o mándatelo por email</p>
+            <StickerEditorCta className="inline-flex items-center gap-1.5 font-semibold hover:underline text-runner-primary">
               Personalizar el mío
             </StickerEditorCta>
           </div>
         </article>
       </div>
 
-      {/* Línea final: cómo llega al usuario */}
+      {/* Cómo llega al buzón — micro-bloque */}
       <div className="max-w-3xl mx-auto mt-8 md:mt-10 px-4">
-        <div className="rounded-2xl bg-runner-warm border border-runner-primary/20 p-4 md:p-5 flex items-start gap-3">
+        <div
+          className="rounded-2xl p-4 md:p-5 flex items-start gap-3"
+          style={{
+            background: "rgba(220,38,38,0.04)",
+            border: "1px solid rgba(220,38,38,0.15)",
+          }}
+        >
           <span
-            className="flex-shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-full bg-runner-primary text-white"
             aria-hidden="true"
+            className="flex-shrink-0 inline-flex items-center justify-center rounded-full text-white"
+            style={{ width: 40, height: 40, background: "#dc2626" }}
           >
-            <Mail className="h-4 w-4" />
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+              <polyline points="22,6 12,13 2,6" />
+            </svg>
           </span>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm md:text-base text-runner-dark leading-relaxed">
-              <strong>Cruzas la meta el domingo.</strong> Entre 12 y 48 horas después,
-              según cuándo publique la organización, te llega un único email con tu
-              tiempo, tu diploma PDF y tu imagen para redes. Sin volver a la web del
-              organizador, sin buscar en PDFs indescifrables.
-            </p>
-          </div>
+          <p className="text-sm md:text-base leading-relaxed" style={{ color: "#1f1f1f" }}>
+            <strong style={{ color: "#0a0a0a" }}>Cruzas la meta el domingo.</strong> En cuanto la
+            organización publica las clasificaciones, te llega un único email con tu
+            tiempo, tu diploma PDF y tu imagen para redes. Sin volver a la web del
+            organizador, sin buscar en PDFs indescifrables.
+          </p>
         </div>
       </div>
     </section>

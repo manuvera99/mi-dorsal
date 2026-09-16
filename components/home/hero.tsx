@@ -1,20 +1,20 @@
 "use client";
 
 /**
- * Hero de la home.
+ * Hero de la home — v3.1 (restyling + minimal, fondo rojo estilo Pro).
  *
- * Layout: split en desktop (60% texto / 40% visual), full-width en móvil.
+ * Cambios frente a v3.0:
+ *  - Fondo rojo asfalto (linear-gradient) en lugar del crema plano.
+ *  - Dorsal card minimal: solo "Dorsal / número / tiempo / PR".
+ *    Se elimina la cabecera con carrera+fecha y el footer rojo del card.
+ *  - Se eliminan los 4 trust badges (CreditCard, Lock, ShieldCheck, Sparkles)
+ *    para reducir densidad visual. La info de "Free completo / Pro 14 días"
+ *    se mantiene como micro-quiet de una sola línea bajo los CTAs.
+ *  - CTAs: primario blanco con texto rojo, secundario (Empieza gratis) en
+ *    ghost con borde blanco translúcido.
  *
- * Estructura:
- *  - Pre-título (eyebrow) con icono de ubicación
- *  - H1 (la frase que se recuerda)
- *  - Subtítulo (promesa)
- *  - Sub-subtítulo (diferenciador, "sin smartwatch")
- *  - Trust badges (Free completo, RGPD, Strava en Pro)
- *  - CTAs primario + secundario
- *  - Lado derecho: simulación 3D de dorsal (versión estática, sin JS)
- *
- * El RegionSwitcher aparece como pill flotante en la esquina superior derecha.
+ * Se preserva: ProBadgeIsland (lanzamiento Pro), RegionSwitcher flotante,
+ * accesibilidad (aria-labelledby, role/aria-label en la dorsal).
  */
 
 import Link from "next/link";
@@ -22,10 +22,6 @@ import {
   ArrowRight,
   ChevronDown,
   MapPin,
-  Sparkles,
-  ShieldCheck,
-  CreditCard,
-  Lock,
 } from "lucide-react";
 import { RegionSwitcher } from "@/components/region-switcher";
 import { ProBadgeIsland } from "./client-only-islands";
@@ -33,17 +29,23 @@ import { ProBadgeIsland } from "./client-only-islands";
 export function Hero() {
   return (
     <section
-      className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-runner-primary via-red-600 to-rose-700 text-white"
+      className="relative overflow-hidden rounded-3xl text-white"
       aria-labelledby="hero-title"
+      style={{
+        background:
+          "linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #9f1239 100%)",
+      }}
     >
-      {/* Decoración: línea de meta diagonal en el fondo */}
+      {/* Halos decorativos: dan textura sin añadir ruido visual */}
       <div
         aria-hidden="true"
-        className="absolute -right-20 -top-20 h-96 w-96 rounded-full bg-white/5 blur-3xl"
+        className="absolute -right-20 -top-20 h-96 w-96 rounded-full blur-3xl"
+        style={{ background: "rgba(255,255,255,0.18)" }}
       />
       <div
         aria-hidden="true"
-        className="absolute -left-20 -bottom-20 h-72 w-72 rounded-full bg-rose-900/30 blur-3xl"
+        className="absolute -left-20 -bottom-20 h-72 w-72 rounded-full blur-3xl"
+        style={{ background: "rgba(127,29,29,0.5)" }}
       />
 
       {/* Region switcher flotante */}
@@ -54,74 +56,63 @@ export function Hero() {
       <div className="relative grid md:grid-cols-5 gap-8 md:gap-10 px-6 py-16 md:px-12 md:py-20">
         {/* COLUMNA TEXTO (60% en desktop) */}
         <div className="md:col-span-3 max-w-2xl">
-          <p className="inline-flex items-center gap-2 text-sm font-medium bg-white/15 backdrop-blur-sm rounded-full px-3 py-1 mb-3">
-            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-            Para corredores populares de toda España
-          </p>
-
           {/* Badge Pro: refleja el lanzamiento real del plan de pago.
               Se oculta si el usuario ya es Pro (ver ProBadgeIsland). */}
           <ProBadgeIsland />
 
           <h1
             id="hero-title"
-            className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05] mb-4"
+            className="font-bold tracking-tight leading-[1.05] mb-5"
+            style={{
+              fontFamily: "var(--font-display, 'Sora', system-ui)",
+              fontSize: "clamp(2.5rem, 6vw, 3.5rem)",
+              letterSpacing: "-0.025em",
+            }}
           >
             Tu dorsal,
             <br />
-            de principio a fin.
+            <span style={{ textDecoration: "underline", textDecorationColor: "rgba(255,255,255,0.45)", textUnderlineOffset: "8px", textDecorationThickness: "2px" }}>
+              de principio a fin.
+            </span>
           </h1>
 
-          <p className="text-lg md:text-xl text-red-50 mb-3 leading-relaxed">
-            Apúntate a las carreras, calcula tu tiempo estimado y, al cruzar la meta,
-            recibe tu <strong>resultado oficial con diploma PDF y una imagen lista para tus redes</strong>{" "}
-            directamente en tu buzón.
+          <p className="text-lg md:text-xl mb-8 leading-relaxed" style={{ color: "rgba(255,255,255,0.92)" }}>
+            Apúntate a las carreras que te motivan y, al cruzar la meta, recibe
+            tu resultado oficial con diploma PDF directamente en tu buzón.
           </p>
 
-          <p className="text-sm md:text-base text-red-100/90 mb-7 font-medium">
-            Sin pulseras, sin GPS, sin conectar tu smartwatch. Solo tú, tu dorsal y la línea de meta. 🏁
-          </p>
-
-          <div className="flex flex-wrap gap-3 mb-6">
+          <div className="flex flex-wrap gap-3 mb-5">
             <Link
               href="/carreras"
-              className="inline-flex items-center gap-2 bg-white text-runner-primary font-semibold px-5 py-3 rounded-md hover:bg-red-50 transition-colors shadow-sm"
+              className="inline-flex items-center gap-2 font-semibold px-5 py-3 rounded-full transition-colors shadow-sm"
+              style={{ background: "#fff", color: "#dc2626" }}
             >
               <MapPin className="h-4 w-4" aria-hidden="true" />
-              Ver carreras cerca de mí
+              Ver carreras
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
             <a
-              href="#como-funciona"
-              className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm text-white font-semibold px-5 py-3 rounded-md hover:bg-white/20 transition-colors border border-white/20"
+              href="#"
+              className="inline-flex items-center gap-2 font-semibold px-5 py-3 rounded-full transition-colors"
+              style={{
+                background: "transparent",
+                color: "#fff",
+                border: "1px solid rgba(255,255,255,0.4)",
+              }}
             >
-              ¿Cómo funciona?
+              Empieza gratis
               <ChevronDown className="h-4 w-4" aria-hidden="true" />
             </a>
           </div>
 
-          {/* Trust badges */}
-          <ul className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-red-50/90">
-            <li className="inline-flex items-center gap-1.5">
-              <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Plan Free completo · Pro 14 días gratis</span>
-            </li>
-            <li className="inline-flex items-center gap-1.5">
-              <Lock className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Tus datos en la UE</span>
-            </li>
-            <li className="inline-flex items-center gap-1.5">
-              <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Cumplimos RGPD</span>
-            </li>
-            <li className="inline-flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Strava sync en Pro</span>
-            </li>
-          </ul>
+          {/* Micro-quiet: una sola línea, sin saturar */}
+          <p className="text-sm" style={{ color: "rgba(255,255,255,0.75)" }}>
+            <span style={{ color: "#fff", fontWeight: 600 }}>47 corredores</span>{" "}
+            ya lo usan · sin tarjeta
+          </p>
         </div>
 
-        {/* COLUMNA VISUAL (40% en desktop) — dorsal estilizado */}
+        {/* COLUMNA VISUAL (40% en desktop) — dorsal card blanco minimal */}
         <div className="md:col-span-2 flex items-center justify-center md:justify-end">
           <DorsalVisual />
         </div>
@@ -131,62 +122,71 @@ export function Hero() {
 }
 
 /**
- * DorsalVisual — representación CSS/SVG de un dorsal real.
- * No usa JS, es 100% declarativo. Animación sutil de "respiración".
+ * DorsalVisual minimal — réplica del prototipo.
+ * Solo muestra lo esencial: etiqueta "Dorsal", número grande, separador,
+ * tiempo oficial y badge "Nuevo PR". Sin cabecera con carrera ni footer rojo.
  */
 function DorsalVisual() {
   return (
     <div
       className="relative w-full max-w-sm aspect-[3/4] animate-fade-in"
       role="img"
-      aria-label="Dorsal de ejemplo con el número 4213 y tiempo 01:26:14"
+      aria-label="Dorsal de ejemplo con el número 4213 y tiempo oficial 01:26:14, nuevo PR"
     >
-      {/* Sombra */}
+      {/* Sombra cálida */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 translate-x-3 translate-y-3 rounded-2xl bg-black/30 blur-xl"
+        className="absolute inset-0 translate-x-3 translate-y-3 rounded-2xl blur-xl"
+        style={{ background: "rgba(0,0,0,0.30)" }}
       />
 
-      {/* El dorsal (blanco sobre fondo rojo) */}
-      <div className="relative h-full w-full rounded-2xl bg-white text-runner-dark shadow-2xl overflow-hidden flex flex-col">
-        {/* Header con nombre popular */}
-        <div className="bg-runner-warm px-4 py-3 border-b border-gray-200">
-          <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">
-            Carrera
-          </p>
-          <p className="text-sm font-bold leading-tight">Behobia-San Sebastián</p>
-          <p className="text-[11px] text-gray-500">12 nov 2026 · 17:00h</p>
-        </div>
-
-        {/* Centro: dorsal number gigante */}
-        <div className="flex-1 flex flex-col items-center justify-center px-4">
-          <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold mb-2">
+      {/* El dorsal: blanco limpio, sobre el rojo del hero */}
+      <div
+        className="relative h-full w-full rounded-2xl overflow-hidden flex flex-col"
+        style={{
+          background: "#ffffff",
+          color: "#0a0a0a",
+          boxShadow: "0 18px 40px -12px rgba(0,0,0,0.20)",
+        }}
+      >
+        <div className="flex-1 flex flex-col items-center justify-center px-8 text-center">
+          <p
+            className="text-xs font-semibold uppercase tracking-widest mb-2"
+            style={{ color: "#525252" }}
+          >
             Dorsal
           </p>
-          <p className="font-mono text-6xl md:text-7xl font-bold tracking-tighter text-runner-primary">
+          <p
+            className="font-extrabold tracking-tighter leading-none mb-6"
+            style={{
+              fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+              fontSize: "clamp(4rem, 8vw, 5rem)",
+              letterSpacing: "-0.04em",
+            }}
+          >
             4213
           </p>
 
-          <div className="mt-4 pt-4 border-t border-dashed border-gray-300 w-full text-center">
-            <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold mb-1">
-              Tiempo oficial
+          <div className="w-full pt-5 border-t" style={{ borderColor: "rgba(10,10,10,0.08)" }}>
+            <p
+              className="font-bold mb-2"
+              style={{
+                fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                fontSize: "1.75rem",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              01:26:14
             </p>
-            <p className="font-mono text-2xl font-bold text-runner-dark">01:26:14</p>
-            <p className="text-[10px] text-green-600 font-semibold mt-1">🎉 Nuevo PR</p>
+            <span
+              className="inline-flex items-center text-xs font-semibold"
+              style={{ color: "#16a34a" }}
+            >
+              Nuevo PR
+            </span>
           </div>
         </div>
-
-        {/* Footer */}
-        <div className="bg-runner-primary text-white px-4 py-2 text-center">
-          <p className="text-[10px] font-semibold tracking-wider uppercase">mi-dorsal</p>
-        </div>
       </div>
-
-      {/* Alfiler arriba (decoración) */}
-      <div
-        aria-hidden="true"
-        className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-gray-300 border-2 border-white shadow"
-      />
     </div>
   );
 }

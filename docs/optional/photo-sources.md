@@ -400,16 +400,48 @@ no es ni legal ni rentable; tratarlas como **socios** es el camino real.
   CloudFront, con botón "Comprar" (paywall, no gratuito).
 - **Ya delega la búsqueda facial/dorsal en Lumepic**
   (`lumepic.com`) — plataforma comercial internacional de reconocimiento
-  facial (clientes: Decathlon, Renault, Santander, Volkswagen), **sin API
-  pública para integradores** — mismo perfil que SportPXL/BuscoDorsal,
-  pero de mayor escala. No estaba catalogada en este doc hasta ahora.
+  facial (clientes: Decathlon, Renault, Santander, Volkswagen), mismo
+  perfil que SportPXL/BuscoDorsal pero de mayor escala. No estaba
+  catalogada en este doc hasta ahora.
+- **Endpoint técnico real confirmado** (reverse-engineering del bundle JS
+  de Lumepic, 16 sep 2026 — sin usar credenciales ni saltarse ningún
+  control de acceso, solo inspeccionando peticiones que el propio
+  navegador ya hace sin login):
+  `GET https://www.lumepic.com/api/feed/albums/{albumId}/photographs?pagination[skip]=N`
+  — **sin autenticación**, devuelve `{items: [{id, url, thumbnailUrl,
+  price, width, height, ...}], count}`. Probado real contra el álbum de
+  Maximum Revolcadores: **2665 fotos**, paginado de 100 en 100. También
+  existe `filters[recognitionImageUrl]` (búsqueda por selfie) y
+  `filters[tagValue]` (búsqueda por dorsal) como query params del mismo
+  endpoint — no se confirmó que este segundo filtro devuelva resultados
+  reales (probado con un dorsal visible en una foto, 0 resultados; puede
+  requerir que Lumepic ya haya procesado el OCR de esa foto).
+- **Por qué de todos modos NO es viable para nuestro pipeline**: la
+  `url`/`thumbnailUrl` del JSON son la fotografía real completa
+  (confirmado descargándola: mismas dimensiones que el archivo pagado,
+  ~115KB) pero con **marca de agua "LUMEPIC" grande superpuesta** más un
+  texto pidiendo no redistribuir la foto — es la preview de venta, no el
+  archivo entregable (que cuesta 6€ por foto en este álbum y solo se
+  obtiene tras pagar, vía `/photographs/free-bulk-download-urls` u otro
+  endpoint de compra). Aunque el endpoint es público y sin auth, no
+  sirve como fuente para nuestro pipeline de cara/dorsal: la marca de
+  agua no impediría técnicamente el matching (InsightFace/EasyOCR
+  seguirían detectando cara/dorsal bajo ella), pero **redistribuir
+  gratis lo que Lumepic vende de pago** no es aceptable — sí sería
+  correcto mostrar el link-out a la propia página de Lumepic para que el
+  usuario compre su foto directamente, igual que con las plataformas de
+  §3.2.
 - **Volumen real en el catálogo**: solo **1 carrera** (Maximum
   Revolcadores) de las 10 galerías vistas coincide con el catálogo de
   mi-dorsal, y su web oficial (`maximumrevolcadores.com`) ni siquiera
   enlaza a esa galería hoy.
-- **Veredicto:** ❌ **Descartado como scraping** (paywall + ya delega en
-  una plataforma cerrada) **y por volumen** (1 carrera). 🟢 **Lumepic**
-  queda anotado como candidato de partnership comercial si en el futuro
+- **Veredicto:** ❌ **Descartado como fuente para el pipeline** — no por
+  falta de acceso técnico (el endpoint es público), sino porque las
+  fotos son de pago y llevan marca de agua: redistribuirlas gratis en
+  nuestros resultados sería incorrecto de cara al fotógrafo/Lumepic,
+  aunque técnicamente estuviera al alcance. 🟢 **Lumepic** queda anotado
+  como candidato de partnership comercial (¿API oficial para
+  integradores, aparte del endpoint de la propia web?) si en el futuro
   se explora esa vía — mismo tratamiento que SportPXL/BuscoDorsal.
 
 #### FindUpix (Canarias)

@@ -3,7 +3,7 @@
 > **Documento vivo.** Fuente única de verdad de tareas pendientes y futuras features.
 > Se actualiza al cerrar cada tarea y al descubrir nueva deuda.
 >
-> **Última revisión:** 10 sep 2026 · **Próxima revisión:** semanal hasta lanzar monetización, después mensual.
+> **Última revisión:** 16 sep 2026 · **Próxima revisión:** semanal hasta lanzar monetización, después mensual.
 >
 > **Cómo se lee:**
 > - `[ ]` = pendiente · `[~]` = en curso · `[x]` = completada
@@ -205,6 +205,13 @@
 - [ ] Comprar `mi-dorsal.run` defensivo (~24 €/año)
 - [ ] Asegurar `@midorsal` en IG, TikTok, X, YouTube, Threads, Bluesky
 - [ ] Ref: `docs/core/seo.md`, `docs/optional/future-iterations.md`
+
+### 3.3b Ingesta de datos (nuevas fuentes)
+
+- [ ] **Cablear `scrape-alcanzatumeta.ts` al `daily-ingest.yml`** — añadir step tras Correbirras. Comando: `npx tsx --env-file=.env.local scripts/scrape-alcanzatumeta.ts --upload`. Ref: `memory/topics/mi-dorsal.md` §"Fuente 'Alcanza tu Meta' añadida".
+- [ ] Enriquecer cada carrera de ATM con las pruebas internas de su ficha (5K+10K, precio por modalidad) — `lib/ai/extract-race-deep.ts` ya funciona, solo falta disparar en bulk para carreras con `scraperAdapter: "alcanzatumeta"`.
+- [ ] Investigar cronometrador: ATM tiene `json_resultados_atm_por_evento.php?id=X` y `services/jsd_plazas.php?id=X`. Si tienen resultados descargables, ¿se puede scrapear igual que `chiplevante` o `cruzandolameta`?
+- [ ] Otras fuentes sureste candidatas (orden de prioridad): Cronomancha (Albacete/CLM), Dorsal21 (Alicante/Murcia), RunRunKid (eventos infantiles).
 
 ### 3.4 Branding y naming
 
@@ -485,6 +492,7 @@
 - [x] `docs/plans/MONETIZATION_PLAN.md` actualizado con pricing 2,99 €
 - [x] `docs/optional/future-iterations.md` mantenido
 - [x] Plan multi-distancia aprobado (`docs/superpowers/plans/2026-09-09-multi-distancia-carreras.md`)
+- [x] **Fuente "Alcanza tu Meta" añadida** (16 sep 2026) — `scripts/scrape-alcanzatumeta.ts` + 21 carreras nuevas ingestadas (Murcia, Alicante, Almería). Total BBDD: 2.673 carreras. Falta cablearlo al workflow `daily-ingest.yml` (Sprint 3). Ref: `memory/topics/mi-dorsal.md` §"Fuente 'Alcanza tu Meta' añadida"
 
 ---
 

@@ -878,7 +878,7 @@ export const systemUpsert = mutation({
         // última a propósito: es la fuente MENOS prioritaria para decidir
         // qué dataSourceId queda, pero justo por eso más abajo protegemos
         // sus campos de ser sobrescritos por un re-ingest automático.
-        const priority = ["RFEA", "FEDME", "ITRA", "Sportmaniacs", "Agenda Sureste", "Runedia", "Manual"];
+        const priority = ["RFEA", "FEDME", "ITRA", "Sportmaniacs", "Agenda Sureste", "Alcanza tu Meta", "Runedia", "Manual"];
         // Bug preexistente (previo a esta auditoría): ctx.db.get(undefined)
         // lanza "Must provide arg 1 `id` to `get`" — pasaba siempre que la
         // carrera existente no tenía dataSourceId asignado todavía (común

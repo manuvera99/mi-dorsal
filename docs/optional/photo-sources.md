@@ -392,6 +392,26 @@ no es ni legal ni rentable; tratarlas como **socios** es el camino real.
   ellos, mínimo viable. Tienen URL por carrera-evento que puede añadirse
   como `kind: "partner_official"` en `racePhotoSources` (ver más abajo).
 
+#### Acariciando la Luz / Lumepic (Murcia/Alicante) — investigado 16 sep 2026
+- **Web:** `https://acariciandolaluz.com/galerias`
+- Fotógrafo deportivo individual (no cronometrador ni agregador) — 10
+  galerías reales vistas (Trail de Bolulla, Granja Run Fest, Trail
+  Porticherlo de Pliego, Maximum Revolcadores, etc.), fotos servidas vía
+  CloudFront, con botón "Comprar" (paywall, no gratuito).
+- **Ya delega la búsqueda facial/dorsal en Lumepic**
+  (`lumepic.com`) — plataforma comercial internacional de reconocimiento
+  facial (clientes: Decathlon, Renault, Santander, Volkswagen), **sin API
+  pública para integradores** — mismo perfil que SportPXL/BuscoDorsal,
+  pero de mayor escala. No estaba catalogada en este doc hasta ahora.
+- **Volumen real en el catálogo**: solo **1 carrera** (Maximum
+  Revolcadores) de las 10 galerías vistas coincide con el catálogo de
+  mi-dorsal, y su web oficial (`maximumrevolcadores.com`) ni siquiera
+  enlaza a esa galería hoy.
+- **Veredicto:** ❌ **Descartado como scraping** (paywall + ya delega en
+  una plataforma cerrada) **y por volumen** (1 carrera). 🟢 **Lumepic**
+  queda anotado como candidato de partnership comercial si en el futuro
+  se explora esa vía — mismo tratamiento que SportPXL/BuscoDorsal.
+
 #### FindUpix (Canarias)
 - **Web:** `https://findupix.com/`
 - "Pack sport" con todas las fotos identificadas por dorsal, IA + fotógrafos.

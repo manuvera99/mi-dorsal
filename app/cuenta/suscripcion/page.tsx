@@ -157,8 +157,8 @@ function RealSuscripcionContent() {
         <section className="mb-8">
           <h2 className="text-lg font-semibold mb-3">Hazte Pro</h2>
           <p className="text-sm text-stone-600 mb-4">
-            El Pro Anual incluye 14 días gratis sin tarjeta. El Pro Mensual
-            se cobra al suscribirse. Cancela cuando quieras.
+            El Pro Anual incluye 14 días gratis. El Pro Mensual se cobra
+            al suscribirse. Cancela cuando quieras.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <CheckoutButton
@@ -171,7 +171,7 @@ function RealSuscripcionContent() {
             />
             <CheckoutButton
               label="Probar Pro Anual — 24,99 €/año"
-              sublabel="14 días gratis sin tarjeta · ahorra 30%"
+              sublabel="14 días gratis · ahorra 30%"
               loading={isCheckoutLoading === "yearly"}
               disabled={isCheckoutLoading !== null || isPortalLoading}
               onClick={() => startCheckout("premium_yearly")}

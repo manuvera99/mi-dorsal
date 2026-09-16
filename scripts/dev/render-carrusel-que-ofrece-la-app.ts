@@ -15,6 +15,7 @@ import { pathToFileURL } from "url";
 
 const BASE_DIR = join(process.cwd(), "marketing-assets", "carrusel-que-ofrece-la-app");
 const OUT_DIR = join(BASE_DIR, "final");
+const LOGO_PATH = join(process.cwd(), "public", "brand-assets", "isotipo-mono-black.png");
 
 type Slide = {
   file: string;
@@ -24,6 +25,8 @@ type Slide = {
   support: string;
   align: "top" | "bottom" | "center";
   scrim: "top" | "bottom" | "full-bottom";
+  headlineSize?: number;
+  supportSize?: number;
 };
 
 const slides: Slide[] = [
@@ -33,8 +36,8 @@ const slides: Slide[] = [
     chipColor: "#dc2626",
     headline: "Todo lo que hace\nmi-dorsal por ti.",
     support: "Tu temporada, resuelta.",
-    align: "bottom",
-    scrim: "bottom",
+    align: "top",
+    scrim: "top",
   },
   {
     file: "02-catalogo-calendario.png",
@@ -71,13 +74,15 @@ const slides: Slide[] = [
     support: "Sube tu selfie. Te buscamos por cara y dorsal.",
     align: "bottom",
     scrim: "bottom",
+    headlineSize: 148,
+    supportSize: 58,
   },
   {
     file: "06-cta-final.png",
     chip: "PRUÉBALO GRATIS",
     chipColor: "#dc2626",
     headline: "Tu dorsal,\nde principio a fin.",
-    support: "Pro desde 2,99 €/mes · 24,99 €/año · 14 días sin tarjeta",
+    support: "Pro desde 2,99 €/mes · 24,99 €/año · 14 días gratis",
     align: "center",
     scrim: "full-bottom",
   },
@@ -102,7 +107,7 @@ function alignCss(align: Slide["align"]): string {
   return "justify-content: center;";
 }
 
-function buildHtml(slide: Slide, imagePath: string): string {
+function buildHtml(slide: Slide, imagePath: string, logoPath: string): string {
   const headlineLines = slide.headline
     .split("\n")
     .map((l) => `<span class="line">${l}</span>`)
@@ -152,44 +157,61 @@ function buildHtml(slide: Slide, imagePath: string): string {
     color: #fafaf9;
     font-family: 'JetBrains Mono', monospace;
     font-weight: 500;
-    font-size: 26px;
-    letter-spacing: 4px;
-    padding: 12px 28px;
+    font-size: 30px;
+    letter-spacing: 3px;
+    padding: 14px 32px;
     border-radius: 999px;
-    margin-bottom: 32px;
+    margin-bottom: 40px;
   }
   .headline {
     font-family: 'Sora', sans-serif;
     font-weight: 800;
-    font-size: 88px;
-    line-height: 1.08;
+    font-size: 128px;
+    line-height: 1.05;
     color: #fafaf9;
-    letter-spacing: -1px;
-    margin-bottom: 24px;
+    letter-spacing: -2px;
+    margin-bottom: 32px;
   }
   .headline .line {
     display: block;
   }
   .support {
     font-family: 'Inter', sans-serif;
-    font-weight: 500;
-    font-size: 38px;
-    line-height: 1.35;
-    color: rgba(250,250,249,0.92);
-    max-width: 1500px;
+    font-weight: 600;
+    font-size: 50px;
+    line-height: 1.4;
+    color: rgba(250,250,249,0.95);
+    max-width: 1700px;
   }
   .center .chip { align-self: center; }
   .center .headline { text-align: center; }
   .center .support { text-align: center; margin-left: auto; margin-right: auto; }
+  .brand-badge {
+    position: absolute;
+    top: 64px;
+    right: 64px;
+    width: 108px;
+    height: 108px;
+    background: #fafaf9;
+    border-radius: 28px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.28);
+    padding: 18px;
+  }
+  .brand-badge img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
 </style>
 </head>
 <body>
   <img class="bg" src="${imagePath}" />
   <div class="scrim"></div>
+  <div class="brand-badge"><img src="${logoPath}" /></div>
   <div class="content ${slide.align === "center" ? "center" : ""}">
     <div class="chip">${slide.chip}</div>
-    <div class="headline">${headlineLines}</div>
-    <div class="support">${slide.support}</div>
+    <div class="headline"${slide.headlineSize ? ` style="font-size: ${slide.headlineSize}px;"` : ""}>${headlineLines}</div>
+    <div class="support"${slide.supportSize ? ` style="font-size: ${slide.supportSize}px;"` : ""}>${slide.support}</div>
   </div>
 </body>
 </html>`;
@@ -204,7 +226,8 @@ async function main() {
     const slide = slides[i];
     const imgAbsPath = join(BASE_DIR, slide.file);
     const imageUrl = pathToFileURL(imgAbsPath).href;
-    const html = buildHtml(slide, imageUrl);
+    const logoUrl = pathToFileURL(LOGO_PATH).href;
+    const html = buildHtml(slide, imageUrl, logoUrl);
 
     const htmlPath = join(OUT_DIR, `${String(i + 1).padStart(2, "0")}-source.html`);
     writeFileSync(htmlPath, html);

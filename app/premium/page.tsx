@@ -18,7 +18,7 @@
 //   - Free: gratis. Todo lo básico.
 //   - Pro Mensual: 2,99 €/mes. Sin compromiso. SIN trial (cobro upfront).
 //   - Pro Anual: 24,99 €/año. Equivale a 2,08 €/mes — ahorra 30%.
-//     14 días de trial gratis (sin tarjeta).
+//     14 días de trial gratis.
 //   Badge "Ahorra 30%" + "Más popular" en el anual.
 //
 // IMPORTANTE — MONEDA: cobramos en EUR directamente con Stripe directo
@@ -141,9 +141,9 @@ const TIERS: Tier[] = [
     period: "/año",
     badge: "14 días gratis · Ahorra 30%",
     badgeColor: "amber",
-    tagline: "Prueba Pro 14 días gratis, sin tarjeta. Cancela cuando quieras.",
+    tagline: "Prueba Pro 14 días gratis. Cancela cuando quieras.",
     features: [
-      "14 días de prueba gratis (sin tarjeta)",
+      "14 días de prueba gratis",
       "Todo lo de Pro Mensual, y además:",
       "Equivale a 2,08 €/mes (pagas una vez al año)",
       "Prioridad en features nuevas",
@@ -294,7 +294,7 @@ const FAQ: FaqItem[] = [
   {
     question: "¿Cuánto cuesta mi-dorsal Premium?",
     answer:
-      "Hay 2 planes Pro: Pro Mensual a 2,99 €/mes (sin compromiso, cobro inmediato, cancela cuando quieras) y Pro Anual a 24,99 €/año (equivale a 2,08 €/mes, ahorras 30%, con 14 días de prueba gratis sin tarjeta). Los dos planes tienen exactamente las mismas features — solo cambia el precio y el periodo de cobro.",
+      "Hay 2 planes Pro: Pro Mensual a 2,99 €/mes (sin compromiso, cobro inmediato, cancela cuando quieras) y Pro Anual a 24,99 €/año (equivale a 2,08 €/mes, ahorras 30%, con 14 días de prueba gratis). Los dos planes tienen exactamente las mismas features — solo cambia el precio y el periodo de cobro.",
   },
   {
     question: "¿Qué incluye Pro que no tenga Free?",
@@ -304,7 +304,7 @@ const FAQ: FaqItem[] = [
   {
     question: "¿Puedo probar Pro antes de pagar?",
     answer:
-      "Solo el Pro Anual tiene 14 días de prueba gratis (sin tarjeta). El Pro Mensual se cobra al suscribirse. Si en los 14 días del Pro Anual decides que no, vuelves a Free automáticamente sin perder nada de lo que ya tenías.",
+      "Solo el Pro Anual tiene 14 días de prueba gratis. El Pro Mensual se cobra al suscribirse. Si en los 14 días del Pro Anual decides que no, vuelves a Free automáticamente sin perder nada de lo que ya tenías.",
   },
   {
     question: "¿Qué pasa si cancelo Pro?",
@@ -363,11 +363,11 @@ export default function PremiumPage() {
               Más de tu temporada de carreras.
             </h1>
             <p className="text-lg text-stone-700 mb-10 max-w-2xl mx-auto">
-              Empieza gratis. Cuando quieras más comodidad, hazte Pro. Sin
-              tarjeta para probar, cancela cuando quieras.
+              Empieza gratis. Cuando quieras más comodidad, hazte Pro.
+              Cancela cuando quieras.
             </p>
 
-            {/* Trust badges inline (RGPD, sin tarjeta en el anual, cancela cuando quieras) */}
+            {/* Trust badges inline (RGPD, cancela cuando quieras) */}
             <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-stone-600 mb-10">
               <span className="inline-flex items-center gap-1.5">
                 <Shield className="h-3.5 w-3.5 text-emerald-600" /> RGPD · Tus

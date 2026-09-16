@@ -283,9 +283,12 @@ export function PhotoSearchUploadForm({
           Pega el enlace del álbum de Flickr de tu carrera (o el del perfil del
           fotógrafo, ej. flickr.com/photos/usuario/albums/, para elegir álbumes de una
           lista), el enlace de la página de resultados de ChipLevante
-          (chiplevante.com/es/prueba/...), o el enlace del álbum de fotos de Grupo
-          Brotons (grupobrotons.com/fotografias/nggallery/album/...). Esta búsqueda
-          solo te afecta a ti, no cambia nada para nadie más.
+          (chiplevante.com/es/prueba/...), el enlace del álbum de fotos de Grupo
+          Brotons (grupobrotons.com/fotografias/nggallery/album/...), o el enlace del
+          álbum de Lumepic (lumepic.com/es/album/...) — en Lumepic las fotos que te
+          encontremos llevan marca de agua y tendrás que comprarlas ahí para
+          descargarlas sin ella. Esta búsqueda solo te afecta a ti, no cambia nada
+          para nadie más.
         </p>
         <div className="flex flex-col gap-2">
           {albumUrls.map((url, i) => {

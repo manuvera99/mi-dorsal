@@ -416,31 +416,31 @@ no es ni legal ni rentable; tratarlas como **socios** es el camino real.
   endpoint — no se confirmó que este segundo filtro devuelva resultados
   reales (probado con un dorsal visible en una foto, 0 resultados; puede
   requerir que Lumepic ya haya procesado el OCR de esa foto).
-- **Por qué de todos modos NO es viable para nuestro pipeline**: la
-  `url`/`thumbnailUrl` del JSON son la fotografía real completa
+- **La `url`/`thumbnailUrl` del JSON son la fotografía real completa**
   (confirmado descargándola: mismas dimensiones que el archivo pagado,
   ~115KB) pero con **marca de agua "LUMEPIC" grande superpuesta** más un
   texto pidiendo no redistribuir la foto — es la preview de venta, no el
   archivo entregable (que cuesta 6€ por foto en este álbum y solo se
-  obtiene tras pagar, vía `/photographs/free-bulk-download-urls` u otro
-  endpoint de compra). Aunque el endpoint es público y sin auth, no
-  sirve como fuente para nuestro pipeline de cara/dorsal: la marca de
-  agua no impediría técnicamente el matching (InsightFace/EasyOCR
-  seguirían detectando cara/dorsal bajo ella), pero **redistribuir
-  gratis lo que Lumepic vende de pago** no es aceptable — sí sería
-  correcto mostrar el link-out a la propia página de Lumepic para que el
-  usuario compre su foto directamente, igual que con las plataformas de
-  §3.2.
+  obtiene tras pagar). El matching de cara/dorsal (InsightFace/EasyOCR)
+  funciona igual bajo la marca de agua, así que esa misma preview sirve
+  para identificar al corredor sin coste añadido — nunca se entrega la
+  foto sin marca de agua ni se elude el pago.
 - **Volumen real en el catálogo**: solo **1 carrera** (Maximum
   Revolcadores) de las 10 galerías vistas coincide con el catálogo de
   mi-dorsal, y su web oficial (`maximumrevolcadores.com`) ni siquiera
   enlaza a esa galería hoy.
-- **Veredicto:** ❌ **Descartado como fuente para el pipeline** — no por
-  falta de acceso técnico (el endpoint es público), sino porque las
-  fotos son de pago y llevan marca de agua: redistribuirlas gratis en
-  nuestros resultados sería incorrecto de cara al fotógrafo/Lumepic,
-  aunque técnicamente estuviera al alcance. 🟢 **Lumepic** queda anotado
-  como candidato de partnership comercial (¿API oficial para
+- **Implementado el 16 sep 2026** como `LumepicPhotoSource` (ver
+  `findmyrace/sources/lumepic.py`): el álbum se lista igual que
+  Flickr/ChipLevante/Grupo Brotons, pero cada resultado de un álbum de
+  Lumepic se marca con `requiresPurchase: true` + `purchaseUrl` (enlace
+  real a `lumepic.com/es/album/{albumId}/{photographId}`, con
+  Stripe/dLocal) + `price`/`currency` — la UI (`photo-search-results.tsx`)
+  muestra la foto con marca de agua en el mismo grid que las fuentes
+  gratuitas, con una etiqueta "De pago" y un botón "Comprar" en vez de
+  ofrecerla como descarga directa.
+- **Veredicto:** ✅ **Implementado** como resultado "de pago" con
+  link-out a la compra real — no como fuente gratuita. 🟢 Sigue siendo
+  también candidato de partnership comercial (¿API oficial para
   integradores, aparte del endpoint de la propia web?) si en el futuro
   se explora esa vía — mismo tratamiento que SportPXL/BuscoDorsal.
 

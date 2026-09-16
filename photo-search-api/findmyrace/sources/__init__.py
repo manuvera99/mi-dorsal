@@ -11,12 +11,14 @@ from .direct import DirectUrlSource
 from .factory import get_source_for_url, list_supported_sources
 from .flickr import FlickrSource
 from .grupobrotons import GrupoBrotonsPhotoSource
+from .lumepic import LumepicPhotoSource
 
 __all__ = [
     "PhotoSource",
     "FlickrSource",
     "ChipLevantePhotoSource",
     "GrupoBrotonsPhotoSource",
+    "LumepicPhotoSource",
     "DirectUrlSource",
     "get_source_for_url",
     "list_supported_sources",

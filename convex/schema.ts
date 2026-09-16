@@ -1497,6 +1497,17 @@ export default defineSchema({
             h: v.number(),
           }),
         ),
+        // Fotos de pago (Lumepic, 16 sep 2026 — ver
+        // findmyrace/sources/lumepic.py): photoUrl ya lleva marca de agua
+        // real (es la propia vista previa pública del proveedor), nunca se
+        // entrega ni se ofrece como gratuita — la UI debe mostrar un botón
+        // "Comprar" con purchaseUrl en vez de tratarla como un resultado
+        // normal. Ausente/false para las demás fuentes (Flickr, ChipLevante,
+        // Grupo Brotons), que son gratuitas.
+        requiresPurchase: v.optional(v.boolean()),
+        purchaseUrl: v.optional(v.string()),
+        price: v.optional(v.number()),
+        currency: v.optional(v.string()),
       }),
     ),
 

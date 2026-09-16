@@ -100,18 +100,28 @@ export const create = mutation({
       albumUrls.push(parsed.toString());
     }
 
-    // Flickr, ChipLevante y Grupo Brotons (15 sep 2026, ver
-    // findmyrace/sources/{chiplevante,grupobrotons}.py) tienen downloader
-    // real hoy — get_source_for_url en el servicio lanza un 400 explícito
-    // para cualquier otra URL. Rechazamos aquí solo si NINGÚN álbum es
-    // soportado — evita gastar un job y una llamada a Modal por algo que
-    // sabemos que va a fallar del todo; si al menos uno es soportado, se
-    // deja pasar (el servicio ya ignora los no soportados y sigue con
-    // los demás, ver photo-search-api/api/find_photos.py).
-    const SUPPORTED_ALBUM_DOMAINS = ["flickr.com", "chiplevante.com", "grupobrotons.com"];
+    // Flickr, ChipLevante, Grupo Brotons y Lumepic (16 sep 2026, ver
+    // findmyrace/sources/{chiplevante,grupobrotons,lumepic}.py) tienen
+    // downloader real hoy — get_source_for_url en el servicio lanza un 400
+    // explícito para cualquier otra URL. Rechazamos aquí solo si NINGÚN
+    // álbum es soportado — evita gastar un job y una llamada a Modal por
+    // algo que sabemos que va a fallar del todo; si al menos uno es
+    // soportado, se deja pasar (el servicio ya ignora los no soportados y
+    // sigue con los demás, ver photo-search-api/api/find_photos.py).
+    //
+    // Lumepic es de pago (marca de agua real en el preview, ver docstring
+    // de LumepicPhotoSource) — se acepta igual que los demás porque el
+    // resultado se marca como "de pago" con enlace a comprar, nunca se
+    // ofrece como gratuita (ver find_photos.py::_build_result).
+    const SUPPORTED_ALBUM_DOMAINS = [
+      "flickr.com",
+      "chiplevante.com",
+      "grupobrotons.com",
+      "lumepic.com",
+    ];
     if (!albumUrls.some((u) => SUPPORTED_ALBUM_DOMAINS.some((d) => u.includes(d)))) {
       throw new Error(
-        "Ninguno de los álbumes es de un proveedor soportado (Flickr, ChipLevante o Grupo Brotons por ahora).",
+        "Ninguno de los álbumes es de un proveedor soportado (Flickr, ChipLevante, Grupo Brotons o Lumepic por ahora).",
       );
     }
 
@@ -368,6 +378,10 @@ export const markDone = internalMutation({
         bbox: v.optional(
           v.object({ x: v.number(), y: v.number(), w: v.number(), h: v.number() }),
         ),
+        requiresPurchase: v.optional(v.boolean()),
+        purchaseUrl: v.optional(v.string()),
+        price: v.optional(v.number()),
+        currency: v.optional(v.string()),
       }),
     ),
     rejectedSelfies: v.optional(

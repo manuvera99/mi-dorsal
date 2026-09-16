@@ -60,6 +60,7 @@ from findmyrace.pipeline import Pipeline
 from findmyrace.sources import get_source_for_url
 from findmyrace.sources.base import AdaptiveRateLimiter, PhotoSource
 from findmyrace.sources.flickr import FlickrSource
+from findmyrace.sources.lumepic import LumepicPhotoSource
 
 from . import album_cache
 
@@ -272,6 +273,11 @@ async def find_photos(payload: FindPhotosRequest, request: Request):
         # fuente hace que el backoff persista entre álbumes del mismo
         # proveedor, tal como ya persistía entre fotos de un mismo álbum.
         path_to_source_url: dict[Path, str] = {}
+        # Fuente que descargó cada Path, para poder preguntarle luego (ver
+        # purchase_info_for_source_url) si esa foto concreta es de pago
+        # (Lumepic) — sources_by_type ya guarda la instancia por tipo, esto
+        # solo guarda qué tipo usó cada resultado.
+        path_to_source_type: dict[Path, str] = {}
         unsupported_albums: list[str] = []
         failed_albums: list[str] = []
         sources_by_type: dict[str, PhotoSource] = {}
@@ -358,6 +364,8 @@ async def find_photos(payload: FindPhotosRequest, request: Request):
                 failed_albums.append(album_url)
                 continue
             path_to_source_url.update(album_results)
+            for p in album_results:
+                path_to_source_type[p] = probe.name
 
         # Publica lo descargado en esta búsqueda para que la SIGUIENTE
         # búsqueda (en este contenedor u otro) lo vea — no-op si no se usó
@@ -405,9 +413,10 @@ async def find_photos(payload: FindPhotosRequest, request: Request):
             max_images=MAX_PHOTOS_PER_JOB,
         )
 
-        results = [
-            {
-                "photoUrl": path_to_source_url.get(r.path, r.path.name),
+        def _build_result(r) -> dict:
+            source_url = path_to_source_url.get(r.path, r.path.name)
+            result = {
+                "photoUrl": source_url,
                 "score": round(r.score, 3),
                 "identityConfirmed": r.identity_confirmed,
                 "faceScore": round(r.face.score, 3) if r.face else None,
@@ -423,8 +432,26 @@ async def find_photos(payload: FindPhotosRequest, request: Request):
                     else None
                 ),
             }
-            for r in photo_scores
-        ]
+
+            # Fotos de pago (Lumepic, ver findmyrace/sources/lumepic.py):
+            # photoUrl ya lleva marca de agua real (es la propia vista
+            # previa pública del proveedor), así que se puede mostrar sin
+            # coste — pero el resultado se marca como "de pago" con enlace
+            # a la compra real, nunca se ofrece como si fuera gratuita.
+            source_type = path_to_source_type.get(r.path)
+            source = sources_by_type.get(source_type) if source_type else None
+            purchase_info = (
+                source.purchase_info_for_source_url(source_url) if source else None
+            )
+            if purchase_info:
+                result["requiresPurchase"] = True
+                result["purchaseUrl"] = purchase_info["purchaseUrl"]
+                result["price"] = purchase_info["price"]
+                result["currency"] = purchase_info["currency"]
+
+            return result
+
+        results = [_build_result(r) for r in photo_scores]
 
         omitted = pipeline.last_run_omitted
         photos_scanned = len(path_to_source_url) - omitted

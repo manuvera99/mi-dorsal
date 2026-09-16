@@ -28,6 +28,11 @@ interface FindPhotosResult {
   faceScore: number | null;
   dorsalMatch: string | null;
   bbox: { x: number; y: number; w: number; h: number } | null;
+  // Fotos de pago (Lumepic, ver convex/schema.ts::photoSearchJobs.results)
+  requiresPurchase?: boolean;
+  purchaseUrl?: string;
+  price?: number | null;
+  currency?: string | null;
 }
 
 interface FindPhotosResponse {
@@ -122,6 +127,10 @@ export const runJob = internalAction({
         faceScore: r.faceScore ?? undefined,
         dorsalMatch: r.dorsalMatch ?? undefined,
         bbox: r.bbox ?? undefined,
+        requiresPurchase: r.requiresPurchase ?? undefined,
+        purchaseUrl: r.purchaseUrl ?? undefined,
+        price: r.price ?? undefined,
+        currency: r.currency ?? undefined,
       }));
 
       await ctx.runMutation(internal.photoSearch.markDone, {

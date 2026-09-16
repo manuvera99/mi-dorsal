@@ -128,6 +128,18 @@ class PhotoSource(ABC):
         FlickrSource con el set_id numérico) lo sobreescriben."""
         return None
 
+    def purchase_info_for_source_url(self, source_url: str) -> dict | None:
+        """Info de compra para una foto de pago (ver LumepicPhotoSource,
+        investigado 16 sep 2026): ``{"purchaseUrl": str, "price": float,
+        "currency": str}``, o None si esta fuente no vende fotos (Flickr,
+        ChipLevante, Grupo Brotons — todo gratuito). find_photos.py usa
+        esto para marcar el resultado como "de pago" en vez de mostrar la
+        foto como si fuera gratuita — la propia ``source_url`` de una
+        foto de pago YA lleva marca de agua real (confirmado
+        descargándola), así que sirve como preview sin coste añadido, sin
+        necesitar copiar ni comprar nada por nuestra parte."""
+        return None
+
     @abstractmethod
     def can_handle(self, url: str) -> bool:
         """Devuelve True si esta fuente sabe怎么处理 esa URL."""

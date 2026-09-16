@@ -287,6 +287,108 @@ class TestAlbumCache:
         assert captured_kwargs.get("dorsal") == "47"
 
 
+class TestPurchaseInfo:
+    """Fotos de fuentes de pago (Lumepic, ver
+    findmyrace/sources/lumepic.py) deben marcarse en el resultado con
+    requiresPurchase/purchaseUrl/price/currency — nunca ofrecerse como si
+    fueran gratuitas. Fuentes gratuitas (Flickr, etc.) no deben llevar
+    estos campos."""
+
+    def _mock_face(self):
+        mock_face = MagicMock()
+        mock_face.assess_reference.return_value = MagicMock(rejected=False)
+        return mock_face
+
+    def test_lumepic_result_marked_as_requires_purchase(self, tmp_path: Path) -> None:
+        fake_photo = tmp_path / "photo1.jpg"
+        fake_photo.write_bytes(b"fake")
+        source_url = "https://spotted-images-public.s3.amazonaws.com/album/photo1.jpg"
+
+        fake_score = MagicMock()
+        fake_score.path = fake_photo
+        fake_score.score = 0.87
+        fake_score.identity_confirmed = True
+        fake_score.face = None
+        fake_score.dorsal = None
+
+        def _fake_download(url, dest_dir, **kwargs):
+            return {fake_photo: source_url}
+
+        with patch(
+            "api.find_photos._download_selfies",
+            new=AsyncMock(return_value=[Path("/tmp/fake_selfie.jpg")]),
+        ), patch("api.find_photos.FaceRecognizer") as mock_face_cls, patch(
+            "api.find_photos.LumepicPhotoSource.download_with_source_urls",
+            side_effect=_fake_download,
+        ), patch(
+            "api.find_photos.LumepicPhotoSource.purchase_info_for_source_url",
+            return_value={"purchaseUrl": "https://www.lumepic.com/es/album/x/y", "price": 6.0, "currency": "EUR"},
+        ), patch(
+            "api.find_photos.Pipeline.run", return_value=[fake_score]
+        ):
+            mock_face_cls.return_value = self._mock_face()
+
+            resp = client.post(
+                "/api/find_photos",
+                json={
+                    "jobId": "x",
+                    "selfieUrls": ["https://example.com/selfie.jpg"],
+                    "albumUrls": [
+                        "https://www.lumepic.com/es/album/19fb231b-48b0-4c9c-9879-c0e6f900fa4f"
+                    ],
+                },
+            )
+
+        assert resp.status_code == 200
+        results = resp.json()["results"]
+        assert len(results) == 1
+        assert results[0]["requiresPurchase"] is True
+        assert results[0]["purchaseUrl"] == "https://www.lumepic.com/es/album/x/y"
+        assert results[0]["price"] == 6.0
+        assert results[0]["currency"] == "EUR"
+
+    def test_flickr_result_has_no_purchase_fields(self, tmp_path: Path) -> None:
+        fake_photo = tmp_path / "photo1.jpg"
+        fake_photo.write_bytes(b"fake")
+        source_url = "https://live.staticflickr.com/x/123_abc_k.jpg"
+
+        fake_score = MagicMock()
+        fake_score.path = fake_photo
+        fake_score.score = 0.87
+        fake_score.identity_confirmed = True
+        fake_score.face = None
+        fake_score.dorsal = None
+
+        def _fake_download(url, dest_dir, **kwargs):
+            return {fake_photo: source_url}
+
+        with patch(
+            "api.find_photos._download_selfies",
+            new=AsyncMock(return_value=[Path("/tmp/fake_selfie.jpg")]),
+        ), patch("api.find_photos.FaceRecognizer") as mock_face_cls, patch(
+            "api.find_photos.FlickrSource.download_with_source_urls",
+            side_effect=_fake_download,
+        ), patch(
+            "api.find_photos.Pipeline.run", return_value=[fake_score]
+        ):
+            mock_face_cls.return_value = self._mock_face()
+
+            resp = client.post(
+                "/api/find_photos",
+                json={
+                    "jobId": "x",
+                    "selfieUrls": ["https://example.com/selfie.jpg"],
+                    "albumUrls": ["https://www.flickr.com/photos/u/albums/123/"],
+                },
+            )
+
+        assert resp.status_code == 200
+        results = resp.json()["results"]
+        assert len(results) == 1
+        assert "requiresPurchase" not in results[0]
+        assert "purchaseUrl" not in results[0]
+
+
 class TestListAlbums:
     """POST /api/list_albums — lista los álbumes públicos de un perfil de
     Flickr (feature de selector, ver PHOTO_SEARCH_TECH.md, sesión 14 sep

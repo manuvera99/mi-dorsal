@@ -12,7 +12,15 @@ import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { Loader2, ImageOff, RotateCcw, AlertTriangle, CheckCircle2, Mail } from "lucide-react";
+import {
+  Loader2,
+  ImageOff,
+  RotateCcw,
+  AlertTriangle,
+  CheckCircle2,
+  Mail,
+  ShoppingCart,
+} from "lucide-react";
 import { useState } from "react";
 
 export function PhotoSearchResults({
@@ -175,27 +183,60 @@ function DoneResults({
       )}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {full.results.map((r, i) => (
-          <a
-            key={`${r.photoUrl}-${i}`}
-            href={r.photoUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="relative block rounded-lg overflow-hidden border border-gray-200 group"
-          >
-            <img
-              src={r.photoUrl}
-              alt={`Foto encontrada ${i + 1}`}
-              className="aspect-square w-full object-cover group-hover:opacity-90 transition-opacity"
-              loading="lazy"
-            />
-            {r.identityConfirmed && (
-              <span className="absolute top-1.5 right-1.5 rounded-full bg-runner-accent text-white p-1">
-                <CheckCircle2 className="h-3 w-3" />
+        {full.results.map((r, i) =>
+          r.requiresPurchase ? (
+            <div
+              key={`${r.photoUrl}-${i}`}
+              className="relative block rounded-lg overflow-hidden border border-gray-200"
+            >
+              <img
+                src={r.photoUrl}
+                alt={`Foto encontrada ${i + 1} (con marca de agua, de pago)`}
+                className="aspect-square w-full object-cover"
+                loading="lazy"
+              />
+              {r.identityConfirmed && (
+                <span className="absolute top-1.5 right-1.5 rounded-full bg-runner-accent text-white p-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                </span>
+              )}
+              <span className="absolute top-1.5 left-1.5 rounded-full bg-black/70 text-white text-[10px] font-medium px-2 py-0.5">
+                De pago
               </span>
-            )}
-          </a>
-        ))}
+              {r.purchaseUrl && (
+                <a
+                  href={r.purchaseUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute bottom-0 inset-x-0 flex items-center justify-center gap-1.5 bg-runner-primary text-white text-xs font-medium py-1.5 hover:bg-runner-primary/90 transition-colors"
+                >
+                  <ShoppingCart className="h-3 w-3" />
+                  Comprar{typeof r.price === "number" ? ` · ${r.price}${r.currency === "EUR" ? "€" : ` ${r.currency ?? ""}`}` : ""}
+                </a>
+              )}
+            </div>
+          ) : (
+            <a
+              key={`${r.photoUrl}-${i}`}
+              href={r.photoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="relative block rounded-lg overflow-hidden border border-gray-200 group"
+            >
+              <img
+                src={r.photoUrl}
+                alt={`Foto encontrada ${i + 1}`}
+                className="aspect-square w-full object-cover group-hover:opacity-90 transition-opacity"
+                loading="lazy"
+              />
+              {r.identityConfirmed && (
+                <span className="absolute top-1.5 right-1.5 rounded-full bg-runner-accent text-white p-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                </span>
+              )}
+            </a>
+          ),
+        )}
       </div>
     </div>
   );

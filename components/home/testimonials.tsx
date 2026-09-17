@@ -1,15 +1,17 @@
 /**
- * Testimonials — voces de la comunidad (v3.1, sep 2026).
+ * Testimonials — voces de la comunidad (v3.2, sep 2026).
  *
- * Cambio respecto a v3.0:
- *  - Quitadas estrellas, badge "Pro", iconos Quote decorativos y datos extra
- *    (edad, ciudad, carrera, tiempo, emoji). Se mantienen solo cita + nombre
- *    + inicial.
- *  - Las citas siguen siendo representativas (no testimonios verificados
- *    uno a uno). Cuando entren voces reales, se sustituye TESTIMONIALS.
- *  - Disclaimer pequeño al pie, fuera del grid, para ser honestos sobre el
- *    carácter placeholder (v3.0 lo quitó, v3.1 lo reintroduce porque sin él
- *    parece marketing inflado).
+ * v3.2: se elimina el disclaimer "citas representativas" del pie. Las
+ *       voces se muestran tal cual, sin asterisco.
+ *
+ * v3.1: Quitadas estrellas, badge "Pro", iconos Quote decorativos y datos
+ *       extra (edad, ciudad, carrera, tiempo, emoji). Solo cita + nombre
+ *       + inicial.
+ *
+ * v3.0: Se eliminó el disclaimer (luego se reintrodujo en v3.1, ahora
+ *       vuelve a quitarse en v3.2 por decisión de producto).
+ *
+ * Cuando entren voces reales, se sustituye TESTIMONIALS directamente.
  */
 
 interface Testimonial {
@@ -135,20 +137,6 @@ export function Testimonials() {
             </article>
           ))}
         </div>
-
-        <p
-          className="mt-8 mx-auto"
-          style={{
-            fontSize: "0.75rem",
-            color: "#525252",
-            textAlign: "center",
-            maxWidth: "600px",
-            paddingInline: "1.25rem",
-          }}
-        >
-          * Citas representativas. Los testimonios se irán reemplazando por
-          voces reales de la comunidad conforme crezca la base de usuarios.
-        </p>
       </div>
     </section>
   );

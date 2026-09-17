@@ -252,7 +252,7 @@ function AiSuggestRaceForm({ onSuccess }: { onSuccess: () => void }) {
             <Sparkles className="inline h-4 w-4 text-runner-primary mr-1" aria-hidden="true" />
             <strong>Cómo funciona:</strong> pegas la URL de la web oficial → la IA
             extrae nombre, fecha, distancia y demás datos → tú revisas y envías
-            un <strong>borrador</strong>. Manu lo verifica y lo publica en el
+            un <strong>borrador</strong>. Lo verificamos y lo publicamos en el
             catálogo (suele tardar menos de 24h).
           </p>
         </div>
@@ -328,8 +328,8 @@ function AiSuggestRaceForm({ onSuccess }: { onSuccess: () => void }) {
         </div>
         <h3 className="text-lg font-bold text-runner-dark mb-1">¡Borrador enviado!</h3>
         <p className="text-sm text-gray-600 mb-3">
-          Manu ha recibido tu borrador con la información extraída. Lo revisa y, si
-          todo está bien, lo publica en el catálogo.
+          Hemos recibido tu borrador con la información extraída. Lo revisamos y,
+          si todo está bien, lo publicamos en el catálogo.
         </p>
         <p className="text-xs text-gray-500">
           Si quieres ver el estado, mira en{" "}

@@ -150,7 +150,7 @@ function SuggestRaceForm({ onSuccess }: { onSuccess: () => void }) {
         </div>
         <h3 className="text-lg font-bold text-runner-dark mb-1">¡Sugerencia enviada!</h3>
         <p className="text-sm text-gray-600">
-          Manu la revisará y, si la aprueba, la añadirá al catálogo. Te avisaremos
+          La revisamos y, si la aprobamos, la añadimos al catálogo. Te avisaremos
           si quieres (déjanos tu email en la nota).
         </p>
       </div>
@@ -268,7 +268,7 @@ function SuggestRaceForm({ onSuccess }: { onSuccess: () => void }) {
       <div className="flex items-center justify-between gap-3 pt-2 border-t">
         <p className="text-xs text-gray-500">
           <ExternalLink className="inline h-3 w-3 mr-0.5" aria-hidden="true" />
-          Manu la revisará y, si la aprueba, la añadirá al catálogo.
+          La revisamos y, si la aprobamos, la añadimos al catálogo.
         </p>
         <button
           type="submit"

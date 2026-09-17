@@ -163,7 +163,7 @@ function ReportForm({
         </div>
         <h3 className="text-lg font-bold text-runner-dark mb-1">¡Gracias por avisar!</h3>
         <p className="text-sm text-gray-600">
-          Manu revisa los reportes cada día. Si lo necesitamos, te escribimos a tu email.
+          Revisamos los reportes cada día. Si lo necesitamos, te escribimos a tu email.
         </p>
       </div>
     );

@@ -32,7 +32,7 @@ export function EditPermissionsBanner() {
         <p className="leading-relaxed">
           En esta ficha puedes <strong>valorar</strong> (👍/👎 y la puntuación 8D) y
           <strong> reportar un error</strong> si ves algo mal. Para proponer cambios
-          en los datos, pulsa el botón rojo de abajo — Manu los revisa y los aplica
+          en los datos, pulsa el botón rojo de abajo — los revisamos y los aplicamos
           si toca.
         </p>
         <p className="text-blue-700/80 mt-1 text-[11px] flex items-center gap-2 flex-wrap">

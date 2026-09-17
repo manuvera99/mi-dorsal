@@ -1,18 +1,26 @@
-// Home de mi-dorsal — v3.2 (sep 2026).
+// Home de mi-dorsal — v3.3 (sep 2026).
+//
+// v3.3: se quita la sección DiplomaAndSharePreview (la "sección estrella"
+// que mostraba el diploma A4 + sticker 1080x1920). En su lugar, una
+// sección nueva CalendarPreview que muestra el calendario de carreras
+// del usuario con predicción de tiempo por carrera (tiempo objetivo).
+// Razón: producto quiere empujar el calendario y la planificación de
+// temporada como claim central de la home, no solo el resultado
+// post-carrera.
+//
+// El diploma y el sticker SIGUEN EXISTIENDO como features reales (se
+// siguen enviando por email al cruzar la meta), solo se han dejado de
+// promocionar en la home. El archivo components/home/diploma-preview.tsx
+// se conserva sin uso por si se quieren restaurar.
 //
 // v3.2: la sección "Tus fotos, sin rebuscar" se integra como micro-bloque
-// dentro del hero (tras el lede, antes de los CTAs) para limpiar la página.
-// El archivo components/home/photos-section.tsx se elimina al final de
-// esta iteración.
+// dentro del hero.
 //
-// v3.1: restyling visual + sección nueva "Tus fotos, sin rebuscar"
-// (PhotosSection). Se elimina FeaturedRaces (geo-personalizada) para
-// mantener el minimalismo.
+// v3.1: restyling visual + sección PhotosSection. Eliminada FeaturedRaces.
 //
-// Estructura actual de la home (v3.2):
-//   1. Hero                  — fondo rojo estilo Pro, con micro-claim
-//                               "te avisamos + te encontramos con IA"
-//   2. DiplomaAndSharePreview — diploma + sticker fieles al email real
+// Estructura actual de la home (v3.3):
+//   1. Hero                  — fondo rojo estilo Pro, con micro-claim Pro
+//   2. CalendarPreview        — calendario + predicción (tiempo objetivo)
 //   3. UseCase                — quote + autor
 //   4. Testimonials           — 4 voces simples
 //   5. FinalCta               — botón único "Empieza gratis"
@@ -26,8 +34,8 @@
 // Ver docs/core/anti-patterns.md (la nota sobre force-dynamic aplica a
 // /carreras, no a /). Esta home no necesita force-dynamic.
 import { Hero } from "@/components/home/hero";
+import { CalendarPreview } from "@/components/home/calendar-preview";
 import {
-  DiplomaPreviewLazy,
   UseCaseLazy,
   TestimonialsLazy,
   FinalCtaLazy,
@@ -62,8 +70,8 @@ export default function HomePage() {
         {/* 1. HERO */}
         <Hero />
 
-        {/* 2. DIPLOMA + STICKER — la sección estrella (lazy: ssr:false). */}
-        <DiplomaPreviewLazy />
+        {/* 2. CALENDARIO DE CARRERAS — server component declarativo. */}
+        <CalendarPreview />
 
         {/* 3. CASO DE USO / STORYTELLING (lazy: ssr:false) */}
         <UseCaseLazy />

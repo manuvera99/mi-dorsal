@@ -6,7 +6,7 @@ import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Doc } from "./_generated/dataModel";
-import { provinceValidator, raceTypeValidator, slugify, requireAdmin } from "./_helpers";
+import { provinceValidator, raceTypeValidator, slugify, requireAdmin, validateRaceGeo } from "./_helpers";
 import { normalizeName, tokenize, jaccard, localitiesCompatible, findExistingMatch, MatchCandidate } from "./duplicateMatching";
 
 /**
@@ -503,6 +503,17 @@ export const adminUpdate = mutation({
     await requireAdmin(ctx);
     const existing = await ctx.db.get(id);
     if (!existing) throw new Error("Race not found");
+
+    // 2026-09-17: validar coherencia geo con el estado efectivo (patch + existing).
+    // Bug que motivó esto: el deep-extract de IA asignó coords de Valencia a la
+    // carrera FEDME "Gomera Paradise Trail" (provincia s.c. tenerife). El check
+    // aquí evita que un admin (o un script llamando adminUpdate con un patch
+    // contaminado) pueda persistir esa incoherencia sin enterarse.
+    const effectiveLat  = (patch as any).latitude  ?? existing.latitude;
+    const effectiveLng  = (patch as any).longitude ?? existing.longitude;
+    const effectiveProv = (patch as any).province  ?? existing.province;
+    validateRaceGeo(effectiveLat, effectiveLng, effectiveProv, existing.name);
+
     // Si cambia el nombre, regeneramos el slug evitando colisiones
     const update: any = { ...patch };
     if (patch.name && patch.name !== existing.name) {
@@ -558,7 +569,50 @@ export const systemUpdate = mutation({
   handler: async (ctx, { id, patch }) => {
     const existing = await ctx.db.get(id);
     if (!existing) throw new Error("Race not found");
+
+    // 2026-09-17: validar coherencia geo con el estado efectivo (patch + existing).
+    // Mismo rationale que adminUpdate: defenderse de ingests/scripts que
+    // asignan coords inconsistentes con la provincia declarada. NOTA:
+    // systemUpdate es usado por scripts CLI (deep-extract-all) y API
+    // routes; NO tiene requireAdmin. Sin este check, un deep-extract con
+    // fallo de IA puede contaminar el catálogo sin levantar alarma.
+    const effectiveLat  = (patch as any)?.latitude  ?? existing.latitude;
+    const effectiveLng  = (patch as any)?.longitude ?? existing.longitude;
+    const effectiveProv = (patch as any)?.province  ?? existing.province;
+    validateRaceGeo(effectiveLat, effectiveLng, effectiveProv, existing.name);
+
     await ctx.db.patch(id, patch);
+    return id;
+  },
+});
+
+/**
+ * systemClearGeo: borra latitude/longitude de una carrera.
+ *
+ * Por qué existe: Convex solo acepta `undefined` (no `null`) para borrar
+ * campos opcionales vía `db.patch`, y `undefined` no se puede enviar por
+ * la API HTTP/JSON. Este wrapper permite a los scripts CLI limpiar las
+ * coords de carreras mal geocodificadas sin tener que añadir un campo
+ * booleano "tiene coords" en el schema.
+ *
+ * Implementación: usa `db.replace` con el documento existente menos los
+ * campos que queremos borrar (en vez de `db.patch` con undefined, que
+ * también funciona pero es menos explícito y más frágil ante cambios
+ * del compilador TS).
+ *
+ * 2026-09-17: añadido para limpieza masiva de carreras con coords basura
+ * detectadas en la auditoría (ver scripts/temp/audit-coords.cjs).
+ */
+export const systemClearGeo = mutation({
+  args: {
+    id: v.id("races"),
+  },
+  handler: async (ctx, { id }) => {
+    const existing = await ctx.db.get(id);
+    if (!existing) throw new Error("Race not found");
+    const { latitude: _lat, longitude: _lng, ...rest } = existing as any;
+    void _lat; void _lng;
+    await ctx.db.replace(id, rest);
     return id;
   },
 });
@@ -703,18 +757,14 @@ export const systemUpsert = mutation({
     // Mismo bbox que scripts/audit-races-by-country.ts. Solo aplica cuando
     // hay geo: los ingests sin lat/lng (RFEA, FEDME...) siguen dependiendo
     // de su propio filtro por país, que ya es correcto.
+    //
+    // 2026-09-17: ampliado con `validateRaceGeo` (ver convex/_helpers.ts)
+    // que además valida coherencia provincia ↔ coords. Caso real: FEDME
+    // Gomera con lat/lng de la sede de la FEDME en Valencia (39.46, -0.40)
+    // — el bbox España la daba por buena, pero no es coherente con
+    // "santa cruz de tenerife". El nuevo check por provincia lo rechaza.
     if (typeof args.latitude === "number" && typeof args.longitude === "number") {
-      const SPAIN_BBOX = { minLat: 27.5, maxLat: 44.0, minLng: -18.5, maxLng: 4.5 };
-      const inSpain =
-        args.latitude >= SPAIN_BBOX.minLat &&
-        args.latitude <= SPAIN_BBOX.maxLat &&
-        args.longitude >= SPAIN_BBOX.minLng &&
-        args.longitude <= SPAIN_BBOX.maxLng;
-      if (!inSpain) {
-        throw new Error(
-          `systemUpsert rechazado: lat/lng (${args.latitude}, ${args.longitude}) fuera de España para "${args.name}"`,
-        );
-      }
+      validateRaceGeo(args.latitude, args.longitude, args.province ?? null, args.name);
     }
 
     // Auto-asignación de scraperAdapter según el officialUrl.

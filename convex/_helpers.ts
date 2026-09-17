@@ -286,3 +286,106 @@ export function slugify(text: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
+
+// ---------------------------------------------------------------------------
+// Validación geo: coherencia provincia ↔ coordenadas
+// ---------------------------------------------------------------------------
+//
+// Bug encontrado 2026-09-17: el deep-extract de IA asignó a la carrera
+// FEDME "Gomera Paradise Trail" (provincia santa cruz de tenerife) las
+// coordenadas de la sede de la FEDME en Valencia (39.46, -0.40). El
+// resultado: un usuario en Alicante veía la carrera a "125 km de ti" en
+// lugar de los ~1.900 km reales. Mismo patrón con sportmaniacs (su oficina
+// devuelve Elche como fallback para carreras insulares) y con varias
+// carreras mal asignadas a provincias continentales.
+//
+// Esta función valida que, si tenemos los 3 datos (lat, lng, province),
+// la combinación sea geográficamente plausible. Si falta alguno, no
+// podemos validar — el caller puede haber venido con solo lat/lng
+// (todavía sin provincia) o solo con provincia. El bbox "España entera"
+// sigue siendo la primera red de seguridad para detectar carreras
+// claramente fuera del país (Guatemala, México, Polonia: 212 carreras
+// filtradas en producción el 2026-09-12).
+
+/**
+ * Bounding box por provincia. Cobertura:
+ *  - Islas: bbox dedicado (Canarias, Baleares, Ceuta, Melilla).
+ *  - Ceuta/Melilla + islas, todas las coords legítimas caen dentro de su bbox.
+ *  - Provincias peninsulares: NO tienen bbox aquí (España continental ya
+ *    filtra lo obvio, y los bboxes peninsulares se solapan entre CCAA).
+ *
+ * Coords basadas en los husos reales (IGN/CNIG): cada isla tiene su
+ * extensión concreta. Si una carrera está en un islote (Alborán,
+ * Columbretes, etc.), cae en bbox "las palmas"/"melilla" por proximidad
+ * administrativa.
+ */
+const PROVINCE_BBOX: Record<string, { minLat: number; maxLat: number; minLng: number; maxLng: number }> = {
+  // Canarias: cubren todas las islas de cada provincia
+  "las palmas":              { minLat: 27.5, maxLat: 29.5, minLng: -16.0, maxLng: -13.0 }, // Gran Canaria + Fuerteventura + Lanzarote
+  "santa cruz de tenerife":  { minLat: 27.5, maxLat: 29.5, minLng: -18.5, maxLng: -16.0 }, // Tenerife + La Gomera + La Palma + El Hierro
+  // Baleares
+  "mallorca":                { minLat: 39.0, maxLat: 40.5, minLng:  2.3, maxLng:  3.5 },
+  "menorca":                 { minLat: 39.5, maxLat: 40.5, minLng:  3.8, maxLng:  4.5 },
+  "ibiza":                   { minLat: 38.4, maxLat: 39.2, minLng:  1.0, maxLng:  1.8 }, // Ibiza + Formentera
+  // Ceuta y Melilla
+  "ceuta":                   { minLat: 35.5, maxLat: 36.0, minLng: -5.5, maxLng: -5.0 },
+  "melilla":                { minLat: 35.2, maxLat: 35.8, minLng: -3.2, maxLng: -2.5 },
+};
+
+/**
+ * Bbox coarse de España peninsular + islas. Mantenido por compatibilidad y
+ * como primera red de seguridad para carreras claramente fuera del país.
+ * (2026-09-12: 212 carreras de Guatemala/México/Polonia/etc. fueron
+ * filtradas con este mismo bbox en systemUpsert.)
+ */
+export const SPAIN_BBOX = { minLat: 27.5, maxLat: 44.0, minLng: -18.5, maxLng: 4.5 };
+
+/**
+ * Valida que (lat, lng, province) sean coherentes. Lanza Error si:
+ *  - lat/lng caen fuera del bbox España entero, o
+ *  - la provincia tiene bbox dedicado y lat/lng caen fuera de él.
+ *
+ * Si falta alguno de los 3 datos, la función es no-op (no podemos validar).
+ *
+ * Uso típico desde una mutation:
+ *   const effectiveLat  = patch.latitude  ?? existing.latitude;
+ *   const effectiveLng  = patch.longitude ?? existing.longitude;
+ *   const effectiveProv = patch.province  ?? existing.province;
+ *   validateRaceGeo(effectiveLat, effectiveLng, effectiveProv, raceName);
+ */
+export function validateRaceGeo(
+  lat: number | null | undefined,
+  lng: number | null | undefined,
+  province: string | null | undefined,
+  raceName?: string,
+): void {
+  if (typeof lat !== "number" || typeof lng !== "number" || !province) return;
+
+  // Red 1: bbox España entera (carreras claramente fuera del país)
+  if (
+    lat < SPAIN_BBOX.minLat || lat > SPAIN_BBOX.maxLat ||
+    lng < SPAIN_BBOX.minLng || lng > SPAIN_BBOX.maxLng
+  ) {
+    const tag = raceName ? ` para "${raceName}"` : "";
+    throw new Error(
+      `Coordenadas (${lat}, ${lng}) fuera del territorio español${tag} (provincia declarada: "${province}"). `
+      + `España bbox: lat ${SPAIN_BBOX.minLat}–${SPAIN_BBOX.maxLat}, lng ${SPAIN_BBOX.minLng}–${SPAIN_BBOX.maxLng}.`,
+    );
+  }
+
+  // Red 2: bbox por provincia (para islas/ceuta/melilla; provincias
+  // peninsulares no entran aquí y se quedan solo con la red 1).
+  const bbox = PROVINCE_BBOX[province.toLowerCase()];
+  if (bbox) {
+    if (
+      lat < bbox.minLat || lat > bbox.maxLat ||
+      lng < bbox.minLng || lng > bbox.maxLng
+    ) {
+      const tag = raceName ? ` "${raceName}"` : "";
+      throw new Error(
+        `Coordenadas (${lat.toFixed(4)}, ${lng.toFixed(4)}) no cuadran con la provincia "${province}"${tag}. `
+        + `Esperado: lat ${bbox.minLat}–${bbox.maxLat}, lng ${bbox.minLng}–${bbox.maxLng}.`,
+      );
+    }
+  }
+}

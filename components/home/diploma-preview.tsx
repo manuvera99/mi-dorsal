@@ -41,7 +41,7 @@ export function DiplomaAndSharePreview() {
         </h2>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 max-w-6xl mx-auto px-2 md:px-0">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 max-w-4xl mx-auto px-4">
         {/* ============================================================
             IZQUIERDA — Diploma (réplica de lib/pdf/diploma-image.tsx)
             ============================================================ */}

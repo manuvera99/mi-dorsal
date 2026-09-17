@@ -122,16 +122,22 @@ export function Hero() {
 }
 
 /**
- * DorsalVisual minimal — réplica del prototipo.
- * Solo muestra lo esencial: etiqueta "Dorsal", número grande, separador,
- * tiempo oficial y badge "Nuevo PR". Sin cabecera con carrera ni footer rojo.
+ * DorsalVisual — formato oficial consistente con todos los dorsales de la app.
+ *
+ * Estructura idéntica a la del diploma oficial (lib/pdf/diploma.tsx):
+ *  - Etiqueta "DORSAL" arriba en mayúsculas
+ *  - Número mono grande
+ *  - Badge redondo con la distancia abajo-derecha (igual que diploma.tsx)
+ *
+ * Sin cabecera de carrera ni footer rojo (eso solo aparece en el diploma
+ * completo). Sin tiempo en este componente — el tiempo vive en el diploma.
  */
 function DorsalVisual() {
   return (
     <div
       className="relative w-full max-w-sm aspect-[3/4] animate-fade-in"
       role="img"
-      aria-label="Dorsal de ejemplo con el número 4213 y tiempo oficial 01:26:14, nuevo PR"
+      aria-label="Dorsal de ejemplo con el número 4213 de 10K"
     >
       {/* Sombra cálida */}
       <div
@@ -142,50 +148,54 @@ function DorsalVisual() {
 
       {/* El dorsal: blanco limpio, sobre el rojo del hero */}
       <div
-        className="relative h-full w-full rounded-2xl overflow-hidden flex flex-col"
+        className="relative h-full w-full rounded-2xl overflow-hidden flex flex-col items-center justify-center px-6 text-center"
         style={{
           background: "#ffffff",
           color: "#0a0a0a",
           boxShadow: "0 18px 40px -12px rgba(0,0,0,0.20)",
         }}
       >
-        <div className="flex-1 flex flex-col items-center justify-center px-8 text-center">
-          <p
-            className="text-xs font-semibold uppercase tracking-widest mb-2"
-            style={{ color: "#525252" }}
-          >
-            Dorsal
-          </p>
-          <p
-            className="font-extrabold tracking-tighter leading-none mb-6"
-            style={{
-              fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
-              fontSize: "clamp(4rem, 8vw, 5rem)",
-              letterSpacing: "-0.04em",
-            }}
-          >
-            4213
-          </p>
+        <p
+          className="text-xs font-bold tracking-widest mb-2"
+          style={{
+            color: "#525252",
+            letterSpacing: "3px",
+            textTransform: "uppercase",
+          }}
+        >
+          Dorsal
+        </p>
+        <p
+          className="font-extrabold tracking-tighter leading-none"
+          style={{
+            fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+            fontSize: "clamp(4rem, 8vw, 5rem)",
+            letterSpacing: "-0.04em",
+          }}
+        >
+          4213
+        </p>
 
-          <div className="w-full pt-5 border-t" style={{ borderColor: "rgba(10,10,10,0.08)" }}>
-            <p
-              className="font-bold mb-2"
-              style={{
-                fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
-                fontSize: "1.75rem",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              01:26:14
-            </p>
-            <span
-              className="inline-flex items-center text-xs font-semibold"
-              style={{ color: "#16a34a" }}
-            >
-              Nuevo PR
-            </span>
-          </div>
-        </div>
+        {/* Badge distancia — formato oficial, abajo-derecha igual que en diploma.tsx */}
+        <span
+          aria-hidden="true"
+          className="absolute flex items-center justify-center"
+          style={{
+            bottom: "12%",
+            right: "12%",
+            width: "26%",
+            aspectRatio: "1",
+            borderRadius: "50%",
+            background: "#fff",
+            color: "#0a0a0a",
+            border: "2px solid #dc2626",
+            fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+            fontWeight: 800,
+            fontSize: "clamp(0.75rem, 1.5vw, 1.1rem)",
+          }}
+        >
+          10K
+        </span>
       </div>
     </div>
   );

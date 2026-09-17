@@ -61,7 +61,7 @@ export function Testimonials() {
       <div className="container">
         <h2
           id="testimonials-title"
-          className="text-center mb-10"
+          className="mb-10"
           style={{
             fontFamily: "var(--font-display, 'Sora', system-ui)",
             fontWeight: 700,
@@ -69,6 +69,7 @@ export function Testimonials() {
             color: "#0a0a0a",
             letterSpacing: "-0.015em",
             lineHeight: 1.12,
+            textAlign: "center",
           }}
         >
           Lo que dicen los corredores
@@ -134,8 +135,12 @@ export function Testimonials() {
         </div>
 
         <p
-          className="text-center mt-8"
-          style={{ fontSize: "0.75rem", color: "#525252" }}
+          className="mt-8"
+          style={{
+            fontSize: "0.75rem",
+            color: "#525252",
+            textAlign: "center",
+          }}
         >
           * Citas representativas. Los testimonios se irán reemplazando por
           voces reales de la comunidad conforme crezca la base de usuarios.

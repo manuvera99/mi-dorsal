@@ -25,7 +25,11 @@ export function PhotosSection() {
         <div className="text-center mb-10 md:mb-12 max-w-3xl mx-auto px-4">
           <p
             className="text-sm font-semibold uppercase tracking-wider mb-3"
-            style={{ color: "#dc2626", letterSpacing: "0.14em" }}
+            style={{
+              color: "#dc2626",
+              letterSpacing: "0.14em",
+              textAlign: "center",
+            }}
           >
             Tus fotos, sin rebuscar
           </p>
@@ -37,6 +41,7 @@ export function PhotosSection() {
               color: "#0a0a0a",
               letterSpacing: "-0.015em",
               lineHeight: 1.12,
+              textAlign: "center",
             }}
           >
             Te avisamos cuando publican fotos y te encontramos con un selfie.

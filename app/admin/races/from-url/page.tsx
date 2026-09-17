@@ -7,7 +7,7 @@ import { api } from "@/convex/_generated/api";
 import { isMockMode } from "@/lib/mock/provider";
 import { PROVINCE_LIST } from "@/lib/utils";
 import Link from "next/link";
-import { extractFromUrl } from "./actions";
+import { extractFromUrl, type ExtractResult } from "@/lib/ai/extract-from-url-action";
 import { ArrowLeft, Sparkles, Loader2, Save, AlertCircle, Wand2, Link as LinkIcon, ExternalLink } from "lucide-react";
 
 type Extracted = {

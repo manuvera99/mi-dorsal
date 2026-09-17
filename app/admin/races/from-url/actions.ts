@@ -1,30 +1,18 @@
 "use server";
 
-import { extractRaceFromUrl, type ExtractedRace } from "@/lib/ai/extract-race";
-import { cleanUrl, diagnoseUrl } from "@/lib/ai/clean-url";
+// =============================================================================
+// Wrapper local para mantener compat con el import `from "./actions"` en
+// page.tsx. La implementación canónica vive en
+// @/lib/ai/extract-from-url-action para que el wizard público pueda
+// importarlo sin depender de /admin/.
+//
+// Next.js no permite `export { x } from "y"` en archivos "use server" (sólo
+// acepta declaraciones `export async function` o `export const` con función
+// async), por eso este wrapper trivial.
+// =============================================================================
 
-export type ExtractResult =
-  | { data: ExtractedRace; url: string }
-  | { error: string };
+import { extractFromUrl as extractFromUrlCanonical } from "@/lib/ai/extract-from-url-action";
 
-export async function extractFromUrl(url: string): Promise<ExtractResult> {
-  // Diagnóstico: chars raros
-  const diag = diagnoseUrl(url ?? "");
-  if (diag.removed.length > 0) {
-    console.log(
-      `[extractFromUrl] URL tenía ${diag.removed.length} chars raros, limpiados. Original: ${JSON.stringify(url)}`
-    );
-  }
-  url = cleanUrl(url ?? "");
-  if (!url || !/^https?:\/\//.test(url)) {
-    return { error: "URL inválida. Debe empezar con http:// o https://" };
-  }
-  try {
-    const data = await extractRaceFromUrl(url);
-    if (!data) return { error: "No se pudo extraer info de la URL" };
-    return { data, url };
-  } catch (e: any) {
-    console.error(`[extractFromUrl] Error con URL ${url}:`, e?.message ?? e);
-    return { error: e?.message || "Error desconocido" };
-  }
+export async function extractFromUrl(url: string) {
+  return extractFromUrlCanonical(url);
 }

@@ -171,6 +171,88 @@
 - [ ] Verificar con `npx tsc --noEmit` + `npm run build` en cada paso (regla de oro AGENTS.md §2.8)
 - [ ] Commit selectivo (nunca `git add -A` sin `git status`)
 
+### 2.6 Wizard público "Crear carrera con IA" (sep 2026)
+
+> **Nuevo.** Implementado el 17 sep 2026. Spec en este mismo doc.
+> Cierra el bucle de sugerencias: el usuario mete URL → ve la IA extraer →
+> corrige → envía borrador. El admin valida y publica.
+>
+> **Decisiones clave**:
+> - **Carrera se crea como `isPublished: false` + `scraperAdapter: "user-suggested"`**.
+>   No publicación directa: admin modera en 1 click desde `/admin/race-suggestions`.
+>   Evita spam y datos sucios (raceTypes/provincias inválidas).
+> - **Anti-duplicados**: bloquea por `officialUrl` (índice `by_official_url`),
+>   reusa `by_date` + nombre+provincia como `systemCreate` para no duplicar.
+> - **Permisos**: solo usuarios logueados pueden mandar borradores. No-admin
+>   ven en la ficha un banner `EditPermissionsBanner` que aclara qué pueden
+>   hacer (valorar + reportar) y qué no (editar datos).
+> - **Coste IA**: ~$0.001/extracción a gpt-4o-mini. Asumible.
+>
+> **Status: código hecho, pendiente deploy y smoke test**.
+
+**Tareas implementadas**:
+- [x] `lib/ai/extract-from-url-action.ts` (nuevo): server action reutilizable.
+  Antes vivía en `app/admin/races/from-url/actions.ts` — extraído para que el
+  wizard público pueda importarlo sin depender de `/admin/`.
+- [x] `convex/_helpers.ts`: helper `canEditRace(profile)` (función pura,
+  reusable desde server; el cliente duplica el check para no importar el
+  módulo server-only).
+- [x] `convex/raceSuggestions.ts`:
+  - mutation `submitWithAiExtraction(args)` — valida, anti-duplica, crea race
+    borrador + sugerencia enlazada, dispara email al admin.
+  - internalMutation `notifyAdminWithDraft` — email específico con preview de
+    la carrera borrador y CTA directo a `/admin/races/[id]`.
+  - query `adminListDrafts` — lista sugerencias con `createdRaceId` set.
+  - stats `adminGetStats` ahora incluye `aiDrafts`.
+- [x] `components/feedback/ai-suggest-race-dialog.tsx` (nuevo): wizard
+  cliente 4 pasos (URL → extrayendo → form editable → enviar → éxito).
+  Reutiliza `extractFromUrl` server action.
+- [x] `components/feedback/edit-permissions-banner.tsx` (nuevo): banner
+  sutil en la ficha para users no-admin.
+- [x] `app/carreras/client.tsx`: empty state muestra **2 CTAs**:
+  - **CTA principal**: `AiSuggestRaceDialog` (botón morado "✨ Crear con IA")
+  - **CTA secundario**: `SuggestRaceDialog` (link gris "Mandar solo la URL")
+    — flujo legacy, sin IA, sigue funcionando.
+- [x] `app/admin/race-suggestions/page.tsx`:
+  - Nueva pestaña "✨ Borradores IA" (filtro `ai_drafts`).
+  - StatCard "Borradores IA" en el grid.
+  - En la lista legacy, las sugerencias con `createdRaceId` muestran un badge
+    "IA extraída" y el CTA principal es **"Revisar y publicar"** (link directo
+    a `/admin/races/[id]`) en vez de "Aprobar y crear".
+  - Subcomponente `DraftsList` separado del `LegacyList` para que la vista
+    de borradores sea fácil de leer y mantener.
+- [x] `app/carreras/[slug]/client.tsx`: integrado `EditPermissionsBanner`
+  antes del `ReportRaceErrorDialog`.
+
+**Pendiente para producción**:
+- [ ] **Smoke test E2E local**: login → /carreras con filtros que devuelven 0
+  → wizard IA → revisar en /admin/race-suggestions → publicar → verificar
+  que aparece en /carreras.
+- [ ] **Deploy**: Vercel + Convex (recuerda: cambios en `convex/*.ts` requieren
+  `npx convex deploy` ANTES del `vercel deploy --prod`).
+- [ ] **Email real**: Sprint 0 — verificar que `ADMIN_NOTIFICATION_EMAIL`
+  apunta a un buzón real (no a `hola@mi-dorsal.com` inexistente).
+- [ ] **Medición**: contar sugerencias/día por tipo (con IA vs sin IA) en
+  `recalcStats` para detectar adopción. Si <20% usa el wizard en 2 semanas,
+  iterar copy.
+- [ ] **Rate limit** (futuro): si vemos abuso (mismo user manda 10 borradores/día),
+  añadir cap por user. No prioritario al inicio.
+
+**Riesgos identificados**:
+- URL inválida / 404 → `extractFromUrl` devuelve error claro, wizard vuelve
+  al paso 1 sin perder el input.
+- RaceType/provincia inválidos en la salida de la IA → el form usa `<select>`
+  con solo valores válidos, así que en la práctica nunca llega un valor malo.
+  La mutation `submitWithAiExtraction` también valida con `provinceValidator`/
+  `raceTypeValidator`.
+- Slug colisión → sufijo numérico (`-2`, `-3`...) hasta 100. Más que suficiente.
+
+**Refs**:
+- `lib/ai/extract-from-url-action.ts`
+- `convex/raceSuggestions.ts` (sección "SUBMIT CON IA")
+- `components/feedback/ai-suggest-race-dialog.tsx`
+- `components/feedback/edit-permissions-banner.tsx`
+
 ---
 
 ## 🔧 Sprint 3 — Q3-Q4 2026 (escala + producto)

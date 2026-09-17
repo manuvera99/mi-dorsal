@@ -36,6 +36,7 @@ import { haversineDistanceKm, type Coords } from "@/lib/geo/distance";
 import type { DistanceCategory } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { SuggestRaceDialog } from "@/components/feedback/suggest-race-dialog";
+import { AiSuggestRaceDialog } from "@/components/feedback/ai-suggest-race-dialog";
 
 /**
  * Fecha local de hoy en formato YYYY-MM-DD. Se usa como `fromDate` por
@@ -592,7 +593,7 @@ function EmptyState({
           </p>
         </>
       )}
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mt-2 flex-wrap">
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-2 flex-wrap">
         {hasFilter && (
           <button
             type="button"
@@ -613,8 +614,14 @@ function EmptyState({
             Mostrar carreras pasadas
           </button>
         )}
+        {/* CTA principal: wizard IA (extrae datos en vivo) */}
+        <AiSuggestRaceDialog
+          triggerLabel={hasFilter ? "¿No la ves? Créala con IA →" : "✨ Crear carrera con IA"}
+        />
+        {/* CTA secundario: sugerencia legacy (sin IA, el admin hace el trabajo) */}
         <SuggestRaceDialog
-          triggerLabel={hasFilter ? "¿No la ves? Sugiérela →" : "Sugerir una carrera"}
+          triggerLabel={hasFilter ? "Mandar solo la URL" : "Sugerir sin IA"}
+          triggerClassName="text-xs text-gray-500 hover:text-runner-primary"
         />
       </div>
     </div>

@@ -69,6 +69,24 @@ export async function isAdminOrTest(
   return profile?.role === "admin" || profile?.role === "test";
 }
 
+/**
+ * ¿Este profile puede editar datos del catálogo (carreras, blogs, etc.)?
+ *
+ * Hoy: solo role="admin". 'test' NO edita catálogo (es para bypass de paywall
+ * en features premium, no para crear contenido).
+ *
+ * Función pura (sin ctx) para poder usarla desde el cliente también
+ * (p.ej. para mostrar/ocultar botones "Editar" en la ficha de carrera).
+ *
+ * Si tienes un Doc<"profiles">, pásalo directo. Si tienes el role suelto
+ * (caso típico en el cliente tras `getMyProfile`), acepta también un role opcional.
+ */
+export function canEditRace(
+  profile: { role?: "user" | "admin" | "test" } | null | undefined,
+): boolean {
+  return profile?.role === "admin";
+}
+
 export function assertOwner<T extends { userId: Id<"profiles"> }>(
   resource: T | null,
   userId: Id<"profiles">,

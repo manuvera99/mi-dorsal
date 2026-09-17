@@ -23,6 +23,8 @@ import {
   Navigation, Car, ShowerHead, Shirt, Medal, Coffee, Camera, Heart,
   Activity, Timer, TrendingUp, Radio
 } from "lucide-react";
+import Link from "next/link";
+import { isSearchablePhotoUrl } from "@/lib/photo-source-support";
 
 function MockRaceDetail({ slug }: { slug: string }) {
   const [race, setRace] = useState<any>(null);
@@ -682,6 +684,14 @@ function RaceDetailContent({ race, summary }: { race: any; summary: any }) {
                   >
                     <Trophy className="h-4 w-4 mr-1.5" /> Resultados
                   </a>
+                )}
+                {isSearchablePhotoUrl(race.photosUrl) && (
+                  <Link
+                    href={`/perfil/fotos/${race._id}`}
+                    className="btn-secondary w-full justify-center"
+                  >
+                    <Camera className="h-4 w-4 mr-1.5" /> Busca tus fotos con IA
+                  </Link>
                 )}
                 {/* Thumbs en sidebar siempre visible */}
                 <div className="pt-3 mt-1 border-t border-gray-100">

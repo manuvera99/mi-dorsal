@@ -8,14 +8,14 @@
  *  2. Filtro de ubicación (GPS + slider) — solo si se activa
  *  3. Quick-access chips (distancia + mes)
  *  4. Filtros avanzados plegables (provincia, tipo, organizadora)
- *  5. Carruseles por afinidad: Cerca de ti / Las más votadas / Próximamente
+ *  5. Carruseles por afinidad: Cerca de ti / Las más votadas
  *  6. Empty state emocional si no hay resultados
  *  7. Grid completo con el resto
  */
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery } from "convex/react";
-import { Search, MapPin, List, Map, Calendar, X, ArrowUpDown, Sparkles, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, MapPin, List, Map, X, ArrowUpDown, Sparkles, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { mockApi, isMockMode } from "@/lib/mock/provider";
 import { RaceCard } from "@/components/race-card";
@@ -211,14 +211,10 @@ function CarrerasShell({
   }, [userCoords, racesAfterDistance]);
 
   // Carruseles por afinidad
-  const { nearbyRaces, upcomingRaces, topVotedRaces } = useMemo(() => {
-    const now = new Date();
+  const { nearbyRaces, topVotedRaces } = useMemo(() => {
     const sorted = [...racesAfterDistance].sort((a, b) =>
       (a.startDate ?? "").localeCompare(b.startDate ?? "")
     );
-    const upcoming = sorted
-      .filter((r) => r.startDate && new Date(r.startDate) >= now)
-      .slice(0, 10);
     const inCommunity = community
       ? sorted.filter((r) =>
           community.provinces.includes((r.province ?? "").toLowerCase())
@@ -226,7 +222,6 @@ function CarrerasShell({
       : [];
     return {
       nearbyRaces: inCommunity.slice(0, 10),
-      upcomingRaces: upcoming,
       topVotedRaces: top.slice(0, 10),
     };
   }, [racesAfterDistance, community, top]);
@@ -235,9 +230,8 @@ function CarrerasShell({
   const featuredIds = useMemo(() => {
     const ids = new Set<string>();
     nearbyRaces.forEach((r) => ids.add(r._id));
-    upcomingRaces.slice(0, 6).forEach((r) => ids.add(r._id));
     return ids;
-  }, [nearbyRaces, upcomingRaces]);
+  }, [nearbyRaces]);
 
   const restOfRaces = useMemo(() => {
     // Solo excluimos featuredIds del grid cuando los carruseles se van a
@@ -449,16 +443,6 @@ function CarrerasShell({
               distanceFromUser={(r) => raceDistances.get(r._id) ?? null}
               viewAllHref={`/carreras?provincia=${community.provinces[0]}`}
               viewAllLabel="Ver todas de tu zona"
-            />
-          )}
-
-          {upcomingRaces.length > 0 && (
-            <RaceCarousel
-              title="Próximamente"
-              subtitle="Las más cercanas en el calendario. Apúntate antes de que se agoten los dorsales."
-              icon={<Calendar className="h-5 w-5" />}
-              races={upcomingRaces.slice(0, 8)}
-              distanceFromUser={(r) => raceDistances.get(r._id) ?? null}
             />
           )}
 

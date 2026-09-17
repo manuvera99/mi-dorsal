@@ -61,3 +61,28 @@ export function detectUnsearchablePhotoProvider(url: string): UnsearchablePhotoP
 export function unsearchableProviderLabel(provider: UnsearchablePhotoProvider): string {
   return UNSEARCHABLE_PROVIDER_LABELS[provider];
 }
+
+// -----------------------------------------------------------------------------
+// Proveedores SOPORTADOS (lo contrario de UNSEARCHABLE_DOMAIN_PATTERNS de
+// arriba): dominios con adapter real en findmyrace/sources/ — misma lista
+// que usa convex/photoSearch.ts::create para aceptar o rechazar un álbum.
+// Se define aquí (no solo en photoSearch.ts) para que también la pueda usar
+// código de cliente (RaceCard) sin duplicar la lista.
+// -----------------------------------------------------------------------------
+
+export const SUPPORTED_ALBUM_DOMAINS = [
+  "flickr.com",
+  "chiplevante.com",
+  "grupobrotons.com",
+  "lumepic.com",
+];
+
+/** true si `url` es de un proveedor con adapter real (Flickr, ChipLevante,
+ *  Grupo Brotons, Lumepic) — el mismo criterio que usa
+ *  convex/photoSearch.ts::create para aceptar o rechazar un álbum de
+ *  "Encuentra tus fotos". Usado por RaceCard y el detalle de carrera para
+ *  decidir si mostrar el indicador "puedes buscar tus fotos por IA aquí". */
+export function isSearchablePhotoUrl(url: string | undefined | null): boolean {
+  if (!url) return false;
+  return SUPPORTED_ALBUM_DOMAINS.some((d) => url.includes(d));
+}

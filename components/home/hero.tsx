@@ -119,7 +119,7 @@ export function Hero() {
           {/* Micro-quiet: una sola línea, sin saturar */}
           <p className="text-sm" style={{ color: "rgba(255,255,255,0.75)" }}>
             <span style={{ color: "#fff", fontWeight: 600 }}>47 corredores</span>{" "}
-            ya lo usan · sin tarjeta
+            ya lo usan
           </p>
         </div>
       </div>

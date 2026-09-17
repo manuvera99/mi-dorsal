@@ -1,18 +1,21 @@
-// Home de mi-dorsal — v3.1 (sep 2026).
+// Home de mi-dorsal — v3.2 (sep 2026).
 //
-// Restyling visual + sección nueva "Tus fotos, sin rebuscar" (PhotosSection).
-// Se elimina la sección FeaturedRaces (geo-personalizada) en esta iteración
-// para mantener el minimalismo pedido por Manu. El archivo
-// components/home/featured-races.tsx se conserva sin uso por si se quiere
-// recuperar en otra iteración.
+// v3.2: la sección "Tus fotos, sin rebuscar" se integra como micro-bloque
+// dentro del hero (tras el lede, antes de los CTAs) para limpiar la página.
+// El archivo components/home/photos-section.tsx se elimina al final de
+// esta iteración.
 //
-// Estructura actual de la home:
-//   1. Hero                  — fondo rojo estilo Pro, dorsal minimal
+// v3.1: restyling visual + sección nueva "Tus fotos, sin rebuscar"
+// (PhotosSection). Se elimina FeaturedRaces (geo-personalizada) para
+// mantener el minimalismo.
+//
+// Estructura actual de la home (v3.2):
+//   1. Hero                  — fondo rojo estilo Pro, con micro-claim
+//                               "te avisamos + te encontramos con IA"
 //   2. DiplomaAndSharePreview — diploma + sticker fieles al email real
-//   3. PhotosSection          — "te avisamos" + "te encontramos con IA" (Pro)
-//   4. UseCase                — quote + autor
-//   5. Testimonials           — 4 voces simples
-//   6. FinalCta               — botón único "Empieza gratis"
+//   3. UseCase                — quote + autor
+//   4. Testimonials           — 4 voces simples
+//   5. FinalCta               — botón único "Empieza gratis"
 //
 // Se preserva:
 //  - JSON-LD FAQ inline pre-serializado (regla §2.1 AGENTS.md)
@@ -29,7 +32,6 @@ import {
   TestimonialsLazy,
   FinalCtaLazy,
 } from "@/components/home/lazy-sections";
-import { PhotosSection } from "@/components/home/photos-section";
 import {
   ResultBannerIsland,
   WelcomeOverlayIsland,
@@ -63,17 +65,13 @@ export default function HomePage() {
         {/* 2. DIPLOMA + STICKER — la sección estrella (lazy: ssr:false). */}
         <DiplomaPreviewLazy />
 
-        {/* 3. FOTOS — "te avisamos" + "te encontramos con IA" (Pro).
-            Server component declarativo (sin fetches, sin JS). */}
-        <PhotosSection />
-
-        {/* 4. CASO DE USO / STORYTELLING (lazy: ssr:false) */}
+        {/* 3. CASO DE USO / STORYTELLING (lazy: ssr:false) */}
         <UseCaseLazy />
 
-        {/* 5. TESTIMONIOS (lazy: ssr:false) */}
+        {/* 4. TESTIMONIOS (lazy: ssr:false) */}
         <TestimonialsLazy />
 
-        {/* 6. CTA FINAL (lazy: ssr:false). */}
+        {/* 5. CTA FINAL (lazy: ssr:false). */}
         <FinalCtaLazy />
       </div>
 

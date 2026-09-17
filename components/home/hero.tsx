@@ -81,9 +81,15 @@ export function Hero() {
             </span>
           </h1>
 
-          <p className="text-lg md:text-xl mb-8 leading-relaxed" style={{ color: "rgba(255,255,255,0.92)" }}>
+          <p className="text-lg md:text-xl mb-4 leading-relaxed" style={{ color: "rgba(255,255,255,0.92)" }}>
             Apúntate a las carreras que te motivan y, al cruzar la meta, recibe
             tu resultado oficial con diploma PDF directamente en tu buzón.
+          </p>
+
+          {/* Micro-bloque: features Pro (fotos) integrado en el hero */}
+          <p className="text-sm mb-8" style={{ color: "rgba(255,255,255,0.85)" }}>
+            Te avisamos cuando salen las fotos y te encontramos con un selfie
+            <span style={{ color: "rgba(255,255,255,0.6)" }}> · Pro</span>
           </p>
 
           <div className="flex flex-wrap gap-3 mb-5">

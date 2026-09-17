@@ -22,12 +22,18 @@ export function PhotosSection() {
       style={{ background: "#fff" }}
     >
       <div className="container">
-        <div className="text-center mb-10 md:mb-12 max-w-3xl mx-auto px-4">
+        <div
+          className="mb-10 md:mb-12 mx-auto"
+          style={{ maxWidth: "720px", paddingInline: "1.25rem" }}
+        >
           <p
-            className="text-sm font-semibold uppercase tracking-wider mb-3"
+            className="mb-3"
             style={{
               color: "#dc2626",
+              fontSize: "0.875rem",
+              fontWeight: 600,
               letterSpacing: "0.14em",
+              textTransform: "uppercase",
               textAlign: "center",
             }}
           >
@@ -35,20 +41,25 @@ export function PhotosSection() {
           </p>
           <h2
             id="photos-title"
-            className="text-3xl md:text-4xl font-bold"
+            className="font-bold"
             style={{
               fontFamily: "var(--font-display, 'Sora', system-ui)",
               color: "#0a0a0a",
               letterSpacing: "-0.015em",
               lineHeight: 1.12,
+              fontSize: "clamp(1.75rem, 4vw, 2.5rem)",
               textAlign: "center",
+              margin: 0,
             }}
           >
             Te avisamos cuando publican fotos y te encontramos con un selfie.
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mx-auto px-4">
+        <div
+          className="grid grid-cols-1 md:grid-cols-2 mx-auto"
+          style={{ maxWidth: "720px", gap: "1rem", paddingInline: "1.25rem" }}
+        >
           {/* Card 1 — Te avisamos */}
           <article
             className="flex flex-col gap-3"
@@ -152,11 +163,13 @@ export function PhotosSection() {
 
         {/* Disclaimer honesto */}
         <p
-          className="text-center mt-8 mx-auto"
+          className="mt-8 mx-auto"
           style={{
             fontSize: "0.75rem",
             color: "#525252",
             maxWidth: "600px",
+            textAlign: "center",
+            paddingInline: "1.25rem",
           }}
         >
           Disponible en carreras con fotos públicas. Requiere plan Pro.

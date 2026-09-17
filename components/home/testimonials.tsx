@@ -61,7 +61,7 @@ export function Testimonials() {
       <div className="container">
         <h2
           id="testimonials-title"
-          className="mb-10"
+          className="mb-10 mx-auto"
           style={{
             fontFamily: "var(--font-display, 'Sora', system-ui)",
             fontWeight: 700,
@@ -70,6 +70,8 @@ export function Testimonials() {
             letterSpacing: "-0.015em",
             lineHeight: 1.12,
             textAlign: "center",
+            maxWidth: "720px",
+            paddingInline: "1.25rem",
           }}
         >
           Lo que dicen los corredores
@@ -135,11 +137,13 @@ export function Testimonials() {
         </div>
 
         <p
-          className="mt-8"
+          className="mt-8 mx-auto"
           style={{
             fontSize: "0.75rem",
             color: "#525252",
             textAlign: "center",
+            maxWidth: "600px",
+            paddingInline: "1.25rem",
           }}
         >
           * Citas representativas. Los testimonios se irán reemplazando por

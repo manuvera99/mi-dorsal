@@ -20,6 +20,7 @@ import { internal } from "./_generated/api";
 import { requireUser, getOptionalUser, assertOwner } from "./_helpers";
 import { currentUserHasPremium } from "./subscriptions";
 import { Doc, Id } from "./_generated/dataModel";
+import { SUPPORTED_ALBUM_DOMAINS } from "../lib/photo-source-support";
 
 const MAX_JOBS_PER_DAY = 20;
 const JOB_TTL_MS = 24 * 60 * 60 * 1000;
@@ -113,12 +114,6 @@ export const create = mutation({
     // de LumepicPhotoSource) — se acepta igual que los demás porque el
     // resultado se marca como "de pago" con enlace a comprar, nunca se
     // ofrece como gratuita (ver find_photos.py::_build_result).
-    const SUPPORTED_ALBUM_DOMAINS = [
-      "flickr.com",
-      "chiplevante.com",
-      "grupobrotons.com",
-      "lumepic.com",
-    ];
     if (!albumUrls.some((u) => SUPPORTED_ALBUM_DOMAINS.some((d) => u.includes(d)))) {
       throw new Error(
         "Ninguno de los álbumes es de un proveedor soportado (Flickr, ChipLevante, Grupo Brotons o Lumepic por ahora).",

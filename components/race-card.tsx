@@ -45,11 +45,12 @@ export function RaceCard({
           className="absolute top-3 left-3 flex items-center gap-1 text-xs font-medium text-runner-accent bg-white/80 backdrop-blur-sm rounded-full p-1.5 border border-gray-100"
           title="Puedes buscar tus fotos por IA en esta carrera"
         >
-          <Camera className="h-3 w-3" />
+          <Camera className="h-3 w-3" aria-hidden="true" />
+          <span className="sr-only">Puedes buscar tus fotos por IA en esta carrera</span>
         </div>
       )}
 
-      <div className="flex items-start justify-between gap-2 pr-12">
+      <div className="flex items-start justify-between gap-2 pl-8 pr-12">
         <h3 className="font-semibold leading-tight group-hover:text-runner-primary transition-colors">
           {race.name}
         </h3>

@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { MapPin, Calendar, Mountain, ThumbsUp, Navigation } from "lucide-react";
+import { MapPin, Calendar, Mountain, ThumbsUp, Navigation, Camera } from "lucide-react";
 import { formatDate, formatProvince, formatRaceType } from "@/lib/utils";
 import { formatDistance } from "@/lib/geo/distance";
+import { isSearchablePhotoUrl } from "@/lib/photo-source-support";
 
 interface RaceCardProps {
   race: any;
@@ -24,6 +25,7 @@ export function RaceCard({
   distanceFromUser,
 }: RaceCardProps) {
   const hasVotes = voteUps + voteDowns > 0;
+  const showsPhotoSearchBadge = isSearchablePhotoUrl(race.photosUrl);
   return (
     <Link
       href={`/carreras/${race.slug}`}
@@ -34,6 +36,16 @@ export function RaceCard({
         <div className="absolute top-3 right-3 flex items-center gap-0.5 text-xs font-medium text-gray-500 bg-white/80 backdrop-blur-sm rounded-full px-2 py-0.5 border border-gray-100">
           <ThumbsUp className="h-3 w-3 text-green-600" />
           <span>{voteUps - voteDowns}</span>
+        </div>
+      )}
+
+      {/* Indicador: esta carrera tiene fotos buscables por IA */}
+      {showsPhotoSearchBadge && (
+        <div
+          className="absolute top-3 left-3 flex items-center gap-1 text-xs font-medium text-runner-accent bg-white/80 backdrop-blur-sm rounded-full p-1.5 border border-gray-100"
+          title="Puedes buscar tus fotos por IA en esta carrera"
+        >
+          <Camera className="h-3 w-3" />
         </div>
       )}
 

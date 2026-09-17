@@ -116,11 +116,11 @@ export function Hero() {
             </a>
           </div>
 
-          {/* Micro-quiet: una sola línea, sin saturar */}
-          <p className="text-sm" style={{ color: "rgba(255,255,255,0.75)" }}>
-            <span style={{ color: "#fff", fontWeight: 600 }}>47 corredores</span>{" "}
-            ya lo usan
-          </p>
+          {/* v3.2: micro-quiet eliminado. El hero queda solo con H1 + lede +
+              micro-bloque Pro (fotos) + CTAs. Si en el futuro queremos
+              prueba social honesta (descargas reales, diploma generados,
+              etc), se mete desde el dashboard, no con "47 corredores". */}
+
         </div>
       </div>
     </section>

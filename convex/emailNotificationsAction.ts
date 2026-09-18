@@ -291,7 +291,11 @@ export const sendResultFoundEmail = internalAction({
     });
 
     // ---------- 6. Renderizar email ----------
-    const diplomaUrl = `${APP_URL}/api/diploma/${myRace._id}.pdf`;
+    // /api/diploma/[myRaceId] — el segmento Next NO incluye extensión.
+    // Históricamente la URL llevaba `.pdf` al final pero Next lo parseaba
+    // como parte del id, devolviendo 404 al pulsar "Descargar diploma"
+    // del email. Sin extensión, el match es limpio.
+    const diplomaUrl = `${APP_URL}/api/diploma/${myRace._id}`;
     const stickerUrl = `${APP_URL}/api/result/${myRace._id}/story-sticker.png`;
     const stickerEditorUrl = `${APP_URL}/editor-sticker/${myRace._id}`;
     const classificationUrl = race.resultsUrl ?? `${APP_URL}/carreras/${race.slug ?? ""}`;

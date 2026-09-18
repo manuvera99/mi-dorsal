@@ -20,6 +20,7 @@ import { useMutation } from "convex/react";
 import { Calendar, Hash, MapPin, Trophy, Pencil, Loader2, Sparkles, Radio } from "lucide-react";
 import { cn, formatRaceType, formatTime, formatPaceLong } from "@/lib/utils";
 import { TimePaceCalculator } from "./time-pace-calculator";
+import { PersonalRecordEditor } from "./personal-record-editor";
 import { api } from "@/convex/_generated/api";
 import {
   buildDistanceOptions,
@@ -374,19 +375,24 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
         {(race && effectiveDistance && effectiveDistance.distanceKm > 0) ||
         myRace.actualTimeSeconds ? (
           <div className="mt-4 border-t border-stone-100 pt-3">
-            {matchingPR && (
-              <div className="mb-3 flex items-baseline justify-between gap-2 rounded-md bg-stone-50 px-3 py-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-stone-500">
-                  Tu PR en {Math.round(matchingPR.distanceM / 1000)} km
-                </span>
-                <span className="font-mono text-sm font-bold text-stone-700">
-                  {formatTime(matchingPR.timeSeconds)}
-                  {effectiveDistance && effectiveDistance.distanceKm > 0 && (
-                    <span className="ml-2 text-[11px] font-normal text-stone-500">
-                      ({formatPaceLong(matchingPR.timeSeconds / effectiveDistance.distanceKm)})
-                    </span>
-                  )}
-                </span>
+            {/* Bloque PR: editable. Si no hay PR todavia, tambien se muestra
+                el editor para que el usuario pueda añadirlo desde la card.
+                matchingPR puede ser null (aun no hay PR) o venir con un
+                tiempo. El editor es siempre el mismo. */}
+            {effectiveDistance && effectiveDistance.distanceKm > 0 && (
+              <div className="mb-3">
+                <PersonalRecordEditor
+                  distanceM={Math.round(effectiveDistance.distanceKm * 1000)}
+                  distanceLabel={`${Math.round(effectiveDistance.distanceKm)} km`}
+                  currentTimeSeconds={matchingPR?.timeSeconds ?? null}
+                  userLabel={`Tu PR en ${Math.round(effectiveDistance.distanceKm)} km`}
+                />
+                {/* Pace derivado del PR, si lo hay y la distancia es > 0 */}
+                {matchingPR && (
+                  <p className="mt-1 px-3 text-[11px] text-stone-500">
+                    Pace: {formatPaceLong(matchingPR.timeSeconds / effectiveDistance.distanceKm)}
+                  </p>
+                )}
               </div>
             )}
 

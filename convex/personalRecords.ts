@@ -239,6 +239,79 @@ export const upsert = mutation({
 });
 
 /**
+ * updateManualPR — sobrescribe el PR actual de una distancia con un tiempo
+ * concreto, sin comparar con el anterior.
+ *
+ * Diferencia con `upsert`:
+ *  - `upsert` solo guarda si el nuevo tiempo es mejor (lógica de "batir
+ *    récord"). Sirve para añadir PRs nuevos desde Strava, etc.
+ *  - `updateManualPR` siempre sobrescribe. Sirve para que el usuario
+ *    corrija a mano un PR que estaba mal anotado, baje su PR a propósito,
+ *    o lo baje a un valor histórico que aún no había computado.
+ *
+ * Genera un historial: el PR anterior se marca como `isCurrent = false`
+ * (igual que `upsert`), y se inserta uno nuevo con `source = "manual"`.
+ *
+ * Args:
+ *  - distanceM / distanceLabel: distancia del PR a modificar (la edición
+ *    afecta al PR global de esa distancia, no a una carrera concreta).
+ *  - timeSeconds: nuevo tiempo en segundos (>= 1).
+ *
+ * No se modifica el schema. Solo añade una mutation sobre la tabla
+ * `personalRecords` que ya existe.
+ */
+export const updateManualPR = mutation({
+  args: {
+    distanceM: v.number(),
+    distanceLabel: v.string(),
+    timeSeconds: v.number(),
+  },
+  handler: async (ctx, { distanceM, distanceLabel, timeSeconds }) => {
+    const user = await requireUser(ctx);
+
+    if (timeSeconds < 1) {
+      throw new Error("El tiempo debe ser mayor que 0 segundos");
+    }
+    if (distanceM < 100) {
+      throw new Error("La distancia debe ser al menos 100 metros");
+    }
+
+    // PR actual para esta distancia
+    const current = await ctx.db
+      .query("personalRecords")
+      .withIndex("by_user_distance_current", (q) =>
+        q
+          .eq("userId", user._id)
+          .eq("distanceM", distanceM)
+          .eq("isCurrent", true),
+      )
+      .unique();
+
+    // Si hay uno actual, lo marcamos como histórico y actualizamos su
+    // achievedAt para que conste en el historial que hubo un cambio
+    // manual. source sigue siendo lo que tuviera (manual o auto).
+    if (current) {
+      await ctx.db.patch(current._id, { isCurrent: false });
+    }
+
+    // Insertamos el nuevo PR con source = "manual" (porque viene de una
+    // edición del usuario, no del cron de Strava ni del scrape de
+    // resultados).
+    const id = await ctx.db.insert("personalRecords", {
+      userId: user._id,
+      distanceM,
+      distanceLabel,
+      timeSeconds,
+      achievedAt: new Date().toISOString().slice(0, 10), // YYYY-MM-DD
+      source: "manual",
+      isCurrent: true,
+    });
+
+    return { id, previousTimeSeconds: current?.timeSeconds ?? null };
+  },
+});
+
+/**
  * Vincula un PR existente a una actividad de Strava. Usado desde la página
  * de detalle de PR para que el usuario pueda "Buscar actividad" o pegar
  * una URL de Strava y obtener el mapa / splits / gear sin re-introducir

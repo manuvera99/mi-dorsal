@@ -18,6 +18,33 @@ export function formatTime(seconds: number | null | undefined): string {
   return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
 }
 
+/**
+ * Parsea un tiempo en formato "H:MM:SS", "M:SS" o "MM:SS" a segundos.
+ *
+ * Devuelve null si el input es inválido o vacío. Robusto a inputs
+ * parciales (e.g. "1:2" o "5:" mientras el usuario está editando).
+ *
+ * Usado por componentes que aceptan entrada de tiempo libre
+ * (TimePaceCalculator, PersonalRecordEditor). Centralizado aquí para
+ * que la lógica de parsing sea consistente.
+ */
+export function parseTimeHMS(input: string): number | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  const parts = trimmed.split(":");
+  if (parts.length < 2 || parts.length > 3) return null;
+  const nums = parts.map((p) => (p === "" ? NaN : Number(p)));
+  if (nums.some((n) => Number.isNaN(n))) return null;
+  let h = 0, m = 0, s = 0;
+  if (nums.length === 3) {
+    [h, m, s] = nums as [number, number, number];
+  } else {
+    [m, s] = nums as [number, number];
+  }
+  if (m < 0 || m > 59 || s < 0 || s > 59 || h < 0) return null;
+  return h * 3600 + m * 60 + s;
+}
+
 export function formatDuration(sec: number | null | undefined): string {
   if (!sec || !Number.isFinite(sec)) return "—";
   const h = Math.floor(sec / 3600);

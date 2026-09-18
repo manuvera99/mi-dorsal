@@ -17,7 +17,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useMutation } from "convex/react";
-import { Calendar, Hash, MapPin, Trophy, Pencil, Loader2, Sparkles, Radio } from "lucide-react";
+import { Calendar, Hash, MapPin, Trophy, Pencil, Loader2, Sparkles, Radio, Trash2 } from "lucide-react";
 import { cn, formatRaceType, formatTime, formatPaceLong } from "@/lib/utils";
 import { TimePaceCalculator } from "./time-pace-calculator";
 import { PersonalRecordEditor } from "./personal-record-editor";
@@ -176,7 +176,10 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
   const [editingDistance, setEditingDistance] = useState(false);
   const [pendingDistance, setPendingDistance] = useState<DistanceOption | null>(null);
   const [savingDistance, setSavingDistance] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const updateDistance = useMutation(api.myRaces.updateDistance);
+  const removeRace = useMutation(api.myRaces.remove);
   const toast = useToast();
 
   const distanceOptions = race ? buildDistanceOptions(race) : [];
@@ -201,6 +204,33 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
       });
     } finally {
       setSavingDistance(false);
+    }
+  };
+
+  // Eliminar la carrera de mi calendario. Pide confirmacion explicita
+  // porque es destructivo: el usuario pierde todo el tracking de esa carrera
+  // (PR, objetivo, tiempo oficial si ya paso). El backend (myRaces.remove)
+  // ya valida que la fila es del usuario actual.
+  const handleRemove = async () => {
+    setRemoving(true);
+    try {
+      await removeRace({ id: myRace._id });
+      toast.show({
+        variant: "info",
+        title: "Carrera eliminada",
+        description: "La carrera se ha quitado de tu calendario.",
+      });
+      setConfirmRemove(false);
+      // No necesitamos hacer nada mas: la query listMine es reactiva, asi
+      // que al volver el render este HiloNode dejara de existir.
+    } catch (e) {
+      toast.show({
+        variant: "warning",
+        title: "No se pudo eliminar",
+        description: "Intentalo de nuevo.",
+      });
+    } finally {
+      setRemoving(false);
     }
   };
 
@@ -301,6 +331,31 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
               Dorsal #{myRace.dorsalNumber}
             </span>
           )}
+          {/* Acciones de la card: cambiar distancia (siempre visible si la
+              carrera tiene distancia > 0) y eliminar. La papelera abre un
+              confirm modal antes de borrar. */}
+          <div className="flex items-center gap-1">
+            {race && effectiveDistance && effectiveDistance.distanceKm > 0 && status === "planned" && (
+              <button
+                type="button"
+                onClick={() => setEditingDistance(true)}
+                className="inline-flex items-center rounded p-1 text-stone-400 hover:text-runner-primary hover:bg-stone-100"
+                aria-label="Cambiar distancia elegida"
+                title="Cambiar distancia elegida"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setConfirmRemove(true)}
+              className="inline-flex items-center rounded p-1 text-stone-400 hover:text-red-600 hover:bg-red-50"
+              aria-label="Eliminar carrera del calendario"
+              title="Eliminar carrera del calendario"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          </div>
         </div>
 
         {race ? (
@@ -340,17 +395,6 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
               )}{" "}
               km)
               · {formatRaceType(race.raceType)}
-              {race.raceFormats && race.raceFormats.length > 0 && status === "planned" && (
-                <button
-                  type="button"
-                  onClick={() => setEditingDistance(true)}
-                  className="ml-1 inline-flex items-center rounded p-0.5 text-stone-400 hover:text-runner-primary hover:bg-stone-100"
-                  aria-label="Cambiar distancia elegida"
-                  title="Cambiar distancia elegida"
-                >
-                  <Pencil className="h-3 w-3" />
-                </button>
-              )}
             </span>
           )}
         </div>
@@ -469,6 +513,64 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
                   "Guardar distancia"
                 )}
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de confirmacion: eliminar carrera del calendario. Pide
+            confirmacion explicita porque es destructivo (pierde tracking
+            de PR, objetivo, tiempo oficial). */}
+        {confirmRemove && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(10,10,10,0.55)" }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-remove-title"
+          >
+            <div
+              className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl"
+            >
+              <h3
+                id="confirm-remove-title"
+                className="text-base font-semibold text-runner-dark"
+              >
+                ¿Quitar esta carrera de tu calendario?
+              </h3>
+              <p className="mt-2 text-sm text-stone-600 leading-relaxed">
+                Vas a perder el tracking de{" "}
+                <strong className="text-runner-dark">
+                  {race?.name ?? "esta carrera"}
+                </strong>
+                {myRace.actualTimeSeconds
+                  ? " (incluye tu tiempo oficial y tu PR asociado)."
+                  : myRace.predictedTimeSeconds
+                    ? " (incluye tu objetivo)."
+                    : "."}
+              </p>
+              <div className="mt-5 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setConfirmRemove(false)}
+                  disabled={removing}
+                  className="text-sm font-medium text-stone-500 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRemove}
+                  disabled={removing}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-opacity hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {removing ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
+                  Quitar del calendario
+                </button>
+              </div>
             </div>
           </div>
         )}

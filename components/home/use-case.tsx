@@ -57,7 +57,7 @@ export function UseCase() {
           >
             CV
           </span>
-          <span>Carlos · Behobia 2026</span>
+          <span>Carlos · Behobia 2025</span>
         </div>
       </div>
     </section>

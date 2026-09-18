@@ -54,7 +54,7 @@ export function DiplomaAndSharePreview() {
               borderColor: "rgba(10,10,10,0.06)",
             }}
             role="img"
-            aria-label="Diploma finisher de la Behobia-San Sebastián. Dorsal 2501, tiempo 01:26:14, nuevo PR en 10K."
+            aria-label="Diploma finisher de la Behobia-San Sebastián. Dorsal 2501, tiempo 01:26:14, nuevo PR en 20K."
           >
             {/* Marco decorativo doble */}
             <div
@@ -126,7 +126,7 @@ export function DiplomaAndSharePreview() {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  🎉 NUEVO PR EN 10K
+                  🎉 NUEVO PR EN 20K
                 </div>
               </header>
 
@@ -188,7 +188,7 @@ export function DiplomaAndSharePreview() {
                         fontSize: "clamp(0.5rem, 0.85vw, 0.7rem)",
                       }}
                     >
-                      10K
+                      20K
                     </span>
                   </div>
 
@@ -216,7 +216,7 @@ export function DiplomaAndSharePreview() {
                         margin: "4px 0 0",
                       }}
                     >
-                      12 NOV 2026
+                      9 NOV 2025
                     </p>
                   </div>
                 </div>
@@ -386,7 +386,7 @@ export function DiplomaAndSharePreview() {
                           margin: 0,
                         }}
                       >
-                        PR EN 10K
+                        PR EN 20K
                       </p>
                       <p
                         style={{
@@ -430,7 +430,7 @@ export function DiplomaAndSharePreview() {
               borderColor: "rgba(10,10,10,0.06)",
             }}
             role="img"
-            aria-label="Sticker 1080x1920 con tiempo oficial 01:26:14, pace 4:18 por kilómetro y 10,0 kilómetros, badge de nuevo PR"
+            aria-label="Sticker 1080x1920 con tiempo oficial 01:26:14, pace 4:18 por kilómetro y 20,0 kilómetros, badge de nuevo PR"
           >
             <div
               className="absolute flex flex-col items-center justify-center"
@@ -566,7 +566,7 @@ export function DiplomaAndSharePreview() {
                       lineHeight: 1,
                     }}
                   >
-                    10,0<span style={{ fontSize: "clamp(0.55rem, 0.9vw, 0.7rem)", marginLeft: "2px" }}>km</span>
+                    20,0<span style={{ fontSize: "clamp(0.55rem, 0.9vw, 0.7rem)", marginLeft: "2px" }}>km</span>
                   </p>
                 </div>
               </div>

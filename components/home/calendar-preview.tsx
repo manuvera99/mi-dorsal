@@ -22,7 +22,7 @@ import { Calendar, ArrowRight, Clock } from "lucide-react";
 // Formato del tiempo igual al de lib/pdf/diploma.tsx (HH:MM:SS).
 const MY_RACES_MOCK = [
   {
-    date: "12 NOV",
+    date: "8 NOV",
     name: "Behobia-San Sebastián",
     place: "San Sebastián",
     distance: "20 km",

@@ -284,9 +284,11 @@
 
 ### 3.3 SEO y descubrimiento
 
-- [ ] ItemList dinámico en `/carreras` con slugs reales (requiere query en Server Component)
-- [ ] Arreglar `races:listForSitemap` en Convex (sospechoso de estar roto — verificar)
-- [ ] OG image custom 1200×630 con dorsal estilizado y tagline (mejora CTR en WhatsApp/Twitter/LinkedIn)
+- [x] ItemList dinámico en `/carreras` con slugs reales (19 sep 2026) — query `getUpcomingForSeo` + JSON-LD
+- [x] ~~Arreglar `races:listForSitemap` en Convex~~ — ya funcionaba (ver §1.5)
+- [x] OG image custom 1200×630 con dorsal estilizado y tagline (19 sep 2026) — `app/carreras/[slug]/opengraph-image.tsx`
+- [x] Canonical + title propio en `/ranking` (19 sep 2026) — antes heredaba de la home
+- [x] **Script GSC URL Inspection para pedir indexación en masa** (19 sep 2026) — `scripts/gsc-indexer/` con setup documentado en README
 - [ ] Comprar `mi-dorsal.run` defensivo (~24 €/año)
 - [ ] Asegurar `@midorsal` en IG, TikTok, X, YouTube, Threads, Bluesky
 - [ ] Ref: `docs/core/seo.md`, `docs/optional/future-iterations.md`

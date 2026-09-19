@@ -1,6 +1,6 @@
 {
   "name": "gsc-indexer",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Pide indexacion en masa a Google Search Console para URLs de mi-dorsal.com.",
   "private": true,
   "type": "module",
@@ -8,6 +8,7 @@
     "start": "node index.mjs"
   },
   "dependencies": {
-    "google-auth-library": "^9.14.0"
+    "google-auth-library": "^9.14.0",
+    "open": "^10.1.0"
   }
 }

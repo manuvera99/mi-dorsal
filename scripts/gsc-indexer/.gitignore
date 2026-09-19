@@ -1,7 +1,10 @@
 # credentials.json contiene la clave privada del service account de GCP
 # NUNCA commitear
 credentials.json
-*.pem
+# oauth-client.json tiene client_secret (no es privado per se, pero mejor no commitear)
+oauth-client.json
+# token.json tiene el refresh_token OAuth (NO commitear)
+token.json
 
 # Estado operativo del script (se regenera cada vez que corre)
 urls.txt

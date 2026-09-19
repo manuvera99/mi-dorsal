@@ -595,7 +595,6 @@ export const sendDorsalReminderEmail = internalAction({
   args: {
     userId: v.id("profiles"),
     myRaceId: v.id("myRaces"),
-    organizerName: v.optional(v.string()),
     testOverrideTo: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -684,7 +683,6 @@ export const sendDorsalReminderEmail = internalAction({
       distanceLabel,
       calendarEditUrl,
       appUrl: APP_URL,
-      organizerName: args.organizerName,
     });
 
     // ---------- 3. Enviar email ----------

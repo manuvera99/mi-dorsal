@@ -42,7 +42,6 @@ export function dorsalReminderEmail(args: {
   distanceLabel?: string;
   calendarEditUrl: string; // /calendario?myRaceId=...&edit=dorsal
   appUrl: string;
-  organizerName?: string; // ej. "Sportmaniacs" — opcional, para el hint del copy
 }): { subject: string; html: string; text: string } {
   const {
     userName,
@@ -53,7 +52,6 @@ export function dorsalReminderEmail(args: {
     distanceLabel,
     calendarEditUrl,
     appUrl,
-    organizerName,
   } = args;
 
   const safeUserName = escapeHtml(userName);
@@ -62,7 +60,6 @@ export function dorsalReminderEmail(args: {
   const safeRaceTime = raceTime ? escapeHtml(raceTime) : null;
   const safeVenue = venue ? escapeHtml(venue) : null;
   const safeDistance = distanceLabel ? escapeHtml(distanceLabel) : null;
-  const safeOrganizer = organizerName ? escapeHtml(organizerName) : null;
 
   const whenLine = [safeRaceDate, safeRaceTime].filter(Boolean).join(" · ");
 
@@ -76,7 +73,7 @@ export function dorsalReminderEmail(args: {
   // Body copy: explicar el problema + dar el CTA
   // ---------------------------------------------------------------------
   const bodyParagraphs = [
-    `Los dorsales de esta carrera suelen asignarse ${safeOrganizer ? `por ${safeOrganizer} ` : ""}entre 3 y 5 días antes del día de la prueba, normalmente por email. Revisa tu bandeja de entrada (también <strong>spam</strong> y <strong>promociones</strong>).`,
+    `Los dorsales de esta carrera suelen asignarse <strong>por el organizador</strong> entre 3 y 5 días antes del día de la prueba, normalmente por email. Revisa tu bandeja de entrada (también <strong>spam</strong> y <strong>promociones</strong>).`,
     `Si ya te ha llegado, anota el número en tu calendario para que el día de la carrera todo fluya — y para que mi-dorsal pueda tener tu dorsal listo para la foto del resultado.`,
   ];
 
@@ -267,7 +264,7 @@ export function dorsalReminderEmail(args: {
     `Hola, ${userName}.`,
     "",
     `¿Ya tienes el dorsal de ${raceName}?`,
-    `Los dorsales suelen asignarse ${organizerName ? `por ${organizerName} ` : ""}entre 3 y 5 días antes del día de la prueba, normalmente por email.`,
+    `Los dorsales suelen asignarse por el organizador entre 3 y 5 días antes del día de la prueba, normalmente por email.`,
     "Revisa tu bandeja de entrada (también spam y promociones).",
     "",
     `Si ya te ha llegado, anota el número en tu calendario. Si todavía no, tranquilo: hay carreras que los entregan el mismo día de la prueba en la Feria del Corredor.`,

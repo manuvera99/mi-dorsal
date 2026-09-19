@@ -24,8 +24,9 @@
 - Páginas legales `/legal/privacidad`, `/legal/cookies`, `/legal/aviso-legal`.
 
 ## Pendiente (bug conocido)
-- **`races:listForSitemap` no existe en Convex** — el sitemap de carreras individuales no funciona. Bug preexistente, no arreglado.
-- ItemList dinámico en `/carreras` con slugs reales (hoy es estático con `numberOfItems` estimado) — requiere mover la query Convex al Server Component.
+- ~~`races:listForSitemap` no existe en Convex~~ — **FALSO, corregido 19 sep 2026**: la query SI existe en `convex/races.ts:1661` y usa el indice `by_published_date`. El sitemap funciona y devuelve 2.593 URLs verificadas en https://www.mi-dorsal.com/sitemap.xml.
+- ~~ItemList dinámico en `/carreras` con slugs reales~~ — **Hecho 19 sep 2026**: query nueva `races:getUpcomingForSeo` devuelve las 50 carreras futuras mas cercanas; `ItemListJsonLd` ahora recibe `items` y los pinta. Si Convex falla, cae a `fallbackTotal` para no perder el JSON-LD.
+- ~~Canonical/title de `/ranking` apuntaba a home~~ — **Hecho 19 sep 2026**: la pagina era client component y heredaba metadata del layout raiz. Ahora es server component con `metadata` propia + JSON-LD `ItemList` con las top 10 destacadas.
 
 ## Cómo verificar que algo de SEO funciona
 ```bash

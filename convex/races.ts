@@ -1779,3 +1779,86 @@ export const getByIds = query({
     return out.filter(Boolean);
   },
 });
+
+// =============================================================================
+// QUERIES SEO extras � auth-free, lightweight, listas para Server Components
+// Usadas por /ranking y /carreras para emitir JSON-LD ItemList con slugs reales.
+// Devuelven solo los campos minimos (slug + name + locality + startDate + distance).
+// No son hot paths: solo se llaman desde server components cacheados por Vercel.
+// =============================================================================
+
+/**
+ * Top N carreras marcadas como destacadas (isFeatured=true).
+ * Para el JSON-LD ItemList de /ranking y como carrusel principal de la home.
+ * Sin filtro de fecha: incluye pasadas y futuras (Google quiere ver amplitud).
+ */
+export const getTopFeaturedForSeo = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, { limit }) => {
+    const n = limit ?? 20;
+    // listForSitemap ya hace .collect() acotado por indice (by_published_date).
+    // Filtramos isFeatured en memoria; como son ~2.700 docs, es <1ms.
+    const all = await ctx.db
+      .query("races")
+      .withIndex("by_published_date")
+      .filter((q) => q.eq(q.field("isPublished"), true))
+      .collect();
+    return all
+      .filter((r) => r.isFeatured === true)
+      .slice(0, n)
+      .map((r) => ({
+        slug: r.slug,
+        name: r.name,
+        locality: r.locality,
+        province: r.province,
+        startDate: r.startDate,
+        distanceKm: r.distanceKm,
+      }));
+  },
+});
+
+/**
+ * Top N carreras futuras mas cercanas (startDate >= hoy) publicadas.
+ * Para el JSON-LD ItemList de /carreras (carrusel "proximas carreras").
+ * Si no hay suficientes futuras, completa con las mas recientes pasadas.
+ */
+export const getUpcomingForSeo = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, { limit }) => {
+    const n = limit ?? 50;
+    const today = new Date().toISOString().slice(0, 10);
+    const all = await ctx.db
+      .query("races")
+      .withIndex("by_published_date")
+      .filter((q) => q.eq(q.field("isPublished"), true))
+      .collect();
+    // upcoming primero (futuras ordenadas por fecha asc), luego recientes (desc) de relleno
+    const upcoming = all
+      .filter((r) => typeof r.startDate === "string" && r.startDate >= today)
+      .sort((a, b) => (a.startDate! < b.startDate! ? -1 : 1))
+      .slice(0, n);
+    if (upcoming.length >= n) {
+      return upcoming.map((r) => ({
+        slug: r.slug,
+        name: r.name,
+        locality: r.locality,
+        province: r.province,
+        startDate: r.startDate,
+        distanceKm: r.distanceKm,
+      }));
+    }
+    const remaining = n - upcoming.length;
+    const recent = all
+      .filter((r) => !(typeof r.startDate === "string" && r.startDate >= today))
+      .sort((a, b) => (b.startDate! > a.startDate! ? 1 : -1))
+      .slice(0, remaining);
+    return [...upcoming, ...recent].map((r) => ({
+      slug: r.slug,
+      name: r.name,
+      locality: r.locality,
+      province: r.province,
+      startDate: r.startDate,
+      distanceKm: r.distanceKm,
+    }));
+  },
+});

@@ -2,16 +2,12 @@
  * Schema.org JSON-LD para /carreras.
  *
  * - BreadcrumbList: Google muestra sitelinks ricos (Inicio > Carreras).
- * - ItemList: Google muestra carrusel de eventos en SERP (a partir de
- *   los slugs de carreras. Como no podemos enumerar todas las carreras
- *   en SSR, dejamos un ItemList con sólo `numberOfItems` estimado y un
- *   placeholder; el JSON-LD dinámico lo añadiremos más adelante si
- *   tenemos las queries en server).
+ * - ItemList: Google muestra carrusel de eventos en SERP. Ahora recibe
+ *   slugs reales del Server Component (query `getUpcomingForSeo` en
+ *   convex/races.ts), que son las carreras futuras mas cercanas.
  *
- * Importante: para SEO agresivo, lo ideal sería hacer la query Convex
- * desde el Server Component y rellenar el ItemList con N slugs reales.
- * Como eso requiere más cambios en la arquitectura, dejamos un esqueleto
- * que Google acepta (con numberOfItems).
+ * Si por algun motivo el array viene vacio (Convex caido), emitimos un
+ * placeholder con numberOfItems estimado — mejor algo que nada.
  */
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://mi-dorsal.vercel.app";
@@ -40,7 +36,22 @@ export function BreadcrumbJsonLd({
   );
 }
 
-export function ItemListJsonLd({ baseUrl }: { baseUrl: string }) {
+export function ItemListJsonLd({
+  baseUrl,
+  items,
+  fallbackTotal,
+}: {
+  baseUrl: string;
+  items?: Array<{ slug: string; name: string }>;
+  fallbackTotal?: number;
+}) {
+  const itemListElement = (items ?? []).map((item, idx) => ({
+    "@type": "ListItem",
+    position: idx + 1,
+    url: `${baseUrl}/carreras/${item.slug}`,
+    name: item.name,
+  }));
+
   return (
     <script
       type="application/ld+json"
@@ -52,8 +63,9 @@ export function ItemListJsonLd({ baseUrl }: { baseUrl: string }) {
           description:
             "Catálogo completo de carreras populares de running, trail, asfalto y obstáculos en España.",
           url: `${baseUrl}/carreras`,
-          numberOfItems: 1400,
+          numberOfItems: itemListElement.length || fallbackTotal || 1400,
           itemListOrder: "https://schema.org/ItemListOrderDescending",
+          ...(itemListElement.length > 0 ? { itemListElement } : {}),
         }),
       }}
     />

@@ -1,87 +1,105 @@
-"use client";
+// /ranking — Server Component.
+// Pagina dinamica: no especificamos `revalidate`, Next 15 cachea por defecto
+// y revalida al redeploy. Las queries Convex via ConvexHttpClient se cachean
+// en el segmento estatico cuando es posible.
+export const dynamic = "force-dynamic";
 
-import { useEffect, useState } from "react";
-import { useQuery } from "convex/react";
+import type { Metadata } from "next";
+import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
-import { mockApi, isMockMode } from "@/lib/mock/provider";
-import { RaceCard } from "@/components/race-card";
-import { Trophy, Medal } from "lucide-react";
+import { RankingClient } from "./ranking-client";
 
-function MockRanking() {
-  const [top, setTop] = useState<any[]>([]);
-  useEffect(() => {
-    mockApi.ratings.topRaces({ limit: 10 }).then(setTop);
-  }, []);
-  return <RankingContent top={top} />;
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://mi-dorsal.vercel.app";
+
+/**
+ * Metadata propia de /ranking. Antes esta pagina era client component y
+ * heredaba el title/canonical de la home, lo que provocaba que Google la
+ * tratase como duplicado de / y la desindexase. Ahora tiene identidad SEO.
+ */
+export const metadata: Metadata = {
+  title: "Ranking de carreras populares · Top 10 de la comunidad",
+  description:
+    "Top 10 de las carreras populares mejor valoradas por la comunidad de corredores de mi-dorsal. Votaciones reales sobre organización, ambiente, recorrido y avituallamiento.",
+  keywords: [
+    "ranking carreras populares",
+    "mejores carreras España",
+    "carreras mejor valoradas",
+    "top carreras running",
+    "votar carrera",
+  ],
+  openGraph: {
+    type: "website",
+    locale: "es_ES",
+    url: `${BASE_URL}/ranking`,
+    siteName: "mi-dorsal",
+    title: "Ranking de carreras populares · Top 10 · mi-dorsal",
+    description:
+      "Las carreras populares mejor valoradas de España, votadas por la comunidad de corredores de mi-dorsal.",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Top 10 de carreras populares mejor valoradas · mi-dorsal",
+      },
+    ],
+  },
+  alternates: {
+    canonical: "/ranking",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+};
+
+async function fetchTopFeatured() {
+  try {
+    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+    const featured = await convex.query(api.races.getTopFeaturedForSeo, {
+      limit: 10,
+    });
+    return featured ?? [];
+  } catch (err) {
+    // Si Convex falla, devolvemos lista vacia — el client component se
+    // encargara de obtener los datos reales con useQuery reactivamente.
+    console.error("[ranking] No se pudieron cargar carreras destacadas:", err);
+    return [];
+  }
 }
 
-function RealRanking() {
-  const convexTop = useQuery(api.ratings.topRaces, { limit: 10 });
-  return <RankingContent top={(convexTop as any) ?? []} />;
-}
+export default async function RankingPage() {
+  const featured = await fetchTopFeatured();
 
-export default function RankingPage() {
-  const useMock = isMockMode();
-  return useMock ? <MockRanking /> : <RealRanking />;
-}
-
-function RankingContent({ top }: { top: any[] }) {
-
-  const getMedal = (pos: number) => {
-    if (pos === 1) return "🥇";
-    if (pos === 2) return "🥈";
-    if (pos === 3) return "🥉";
-    return `${pos}º`;
+  // JSON-LD ItemList con slugs reales para que Google muestre carrusel de
+  // carreras en SERP. Si Convex falla, emitimos un placeholder minimo
+  // para no perder el JSON-LD (mejor algo que nada).
+  const itemListJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Top carreras populares mejor valoradas en España",
+    description:
+      "Ranking de las carreras populares de España mejor valoradas por la comunidad de mi-dorsal.",
+    url: `${BASE_URL}/ranking`,
+    itemListOrder: "https://schema.org/ItemListOrderDescending",
+    numberOfItems: featured.length || 10,
+    itemListElement: featured.map((r: any, idx: number) => ({
+      "@type": "ListItem",
+      position: idx + 1,
+      url: `${BASE_URL}/carreras/${r.slug}`,
+      name: r.name,
+    })),
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-2">
-          <Trophy className="h-6 w-6 text-yellow-500" />
-          <h1 className="text-3xl font-bold">Top 10 de la comunidad</h1>
-        </div>
-        <p className="text-gray-600">
-          Las carreras mejor valoradas de toda España, votadas por la comunidad de mi-dorsal.
-        </p>
-      </div>
-
-      {top.length === 0 ? (
-        <div className="card text-center py-12">
-          <Medal className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-          <p className="text-gray-500">Aún no hay carreras con 3+ valoraciones.</p>
-          <p className="text-sm text-gray-400 mt-1">
-            ¡Sé el primero en valorar!
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {top.map((race, i) => (
-            <div key={race._id} className="card flex items-center gap-4">
-              <div className="text-3xl w-12 text-center">{getMedal(i + 1)}</div>
-              <div className="flex-1 min-w-0">
-                <a
-                  href={`/carreras/${race.slug}`}
-                  className="font-semibold hover:text-runner-primary block truncate"
-                >
-                  {race.name}
-                </a>
-                <div className="flex flex-wrap gap-3 text-xs text-gray-500 mt-1">
-                  <span>{race.locality}</span>
-                  <span>{race.distanceKm.toFixed(1)} km</span>
-                  <span>{race.totalRatings} votos</span>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-runner-primary">
-                  {race.avgGlobal?.toFixed(2)}
-                </div>
-                <div className="text-xs text-gray-500">media</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(itemListJsonLd),
+        }}
+      />
+      <RankingClient />
+    </>
   );
 }

@@ -3,6 +3,8 @@ export const dynamic = "force-dynamic";
 
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "@/convex/_generated/api";
 import { ClientCarreras } from "./client";
 import { BreadcrumbJsonLd, ItemListJsonLd } from "@/components/carreras/carreras-seo";
 
@@ -13,13 +15,10 @@ import { BreadcrumbJsonLd, ItemListJsonLd } from "@/components/carreras/carreras
  * primeras N carreras. El render interactivo (filtros, mapa, etc.)
  * vive en `client.tsx`.
  *
- * La query real de Convex se hace en cliente porque:
- *  1. Necesita estado de filtros reactivo.
- *  2. Convex useQuery no se puede llamar desde Server Components.
- *
- * Para SEO, este Server Component exporta metadata y un script JSON-LD
- * con la lista de slugs. Cuando Convex devuelva los datos, el cliente
- * añadirá el ItemList dinámico (Google lo lee tarde o temprano).
+ * Para SEO agresivo, este Server Component hace un fetch HTTP a Convex
+ * (ConvexHttpClient) y rellena el ItemList con N slugs reales de carreras
+ * futuras. Si Convex falla, el ItemList cae a un placeholder con
+ * numberOfItems estimado y Google sigue teniendo algo con lo que trabajar.
  */
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://mi-dorsal.vercel.app";
@@ -70,7 +69,23 @@ export const metadata: Metadata = {
   },
 };
 
-export default function CarrerasPage() {
+async function fetchUpcoming() {
+  try {
+    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+    const upcoming = await convex.query(api.races.getUpcomingForSeo, {
+      limit: 50,
+    });
+    return upcoming ?? [];
+  } catch (err) {
+    console.error("[carreras] No se pudieron cargar carreras futuras:", err);
+    return [];
+  }
+}
+
+export default async function CarrerasPage() {
+  const upcoming = await fetchUpcoming();
+  const items = upcoming.map((r: any) => ({ slug: r.slug, name: r.name }));
+
   return (
     <>
       {/* Schema BreadcrumbList — Google muestra sitelinks ricos */}
@@ -82,7 +97,7 @@ export default function CarrerasPage() {
       />
 
       {/* Schema ItemList — Google muestra carrusel de eventos en SERP */}
-      <ItemListJsonLd baseUrl={BASE_URL} />
+      <ItemListJsonLd baseUrl={BASE_URL} items={items} fallbackTotal={2761} />
 
       <Suspense
         fallback={

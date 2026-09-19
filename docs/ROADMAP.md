@@ -100,9 +100,12 @@
 
 ### 1.5 SEO básico (2-3 días)
 
-- [ ] **Crear Google Search Console** y enviar sitemap (cada día sin esto = visitas perdidas)
-- [ ] Verificar que `races:listForSitemap` de Convex funciona (sospechoso de estar roto, ver §3.4)
-- [ ] Verificar indexación de las 2.761 páginas (URL Inspection sobre 5-10 carreras top)
+- [x] **Verificar que `races:listForSitemap` de Convex funciona** (19 sep 2026) — la query SI existe (`convex/races.ts:1661`) y devuelve 2.593 URLs. El doc `docs/core/seo.md` estaba desactualizado.
+- [x] **Arreglar canonical/title de `/ranking`** (19 sep 2026) — era client component, heredaba metadata de la home (canonical apuntaba a `/`). Ahora es server component con `metadata` propia + JSON-LD `ItemList` con top 10 destacadas.
+- [x] **ItemList dinámico en `/carreras`** (19 sep 2026) — query nueva `getUpcomingForSeo` (auth-free) devuelve las 50 carreras futuras mas cercanas; `ItemListJsonLd` ahora recibe los slugs reales.
+- [x] **OG image dinámico por carrera** (19 sep 2026) — `app/carreras/[slug]/opengraph-image.tsx` + `twitter-image.tsx`. Dorsal determinista por slug, branding, fecha + distancia + localidad.
+- [ ] **Crear Google Search Console** y enviar sitemap (cada día sin esto = visitas perdidas) — pendiente accion manual del usuario
+- [ ] Verificar indexación de las 2.761 páginas (URL Inspection sobre 5-10 carreras top) — tras enviar sitemap
 - [ ] Ref: `docs/optional/future-iterations.md` (SEO y descubrimiento)
 
 ---

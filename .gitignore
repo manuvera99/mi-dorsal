@@ -155,3 +155,7 @@ skills/
 
 # superpowers brainstorming visual companion (mockups temporales de sesión)
 .superpowers/
+
+# one-shot dev testing wrappers (prefijo "triggerXForTesting" en convex/devOnly/)
+# Convex los deploya igualmente. Si quieres commitear uno, renómbralo antes.
+**/convex/devOnly/trigger*ForTesting.ts

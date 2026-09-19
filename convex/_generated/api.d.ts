@@ -48,6 +48,7 @@ import type * as devOnly_migrateMyRaceToCorrectRace from "../devOnly/migrateMyRa
 import type * as devOnly_promoteToAdmin from "../devOnly/promoteToAdmin.js";
 import type * as devOnly_seedTestUser from "../devOnly/seedTestUser.js";
 import type * as devOnly_slimActivitiesPayload from "../devOnly/slimActivitiesPayload.js";
+import type * as devOnly_triggerDorsalReminderForTesting from "../devOnly/triggerDorsalReminderForTesting.js";
 import type * as duplicateMatching from "../duplicateMatching.js";
 import type * as emailDispatch from "../emailDispatch.js";
 import type * as emailNotificationsAction from "../emailNotificationsAction.js";
@@ -130,6 +131,7 @@ declare const fullApi: ApiFromModules<{
   "devOnly/promoteToAdmin": typeof devOnly_promoteToAdmin;
   "devOnly/seedTestUser": typeof devOnly_seedTestUser;
   "devOnly/slimActivitiesPayload": typeof devOnly_slimActivitiesPayload;
+  "devOnly/triggerDorsalReminderForTesting": typeof devOnly_triggerDorsalReminderForTesting;
   duplicateMatching: typeof duplicateMatching;
   emailDispatch: typeof emailDispatch;
   emailNotificationsAction: typeof emailNotificationsAction;

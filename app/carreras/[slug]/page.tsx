@@ -65,29 +65,30 @@ export async function generateMetadata({
         description,
         siteName: "mi-dorsal",
         locale: "es_ES",
-        images: race.imageUrl
-          ? [
-              {
-                url: race.imageUrl,
-                width: 1200,
-                height: 630,
-                alt: `Cartel de ${race.name}`,
-              },
-            ]
-          : [
-              {
-                url: "/og-image.png",
-                width: 1200,
-                height: 630,
-                alt: title,
-              },
-            ],
+        // Si la carrera tiene imageUrl del organizador, esa gana.
+        // Si no, dejamos que Next 15 use la OG image dinamica generada
+        // por app/carreras/[slug]/opengraph-image.tsx (dorsal + nombre +
+        // fecha + distancia + localidad, todo on-brand).
+        ...(race.imageUrl
+          ? {
+              images: [
+                {
+                  url: race.imageUrl,
+                  width: 1200,
+                  height: 630,
+                  alt: `Cartel de ${race.name}`,
+                },
+              ],
+            }
+          : {}),
       },
       twitter: {
         card: "summary_large_image",
         title,
         description,
-        images: race.imageUrl ? [race.imageUrl] : ["/og-image.png"],
+        // Igual: si hay imageUrl del organizador lo usamos; si no, dejamos
+        // que Next use twitter-image.tsx (alias de opengraph-image.tsx).
+        ...(race.imageUrl ? { images: [race.imageUrl] } : {}),
       },
       robots: {
         index: race.isPublished !== false,

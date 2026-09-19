@@ -35,7 +35,10 @@ const CLIENT_FILE = resolve("./oauth-client.json");
 const TOKEN_FILE = resolve("./token.json");
 const SCOPES = ["https://www.googleapis.com/auth/webmasters"];
 const REDIRECT_PORT = 3333;
-const REDIRECT_URI = `http://localhost:${REDIRECT_PORT}/callback`;
+// Usa 127.0.0.1 (no localhost) porque Google permite cualquier puerto
+// en 127.0.0.1 sin tener que registrarlo como Authorized redirect URI
+// (loopback redirect URI exemption para OAuth Desktop apps).
+const REDIRECT_URI = `http://127.0.0.1:${REDIRECT_PORT}/callback`;
 
 async function main() {
   if (!existsSync(CLIENT_FILE)) {
@@ -64,7 +67,7 @@ async function main() {
   const code = await new Promise((resolveCode, rejectCode) => {
     const server = createServer((req, res) => {
       try {
-        const url = new URL(req.url, `http://localhost:${REDIRECT_PORT}`);
+        const url = new URL(req.url, `http://127.0.0.1:${REDIRECT_PORT}`);
         if (url.pathname === "/callback") {
           const code = url.searchParams.get("code");
           const error = url.searchParams.get("error");
@@ -85,7 +88,7 @@ async function main() {
         rejectCode(err);
       }
     });
-    server.listen(REDIRECT_PORT, () => {
+    server.listen(REDIRECT_PORT, "127.0.0.1", () => {
       open(authUrl.toString()).catch(() => {
         console.error(`No pude abrir el navegador. Abre manualmente:\n${authUrl.toString()}`);
       });

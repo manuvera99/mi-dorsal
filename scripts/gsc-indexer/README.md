@@ -121,10 +121,30 @@ El script ordena por prioridad (fichas de carreras primero) y `lastmod` DESC.
 
 ### Qué hace cada URL
 
-1. **Inspecciona** estado actual en GSC
-2. Si ya está indexada → **SKIP** (no malgasta quota)
-3. Si no → pide `requestIndexing`
-4. Loguea resultado en `results.csv`
+1. **Inspecciona** el estado actual en GSC via URL Inspection API
+2. Loguea el resultado en `results.csv` (verdict, coverage_state, indexing_state)
+
+## Limitación importante (2024+)
+
+Google **removió** el endpoint `urlInspection.index:requestIndexing` como
+API pública en algún momento de 2024. La doc oficial devuelve 404 y no
+hay forma programática de pedir indexación.
+
+**Opciones para acelerar indexación**:
+
+1. **Manual en GSC**: pegar URL en `https://search.google.com/search-console/inspect`
+   y clicar "Solicitar indexación". Limite: ~10-15 URLs/día por propiedad.
+2. **Ping via sitemap**: el script ya está hecho — `fetch-urls-from-sitemap.mjs`
+   genera `urls.txt` desde el sitemap para que el inspector las recorra.
+   Cuando Google las inspeccione vía este script, las marca como "urlIsKnown"
+   y empiezan el crawl pipeline.
+3. **Esperar**: Google recrawlea el sitemap cada 1-7 días. Las URLs no
+   descubiertas lo serán pronto si hay enlaces internos desde páginas
+   indexadas.
+
+**Consejo**: deja el script corriendo contra las 200 top URLs una vez.
+No acelera mágicamente, pero te da un mapa claro de qué URLs Google
+conoce y cuáles no (el `results.csv` es la fuente de verdad).
 
 ## Cuotas GSC
 

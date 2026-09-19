@@ -62,6 +62,7 @@ import type { DiplomaProps } from "../lib/pdf/diploma";
 import type { StoryStickerProps } from "../lib/share-card/story-sticker";
 import { resultFoundEmail } from "./emails/templates/resultFound";
 import { reminderEmail } from "./emails/templates/reminder";
+import { dorsalReminderEmail } from "./emails/templates/dorsalReminder";
 import { resultNotFoundEmail } from "./emails/templates/resultNotFound";
 
 /**
@@ -564,6 +565,175 @@ export const sendReminderEmail = internalAction({
     return {
       success,
       reason: "sent" as const,
+      resendId,
+      to: toEmail,
+      error: errorMsg,
+    };
+  },
+});
+
+// ===========================================================================
+// Action: sendDorsalReminderEmail (T-5d, sin dorsal asignado todavía)
+// ===========================================================================
+// Llamada desde convex/crons/reminderDorsal.ts. Empuja al usuario a meter
+// el dorsal en /calendario apenas le llegue el email de la organización.
+//
+// Diferencia con sendReminderEmail:
+//   - NO usa `daysUntil` (siempre es ~5d). Tampoco necesita dorsalNumber /
+//     predictedTimeSeconds: este email existe precisamente porque falta el
+//     dorsal.
+//   - El CTA principal es un deep link al calendario con el editor de
+//     dorsal abierto para esa myRace (calendarEditUrl con query param).
+//   - La skip-condition de "ya enviado" la hace el cron directamente vía
+//     notificationLog en getRacesNeedingDorsalReminder. Aquí NO hace falta
+//     otra comprobación (el cron ya filtró). Aunque mantenemos la defensiva
+//     hasLogForMyRace(type="dorsal_reminder") por si se llama desde otro
+//     lugar con la misma myRace.
+// ===========================================================================
+
+export const sendDorsalReminderEmail = internalAction({
+  args: {
+    userId: v.id("profiles"),
+    myRaceId: v.id("myRaces"),
+    organizerName: v.optional(v.string()),
+    testOverrideTo: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const IS_MOCK = !process.env.RESEND_API_KEY;
+    const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://www.mi-dorsal.com").replace(/\/$/, "");
+    const isTest = !!args.testOverrideTo;
+
+    // ---------- 1. Cargar datos completos ----------
+    // Reusamos getMyRaceForDorsalReminder (definido en reminderDorsal.ts)
+    // para evitar duplicar queries. Devuelve el mismo shape útil que
+    // getDataForEmail pero más liviano (sin PR ni effectiveDistance, que
+    // este email no necesita).
+    const data = await ctx.runQuery(
+      internal.crons.reminderDorsal.getMyRaceForDorsalReminder,
+      { myRaceId: args.myRaceId },
+    );
+    if (!data) {
+      console.warn(`[dorsal-reminder] myRace ${args.myRaceId} not found, skipping`);
+      return { success: false, reason: "myRace_not_found" as const };
+    }
+    const { myRace, profile, race } = data;
+
+    // Defense in depth: si en el ínterin alguien metió dorsal, no enviar.
+    if (myRace.dorsalNumber) {
+      console.log(
+        `[dorsal-reminder] myRace ${args.myRaceId} ya tiene dorsal, skip`,
+      );
+      return { success: true, reason: "already_has_dorsal" as const };
+    }
+
+    const toEmail = args.testOverrideTo ?? profile.email;
+    if (!toEmail) {
+      console.warn(`[dorsal-reminder] profile ${profile._id} has no email, skipping`);
+      return { success: false, reason: "no_email" as const };
+    }
+
+    // Idempotencia: por si se llama dos veces el mismo día.
+    if (!isTest) {
+      const alreadySent = await ctx.runQuery(
+        internal.emailNotificationsHelpers.hasLogForMyRace,
+        {
+          userId: profile._id,
+          myRaceId: myRace._id,
+          type: "dorsal_reminder",
+        },
+      );
+      if (alreadySent) {
+        return { success: true, reason: "already_sent" as const };
+      }
+    }
+
+    // ---------- 2. Preparar datos para la plantilla ----------
+    const raceDateFormatted = race.startDate
+      ? new Date(race.startDate).toLocaleDateString("es-ES", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })
+      : race.name;
+
+    // Distance label simple (sin effectiveDistance; basta con el formato
+    // principal de la carrera).
+    const distanceLabel =
+      race.distanceKm != null
+        ? race.distanceKm >= 21
+          ? race.distanceKm >= 42
+            ? "Maratón"
+            : "Media maratón"
+          : `${Math.round(race.distanceKm)}K`
+        : undefined;
+
+    // Deep link al calendario con el editor de dorsal pre-abierto para esta
+    // myRace concreta. La app detecta el query param y enfoca el input.
+    // ¿Por qué no usamos `?myRaceId=` en la ruta? Porque /calendario es
+    // una sola pantalla con el timeline de TODAS las myRaces, y la
+    // mejor UX es abrir esa pantalla y enfocar la card concreta.
+    const calendarEditUrl = `${APP_URL}/calendario?myRaceId=${encodeURIComponent(myRace._id)}&edit=dorsal`;
+
+    const { subject, html, text } = dorsalReminderEmail({
+      userName: profile.displayName ?? "corredor",
+      raceName: race.name,
+      raceDate: raceDateFormatted,
+      raceTime: race.startTime,
+      venue: race.venue ?? race.locality,
+      distanceLabel,
+      calendarEditUrl,
+      appUrl: APP_URL,
+      organizerName: args.organizerName,
+    });
+
+    // ---------- 3. Enviar email ----------
+    let success = false;
+    let resendId: string | undefined;
+    let errorMsg: string | undefined;
+    const fromEmail =
+      process.env.RESEND_FROM_EMAIL ?? "mi-dorsal <hola@mi-dorsal.com>";
+
+    if (IS_MOCK) {
+      console.log(`[dorsal-reminder-mock] → ${toEmail} | ${subject}`);
+      success = true;
+    } else {
+      try {
+        const { Resend } = await import("resend");
+        const resend = new Resend(
+          stripBom(process.env.RESEND_API_KEY!),
+        );
+        const result = await resend.emails.send({
+          from: stripBom(fromEmail),
+          to: toEmail,
+          subject: isTest ? `[PRUEBA] ${subject}` : subject,
+          html,
+          text,
+        });
+        resendId = result.data?.id;
+        success = true;
+      } catch (err) {
+        success = false;
+        errorMsg = String(err);
+        console.error(`[dorsal-reminder] ${toEmail} failed:`, err);
+      }
+    }
+
+    // ---------- 4. Log ----------
+    if (!isTest) {
+      await ctx.runMutation(internal.emailNotificationsHelpers.writeLog, {
+        userId: profile._id,
+        myRaceId: myRace._id,
+        type: "dorsal_reminder",
+        delivered: success,
+        resendMessageId: resendId,
+        error: errorMsg,
+      });
+    }
+
+    return {
+      success,
+      reason: isTest ? "sent_test" : "sent",
       resendId,
       to: toEmail,
       error: errorMsg,

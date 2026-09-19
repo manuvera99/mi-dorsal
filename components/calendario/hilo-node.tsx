@@ -14,7 +14,8 @@
  * del hilo. Este componente solo posiciona el marker encima de esa línea.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useMutation } from "convex/react";
 import { Calendar, Hash, MapPin, Trophy, Pencil, Loader2, Sparkles, Radio, Trash2 } from "lucide-react";
@@ -182,6 +183,69 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
   const removeRace = useMutation(api.myRaces.remove);
   const toast = useToast();
 
+  // ============================================================
+  // Edición de dorsal inline
+  // ============================================================
+  // Estado: editor abierto o cerrado. Se abre también si la URL trae
+  // `?myRaceId=...&edit=dorsal` (deep link desde el email recordatorio).
+  const searchParams = useSearchParams();
+  const [editingDorsal, setEditingDorsal] = useState(false);
+  const [dorsalInput, setDorsalInput] = useState(myRace.dorsalNumber ?? "");
+  const [savingDorsal, setSavingDorsal] = useState(false);
+  const updateDorsal = useMutation(api.myRaces.update);
+  const dorsalInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    // Deep link: /calendario?myRaceId={id}&edit=dorsal
+    const myRaceIdQ = searchParams?.get("myRaceId");
+    const editQ = searchParams?.get("edit");
+    if (
+      myRaceIdQ === myRace._id &&
+      editQ === "dorsal" &&
+      !myRace.dorsalNumber
+    ) {
+      setEditingDorsal(true);
+    }
+  }, [searchParams, myRace._id, myRace.dorsalNumber]);
+
+  useEffect(() => {
+    if (editingDorsal) {
+      // Enfocar el input automáticamente al abrir.
+      dorsalInputRef.current?.focus();
+    }
+  }, [editingDorsal]);
+
+  const handleSaveDorsal = async () => {
+    const trimmed = dorsalInput.trim();
+    setSavingDorsal(true);
+    try {
+      await updateDorsal({
+        id: myRace._id,
+        // dorsalNumber: "" → omitir el param. La mutation `update` hace
+        // `...(args.dorsalNumber !== undefined && { dorsalNumber: ... })` que
+        // ya respeta la opcionalidad.
+        dorsalNumber: trimmed === "" ? undefined : trimmed,
+      });
+      toast.show({
+        variant: "info",
+        title: trimmed === "" ? "Dorsal borrado" : "Dorsal guardado",
+        description:
+          trimmed === ""
+            ? "Te lo recordaremos si hace falta."
+            : "Listo. Te lo recordaremos cuando se acerque la carrera.",
+      });
+      setEditingDorsal(false);
+    } catch (e) {
+      toast.show({
+        variant: "warning",
+        title: "No se pudo guardar el dorsal",
+        description: "Inténtalo de nuevo.",
+      });
+    } finally {
+      setSavingDorsal(false);
+    }
+  };
+
   const distanceOptions = race ? buildDistanceOptions(race) : [];
 
   const handleSaveDistance = async () => {
@@ -326,11 +390,21 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
               </span>
             )}
           </div>
-          {myRace.dorsalNumber && (
+          {myRace.dorsalNumber ? (
             <span className="font-mono text-xs font-bold text-stone-500">
               Dorsal #{myRace.dorsalNumber}
             </span>
-          )}
+          ) : status === "planned" ? (
+            <button
+              type="button"
+              onClick={() => setEditingDorsal(true)}
+              className="inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-2 py-0.5 font-mono text-xs font-bold text-amber-800 transition-colors hover:bg-amber-100"
+              title="Añade tu dorsal cuando te llegue el email de la organización"
+            >
+              <Hash className="h-3 w-3" />
+              Añadir dorsal
+            </button>
+          ) : null}
           {/* Acciones de la card: cambiar distancia (siempre visible si la
               carrera tiene distancia > 0) y eliminar. La papelera abre un
               confirm modal antes de borrar. */}
@@ -479,6 +553,67 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
             )}
           </div>
         ) : null}
+
+        {/* Editor inline de dorsal. Visible cuando el usuario pulsa el
+            botón "Añadir dorsal" de la card o cuando llega con el query
+            param `?myRaceId=...&edit=dorsal` (deep link desde email). */}
+        {editingDorsal && status === "planned" && (
+          <div className="mt-4 border-t border-stone-100 pt-3">
+            <label className="mb-1.5 block text-xs font-medium text-stone-700">
+              Tu dorsal para esta carrera
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-sm font-bold text-stone-400">#</span>
+              <input
+                ref={dorsalInputRef}
+                type="text"
+                inputMode="numeric"
+                value={dorsalInput}
+                onChange={(e) => setDorsalInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void handleSaveDorsal();
+                  } else if (e.key === "Escape") {
+                    setEditingDorsal(false);
+                    setDorsalInput(myRace.dorsalNumber ?? "");
+                  }
+                }}
+                placeholder="ej. 1414"
+                maxLength={6}
+                disabled={savingDorsal}
+                className="w-32 rounded border border-stone-300 px-2 py-1 font-mono text-sm focus:border-runner-primary focus:outline-none focus:ring-1 focus:ring-runner-primary disabled:opacity-60"
+              />
+              <button
+                type="button"
+                onClick={handleSaveDorsal}
+                disabled={savingDorsal}
+                className="inline-flex items-center gap-1.5 rounded bg-runner-primary px-3 py-1 text-xs font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {savingDorsal && (
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                )}
+                Guardar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingDorsal(false);
+                  setDorsalInput(myRace.dorsalNumber ?? "");
+                }}
+                disabled={savingDorsal}
+                className="text-xs text-stone-500 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+            </div>
+            <p className="mt-2 text-[11px] leading-snug text-stone-500">
+              Te lo debería haber enviado la organización por email unos 3-5 días
+              antes. Si no, se suele recoger también en persona en la Feria
+              del Corredor.
+            </p>
+          </div>
+        )}
 
         {editingDistance && (
           <div className="mt-4 border-t border-stone-100 pt-3">

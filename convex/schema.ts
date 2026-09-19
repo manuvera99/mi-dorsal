@@ -606,6 +606,7 @@ export default defineSchema({
       v.literal("welcome"),
       v.literal("reminder_7d"),
       v.literal("reminder_1d"),
+      v.literal("dorsal_reminder"),
       v.literal("result_found"),
       v.literal("result_not_found"),
       v.literal("weekly_digest"),

@@ -22,6 +22,14 @@ crons.cron(
   internal.crons.reminderPreRace.reminderPreRace,
 );
 
+// Recordatorio T-5d sin dorsal: empuja a meter el número en /calendario.
+// Mismo slot horario que reminder-pre-race (9:00 UTC ≈ 11:00 CEST).
+crons.cron(
+  "reminder-dorsal",
+  "0 9 * * *", // 9am UTC diario
+  internal.crons.reminderDorsal.reminderDorsal,
+);
+
 // Result-not-found: 48h después de una carrera sin resultado scrapeado
 crons.cron(
   "result-not-found",

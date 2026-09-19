@@ -1,0 +1,11 @@
+# credentials.json contiene la clave privada del service account de GCP
+# NUNCA commitear
+credentials.json
+*.pem
+
+# Estado operativo del script (se regenera cada vez que corre)
+urls.txt
+results.csv
+
+# Dependencias
+node_modules/

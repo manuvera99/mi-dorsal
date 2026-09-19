@@ -32,6 +32,7 @@
 9. Testimonios de la home son placeholders con disclaimer — no tratarlos como reales.
 10. Cambiar `RESEND_FROM_EMAIL` → verificar dominio en Resend primero.
 11. **Tras cualquier sesión que toque `convex/*.ts` o cambie el schema**: pasar la checklist de optimización de `docs/optional/convex-upgrade.md` §"Checklist post-sesión" antes de cerrar la sesión — buscar `.collect()` nuevos sobre tablas grandes en el hot path (crons, mutations llamadas en bucle) y confirmar que usan índice real, no filtro en memoria.
+12. **Duplicados de Clerk generan profiles huérfanos con contenido residual.** El 19 sep 2026 había un duplicado de `manuvera08@gmail.com` con un `raceVote` que NO era visible en queries obvias. Antes de borrar un profile "huérfano" de Clerk, usar SIEMPRE `convex run devOnly/deleteProfileByClerkId:deleteProfileByClerkId '{"clerkUserId":"user_xxx"}'` — aborta si encuentra contenido no migrable. NO borrar profiles desde el dashboard de Convex a mano.
 
 ---
 

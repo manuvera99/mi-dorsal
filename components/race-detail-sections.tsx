@@ -9,9 +9,13 @@
 import {
   Layers, MapPin, Users, Clock, Euro, TrendingUp, Droplets, Apple,
   Cross, Stethoscope, Mountain, Car, Coffee, Image as ImageIcon,
-  ExternalLink, Ticket, ChevronRight, AlertCircle,
+  ExternalLink, Ticket, ChevronRight, AlertCircle, Calendar, Trophy,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import Link from "next/link";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { formatProvince } from "@/lib/utils";
 
 // =====================================================================
 // Section wrapper (consistencia visual)
@@ -404,4 +408,162 @@ function formatDateShort(date: string): string {
   } catch {
     return date;
   }
+}
+
+// =====================================================================
+// RelatedRacesSection — Carreras similares en la misma CCAA
+// =====================================================================
+// Bloque clave para:
+//   - UX: el usuario descubre carreras relacionadas
+//   - SEO: backlinks internos entre fichas (lo que Google premia)
+//   - Diferenciacion vs agregadores: ningun agregador enlaza asi
+//
+// Query: convex/races.ts:getRelatedRaces (auth-free, devuelve 6 max).
+// Score de relevancia:
+//   base 100 (mismo province) + bonus por proximidad de fecha, distancia,
+//   destacada y futura. Ver races.ts para el detalle.
+
+interface RelatedRace {
+  slug: string;
+  name: string;
+  locality?: string;
+  province?: string;
+  startDate?: string;
+  distanceKm: number;
+  raceType?: string;
+  imageUrl?: string;
+  isFeatured: boolean;
+}
+
+function RelatedRacesCard({ race }: { race: RelatedRace }) {
+  return (
+    <Link
+      href={`/carreras/${race.slug}`}
+      className="group block card hover:border-runner-primary hover:shadow-md transition-all"
+    >
+      {/* Imagen si existe */}
+      {race.imageUrl && (
+        <div className="relative h-32 -mx-4 -mt-4 mb-3 overflow-hidden rounded-t-lg bg-gray-100">
+          <img
+            src={race.imageUrl}
+            alt=""
+            loading="lazy"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+          {race.isFeatured && (
+            <span className="absolute top-2 right-2 bg-runner-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide">
+              Destacada
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Si no hay imagen, ponemos una banda superior con el tipo */}
+      {!race.imageUrl && (
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-runner-primary">
+            {race.raceType === "trail"
+              ? "Trail"
+              : race.raceType === "road"
+              ? "Asfalto"
+              : race.raceType === "obstacle"
+              ? "Obstáculos"
+              : "Running"}
+          </span>
+          {race.isFeatured && (
+            <span className="text-[10px] font-bold uppercase tracking-wide text-yellow-600">
+              ⭐ Destacada
+            </span>
+          )}
+        </div>
+      )}
+
+      <h3 className="font-semibold text-sm leading-tight mb-2 group-hover:text-runner-primary line-clamp-2">
+        {race.name}
+      </h3>
+
+      <div className="space-y-1 text-xs text-gray-600">
+        {race.startDate && (
+          <div className="flex items-center gap-1.5">
+            <Calendar className="h-3 w-3 text-gray-400 shrink-0" />
+            <span className="truncate">{formatDateShort(race.startDate)}</span>
+          </div>
+        )}
+        {race.locality && (
+          <div className="flex items-center gap-1.5">
+            <MapPin className="h-3 w-3 text-gray-400 shrink-0" />
+            <span className="truncate">
+              {race.locality}
+              {race.province && `, ${formatProvince(race.province)}`}
+            </span>
+          </div>
+        )}
+        <div className="flex items-center gap-1.5">
+          {race.distanceKm > 0 ? (
+            <>
+              <Trophy className="h-3 w-3 text-gray-400 shrink-0" />
+              <span>
+                {race.distanceKm.toFixed(race.distanceKm % 1 === 0 ? 0 : 1)} km
+              </span>
+            </>
+          ) : (
+            <>
+              <Mountain className="h-3 w-3 text-gray-400 shrink-0" />
+              <span>Trail</span>
+            </>
+          )}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+export function RelatedRacesSection({ raceId }: { raceId: string }) {
+  const related = useQuery(api.races.getRelatedRaces, { raceId: raceId as any, limit: 6 });
+
+  // Loading
+  if (related === undefined) {
+    return (
+      <section className="mt-8 pt-6 border-t border-gray-200">
+        <h2 className="text-xl font-bold mb-4">Carreras similares en {raceId ? "tu zona" : "España"}</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="card animate-pulse">
+              <div className="h-32 bg-gray-200 rounded mb-3" />
+              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+              <div className="h-3 bg-gray-200 rounded w-1/2" />
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  // Sin resultados (carrera muy aislada)
+  if (!related || related.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="mt-8 pt-6 border-t border-gray-200">
+      <div className="flex items-baseline justify-between mb-4">
+        <h2 className="text-xl font-bold">Carreras similares</h2>
+        <Link
+          href="/carreras"
+          className="text-sm text-runner-primary hover:underline font-medium"
+        >
+          Ver todas →
+        </Link>
+      </div>
+      <p className="text-sm text-gray-600 mb-4">
+        Otras carreras en la misma comunidad autónoma. Útil si buscas fechas
+        cercanas o distancias similares.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {related.map((race) => (
+          <RelatedRacesCard key={race.slug} race={race as RelatedRace} />
+        ))}
+      </div>
+    </section>
+  );
 }

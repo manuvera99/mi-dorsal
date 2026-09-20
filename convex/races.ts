@@ -863,30 +863,50 @@ export const systemUpsert = mutation({
     // nombre suficientemente similar). Mismo matching que ya usa el panel
     // /admin/duplicates (adminFindDuplicates) — spec en
     // docs/superpowers/specs/2026-09-12-prevenir-duplicados-ingest-design.md.
-    // Reutiliza dateMatches (ya cargado arriba, mismo índice by_date) — sin
-    // query adicional.
+    //
+    // Fix 2026-09-20: el pool ya no es solo dateMatches (startDate exacto) —
+    // se amplía con startDate-1 y startDate+1. Causa raíz verificada contra
+    // la BBDD real: la misma carrera reingestada con la fecha desviada 1 día
+    // (distinto scraper, error de parseo/zona horaria, o el organizador
+    // cambia el día en su web) nunca caía en el mismo pool y se creaba como
+    // duplicado — ej. real "XXIII Carrera MTB Sierra de Noez" (mismo
+    // officialUrl, mismo scraperAdapter) con fechas 2026-10-11 vs 2026-10-10
+    // en 2 filas separadas. exact (pasos 1-3 arriba) NO se toca — sigue
+    // exigiendo fecha idéntica a propósito (máxima confianza, es literalmente
+    // un re-ingest). Coste: 2 queries adicionales vía índice real by_date
+    // (acotadas a 1 fecha cada una) — nunca .collect() de tabla completa.
     // matchReason: solo se rellena cuando el match viene de structural/fuzzy
     // (pasos 4-5, probabilístico). null para exact/pasos 1-3 (alta confianza,
     // ya existente antes de esta task) — se usa más abajo para excluir
     // officialUrl del auto-relleno en el caso probabilístico.
     let matchReason: "structural" | "fuzzy" | null = null;
-    if (!existing && args.startDate && dateMatches.length > 0) {
-      const candidate: MatchCandidate = {
-        name: args.name,
-        startDate: args.startDate,
-        province: args.province,
-        locality: args.locality,
-        distanceKm: args.distanceKm,
-        scraperAdapter: args.scraperAdapter,
-      };
-      const match = findExistingMatch(candidate, dateMatches);
-      if (match) {
-        console.warn(
-          `[dup-match:${match.reason}] "${args.name}" (${args.scraperAdapter ?? "manual"}) → matched existing ${match.race._id} "${match.race.name}" (${match.race.scraperAdapter ?? "manual"})`,
-        );
-        existing = match.race;
-        if (match.reason === "structural" || match.reason === "fuzzy") {
-          matchReason = match.reason;
+    if (!existing && args.startDate) {
+      const d = new Date(args.startDate + "T00:00:00Z");
+      const prevDate = new Date(d.getTime() - 86400000).toISOString().slice(0, 10);
+      const nextDate = new Date(d.getTime() + 86400000).toISOString().slice(0, 10);
+      const [prevMatches, nextMatches] = await Promise.all([
+        ctx.db.query("races").withIndex("by_date", (q) => q.eq("startDate", prevDate)).collect(),
+        ctx.db.query("races").withIndex("by_date", (q) => q.eq("startDate", nextDate)).collect(),
+      ]);
+      const pool = [...dateMatches, ...prevMatches, ...nextMatches];
+      if (pool.length > 0) {
+        const candidate: MatchCandidate = {
+          name: args.name,
+          startDate: args.startDate,
+          province: args.province,
+          locality: args.locality,
+          distanceKm: args.distanceKm,
+          scraperAdapter: args.scraperAdapter,
+        };
+        const match = findExistingMatch(candidate, pool);
+        if (match) {
+          console.warn(
+            `[dup-match:${match.reason}] "${args.name}" (${args.scraperAdapter ?? "manual"}) → matched existing ${match.race._id} "${match.race.name}" (${match.race.scraperAdapter ?? "manual"})`,
+          );
+          existing = match.race;
+          if (match.reason === "structural" || match.reason === "fuzzy") {
+            matchReason = match.reason;
+          }
         }
       }
     }
@@ -1524,15 +1544,34 @@ export const adminFindDuplicates = query({
       }
     }
 
+    // Fix 2026-09-20: mismo root cause que systemUpsert (convex/races.ts) —
+    // los detectores 2/3 solo comparaban carreras con startDate EXACTAMENTE
+    // igual, así que una carrera reingestada con la fecha desviada 1 día
+    // nunca caía en el mismo bucket y el panel nunca la mostraba como
+    // duplicado. Se inserta cada carrera en los buckets de sus 3 fechas
+    // vecinas (día-1, día, día+1) en vez de solo la suya — un par real que
+    // difiere en 0 o 1 día comparte al menos 1 bucket. addGroup ya dedupea
+    // por el set de IDs ordenado, así que un mismo par detectado desde 2
+    // buckets vecinos no duplica el grupo. El detector 1 (exact) NO se toca
+    // — sigue exigiendo fecha idéntica a propósito (máxima confianza).
+    function neighborDates(startDate: string): string[] {
+      const d = new Date(startDate + "T00:00:00Z");
+      const prev = new Date(d.getTime() - 86400000).toISOString().slice(0, 10);
+      const next = new Date(d.getTime() + 86400000).toISOString().slice(0, 10);
+      return [prev, startDate, next];
+    }
+
     // === Detector 2: structural cross-source (date+province+distance+locality) ===
-    // Bucket por (date, province, distanceBucket)
+    // Bucket por (date, province, distanceBucket) — date tolera ±1 día
     const byStructural = new Map<string, Doc<"races">[]>();
     for (const r of all) {
       if (!r.startDate || !r.province) continue;
       const distBucket = Math.round(r.distanceKm * 2) / 2; // 0.5 km
-      const k = `${r.startDate}|${r.province}|${distBucket}`;
-      if (!byStructural.has(k)) byStructural.set(k, []);
-      byStructural.get(k)!.push(r);
+      for (const d of neighborDates(r.startDate)) {
+        const k = `${d}|${r.province}|${distBucket}`;
+        if (!byStructural.has(k)) byStructural.set(k, []);
+        byStructural.get(k)!.push(r);
+      }
     }
     for (const [, list] of byStructural) {
       if (list.length < 2) continue;
@@ -1556,14 +1595,16 @@ export const adminFindDuplicates = query({
     }
 
     // === Detector 3: fuzzy (date+province + name similarity > threshold) ===
-    // Bucket por (date, province)
+    // Bucket por (date, province) — date tolera ±1 día (ver nota Detector 2)
     const byFuzzyBucket = new Map<string, Doc<"races">[]>();
     for (const r of all) {
       if (!r.startDate) continue;
       const prov = r.province ?? r.locality ?? "?";
-      const k = `${r.startDate}|${prov}`;
-      if (!byFuzzyBucket.has(k)) byFuzzyBucket.set(k, []);
-      byFuzzyBucket.get(k)!.push(r);
+      for (const d of neighborDates(r.startDate)) {
+        const k = `${d}|${prov}`;
+        if (!byFuzzyBucket.has(k)) byFuzzyBucket.set(k, []);
+        byFuzzyBucket.get(k)!.push(r);
+      }
     }
     for (const [, list] of byFuzzyBucket) {
       if (list.length < 2) continue;
@@ -1860,5 +1901,77 @@ export const getUpcomingForSeo = query({
       startDate: r.startDate,
       distanceKm: r.distanceKm,
     }));
+  },
+});
+
+// =============================================================================
+// QUERY: getRelatedRaces — Carreras similares para backlinks internos
+// Usada por el bloque RelatedRacesSection en /carreras/[slug].
+// Auth-free, devuelve hasta `limit` carreras similares priorizando:
+//   1. Mismo province (CCAA)
+//   2. Proximidad de fecha (cuanto mas cercana en el calendario, mejor)
+//   3. Distancia similar (+-30%)
+//   4. Bonus por estar destacada / ser futura
+// Critico para: UX (descubrimiento), SEO (backlinks internos cruzados),
+// diferenciacion vs agregadores que no enlazan fichas entre si.
+// =============================================================================
+export const getRelatedRaces = query({
+  args: {
+    raceId: v.id("races"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, { raceId, limit }) => {
+    const n = limit ?? 6;
+    const current = await ctx.db.get(raceId);
+    if (!current) return [];
+
+    // Candidatas mismo province (la mayoria del trafico SEO viene por CCAA)
+    const sameProvince = await ctx.db
+      .query("races")
+      .withIndex("by_date")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("isPublished"), true),
+          q.eq(q.field("province"), current.province),
+        ),
+      )
+      .collect();
+
+    const minDist = current.distanceKm * 0.7;
+    const maxDist = current.distanceKm * 1.3;
+    const today = new Date().toISOString().slice(0, 10);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+
+    const scored = sameProvince
+      .filter((r) => r._id !== current._id)
+      .filter((r) => !r.startDate || r.startDate >= sevenDaysAgo)
+      .map((r) => {
+        let score = 100; // base por mismo province
+        if (r.startDate && current.startDate) {
+          const diffDays = Math.abs(
+            new Date(r.startDate).getTime() - new Date(current.startDate).getTime(),
+          ) / 86400000;
+          score += Math.max(0, 50 - diffDays); // -1 por dia, max +50
+        }
+        if (r.distanceKm >= minDist && r.distanceKm <= maxDist) score += 30;
+        if (r.startDate && r.startDate >= today) score += 20;
+        if (r.isFeatured === true) score += 15;
+        return { r, score };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, n)
+      .map((s) => ({
+        slug: s.r.slug,
+        name: s.r.name,
+        locality: s.r.locality,
+        province: s.r.province,
+        startDate: s.r.startDate,
+        distanceKm: s.r.distanceKm,
+        raceType: s.r.raceType,
+        imageUrl: s.r.imageUrl,
+        isFeatured: s.r.isFeatured ?? false,
+      }));
+
+    return scored;
   },
 });

@@ -11,6 +11,7 @@ import { PaceCalculator } from "@/components/pace-calculator";
 import {
   LongDescriptionSection, RaceFormatsSection, CourseVisualsSection,
   AidStationsSection, PriceTiersSection, DorsalPickupSection, GallerySection,
+  RelatedRacesSection,
 } from "@/components/race-detail-sections";
 import { AddToCalendarWidget } from "@/components/add-to-calendar-widget";
 import { ReportRaceErrorDialog } from "@/components/feedback/report-race-error-dialog";
@@ -627,6 +628,9 @@ function RaceDetailContent({ race, summary }: { race: any; summary: any }) {
 
             {/* ============ FORMULARIO DE VALORACIÓN ============ */}
             <RatingSliders raceId={race._id as any} />
+
+            {/* ============ CARRERAS SIMILARES (misma CCAA) ============ */}
+            <RelatedRacesSection raceId={race._id as string} />
 
             {/* ============ BANNER DE PERMISOS (no-admin) ============ */}
             <EditPermissionsBanner />

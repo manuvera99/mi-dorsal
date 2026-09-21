@@ -2075,12 +2075,25 @@ const PROVINCE_LABELS: Record<string, string> = {
 export const listProvinceHubsForSeo = query({
   args: {},
   handler: async (ctx) => {
-    const today = new Date().toISOString().slice(0, 10);
+    // Hot path: lee solo carreras futuras (próximos 18 meses) usando
+    // el índice `by_published_date (isPublished, startDate)`. Evita el
+    // `.collect()` sobre toda la tabla que provocaba 500 en Vercel
+    // Hobby (timeout 10s). Total = carreras futuras reales, no histórico.
+    const today = new Date();
+    const horizon = new Date(today);
+    horizon.setMonth(horizon.getMonth() + 18);
+    const todayStr = today.toISOString().slice(0, 10);
+    const horizonStr = horizon.toISOString().slice(0, 10);
+
     const races = await ctx.db
       .query("races")
-      .withIndex("by_published_date")
-      .filter((q) => q.eq(q.field("isPublished"), true))
-      .collect();
+      .withIndex("by_published_date", (q) =>
+        q
+          .eq("isPublished", true)
+          .gte("startDate", todayStr)
+          .lte("startDate", horizonStr),
+      )
+      .take(2000);
 
     const acc: Record<
       string,
@@ -2095,7 +2108,7 @@ export const listProvinceHubsForSeo = query({
         nextDate: undefined,
       });
       a.total++;
-      if (r.startDate && r.startDate >= today) {
+      if (r.startDate && r.startDate >= todayStr) {
         a.upcoming++;
         if (!a.nextDate || r.startDate < a.nextDate) a.nextDate = r.startDate;
       }
@@ -2122,13 +2135,16 @@ export const listByProvinceForSeo = query({
   handler: async (ctx, { province, limit }) => {
     const n = limit ?? 60;
     const today = new Date().toISOString().slice(0, 10);
+    // Usa el índice `by_province` (filtrado nativo) + take() para evitar
+    // .collect() sobre la tabla completa. Filtra isPublished y startDate
+    // en memoria: una provincia rara vez tiene >500 carreras futuras.
     const races = await ctx.db
       .query("races")
       .withIndex("by_province", (q) => q.eq("province", province as any))
-      .filter((q) => q.eq(q.field("isPublished"), true))
-      .collect();
+      .take(500);
 
     return races
+      .filter((r) => r.isPublished)
       .map((r) => ({
         slug: r.slug,
         name: r.name,
@@ -2175,12 +2191,24 @@ function raceInDistanceBucket(distanceKm: number, bucket: DistanceHub): boolean 
 export const listDistanceHubsForSeo = query({
   args: {},
   handler: async (ctx) => {
-    const today = new Date().toISOString().slice(0, 10);
+    // Hot path: solo carreras futuras (18 meses) usando el índice
+    // `by_published_date (isPublished, startDate)`. Evita .collect()
+    // sobre tabla grande que causaba 500 en Vercel Hobby.
+    const today = new Date();
+    const horizon = new Date(today);
+    horizon.setMonth(horizon.getMonth() + 18);
+    const todayStr = today.toISOString().slice(0, 10);
+    const horizonStr = horizon.toISOString().slice(0, 10);
+
     const races = await ctx.db
       .query("races")
-      .withIndex("by_published_date")
-      .filter((q) => q.eq(q.field("isPublished"), true))
-      .collect();
+      .withIndex("by_published_date", (q) =>
+        q
+          .eq("isPublished", true)
+          .gte("startDate", todayStr)
+          .lte("startDate", horizonStr),
+      )
+      .take(2000);
 
     const acc: Record<
       string,
@@ -2194,7 +2222,7 @@ export const listDistanceHubsForSeo = query({
         if (raceInDistanceBucket(r.distanceKm, b)) {
           const a = acc[b.slug];
           a.total++;
-          if (r.startDate && r.startDate >= today) {
+          if (r.startDate && r.startDate >= todayStr) {
             a.upcoming++;
             if (!a.nextDate || r.startDate < a.nextDate) a.nextDate = r.startDate;
           }
@@ -2220,11 +2248,21 @@ export const listByDistanceForSeo = query({
     const bucket = DISTANCE_HUBS.find((b) => b.slug === slug);
     if (!bucket) return [];
 
+    // Solo futuras (18m) usando índice. Filtra bucket y publicación
+    // en memoria — el total leído es suficiente para SEO.
+    const horizon = new Date();
+    horizon.setMonth(horizon.getMonth() + 18);
+    const horizonStr = horizon.toISOString().slice(0, 10);
+
     const races = await ctx.db
       .query("races")
-      .withIndex("by_published_date")
-      .filter((q) => q.eq(q.field("isPublished"), true))
-      .collect();
+      .withIndex("by_published_date", (q) =>
+        q
+          .eq("isPublished", true)
+          .gte("startDate", today)
+          .lte("startDate", horizonStr),
+      )
+      .take(1500);
 
     return races
       .filter((r) => raceInDistanceBucket(r.distanceKm, bucket))
@@ -2261,11 +2299,12 @@ export const listByProvinceDistanceForSeo = query({
     const bucket = DISTANCE_HUBS.find((b) => b.slug === distanceSlug);
     if (!bucket) return [];
 
+    // Índice `by_province` + take() — provincia típica tiene <500 carreras
+    // publicadas históricas, holgura amplia.
     const races = await ctx.db
       .query("races")
       .withIndex("by_province", (q) => q.eq("province", province as any))
-      .filter((q) => q.eq(q.field("isPublished"), true))
-      .collect();
+      .take(500);
 
     return races
       .filter((r) => raceInDistanceBucket(r.distanceKm, bucket))

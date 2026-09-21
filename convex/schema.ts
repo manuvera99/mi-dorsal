@@ -726,6 +726,30 @@ export default defineSchema({
     .index("by_status", ["status"]),
 
   // ---------------------------------------------------------------------------
+  // 11b. AUTO_MERGE_RUNS — log append-only de las corridas de auto-fusión de
+  // carreras duplicadas (exact+structural+fuzzy), ejecutadas cada noche justo
+  // después del ingest (scripts/auto-merge-duplicates.ts, ver
+  // .github/workflows/daily-ingest.yml). No es un singleton de estado — cada
+  // corrida inserta 1 fila nueva; sendIngestSummaryEmail (convex/dataSources.ts)
+  // lee la más reciente para incluir un resumen en el email nocturno.
+  // 2026-09-20.
+  // ---------------------------------------------------------------------------
+  autoMergeRuns: defineTable({
+    runAt: v.number(),
+    groupsProcessed: v.number(),
+    totalMerged: v.number(),
+    totalErrors: v.number(),
+    details: v.array(v.object({
+      reasonType: v.string(),
+      keepId: v.string(),
+      keepName: v.string(),
+      deletedIds: v.array(v.string()),
+      deletedNames: v.array(v.string()),
+    })),
+  })
+    .index("by_runAt", ["runAt"]),
+
+  // ---------------------------------------------------------------------------
   // 12. BLOG_POSTS — contenido editorial "Historias de dorsal"
   // ---------------------------------------------------------------------------
   // Cada post tiene su slug único, se almacena en markdown y se renderiza

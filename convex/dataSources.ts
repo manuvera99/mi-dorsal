@@ -650,6 +650,52 @@ function escapeHtmlIngest(s: string): string {
 }
 
 /**
+ * systemLogAutoMergeRun: persiste el resumen de 1 corrida de auto-fusión de
+ * carreras duplicadas (scripts/auto-merge-duplicates.ts, ejecutado cada
+ * noche tras el ingest). Auth-free (mismo modelo que el resto de mutations
+ * "system*" — solo se llama desde la GitHub Action o terminal admin). Tabla
+ * append-only `autoMergeRuns` (convex/schema.ts) — cada corrida es una fila
+ * nueva, no un singleton. 2026-09-20.
+ */
+export const systemLogAutoMergeRun = mutation({
+  args: {
+    groupsProcessed: v.number(),
+    totalMerged: v.number(),
+    totalErrors: v.number(),
+    details: v.array(v.object({
+      reasonType: v.string(),
+      keepId: v.string(),
+      keepName: v.string(),
+      deletedIds: v.array(v.string()),
+      deletedNames: v.array(v.string()),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const id = await ctx.db.insert("autoMergeRuns", {
+      runAt: Date.now(),
+      ...args,
+    });
+    return id;
+  },
+});
+
+/**
+ * systemGetLatestAutoMergeRun: devuelve la corrida de auto-merge más
+ * reciente (o null si nunca se ha ejecutado). Usada por
+ * sendIngestSummaryEmail para incluir una sección en el email nocturno.
+ */
+export const systemGetLatestAutoMergeRun = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("autoMergeRuns")
+      .withIndex("by_runAt")
+      .order("desc")
+      .first();
+  },
+});
+
+/**
  * sendIngestSummaryEmail: envía al admin un resumen de TODA la ejecución
  * nocturna del ingest — no solo la parte que ve el caller. Lee el estado
  * de "última sync" de las 7 fuentes directamente de `dataSources` (mismo
@@ -673,10 +719,18 @@ export const sendIngestSummaryEmail = mutation({
     totalDurationMs: v.optional(v.number()),
   },
   handler: async (ctx, { totalDurationMs }) => {
-    const [races, sources] = await Promise.all([
+    const [races, sources, latestAutoMerge] = await Promise.all([
       ctx.db.query("races").collect(),
       ctx.db.query("dataSources").collect(),
+      ctx.db.query("autoMergeRuns").withIndex("by_runAt").order("desc").first(),
     ]);
+
+    // Solo mostrar el auto-merge si es de ESTA corrida (últimas 6h) — evita
+    // reportar un resumen viejo si el step de auto-merge falló silenciosamente
+    // esta noche (continue-on-error: true en daily-ingest.yml) y quedó un log
+    // de una noche anterior. 2026-09-20.
+    const autoMergeIsFresh = latestAutoMerge !== null && Date.now() - latestAutoMerge.runAt < 6 * 3600 * 1000;
+    const autoMerge = autoMergeIsFresh ? latestAutoMerge : null;
 
     const perSource = sources
       .map((s) => ({
@@ -715,6 +769,35 @@ export const sendIngestSummaryEmail = mutation({
         ? `<p style="margin:16px 0 0;font-size:12px;color:#a8a29e;">Duración: ${(totalDurationMs / 1000).toFixed(1)}s</p>`
         : "";
 
+    // Sección de auto-merge de duplicados (2026-09-20): solo se muestra si
+    // hubo al menos 1 fusión esta noche — mismo patrón que perSource, que
+    // solo lista fuentes con señal (creadas+actualizadas>0 o error).
+    const autoMergeRows = (autoMerge?.details ?? [])
+      .map(
+        (d) => `
+      <tr>
+        <td style="padding:6px 10px;border-bottom:1px solid #e7e5e4;font-size:13px;">${escapeHtmlIngest(d.reasonType)}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #e7e5e4;font-size:13px;">${escapeHtmlIngest(d.keepName)}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #e7e5e4;font-size:13px;color:#78716c;">${escapeHtmlIngest(d.deletedNames.join(", "))}</td>
+      </tr>`,
+      )
+      .join("");
+    const autoMergeSection =
+      autoMerge && autoMerge.totalMerged > 0
+        ? `
+      <p style="margin:20px 0 6px;font-size:13px;color:#1c1917;font-weight:600;">🔀 ${autoMerge.totalMerged} duplicado${autoMerge.totalMerged === 1 ? "" : "s"} auto-fusionado${autoMerge.totalMerged === 1 ? "" : "s"} esta noche${autoMerge.totalErrors > 0 ? ` (${autoMerge.totalErrors} error${autoMerge.totalErrors === 1 ? "" : "es"})` : ""}:</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <thead>
+          <tr>
+            <th style="padding:6px 10px;text-align:left;font-size:11px;color:#78716c;text-transform:uppercase;">Tipo</th>
+            <th style="padding:6px 10px;text-align:left;font-size:11px;color:#78716c;text-transform:uppercase;">Conservada</th>
+            <th style="padding:6px 10px;text-align:left;font-size:11px;color:#78716c;text-transform:uppercase;">Fusionadas</th>
+          </tr>
+        </thead>
+        <tbody>${autoMergeRows}</tbody>
+      </table>`
+        : "";
+
     const html = `
 <!DOCTYPE html>
 <html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fafaf9;padding:24px;color:#0a0a0a;">
@@ -739,6 +822,7 @@ export const sendIngestSummaryEmail = mutation({
         </thead>
         <tbody>${rows}</tbody>
       </table>
+      ${autoMergeSection}
       ${durationLine}
       <a href="${adminUrl}" style="display:inline-block;margin-top:16px;background:#0a0a0a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;">Ver panel de carreras →</a>
     </div>
@@ -752,6 +836,14 @@ ${totalCreated} nuevas · ${totalUpdated} actualizadas${sourcesWithError.length 
 ${perSource
   .map((p) => `  ${p.name}: +${p.created} nuevas, ${p.updated} actualizadas${p.hasError ? ` — ERROR: ${p.error}` : ""}`)
   .join("\n")}
+${
+  autoMerge && autoMerge.totalMerged > 0
+    ? `\n🔀 ${autoMerge.totalMerged} duplicado${autoMerge.totalMerged === 1 ? "" : "s"} auto-fusionado${autoMerge.totalMerged === 1 ? "" : "s"} esta noche${autoMerge.totalErrors > 0 ? ` (${autoMerge.totalErrors} errores)` : ""}:\n` +
+      autoMerge.details
+        .map((d) => `  [${d.reasonType}] conservada "${d.keepName}" — fusionada: ${d.deletedNames.join(", ")}`)
+        .join("\n")
+    : ""
+}
 ${totalDurationMs !== undefined ? `\nDuración: ${(totalDurationMs / 1000).toFixed(1)}s` : ""}
 Ver panel: ${adminUrl}`;
 

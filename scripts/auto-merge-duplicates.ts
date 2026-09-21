@@ -1,64 +1,48 @@
 // =============================================================================
-// scripts/fix-cross-source-duplicates.ts
+// scripts/auto-merge-duplicates.ts
 // =============================================================================
-// Limpia el backlog de duplicados cross-source detectados hoy en
-// /admin/duplicates (exact + structural + fuzzy), migrando referencias de
-// usuario a la carrera conservada antes de borrar cada duplicado.
+// Auto-fusiona duplicados detectados (exact+structural+fuzzy) automáticamente,
+// SIN confirmación humana — pensado para correr cada noche justo después del
+// ingest (.github/workflows/daily-ingest.yml), antes de deep-extract/geocoding.
 //
-// Por qué existe: hasta el 2026-09-12, systemUpsert no reconocía carreras
-// ya existentes cruzando fuentes (ver
-// docs/superpowers/specs/2026-09-12-prevenir-duplicados-ingest-design.md),
-// así que cada noche de ingesta pudo haber creado duplicados que hoy están
-// acumulados en la base de datos real. Este script es un ONE-OFF para
-// limpiar ese backlog una vez — el fix de systemUpsert evita que se sigan
-// creando nuevos a partir de ahora.
+// Por qué antes de deep-extract: si corriera después, una carrera duplicada
+// recién creada podría ganar el "keep" solo por haber sido enriquecida esa
+// misma noche, borrando una carrera vieja con historial de usuarios (myRaces,
+// resultados) que en realidad tiene más valor. Corriendo justo tras el
+// ingest, "más campos rellenos" compara datos que vienen directamente de los
+// scrapers, sin que el enriquecimiento posterior sesgue la decisión.
 //
-// IMPORTANTE: no hay entorno de sandbox — este script apunta a la BD real
-// de producción/dev (mismo deployment). SIEMPRE correr primero sin flags
-// (dry-run) y revisar el log completo antes de pasar --execute.
+// Diferencias respecto a scripts/fix-cross-source-duplicates.ts (que sigue
+// existiendo para uso manual con dry-run/--execute, sin tocar):
+//   - Sin flag --execute: este script SIEMPRE ejecuta (modo automático).
+//   - Sin EXCLUDED_RACE_IDS: esa lista era un parche puntual para casos ya
+//     revisados a mano (serie "The Bay" 5K/Swim/Aquathlon, "Beer Night Run
+//     Miraflores"). Riesgo residual ACEPTADO explícitamente por el usuario
+//     (2026-09-20): si vuelve a aparecer un patrón de eventos multideporte
+//     del mismo día con nombre similar, este script SÍ los fusionará por
+//     error, igual que pasó una vez con structural (carrera infantil vs
+//     adultos, 14-sep-2026). Sin mitigación estructural adicional a propósito.
+//   - Desempate determinista: si 2+ carreras del grupo tienen el MISMO
+//     countFields, gana (se conserva) la más ANTIGUA — normalmente ya tiene
+//     más probabilidad de tener referencias de usuario acumuladas, y
+//     conservarla evita que systemMergeDuplicates tenga que resolver tantos
+//     conflictos de migración.
+//   - Persiste el resumen de la corrida vía api.dataSources.systemLogAutoMergeRun
+//     para que sendIngestSummaryEmail lo incluya en el email nocturno.
 //
-// Uso:
-//   npx tsx --env-file=.env.local scripts/fix-cross-source-duplicates.ts
-//   npx tsx --env-file=.env.local scripts/fix-cross-source-duplicates.ts --execute
+// Uso: npx tsx scripts/auto-merge-duplicates.ts
 // =============================================================================
 
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api";
-import {
-  normalizeName,
-  tokenize,
-  jaccard,
-  localitiesCompatible,
-} from "../convex/duplicateMatching";
+import { normalizeName, tokenize, jaccard, localitiesCompatible } from "../convex/duplicateMatching";
 
-const EXECUTE = process.argv.includes("--execute");
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 if (!convexUrl) {
   console.error("❌ NEXT_PUBLIC_CONVEX_URL no configurado");
   process.exit(1);
 }
 const client = new ConvexHttpClient(convexUrl);
-
-// Exclusión manual tras revisión humana del dry-run (2026-09-12): estas
-// carreras son eventos REALES DISTINTOS que el detector fuzzy agrupó por
-// error (misma fecha+provincia+nombre similar, pero disciplinas distintas
-// de un evento multideporte — 5K vs Swim vs Aquathlon de "The Bay Series" —
-// o casos ambiguos que requieren revisión manual en /admin/duplicates).
-// Cualquier grupo que contenga alguna de estas carreras se salta por
-// completo, para no fusionar eventos que no son duplicados.
-const EXCLUDED_RACE_IDS = new Set<string>([
-  "k57133t2ackq8mtyc550v6a5sn8dxyf2", // The Bay 5K 2026 Series Race 3
-  "k57a8rp3bhg8fwydg3tg8q1hmh8dx2r9", // The Bay Swim 2026 Series Race 3
-  "k573prz43fym092db5x56345td8dxtjm", // The Bay Aquathlon 2026 Series Race 3
-  "k5769vvb5p9rmp5dqtw10v3p8n8dxkt4", // The Bay 5K 2026 Series Race 2
-  "k57ch64234mhpc272eww4vnx9h8dxm6w", // The Bay Swim 2026 Series Race 2
-  "k576gthz4h4pwzq3t8w0wc2ncn8dws2p", // The Bay Aquathlon 2026 Series Race 2
-  "k579hat2c8g3329a2h9789dwrx8dx0mc", // The Bay 5K 2026 Series Race 1
-  "k57ds0n192qn77z0d4gat45wm58dx03p", // The Bay Aquathlon 2026 Series Race 1
-  "k570fnnd827bvz4a3penv6t0fn8dw7vp", // The Bay Swim Series Race 1
-  "k57976xjkcxnpsz000246vpbg18dwvb1", // BEER NIGHT RUN MIRAFLORES 2026 OK
-  "k5729gg9fvwxdgabmsyatpstsh8dx3dg", // BEER NIGHT RUN MIRAFLORES DE LA SIERRA 2026
-]);
 
 type RaceDoc = {
   _id: string;
@@ -90,9 +74,8 @@ function countFields(r: RaceDoc): number {
   return n;
 }
 
-// Fix 2026-09-20: tolerancia de fecha ±1 día para structural/fuzzy — mismo
-// fix que convex/races.ts (systemUpsert y adminFindDuplicates). exact NO se
-// toca (sigue exigiendo fecha idéntica).
+// Tolerancia de fecha ±1 día para structural/fuzzy (fix 2026-09-20, mismo
+// que convex/races.ts systemUpsert/adminFindDuplicates). exact NO se toca.
 function neighborDates(startDate: string): string[] {
   const d = new Date(startDate + "T00:00:00Z");
   const prev = new Date(d.getTime() - 86400000).toISOString().slice(0, 10);
@@ -100,9 +83,9 @@ function neighborDates(startDate: string): string[] {
   return [prev, startDate, next];
 }
 
-/** Mismo algoritmo de agrupación que adminFindDuplicates (convex/races.ts),
- *  pero corriendo en el script con las funciones puras importadas, porque
- *  adminFindDuplicates exige auth admin que este script no tiene. */
+/** Mismo algoritmo que adminFindDuplicates (convex/races.ts) y
+ *  scripts/fix-cross-source-duplicates.ts — corre aquí con las funciones
+ *  puras importadas porque adminFindDuplicates exige auth admin. */
 function findDuplicateGroups(all: RaceDoc[], similarityThreshold = 0.75): Group[] {
   const groups = new Map<string, Group>();
   const addGroup = (races: RaceDoc[], reasonType: Group["reasonType"]) => {
@@ -138,8 +121,7 @@ function findDuplicateGroups(all: RaceDoc[], similarityThreshold = 0.75): Group[
   // día) se hacen por PAR en el pairwise, no sobre el bucket agregado — un
   // bucket con carreras de fechas vecinas puede "contaminar" el conteo de
   // fuentes o dejar pasar pares que en realidad difieren 2 días reales. Ver
-  // nota completa en convex/races.ts (adminFindDuplicates, mismo bug real
-  // encontrado verificando este mismo fix contra producción).
+  // nota completa en convex/races.ts (adminFindDuplicates).
   const daysBetween = (d1: string, d2: string) =>
     Math.abs(new Date(d1 + "T00:00:00Z").getTime() - new Date(d2 + "T00:00:00Z").getTime()) / 86400000;
 
@@ -199,70 +181,76 @@ function findDuplicateGroups(all: RaceDoc[], similarityThreshold = 0.75): Group[
 
 async function main() {
   console.log("=".repeat(70));
-  console.log(`Fix cross-source duplicates (${EXECUTE ? "EJECUTANDO" : "DRY RUN"})`);
+  console.log("Auto-merge de duplicados (post-ingest, sin confirmación)");
   console.log("=".repeat(70));
-  if (!EXECUTE) {
-    console.log("⚠️  DRY RUN — no se escribe nada. Revisa el log y vuelve a");
-    console.log("    ejecutar con --execute cuando confirmes que está bien.");
-  }
 
   const all = (await client.query(api.races.systemListAllDetailed, {})) as RaceDoc[];
-  console.log(`\nTotal carreras en BBDD: ${all.length}`);
+  console.log(`Total carreras en BBDD: ${all.length}`);
 
-  const allGroups = findDuplicateGroups(all);
-  const groups = allGroups.filter((g) => !g.races.some((r) => EXCLUDED_RACE_IDS.has(r._id)));
-  const skippedCount = allGroups.length - groups.length;
-  console.log(`Encontrados ${allGroups.length} grupos duplicados (exact+structural+fuzzy)`);
-  if (skippedCount > 0) {
-    console.log(`⏭️  Saltados ${skippedCount} grupos por exclusión manual (revisar en /admin/duplicates)`);
-  }
-  console.log(`Procesando ${groups.length} grupos\n`);
+  const groups = findDuplicateGroups(all);
+  console.log(`Grupos duplicados detectados: ${groups.length}\n`);
 
-  if (groups.length === 0) {
-    console.log("✅ No hay duplicados pendientes de procesar");
-    return;
-  }
-
+  const runLog: Array<{
+    reasonType: string;
+    keepId: string;
+    keepName: string;
+    deletedIds: string[];
+    deletedNames: string[];
+  }> = [];
   let totalMerged = 0;
   let totalErrors = 0;
 
   for (const group of groups) {
-    const sorted = [...group.races].sort((a, b) => countFields(b) - countFields(a));
+    // countFields desc; empate -> _creationTime asc (la más vieja gana el "keep").
+    const sorted = [...group.races].sort((a, b) => {
+      const diff = countFields(b) - countFields(a);
+      if (diff !== 0) return diff;
+      return a._creationTime - b._creationTime;
+    });
     const keep = sorted[0];
     const toDelete = sorted.slice(1);
+    const deletedIds: string[] = [];
+    const deletedNames: string[] = [];
 
     console.log(`\n📍 [${group.reasonType}] "${keep.name}" (${group.races.length} carreras):`);
-    console.log(`   ✓ Mantener: ${keep._id} — "${keep.name}" (${countFields(keep)} campos, ${keep.scraperAdapter ?? "manual"})`);
+    console.log(`   ✓ Conservar: ${keep._id} — "${keep.name}" (${countFields(keep)} campos, ${keep.scraperAdapter ?? "manual"})`);
+
     for (const d of toDelete) {
-      console.log(`   ${EXECUTE ? "→" : "[dry]"} Fusionar y borrar: ${d._id} — "${d.name}" (${countFields(d)} campos, ${d.scraperAdapter ?? "manual"})`);
+      console.log(`   → Fusionar y borrar: ${d._id} — "${d.name}" (${countFields(d)} campos, ${d.scraperAdapter ?? "manual"})`);
+      try {
+        const res = await client.mutation(api.races.systemMergeDuplicates, {
+          keepId: keep._id as any,
+          deleteId: d._id as any,
+        });
+        console.log(`     ✅ Fusionado. Migrado: ${JSON.stringify(res.migrated)}${Object.values(res.merged).some((v) => v > 0) ? ` | Conflictos resueltos: ${JSON.stringify(res.merged)}` : ""}`);
+        deletedIds.push(d._id);
+        deletedNames.push(d.name);
+        totalMerged++;
+      } catch (e: any) {
+        console.error(`     ❌ Error fusionando ${d._id}: ${e?.message ?? e}`);
+        totalErrors++;
+      }
     }
 
-    if (EXECUTE) {
-      for (const d of toDelete) {
-        try {
-          const res = await client.mutation(api.races.systemMergeDuplicates, {
-            keepId: keep._id as any,
-            deleteId: d._id as any,
-          });
-          console.log(`     ✅ Fusionado. Migrado: ${JSON.stringify(res.migrated)}${Object.values(res.merged).some((v) => v > 0) ? ` | Conflictos resueltos: ${JSON.stringify(res.merged)}` : ""}`);
-          totalMerged++;
-        } catch (e: any) {
-          console.error(`     ❌ Error fusionando ${d._id}: ${e?.message ?? e}`);
-          totalErrors++;
-        }
-      }
-    } else {
-      totalMerged += toDelete.length;
+    if (deletedIds.length > 0) {
+      runLog.push({ reasonType: group.reasonType, keepId: keep._id, keepName: keep.name, deletedIds, deletedNames });
     }
   }
 
   console.log("\n" + "=".repeat(70));
   console.log("RESUMEN");
   console.log("=".repeat(70));
-  console.log(`Grupos:                 ${groups.length}`);
-  console.log(`Carreras fusionadas:    ${totalMerged}${EXECUTE ? "" : " (0 en dry-run, esto es lo que SE HARÍA)"}`);
-  if (EXECUTE && totalErrors > 0) console.log(`Errores:                ${totalErrors}`);
-  if (!EXECUTE) console.log(`\n(DRY RUN — añade --execute para ejecutar de verdad)`);
+  console.log(`Grupos procesados: ${groups.length}`);
+  console.log(`Carreras fusionadas: ${totalMerged}`);
+  if (totalErrors > 0) console.log(`Errores: ${totalErrors}`);
+
+  await client.mutation(api.dataSources.systemLogAutoMergeRun, {
+    groupsProcessed: groups.length,
+    totalMerged,
+    totalErrors,
+    details: runLog,
+  });
+  console.log("\n✅ Resumen persistido en autoMergeRuns (sendIngestSummaryEmail lo incluirá en el email nocturno)");
 }
 
 main().catch((e) => {

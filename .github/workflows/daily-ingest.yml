@@ -159,14 +159,36 @@ jobs:
             npm run ingest:to-convex 2>&1 | tail -30 || echo "⚠️  to-convex failed"
 
       # ------------------------------------------------------------------
-      # 10/10 Deep Extract IA — enriquece carreras con officialUrl.
+      # 9.5/11 Auto-merge de duplicados (2026-09-21) — se ejecuta justo tras
+      # subir todas las fuentes y ANTES de deep-extract/geocoding a propósito:
+      # el criterio "conservar la carrera con más campos" debe comparar datos
+      # que vienen directamente de los scrapers, sin que el enriquecimiento
+      # posterior sesgue la decisión hacia la carrera más nueva. Reutiliza
+      # systemMergeDuplicates (migra referencias de usuario antes de borrar).
+      # Sin confirmación humana — a diferencia de fix-cross-source-duplicates.ts
+      # (uso manual, dry-run/--execute), este script SIEMPRE ejecuta. Persiste
+      # el resumen en autoMergeRuns para que el email de resumen lo incluya.
+      # continue-on-error: un fallo aquí no debe tumbar deep-extract/geocoding.
+      # ------------------------------------------------------------------
+
+      - name: 9.5/11 Auto-fusionar duplicados detectados (exact+structural+fuzzy)
+        env:
+          NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+        run: |
+          echo "=== Auto-merge de duplicados (post-ingest) ==="
+          npx tsx scripts/auto-merge-duplicates.ts 2>&1 | tail -60 \
+            || echo "⚠️  Auto-merge falló, continuing"
+        continue-on-error: true
+
+      # ------------------------------------------------------------------
+      # 10/11 Deep Extract IA — enriquece carreras con officialUrl.
       # Modo priority: procesa primero las que NO tienen extractedAt,
       # luego las que les faltan longDescription/altimetryData/raceFormats.
       # --limit=30 procesa 30 carreras por noche (cubre 375 en ~13 días).
       # Si los secrets de IA no están, falla gracefully y sigue.
       # ------------------------------------------------------------------
 
-      - name: 10/10 Deep Extract IA (MiniMax M3, 30 carreras prioritarias)
+      - name: 10/11 Deep Extract IA (MiniMax M3, 30 carreras prioritarias)
         env:
           NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

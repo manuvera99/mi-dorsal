@@ -233,5 +233,86 @@ check(
   fuzzyDistanceVetoResult === null,
 );
 
+// --- findExistingMatch: tolerancia de fecha ±1 día (fix 2026-09-20) ---
+// findExistingMatch en sí NO compara fechas para structural/fuzzy — depende
+// de que el pool ya incluya las carreras vecinas (eso lo hace el CALLER:
+// convex/races.ts systemUpsert/adminFindDuplicates y
+// scripts/auto-merge-duplicates.ts, todos con su propio neighborDates()).
+// Estos checks simulan exactamente ese patrón: el candidato tiene
+// startDate=X, y el pool contiene una carrera existente con startDate=X-1
+// o X+1 (como si el caller ya hubiera cargado los 3 días vecinos).
+
+// structural tolera 1 día de diferencia (pool ya incluye el vecino)
+const poolStructuralDateTolerance: MatchCandidate[] = [
+  {
+    name: "Media Marató de Xàtiva",
+    startDate: "2026-10-03", // 1 día antes que el candidato
+    scraperAdapter: "correbirras",
+    province: "valencia",
+    locality: "Xàtiva",
+    distanceKm: 21.1,
+  },
+];
+const structuralDateToleranceResult = findExistingMatch(
+  {
+    name: "21K Xàtiva",
+    startDate: "2026-10-04",
+    scraperAdapter: "sportmaniacs",
+    province: "valencia",
+    locality: "Xàtiva",
+    distanceKm: 21.05,
+  },
+  poolStructuralDateTolerance,
+);
+check(
+  "findExistingMatch detecta structural aunque la fecha difiera 1 día (pool con vecino, fix 2026-09-20 — ej. real: XXIII Carrera MTB Sierra de Noez, 2026-10-11 vs 2026-10-10)",
+  structuralDateToleranceResult?.reason === "structural",
+);
+
+// fuzzy tolera 1 día de diferencia (pool ya incluye el vecino)
+const poolFuzzyDateTolerance: MatchCandidate[] = [
+  {
+    name: "Trail Ultra Helike Villena",
+    startDate: "2026-05-10", // 1 día después que el candidato
+    scraperAdapter: "itra",
+    province: "alicante",
+  },
+];
+const fuzzyDateToleranceResult = findExistingMatch(
+  {
+    name: "Ultra Helike de Villena",
+    startDate: "2026-05-09",
+    scraperAdapter: "fedme",
+    province: "alicante",
+  },
+  poolFuzzyDateTolerance,
+);
+check(
+  "findExistingMatch detecta fuzzy aunque la fecha difiera 1 día (pool con vecino, fix 2026-09-20)",
+  fuzzyDateToleranceResult?.reason === "fuzzy",
+);
+
+// exact NO tolera diferencia de fecha (a propósito, sin cambios) — aunque el
+// pool incluya la carrera vecina de 1 día, exact solo debe activarse con
+// fecha idéntica; en este caso debe caer a fuzzy (mismo nombre normalizado
+// exacto = Jaccard 1.0 >= threshold), nunca a "exact".
+const poolExactNoDateTolerance: MatchCandidate[] = [
+  {
+    name: "Cross de Carrús",
+    startDate: "2026-11-16", // 1 día después que el candidato
+    scraperAdapter: "rfea",
+    province: "alicante",
+    distanceKm: 8,
+  },
+];
+const exactNoDateToleranceResult = findExistingMatch(
+  { name: "Cross de Carrus", startDate: "2026-11-15", scraperAdapter: "rfea", province: "alicante", distanceKm: 8 },
+  poolExactNoDateTolerance,
+);
+check(
+  "findExistingMatch NO usa exact si la fecha difiere 1 día, aunque el pool incluya la carrera vecina (exact exige fecha idéntica a propósito, sin cambios 2026-09-20)",
+  exactNoDateToleranceResult !== null && exactNoDateToleranceResult.reason !== "exact",
+);
+
 console.log(`\n${pass} OK, ${fail} fail`);
 process.exit(fail > 0 ? 1 : 0);

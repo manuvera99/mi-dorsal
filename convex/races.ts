@@ -1573,16 +1573,31 @@ export const adminFindDuplicates = query({
         byStructural.get(k)!.push(r);
       }
     }
+    // Bug real encontrado 2026-09-21 al verificar el fix de ±1 día contra
+    // producción: el check "¿el bucket tiene >=2 fuentes?" se hacía sobre
+    // TODO el bucket agregado, no sobre el PAR que se compara — con buckets
+    // de 1 sola fecha exacta esto ya era un riesgo latente, pero al ampliar
+    // a ±1 día una carrera de una fecha vecina (de otra fuente) "contamina"
+    // el conteo de fuentes del bucket y hace pasar pares 100% same-source
+    // (ej. real: "Marcha Nórdica Cabezo de Torres" y "VII 10KBZO Cabezo de
+    // Torres", ambas de correbirras, se fusionaban porque el bucket incluía
+    // también una carrera de alcanzatumeta de un día vecino). Además, al
+    // insertar cada carrera en sus 3 buckets vecinos, dos carreras que
+    // comparten bucket pueden diferir hasta 2 días reales (A en día 1, B en
+    // día 3, ambas caen en el bucket "día 2") — más de la tolerancia ±1 día
+    // pretendida. Se corrigen ambos moviendo las 2 comprobaciones al nivel
+    // del PAR en el pairwise, en vez de depender de agregados del bucket.
+    const daysBetween = (d1: string, d2: string) =>
+      Math.abs(new Date(d1 + "T00:00:00Z").getTime() - new Date(d2 + "T00:00:00Z").getTime()) / 86400000;
     for (const [, list] of byStructural) {
       if (list.length < 2) continue;
-      // Dedupe de fuente: si todas son del mismo source, el detector 1 ya las cogió
-      const sources = new Set(list.map((r) => r.scraperAdapter ?? "manual"));
-      if (sources.size < 2) continue;
-      // Pairwise con filtro de locality y distance exacta
+      // Pairwise: fuente distinta + fecha real ±1 día + locality + distancia exacta
       for (let i = 0; i < list.length; i++) {
         for (let j = i + 1; j < list.length; j++) {
           const a = list[i];
           const b = list[j];
+          if ((a.scraperAdapter ?? "manual") === (b.scraperAdapter ?? "manual")) continue;
+          if (!a.startDate || !b.startDate || daysBetween(a.startDate, b.startDate) > 1) continue;
           if (!localitiesCompatible(a.locality, b.locality)) continue;
           if (Math.abs(a.distanceKm - b.distanceKm) > 0.1) continue;
           addGroup(
@@ -1614,6 +1629,11 @@ export const adminFindDuplicates = query({
         for (let j = i + 1; j < list.length; j++) {
           const a = tokensList[i];
           const b = tokensList[j];
+          // Fix 2026-09-21 (mismo motivo que Detector 2): filtro de fecha
+          // real por PAR, no por bucket agregado — al insertar cada carrera
+          // en sus 3 buckets vecinos, 2 carreras del mismo bucket pueden
+          // diferir hasta 2 días reales, más de la tolerancia ±1 pretendida.
+          if (!a.r.startDate || !b.r.startDate || daysBetween(a.r.startDate, b.r.startDate) > 1) continue;
           const sim = jaccard(a.t, b.t);
           if (sim >= similarityThreshold) {
             addGroup(

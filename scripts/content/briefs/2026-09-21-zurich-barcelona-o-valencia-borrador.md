@@ -266,11 +266,21 @@ Como @ideador / @editor-seo / @redactor-blog son agentes que tienes que abrir tu
 3. Preparar el brief con keywords validadas y enlaces reales ✓ (este archivo)
 4. Commit + push del brief ✓
 
-**Tu trabajo**:
-1. Lunes por la manana, abre `mavis session --agent ideador` (o `@ideador` desde el orchestrator)
-2. Elige OPCION A, B o C (recomiendo C si tienes 2h libres)
-3. Pega el prompt correspondiente
-4. Sigue la cadena ideador → editor-seo → redactor-blog
-5. Editas y apruebas el borrador
-6. Publicas con `pnpm content:publish scripts/content/drafts/<archivo>.md --publish`
-7. Mides KPIs en 30 dias
+**Tu trabajo (lunes 21 sep, ~5 min para arrancar)**:
+
+```bash
+# 1. Abre el agente ideador (esto lo haces tu en tu terminal)
+mavis session --agent ideador
+
+# 2. Pega el bloque OPCION A (Zurich Barcelona) que esta mas abajo
+# 3. Sigue la cadena:
+#    - @ideador → 5-10 ideas (30s)
+#    - @editor-seo → 1 brief optimizado (1 min)
+#    - tu eliges angulo
+#    - @redactor-blog → borrador 1000-1500 palabras (2 min)
+#    - tu lees + editas + apruebas (~10 min)
+# 4. Publicas:
+pnpm content:publish scripts/content/drafts/<archivo>.md --publish
+
+# 5. Repites lo mismo con Marathon Valencia la semana 2 (28 sep)
+```

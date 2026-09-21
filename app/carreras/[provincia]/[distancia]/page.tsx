@@ -15,31 +15,13 @@ import {
   ProvinceHubClient,
   type ProvinceHubRace,
 } from "@/components/hubs/province-hub-client";
-import { provinceLabels } from "@/convex/races";
+import { provinceLabels, isProvinceSlug, isDistanceSlug, distanceLabels } from "@/lib/seo/province-labels";
 
 export const revalidate = 3600;
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://mi-dorsal.com";
 
-const VALID_SLUGS = ["5k", "10k", "media-maraton", "maraton", "trail", "ultra"] as const;
-type DistanceSlug = (typeof VALID_SLUGS)[number];
-
-function isDistanceSlug(k: string): k is DistanceSlug {
-  return (VALID_SLUGS as readonly string[]).includes(k);
-}
-
-function isProvinceKey(k: string): k is keyof typeof provinceLabels {
-  return Object.prototype.hasOwnProperty.call(provinceLabels, k);
-}
-
-const SLUG_TO_LABEL: Record<DistanceSlug, string> = {
-  "5k": "5K",
-  "10k": "10K",
-  "media-maraton": "Media maratón",
-  maraton: "Maratón",
-  trail: "Trail",
-  ultra: "Ultramaratón",
-};
+const SLUG_TO_LABEL = distanceLabels;
 
 export async function generateMetadata({
   params,
@@ -47,7 +29,7 @@ export async function generateMetadata({
   params: Promise<{ provincia: string; distancia: string }>;
 }): Promise<Metadata> {
   const { provincia, distancia } = await params;
-  if (!isProvinceKey(provincia) || !isDistanceSlug(distancia)) {
+  if (!isProvinceSlug(provincia) || !isDistanceSlug(distancia)) {
     return {
       title: "Combinación no encontrada",
       robots: { index: false, follow: true },
@@ -93,7 +75,7 @@ export default async function ProvinceDistanceHubPage({
   params: Promise<{ provincia: string; distancia: string }>;
 }) {
   const { provincia, distancia } = await params;
-  if (!isProvinceKey(provincia) || !isDistanceSlug(distancia)) notFound();
+  if (!isProvinceSlug(provincia) || !isDistanceSlug(distancia)) notFound();
 
   const provinceLabel = provinceLabels[provincia];
   const distanceLabel = SLUG_TO_LABEL[distancia];

@@ -16,7 +16,7 @@ import {
   ProvinceHubClient,
   type ProvinceHubRace,
 } from "@/components/hubs/province-hub-client";
-import { provinceLabels } from "@/convex/races";
+import { provinceLabels, isProvinceSlug } from "@/lib/seo/province-labels";
 
 // Cache estático corto (1h): re-render barato si Convex cambia carreras.
 export const revalidate = 3600;
@@ -32,17 +32,13 @@ interface ProvinceHubData {
   nextDate?: string;
 }
 
-function isProvinceKey(k: string): k is keyof typeof provinceLabels {
-  return Object.prototype.hasOwnProperty.call(provinceLabels, k);
-}
-
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ provincia: string }>;
 }): Promise<Metadata> {
   const { provincia } = await params;
-  if (!isProvinceKey(provincia)) {
+  if (!isProvinceSlug(provincia)) {
     return {
       title: "Provincia no encontrada",
       robots: { index: false, follow: true },
@@ -108,7 +104,7 @@ export default async function ProvinceHubPage({
   params: Promise<{ provincia: string }>;
 }) {
   const { provincia } = await params;
-  if (!isProvinceKey(provincia)) notFound();
+  if (!isProvinceSlug(provincia)) notFound();
 
   const label = provinceLabels[provincia];
   const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);

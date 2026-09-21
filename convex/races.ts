@@ -2059,7 +2059,13 @@ const PROVINCE_LABELS: Record<string, string> = {
   "melilla": "Melilla",
 };
 
-export const provinceLabels = PROVINCE_LABELS;
+/**
+ * Re-export eliminado: `provinceLabels` ahora vive en
+ * `@/lib/seo/province-labels` para que pueda importarse desde
+ * app/ sin arrastrar el handler de Convex al bundle de Next.
+ * `PROVINCE_LABELS` (const interna) sigue siendo necesario para
+ * `listProvinceHubsForSeo`.
+ */
 
 /**
  * Lista todas las provincias con al menos 1 carrera publicada,

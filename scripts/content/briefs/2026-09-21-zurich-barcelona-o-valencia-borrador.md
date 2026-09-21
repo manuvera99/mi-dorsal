@@ -114,16 +114,16 @@ Anchor text natural:
 
 ---
 
-## OPCION C — Hacer las dos (post piloto doble)
+## OPCION C — Hacer las dos (post piloto doble) — ELEGIDA
 
-Si te da tiempo y quieres validar ambas keywords en el mismo sprint, estrategia recomendada:
+**Confirmado por el usuario el 21 sep 2026**. Estrategia recomendada:
 
-- **Semana 1-2**: Zurich Marato Barcelona (post A)
-- **Semana 3-4**: Marathon Valencia (post B)
+- **Semana 1 (lun 21 - vie 25 sep)**: Zurich Marato Barcelona (post A)
+- **Semana 2 (lun 28 sep - vie 2 oct)**: Marathon Valencia (post B)
 
-Ambos comparten 4 internal links (cross-linkeandose), lo que refuerza SEO.
+Ambos comparten 4 internal links (cross-linkeandose), lo que refuerza SEO y da senal a Google de que tienes contenido serio sobre maratones espanyoles.
 
-**Coste**: 2 sprints de agente + tu edicion (~2h total).
+**Coste**: 2 sprints de agente + tu edicion (~2h total entre los dos).
 
 ---
 
@@ -227,10 +227,33 @@ NO publiques. Yo apruebo y publico con pnpm content:publish.
 
 **Si tras 30 dias el post no tiene al menos 50 impresiones en GSC**, parar la estrategia y pivotar.
 
-## Calendario
+## Calendario (Opcion C confirmada)
 
-- **Opcion A o B**: 1 sprint (lunes-viernes). Post listo el viernes.
-- **Opcion C**: 2 sprints. Primer post al final de semana 1, segundo al final de semana 3.
+### Sprint 1 — Zurich Marato Barcelona
+
+- **Lunes 21 sep**: prompt al @ideador (pegar bloque OPCION A mas abajo)
+- **Martes 22 sep**: @editor-seo convierte ideas en brief
+- **Miercoles 23 sep**: tu apruebas angulo, @redactor-blog escribe borrador
+- **Jueves 24 sep**: tu editas y apruebas
+- **Viernes 25 sep**: publicacion con `pnpm content:publish`
+- **Sabado 26 sep**: verificar que aparece en sitemap y en GSC
+- **Miercoles 21 oct (30 dias)**: primer check de KPIs (minimo 50 impresiones)
+
+### Sprint 2 — Marathon Valencia
+
+- **Lunes 28 sep**: prompt al @ideador (pegar bloque OPCION B mas abajo)
+- **Martes 29 sep**: @editor-seo convierte en brief
+- **Miercoles 30 sep**: tu apruebas angulo, @redactor-blog escribe borrador
+- **Jueves 1 oct**: tu editas y apruebas
+- **Viernes 2 oct**: publicacion
+- **Martes 3 nov (30 dias)**: primer check de KPIs
+
+### Checkpoint estrategico
+
+**Despues del post #2 (2 noviembre)**:
+- Si ambos posts tienen >50 impresiones en GSC y CTR >3% → **escalar**: 1 post/semana del Tier 2 y Tier 3 del brief 2026-09-20.
+- Si solo uno funciona → doblar el angulo ganador, descartar el otro.
+- Si ninguno funciona → **parar la estrategia** y volver al plan original (no SEO agresivo, foco en newsletter + Strava + clubs).
 
 ---
 

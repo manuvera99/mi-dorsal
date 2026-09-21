@@ -79,6 +79,11 @@ export function Hero() {
             <span style={{ textDecoration: "underline", textDecorationColor: "rgba(255,255,255,0.45)", textUnderlineOffset: "8px", textDecorationThickness: "2px" }}>
               de principio a fin.
             </span>
+            <span className="sr-only">
+              Calendario de carreras populares en España, predicciones de tiempo
+              oficiales, diploma PDF al cruzar la meta y notificaciones de fotos
+              post-carrera.
+            </span>
           </h1>
 
           <p className="text-lg md:text-xl mb-4 leading-relaxed" style={{ color: "rgba(255,255,255,0.92)" }}>

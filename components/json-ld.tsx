@@ -131,6 +131,44 @@ export function faqJsonLd(items: Array<{ question: string; answer: string }>) {
 }
 
 /**
+ * ItemList para hubs SEO programáticos:
+ *   /carreras/{provincia}, /carreras/distancia/{distancia},
+ *   /carreras/{provincia}/{distancia}.
+ * Google usa ItemList en hubs como señal de que la página lista elementos
+ * concretos (no es thin content), lo que ayuda a posicionamiento.
+ *
+ * IMPORTANTE: pre-serializar con JSON.stringify en build. Nunca construir
+ * objetos en runtime dentro del componente.
+ */
+export function itemListJsonLd(
+  name: string,
+  description: string,
+  url: string,
+  items: Array<{
+    name: string;
+    url: string;
+    position: number;
+    datePublished?: string;
+  }>,
+) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name,
+    description,
+    url,
+    numberOfItems: items.length,
+    itemListElement: items.map((it) => ({
+      "@type": "ListItem",
+      position: it.position,
+      name: it.name,
+      url: it.url.startsWith("http") ? it.url : `${BASE_URL}${it.url}`,
+      ...(it.datePublished ? { datePublished: it.datePublished } : {}),
+    })),
+  };
+}
+
+/**
  * Event schema para una carrera.
  * Esto hace que la carrera pueda aparecer en Google Eventos, Google Maps,
  * y paneles de conocimiento de Google.

@@ -120,13 +120,30 @@ export default async function DistanceHubPage({
   if (!isDistanceSlug(distancia)) notFound();
 
   const label = SLUG_TO_LABEL[distancia];
-  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
-  const [hubs, races, provinceHubs] = await Promise.all([
-    convex.query(api.races.listDistanceHubsForSeo, {}).catch(() => []),
-    convex.query(api.races.listByDistanceForSeo, { slug: distancia }).catch(() => []),
-    convex.query(api.races.listProvinceHubsForSeo, {}).catch(() => []),
-  ]);
+  // Queries secuenciales (cada una con su propio ConvexHttpClient).
+  // Ver /carreras/provincia/[provincia]/page.tsx para el motivo.
+  let hubs: any[] = [];
+  let races: any[] = [];
+  let provinceHubs: any[] = [];
+  try {
+    hubs = await new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!).query(
+      api.races.listDistanceHubsForSeo,
+      {},
+    );
+  } catch {}
+  try {
+    races = await new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!).query(
+      api.races.listByDistanceForSeo,
+      { slug: distancia },
+    );
+  } catch {}
+  try {
+    provinceHubs = await new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!).query(
+      api.races.listProvinceHubsForSeo,
+      {},
+    );
+  } catch {}
 
   const hub = (hubs ?? []).find((h) => h.slug === distancia);
   const total = hub?.total ?? 0;

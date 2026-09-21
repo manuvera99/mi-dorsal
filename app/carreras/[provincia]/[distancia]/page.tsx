@@ -79,17 +79,23 @@ export default async function ProvinceDistanceHubPage({
 
   const provinceLabel = provinceLabels[provincia];
   const distanceLabel = SLUG_TO_LABEL[distancia];
-  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
-  const [races, provinceHubs] = await Promise.all([
-    convex
-      .query(api.races.listByProvinceDistanceForSeo, {
-        province: provincia,
-        distanceSlug: distancia,
-      })
-      .catch(() => []),
-    convex.query(api.races.listProvinceHubsForSeo, {}).catch(() => []),
-  ]);
+  // Queries secuenciales (cada una con su propio ConvexHttpClient).
+  // Ver /carreras/provincia/[provincia]/page.tsx para el motivo.
+  let races: any[] = [];
+  let provinceHubs: any[] = [];
+  try {
+    races = await new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!).query(
+      api.races.listByProvinceDistanceForSeo,
+      { province: provincia, distanceSlug: distancia },
+    );
+  } catch {}
+  try {
+    provinceHubs = await new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!).query(
+      api.races.listProvinceHubsForSeo,
+      {},
+    );
+  } catch {}
 
   if (!races || races.length < 3) notFound();
 

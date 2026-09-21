@@ -107,13 +107,33 @@ export default async function ProvinceHubPage({
   if (!isProvinceSlug(provincia)) notFound();
 
   const label = provinceLabels[provincia];
-  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
-  const [hubsAll, races, allHubsRaw] = await Promise.all([
-    convex.query(api.races.listProvinceHubsForSeo, {}).catch(() => []),
-    convex.query(api.races.listByProvinceForSeo, { province: provincia }).catch(() => []),
-    convex.query(api.races.listProvinceHubsForSeo, {}).catch(() => []),
-  ]);
+  // Queries secuenciales (cada una con su propio ConvexHttpClient):
+  // Promise.all con un único cliente compartido provocaba 500 en
+  // Vercel (probable race condition en el cliente HTTP / abort
+  // controllers). Mismo patrón que /carreras y /carreras/{slug}.
+  let hubsAll: any[] = [];
+  let races: any[] = [];
+  let allHubsRaw: any[] = [];
+  try {
+    hubsAll = await new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!).query(
+      api.races.listProvinceHubsForSeo,
+      {},
+    );
+  } catch {}
+  try {
+    races = await new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!).query(
+      api.races.listByProvinceForSeo,
+      { province: provincia },
+    );
+  } catch {}
+  try {
+    allHubsRaw = await new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!).query(
+      api.races.listProvinceHubsForSeo,
+      {},
+    );
+  } catch {}
+
   const hub = (hubsAll ?? []).find((h) => h.slug === provincia) ?? null;
   if (!hub || hub.total < 3) notFound();
 

@@ -1,5 +1,5 @@
-﻿// =============================================================================
-// mi-dorsal â€” Races queries y mutations
+// =============================================================================
+// mi-dorsal — Races queries y mutations
 // =============================================================================
 
 import { v } from "convex/values";
@@ -10,9 +10,9 @@ import { provinceValidator, raceTypeValidator, slugify, requireAdmin, validateRa
 import { normalizeName, tokenize, jaccard, localitiesCompatible, findExistingMatch, MatchCandidate } from "./duplicateMatching";
 
 /**
- * Distancias canÃ³nicas (alineadas con `lib/utils.ts` `DISTANCE_CATEGORY_LIST`).
- * Usadas como filtro de carreras â€” la API no recalcula categorÃ­as, las
- * carreras en sÃ­ no almacenan la categorÃ­a, se calcula on-the-fly.
+ * Distancias canónicas (alineadas con `lib/utils.ts` `DISTANCE_CATEGORY_LIST`).
+ * Usadas como filtro de carreras — la API no recalcula categorías, las
+ * carreras en sí no almacenan la categoría, se calcula on-the-fly.
  */
 const distanceCategoryValidator = v.union(
   v.literal("5k"),
@@ -24,8 +24,8 @@ const distanceCategoryValidator = v.union(
 );
 
 /**
- * Determina en quÃ© categorÃ­as de distancia cae una distancia dada en km.
- * Mismas reglas que `lib/utils.ts` `distanceToCategories` â€” duplicado
+ * Determina en qué categorías de distancia cae una distancia dada en km.
+ * Mismas reglas que `lib/utils.ts` `distanceToCategories` — duplicado
  * intencional para evitar que la capa Convex importe de `lib/`.
  */
 function distanceToCategories(distanceKm: number): string[] {
@@ -43,7 +43,7 @@ function distanceToCategories(distanceKm: number): string[] {
 /**
  * Igual que distanceToCategories, pero considerando TODAS las distancias
  * de una carrera: la principal (distanceKm) y cada raceFormats[].distanceKm.
- * AsÃ­, filtrar por "10K" encuentra tambiÃ©n una "Media MaratÃ³n" que tiene
+ * Así, filtrar por "10K" encuentra también una "Media Maratón" que tiene
  * un raceFormat de 10K, aunque su distanceKm principal sea 21.1.
  */
 function allDistanceCategories(race: {
@@ -60,7 +60,7 @@ function allDistanceCategories(race: {
 }
 
 /**
- * Lista carreras con filtros opcionales. Lectura pÃºblica.
+ * Lista carreras con filtros opcionales. Lectura pública.
  *
  * Filtros soportados:
  *  - province     : provincia exacta
@@ -68,13 +68,13 @@ function allDistanceCategories(race: {
  *  - month        : 1-12
  *  - search       : texto libre sobre name + locality
  *  - organizer    : match exacto del campo `organizer` (case-insensitive)
- *  - distanceCategories: array de categorÃ­as (5k/10k/15k/half_marathon/marathon/ultra).
- *                        Una carrera cae en una categorÃ­a si su distanceKm estÃ¡
- *                        en el rango de esa categorÃ­a. MÃºltiples categorÃ­as
+ *  - distanceCategories: array de categorías (5k/10k/15k/half_marathon/marathon/ultra).
+ *                        Una carrera cae en una categoría si su distanceKm está
+ *                        en el rango de esa categoría. Múltiples categorías
  *                        = OR.
  *  - fromDate     : "YYYY-MM-DD". Si se pasa, solo se devuelven carreras con
- *                    startDate >= fromDate. Lo envÃ­a el cliente con la fecha
- *                    local del usuario para evitar lÃ­os de timezone con UTC.
+ *                    startDate >= fromDate. Lo envía el cliente con la fecha
+ *                    local del usuario para evitar líos de timezone con UTC.
  *                    Carreras sin startDate se excluyen cuando hay fromDate.
  *  - limit        : cortar a N
  */
@@ -102,7 +102,7 @@ export const list = query({
     let filtered = all;
     if (args.fromDate) {
       // Solo carreras con fecha conocida y >= fromDate (fecha local del cliente).
-      // Carreras sin startDate se quedan fuera del catÃ¡logo "futuro".
+      // Carreras sin startDate se quedan fuera del catálogo "futuro".
       filtered = filtered.filter(
         (r) => typeof r.startDate === "string" && r.startDate >= args.fromDate!,
       );
@@ -155,9 +155,9 @@ export const list = query({
 });
 
 /**
- * Lista todas las organizadoras Ãºnicas con conteo de carreras.
+ * Lista todas las organizadoras únicas con conteo de carreras.
  * Usado para popular el combobox de filtro de organizadora.
- * Lectura pÃºblica.
+ * Lectura pública.
  */
 export const listOrganizers = query({
   handler: async (ctx) => {
@@ -181,7 +181,7 @@ export const listOrganizers = query({
 });
 
 /**
- * Carrera por slug. Lectura pÃºblica.
+ * Carrera por slug. Lectura pública.
  */
 export const getBySlug = query({
   args: { slug: v.string() },
@@ -191,7 +191,7 @@ export const getBySlug = query({
       .withIndex("by_slug", (q) => q.eq("slug", slug))
       .collect();
     if (matches.length === 0) return null;
-    // Si hay duplicados (deberÃ­a estar limpio tras la migraciÃ³n), coge el mÃ¡s reciente
+    // Si hay duplicados (debería estar limpio tras la migración), coge el más reciente
     if (matches.length > 1) {
       return matches.sort((a, b) => (b._creationTime ?? 0) - (a._creationTime ?? 0))[0];
     }
@@ -229,7 +229,7 @@ export const getFeatured = query({
 });
 
 /**
- * Crea una carrera. Solo admin (en producciÃ³n, con role check).
+ * Crea una carrera. Solo admin (en producción, con role check).
  */
 export const create = mutation({
   args: {
@@ -377,7 +377,7 @@ export const adminUpdate = mutation({
   args: {
     id: v.id("races"),
     patch: v.object({
-      // BÃ¡sicos
+      // Básicos
       name: v.optional(v.string()),
       locality: v.optional(v.string()),
       province: v.optional(provinceValidator),
@@ -407,7 +407,7 @@ export const adminUpdate = mutation({
       socialFacebook: v.optional(v.string()),
       socialTwitter: v.optional(v.string()),
       socialYoutube: v.optional(v.string()),
-      // Precio / inscripciÃ³n
+      // Precio / inscripción
       priceEur: v.optional(v.number()),
       priceIncludes: v.optional(v.string()),
       registrationOpenDate: v.optional(v.string()),
@@ -415,7 +415,7 @@ export const adminUpdate = mutation({
       maxParticipants: v.optional(v.number()),
       soldOut: v.optional(v.boolean()),
       chipType: v.optional(v.union(v.literal("manual"), v.literal("chip"), v.literal("disposable_chip"))),
-      // CategorÃ­as
+      // Categorías
       categories: v.optional(v.array(v.object({
         name: v.string(),
         gender: v.optional(v.union(v.literal("M"), v.literal("F"), v.literal("mixto"))),
@@ -505,9 +505,9 @@ export const adminUpdate = mutation({
     if (!existing) throw new Error("Race not found");
 
     // 2026-09-17: validar coherencia geo con el estado efectivo (patch + existing).
-    // Bug que motivÃ³ esto: el deep-extract de IA asignÃ³ coords de Valencia a la
+    // Bug que motivó esto: el deep-extract de IA asignó coords de Valencia a la
     // carrera FEDME "Gomera Paradise Trail" (provincia s.c. tenerife). El check
-    // aquÃ­ evita que un admin (o un script llamando adminUpdate con un patch
+    // aquí evita que un admin (o un script llamando adminUpdate con un patch
     // contaminado) pueda persistir esa incoherencia sin enterarse.
     const effectiveLat  = (patch as any).latitude  ?? existing.latitude;
     const effectiveLng  = (patch as any).longitude ?? existing.longitude;
@@ -520,7 +520,7 @@ export const adminUpdate = mutation({
       const baseSlug = slugify(patch.name);
       let finalSlug = baseSlug;
       let suffix = 2;
-      // Comprobar colisiÃ³n: si ya hay otra carrera con ese slug, aÃ±adir sufijo
+      // Comprobar colisión: si ya hay otra carrera con ese slug, añadir sufijo
       while (true) {
         const conflict = await ctx.db
           .query("races")
@@ -534,10 +534,10 @@ export const adminUpdate = mutation({
       update.slug = finalSlug;
     }
 
-    // Fotos disponibles: solo se avisa en la transiciÃ³n vacÃ­o â†’ con valor,
+    // Fotos disponibles: solo se avisa en la transición vacío → con valor,
     // para no reenviar el email cada vez que el admin retoca la URL ya
     // publicada. Se comprueba ANTES del patch, comparando contra el valor
-    // que existÃ­a en BD (no contra `patch.photosUrl`, que solo dice quÃ©
+    // que existía en BD (no contra `patch.photosUrl`, que solo dice qué
     // vino en esta llamada).
     const isNewPhotosUrl =
       typeof patch.photosUrl === "string" &&
@@ -575,7 +575,7 @@ export const systemUpdate = mutation({
     // asignan coords inconsistentes con la provincia declarada. NOTA:
     // systemUpdate es usado por scripts CLI (deep-extract-all) y API
     // routes; NO tiene requireAdmin. Sin este check, un deep-extract con
-    // fallo de IA puede contaminar el catÃ¡logo sin levantar alarma.
+    // fallo de IA puede contaminar el catálogo sin levantar alarma.
     const effectiveLat  = (patch as any)?.latitude  ?? existing.latitude;
     const effectiveLng  = (patch as any)?.longitude ?? existing.longitude;
     const effectiveProv = (patch as any)?.province  ?? existing.province;
@@ -589,19 +589,19 @@ export const systemUpdate = mutation({
 /**
  * systemClearGeo: borra latitude/longitude de una carrera.
  *
- * Por quÃ© existe: Convex solo acepta `undefined` (no `null`) para borrar
- * campos opcionales vÃ­a `db.patch`, y `undefined` no se puede enviar por
+ * Por qué existe: Convex solo acepta `undefined` (no `null`) para borrar
+ * campos opcionales vía `db.patch`, y `undefined` no se puede enviar por
  * la API HTTP/JSON. Este wrapper permite a los scripts CLI limpiar las
- * coords de carreras mal geocodificadas sin tener que aÃ±adir un campo
+ * coords de carreras mal geocodificadas sin tener que añadir un campo
  * booleano "tiene coords" en el schema.
  *
- * ImplementaciÃ³n: usa `db.replace` con el documento existente menos los
+ * Implementación: usa `db.replace` con el documento existente menos los
  * campos que queremos borrar (en vez de `db.patch` con undefined, que
- * tambiÃ©n funciona pero es menos explÃ­cito y mÃ¡s frÃ¡gil ante cambios
+ * también funciona pero es menos explícito y más frágil ante cambios
  * del compilador TS).
  *
- * 2026-09-17: aÃ±adido para limpieza masiva de carreras con coords basura
- * detectadas en la auditorÃ­a (ver scripts/temp/audit-coords.cjs).
+ * 2026-09-17: añadido para limpieza masiva de carreras con coords basura
+ * detectadas en la auditoría (ver scripts/temp/audit-coords.cjs).
  */
 export const systemClearGeo = mutation({
   args: {
@@ -618,7 +618,7 @@ export const systemClearGeo = mutation({
 });
 
 /**
- * systemListAll: lista TODAS las carreras con sus campos bÃ¡sicos.
+ * systemListAll: lista TODAS las carreras con sus campos básicos.
  * Usado por scripts CLI (deep-extract-all). No devuelve datos sensibles.
  */
 export const systemListAll = query({
@@ -688,16 +688,16 @@ export const systemListAll = query({
  * systemUpsert: find-or-create idempotente.
  *
  * Busca una carrera existente por (en orden de prioridad):
- *   1. officialUrl (si es especÃ­fico, no homepage)
+ *   1. officialUrl (si es específico, no homepage)
  *   2. nombre normalizado + startDate + locality
  *   3. nombre normalizado + startDate
  *
- * Si la encuentra, actualiza los campos vacÃ­os con los nuevos, y registra
+ * Si la encuentra, actualiza los campos vacíos con los nuevos, y registra
  * la fuente en additionalDataSourceIds (sin pisar dataSourceId actual).
  *
  * Si no la encuentra, crea una nueva con slug auto-generado (sufijo -2 si choca).
  *
- * Devuelve { id, action: "created" | "updated" } para que el caller sepa quÃ© pasÃ³.
+ * Devuelve { id, action: "created" | "updated" } para que el caller sepa qué pasó.
  *
  * Usado por scripts de ingest para garantizar idempotencia.
  */
@@ -709,7 +709,7 @@ export const systemUpsert = mutation({
     locality: v.optional(v.string()),
     officialUrl: v.optional(v.string()),
     sourceUrl: v.optional(v.string()),
-    // Datos bÃ¡sicos
+    // Datos básicos
     province: v.optional(provinceValidator),
     distanceKm: v.optional(v.number()),
     elevationGainM: v.optional(v.number()),
@@ -739,7 +739,7 @@ export const systemUpsert = mutation({
     priceEur: v.optional(v.number()),
     contactEmail: v.optional(v.string()),
     contactPhone: v.optional(v.string()),
-    // AtribuciÃ³n
+    // Atribución
     scraperAdapter: v.optional(v.string()),
     dataSourceId: v.optional(v.id("dataSources")),
     // Cache del adapter de chiplevante (empresa + carrera_id internos)
@@ -748,27 +748,27 @@ export const systemUpsert = mutation({
   },
   handler: async (ctx, args) => {
     // Defensa en profundidad contra ingests que traen carreras de fuera de
-    // EspaÃ±a: rechazamos la escritura si el caller aporta lat/lng y caen
-    // fuera del bounding box de EspaÃ±a. Encontramos 212 carreras de
-    // Guatemala/MÃ©xico/Polonia/etc. en el catÃ¡logo (2026-09-12) porque el
-    // filtro de paÃ­s vivÃ­a SOLO en cada script de ingest individual (p.ej.
-    // ingest-sportmaniacs-2026.ts, antes de 27e866d) â€” un script nuevo o mal
-    // configurado podÃ­a colarlas sin que nada en el backend lo impidiera.
+    // España: rechazamos la escritura si el caller aporta lat/lng y caen
+    // fuera del bounding box de España. Encontramos 212 carreras de
+    // Guatemala/México/Polonia/etc. en el catálogo (2026-09-12) porque el
+    // filtro de país vivía SOLO en cada script de ingest individual (p.ej.
+    // ingest-sportmaniacs-2026.ts, antes de 27e866d) — un script nuevo o mal
+    // configurado podía colarlas sin que nada en el backend lo impidiera.
     // Mismo bbox que scripts/audit-races-by-country.ts. Solo aplica cuando
     // hay geo: los ingests sin lat/lng (RFEA, FEDME...) siguen dependiendo
-    // de su propio filtro por paÃ­s, que ya es correcto.
+    // de su propio filtro por país, que ya es correcto.
     //
     // 2026-09-17: ampliado con `validateRaceGeo` (ver convex/_helpers.ts)
-    // que ademÃ¡s valida coherencia provincia â†” coords. Caso real: FEDME
+    // que además valida coherencia provincia ↔ coords. Caso real: FEDME
     // Gomera con lat/lng de la sede de la FEDME en Valencia (39.46, -0.40)
-    // â€” el bbox EspaÃ±a la daba por buena, pero no es coherente con
+    // — el bbox España la daba por buena, pero no es coherente con
     // "santa cruz de tenerife". El nuevo check por provincia lo rechaza.
     if (typeof args.latitude === "number" && typeof args.longitude === "number") {
       validateRaceGeo(args.latitude, args.longitude, args.province ?? null, args.name);
     }
 
-    // Auto-asignaciÃ³n de scraperAdapter segÃºn el officialUrl.
-    // Si el caller no pasÃ³ scraperAdapter y la URL es de un cronometrador conocido,
+    // Auto-asignación de scraperAdapter según el officialUrl.
+    // Si el caller no pasó scraperAdapter y la URL es de un cronometrador conocido,
     // lo inferimos. Esto es seguro porque los adapters son no-op para URLs que no son suyas.
     if (!args.scraperAdapter && args.officialUrl) {
       const u = args.officialUrl.toLowerCase();
@@ -779,7 +779,7 @@ export const systemUpsert = mutation({
       } else if (u.includes("cruzandolameta.es")) {
         args.scraperAdapter = "cruzandolameta";
       }
-      // AquÃ­ se pueden aÃ±adir mÃ¡s auto-asignaciones en el futuro (dorsalchip, etc.)
+      // Aquí se pueden añadir más auto-asignaciones en el futuro (dorsalchip, etc.)
     }
 
     const norm = (s: string | undefined) =>
@@ -796,13 +796,13 @@ export const systemUpsert = mutation({
       }
     };
 
-    // 1. Buscar por officialUrl especÃ­fico
-    // Fix 2026-09-12: antes hacÃ­a .collect() de TODA la tabla races (vÃ­a un
-    // Ã­ndice "by_data_source" usado solo como truco, con filtro real en
-    // memoria) en cada llamada â€” con ~2800 carreras (~3 MB) y decenas de
+    // 1. Buscar por officialUrl específico
+    // Fix 2026-09-12: antes hacía .collect() de TODA la tabla races (vía un
+    // índice "by_data_source" usado solo como truco, con filtro real en
+    // memoria) en cada llamada — con ~2800 carreras (~3 MB) y decenas de
     // upserts por noche desde el cron de ingesta, esto quemaba varios GB/mes
-    // de database bandwidth solo en esta funciÃ³n (el plan Starter incluye
-    // 1 GB/mes). Ahora usa el Ã­ndice real by_official_url â€” coste O(matches),
+    // de database bandwidth solo en esta función (el plan Starter incluye
+    // 1 GB/mes). Ahora usa el índice real by_official_url — coste O(matches),
     // no O(tabla completa).
     let existing: Doc<"races"> | null = null;
     if (args.officialUrl && !isHomepageUrl(args.officialUrl)) {
@@ -811,36 +811,36 @@ export const systemUpsert = mutation({
         .withIndex("by_official_url", (q) => q.eq("officialUrl", args.officialUrl))
         .collect();
       // Si varias carreras comparten este officialUrl, es la URL de un
-      // organizador/portal (no de una carrera especÃ­fica) â€” no es una seÃ±al
+      // organizador/portal (no de una carrera específica) — no es una señal
       // de identidad fiable. Se descarta y se deja caer a los pasos
-      // siguientes (nombre+fecha+localidad â†’ structural â†’ fuzzy), que sÃ­
+      // siguientes (nombre+fecha+localidad → structural → fuzzy), que sí
       // usan el nombre real para diferenciar. Verificado 2026-09-14: URLs
       // como carreraspopularesalmeria.com son compartidas por 9 carreras
-      // reales distintas en producciÃ³n â€” antes de este fix, coger "la mÃ¡s
+      // reales distintas en producción — antes de este fix, coger "la más
       // antigua" bloqueaba que structural/fuzzy llegaran a intentarlo con
       // el nombre real, generando duplicados same-source cada noche.
       //
-      // Solo confiar en un Ãºnico match por officialUrl si viene de la MISMA
+      // Solo confiar en un único match por officialUrl si viene de la MISMA
       // fuente (probable re-ingest real del mismo scraper). Si es de una
-      // fuente distinta, es la primera colisiÃ³n de una URL de organizador
-      // compartida â€” no hay garantÃ­a de que sea la misma carrera, y
-      // confiar ciegamente en ella repetirÃ­a el mismo bug que las URLs con
-      // >1 match de arriba, solo retrasado hasta que llegue una 3Âª carrera
+      // fuente distinta, es la primera colisión de una URL de organizador
+      // compartida — no hay garantía de que sea la misma carrera, y
+      // confiar ciegamente en ella repetiría el mismo bug que las URLs con
+      // >1 match de arriba, solo retrasado hasta que llegue una 3ª carrera
       // con esa URL. Cae a los pasos siguientes (nombre+fecha/structural/
       // fuzzy) en ese caso, igual que con matches.length > 1.
       if (matches.length === 1 && (matches[0].scraperAdapter ?? "manual") === (args.scraperAdapter ?? "manual")) {
         existing = matches[0];
       } else if (matches.length > 0) {
         console.warn(
-          `[dup-officialUrl-shared] "${args.name}" (${args.scraperAdapter ?? "manual"}) â€” officialUrl ${args.officialUrl} compartido por ${matches.length} carrera(s) existente(s), no se usa como seÃ±al de identidad`,
+          `[dup-officialUrl-shared] "${args.name}" (${args.scraperAdapter ?? "manual"}) — officialUrl ${args.officialUrl} compartido por ${matches.length} carrera(s) existente(s), no se usa como señal de identidad`,
         );
       }
     }
 
     // 2. Buscar por nombre + fecha + localidad, y 3. por nombre + fecha (sin
     // localidad). dateMatches se reutiliza abajo en los pasos 4-5 (structural
-    // + fuzzy) para no lanzar una query adicional â€” sigue siendo el mismo
-    // Ã­ndice real by_date, acotado a esta fecha exacta, no toda la tabla.
+    // + fuzzy) para no lanzar una query adicional — sigue siendo el mismo
+    // índice real by_date, acotado a esta fecha exacta, no toda la tabla.
     let dateMatches: Doc<"races">[] = [];
     if (!existing && args.startDate) {
       const nameKey = norm(args.name);
@@ -861,24 +861,24 @@ export const systemUpsert = mutation({
     // una carrera nueva, comprobar si otra fuente ya describe la misma
     // carrera con un nombre distinto (misma fecha+provincia+distancia, o
     // nombre suficientemente similar). Mismo matching que ya usa el panel
-    // /admin/duplicates (adminFindDuplicates) â€” spec en
+    // /admin/duplicates (adminFindDuplicates) — spec en
     // docs/superpowers/specs/2026-09-12-prevenir-duplicados-ingest-design.md.
     //
-    // Fix 2026-09-20: el pool ya no es solo dateMatches (startDate exacto) â€”
-    // se amplÃ­a con startDate-1 y startDate+1. Causa raÃ­z verificada contra
-    // la BBDD real: la misma carrera reingestada con la fecha desviada 1 dÃ­a
+    // Fix 2026-09-20: el pool ya no es solo dateMatches (startDate exacto) —
+    // se amplía con startDate-1 y startDate+1. Causa raíz verificada contra
+    // la BBDD real: la misma carrera reingestada con la fecha desviada 1 día
     // (distinto scraper, error de parseo/zona horaria, o el organizador
-    // cambia el dÃ­a en su web) nunca caÃ­a en el mismo pool y se creaba como
-    // duplicado â€” ej. real "XXIII Carrera MTB Sierra de Noez" (mismo
+    // cambia el día en su web) nunca caía en el mismo pool y se creaba como
+    // duplicado — ej. real "XXIII Carrera MTB Sierra de Noez" (mismo
     // officialUrl, mismo scraperAdapter) con fechas 2026-10-11 vs 2026-10-10
-    // en 2 filas separadas. exact (pasos 1-3 arriba) NO se toca â€” sigue
-    // exigiendo fecha idÃ©ntica a propÃ³sito (mÃ¡xima confianza, es literalmente
-    // un re-ingest). Coste: 2 queries adicionales vÃ­a Ã­ndice real by_date
-    // (acotadas a 1 fecha cada una) â€” nunca .collect() de tabla completa.
+    // en 2 filas separadas. exact (pasos 1-3 arriba) NO se toca — sigue
+    // exigiendo fecha idéntica a propósito (máxima confianza, es literalmente
+    // un re-ingest). Coste: 2 queries adicionales vía índice real by_date
+    // (acotadas a 1 fecha cada una) — nunca .collect() de tabla completa.
     // matchReason: solo se rellena cuando el match viene de structural/fuzzy
-    // (pasos 4-5, probabilÃ­stico). null para exact/pasos 1-3 (alta confianza,
-    // ya existente antes de esta task) â€” se usa mÃ¡s abajo para excluir
-    // officialUrl del auto-relleno en el caso probabilÃ­stico.
+    // (pasos 4-5, probabilístico). null para exact/pasos 1-3 (alta confianza,
+    // ya existente antes de esta task) — se usa más abajo para excluir
+    // officialUrl del auto-relleno en el caso probabilístico.
     let matchReason: "structural" | "fuzzy" | null = null;
     if (!existing && args.startDate) {
       const d = new Date(args.startDate + "T00:00:00Z");
@@ -901,7 +901,7 @@ export const systemUpsert = mutation({
         const match = findExistingMatch(candidate, pool);
         if (match) {
           console.warn(
-            `[dup-match:${match.reason}] "${args.name}" (${args.scraperAdapter ?? "manual"}) â†’ matched existing ${match.race._id} "${match.race.name}" (${match.race.scraperAdapter ?? "manual"})`,
+            `[dup-match:${match.reason}] "${args.name}" (${args.scraperAdapter ?? "manual"}) → matched existing ${match.race._id} "${match.race.name}" (${match.race.scraperAdapter ?? "manual"})`,
           );
           existing = match.race;
           if (match.reason === "structural" || match.reason === "fuzzy") {
@@ -912,7 +912,7 @@ export const systemUpsert = mutation({
     }
 
     if (existing) {
-      // UPDATE: rellenar campos vacÃ­os, aÃ±adir dataSourceId a additional
+      // UPDATE: rellenar campos vacíos, añadir dataSourceId a additional
       const patch: Record<string, unknown> = {};
       const skipFields = new Set([
         "name", // nunca pisar el nombre original
@@ -920,9 +920,9 @@ export const systemUpsert = mutation({
         "scraperAdapter", // no pisar (mantenemos el primero)
         "dataSourceId", // manejado aparte (priority)
       ]);
-      // Match probabilÃ­stico (structural/fuzzy, pasos 4-5): si el match fuera
-      // errÃ³neo, pisar officialUrl aquÃ­ contaminarÃ­a una carrera real con la
-      // URL de otra, y un futuro ingest desde esa fuente volverÃ­a a matchear
+      // Match probabilístico (structural/fuzzy, pasos 4-5): si el match fuera
+      // erróneo, pisar officialUrl aquí contaminaría una carrera real con la
+      // URL de otra, y un futuro ingest desde esa fuente volvería a matchear
       // por by_official_url (paso 1) reforzando el error en vez de exponerlo.
       // Los matches exact/pasos 1-3 (alta confianza) siguen rellenando
       // officialUrl como antes de esta task.
@@ -933,25 +933,25 @@ export const systemUpsert = mutation({
         if (skipFields.has(k)) continue;
         if (v === null || v === undefined || v === "") continue;
         if (Array.isArray(v) && v.length === 0) continue;
-        // Solo rellenar si estÃ¡ vacÃ­o en el existente
+        // Solo rellenar si está vacío en el existente
         const current = (existing as any)[k];
         if (current === null || current === undefined || current === "") {
           patch[k] = v;
         }
       }
-      // dataSourceId: si la nueva fuente es mÃ¡s prioritaria, sobrescribir
+      // dataSourceId: si la nueva fuente es más prioritaria, sobrescribir
       if (args.dataSourceId && args.dataSourceId !== existing.dataSourceId) {
         // Orden de confianza de mayor a menor. "Agenda Sureste" (Correbirras)
-        // no estaba en esta lista (bug de auditorÃ­a 2026-09-11): su indexOf
+        // no estaba en esta lista (bug de auditoría 2026-09-11): su indexOf
         // daba -1 y por tanto nunca ganaba el desempate frente a ninguna
-        // otra fuente, aunque deberÃ­a tener prioridad propia. "Manual" va
-        // Ãºltima a propÃ³sito: es la fuente MENOS prioritaria para decidir
-        // quÃ© dataSourceId queda, pero justo por eso mÃ¡s abajo protegemos
-        // sus campos de ser sobrescritos por un re-ingest automÃ¡tico.
+        // otra fuente, aunque debería tener prioridad propia. "Manual" va
+        // última a propósito: es la fuente MENOS prioritaria para decidir
+        // qué dataSourceId queda, pero justo por eso más abajo protegemos
+        // sus campos de ser sobrescritos por un re-ingest automático.
         const priority = ["RFEA", "FEDME", "ITRA", "Sportmaniacs", "Agenda Sureste", "Alcanza tu Meta", "Runedia", "Manual"];
-        // Bug preexistente (previo a esta auditorÃ­a): ctx.db.get(undefined)
-        // lanza "Must provide arg 1 `id` to `get`" â€” pasaba siempre que la
-        // carrera existente no tenÃ­a dataSourceId asignado todavÃ­a (comÃºn
+        // Bug preexistente (previo a esta auditoría): ctx.db.get(undefined)
+        // lanza "Must provide arg 1 `id` to `get`" — pasaba siempre que la
+        // carrera existente no tenía dataSourceId asignado todavía (común
         // en carreras antiguas o creadas antes de que existiera esta FK).
         // Confirmado en logs reales del workflow 2026-09-11 (RFEA fallaba
         // con este error en re-ingests). Guardamos con un if en vez de
@@ -962,7 +962,7 @@ export const systemUpsert = mutation({
         const existingIdx = priority.indexOf(existingName);
         const newIdx = priority.indexOf((newSrc as any)?.name ?? "");
         if (newIdx !== -1 && (existingIdx === -1 || newIdx < existingIdx)) {
-          // La nueva es mÃ¡s prioritaria â†’ guardar la vieja en additional
+          // La nueva es más prioritaria → guardar la vieja en additional
           const additional: string[] = (existing as any).additionalDataSourceIds ?? [];
           if (existing.dataSourceId && !additional.includes(existing.dataSourceId)) {
             additional.push(existing.dataSourceId);
@@ -970,13 +970,13 @@ export const systemUpsert = mutation({
           patch.dataSourceId = args.dataSourceId;
           patch.additionalDataSourceIds = additional;
 
-          // AdemÃ¡s de rellenar huecos (loop de arriba), cuando la fuente
-          // entrante es MÃS prioritaria dejamos que "mejore" un dato ya
+          // Además de rellenar huecos (loop de arriba), cuando la fuente
+          // entrante es MÁS prioritaria dejamos que "mejore" un dato ya
           // presente pero potencialmente peor (ej. Sportmaniacs pone
-          // distanceKm=10 de relleno, RFEA llega despuÃ©s con el dato real).
-          // Nunca tocamos estos campos si la existente es "Manual" â€” un
+          // distanceKm=10 de relleno, RFEA llega después con el dato real).
+          // Nunca tocamos estos campos si la existente es "Manual" — un
           // dato curado a mano por el admin no debe perderse en un
-          // re-ingest automÃ¡tico.
+          // re-ingest automático.
           if (existingName !== "Manual") {
             const upgradableFields = [
               "distanceKm",
@@ -992,7 +992,7 @@ export const systemUpsert = mutation({
             }
           }
         } else {
-          // La existente es mÃ¡s prioritaria â†’ solo aÃ±adir la nueva a additional
+          // La existente es más prioritaria → solo añadir la nueva a additional
           const additional: string[] = (existing as any).additionalDataSourceIds ?? [];
           if (!additional.includes(args.dataSourceId)) {
             additional.push(args.dataSourceId);
@@ -1006,7 +1006,7 @@ export const systemUpsert = mutation({
       return { id: existing._id, action: "updated" as const };
     }
 
-    // CREATE: slug auto-generado sin colisiÃ³n
+    // CREATE: slug auto-generado sin colisión
     const baseSlug = slugify(args.name);
     let finalSlug = baseSlug;
     let suffix = 2;
@@ -1024,7 +1024,7 @@ export const systemUpsert = mutation({
       // Campos requeridos por el schema.
       // 2026-09-07: eliminado el fallback province ?? "valencia" que enmascaraba
       // carreras mal ubicadas. Si el caller no pasa province, falla con error
-      // explÃ­cito. Las ingestas que no tengan province deben arreglarlo
+      // explícito. Las ingestas que no tengan province deben arreglarlo
       // antes de llamar a systemUpsert.
       name: args.name,
       province: args.province as any,
@@ -1091,11 +1091,11 @@ export const systemDelete = mutation({
  *
  * Usado por scripts/fix-cross-source-duplicates.ts (limpieza one-off del
  * backlog de /admin/duplicates). Auth-free como el resto de mutations
- * "system*" â€” solo se ejecuta desde terminal con CONVEX_DEPLOY_KEY.
+ * "system*" — solo se ejecuta desde terminal con CONVEX_DEPLOY_KEY.
  *
- * Tablas con conflicto de unicidad lÃ³gica (userId, raceId) â€” myRaces,
- * raceRatings, raceVotes â€” no se migran ciegamente: si el usuario ya tiene
- * fila en `keepId`, se conserva la de mÃ¡s seÃ±al y se borra la otra (nunca
+ * Tablas con conflicto de unicidad lógica (userId, raceId) — myRaces,
+ * raceRatings, raceVotes — no se migran ciegamente: si el usuario ya tiene
+ * fila en `keepId`, se conserva la de más señal y se borra la otra (nunca
  * las 2 a la vez, para no perder datos de nadie).
  */
 export const systemMergeDuplicates = mutation({
@@ -1132,8 +1132,8 @@ export const systemMergeDuplicates = mutation({
           await ctx.db.patch(row._id, { raceId: keepId });
           n++;
         } else {
-          // El usuario ya tiene fila en keepId: conserva la de mÃ¡s seÃ±al
-          // (status !== "planned" gana a "planned"; si ambas iguales, la mÃ¡s
+          // El usuario ya tiene fila en keepId: conserva la de más señal
+          // (status !== "planned" gana a "planned"; si ambas iguales, la más
           // reciente por _creationTime) y borra la otra.
           const rowScore = row.status !== "planned" ? 1 : 0;
           const existingScore = existingForUser.status !== "planned" ? 1 : 0;
@@ -1145,10 +1145,10 @@ export const systemMergeDuplicates = mutation({
             await ctx.db.delete(row._id);
             console.log(`[merge-conflict:myRaces] user=${row.userId} kept=${existingForUser._id} deleted=${row._id} reason=status`);
           } else {
-            // Empate de seÃ±al por status: prioriza la fila con datos de
-            // resultado reales (tiempo/diploma) antes de mirar recencia â€”
+            // Empate de señal por status: prioriza la fila con datos de
+            // resultado reales (tiempo/diploma) antes de mirar recencia —
             // recencia no se correlaciona con completitud, y perder la fila
-            // con diploma/resultado real deja _storage blobs huÃ©rfanos y
+            // con diploma/resultado real deja _storage blobs huérfanos y
             // enlaces /resultado/{myRaceId} rotos sin posibilidad de deshacer.
             const rowHasResult = row.actualTimeSeconds !== undefined || row.diplomaStorageId !== undefined;
             const existingHasResult = existingForUser.actualTimeSeconds !== undefined || existingForUser.diplomaStorageId !== undefined;
@@ -1192,7 +1192,7 @@ export const systemMergeDuplicates = mutation({
           n++;
         } else {
           // Ya hay rating del usuario en keepId: nos quedamos con ese, se
-          // borra el del duplicado (no hay "mÃ¡s seÃ±al" objetiva en un rating).
+          // borra el del duplicado (no hay "más señal" objetiva en un rating).
           await ctx.db.delete(row._id);
           console.log(`[merge-conflict:raceRatings] user=${row.userId} kept=${existingForUser._id} deleted=${row._id}`);
           m++;
@@ -1227,11 +1227,11 @@ export const systemMergeDuplicates = mutation({
       merged.raceVotes = m;
     }
 
-    // --- Tablas sin conflicto de unicidad: migraciÃ³n directa ---
-    // personalRecords no tiene Ã­ndice por raceId (raceId es opcional, de baja
-    // cardinalidad de uso) â€” .collect() de tabla completa aceptable aquÃ­: es
+    // --- Tablas sin conflicto de unicidad: migración directa ---
+    // personalRecords no tiene índice por raceId (raceId es opcional, de baja
+    // cardinalidad de uso) — .collect() de tabla completa aceptable aquí: es
     // un script one-off de mantenimiento, no un hot path de cron/ingesta (la
-    // regla de checklist de coste de esta sesiÃ³n aplica a hot paths).
+    // regla de checklist de coste de esta sesión aplica a hot paths).
     {
       const all = await ctx.db.query("personalRecords").collect();
       let n = 0;
@@ -1288,9 +1288,9 @@ export const systemMergeDuplicates = mutation({
       migrated.feedbackReports = toMigrate.length;
     }
 
-    // notificationLog, raceSuggestions, raceCandidates no tienen Ã­ndice por
-    // raceId (son de bajo volumen y no forman parte de ningÃºn hot path) â€”
-    // se aceptan sin Ã­ndice dedicado en este script one-off.
+    // notificationLog, raceSuggestions, raceCandidates no tienen índice por
+    // raceId (son de bajo volumen y no forman parte de ningún hot path) —
+    // se aceptan sin índice dedicado en este script one-off.
     {
       const all = await ctx.db.query("notificationLog").collect();
       let n = 0;
@@ -1335,7 +1335,7 @@ export const systemMergeDuplicates = mutation({
 
 /**
  * findDuplicateSlugs: agrupa por slug y devuelve los que tienen >1 carrera.
- * Usado por scripts de migraciÃ³n.
+ * Usado por scripts de migración.
  */
 export const findDuplicateSlugs = query({
   args: {},
@@ -1414,8 +1414,8 @@ export const findSameSourceDuplicates = query({
 });
 
 /**
- * systemRenameSlug: cambia el slug de una carrera (auth-free, para migraciÃ³n).
- * Si el nuevo slug ya existe, aÃ±ade sufijo numÃ©rico.
+ * systemRenameSlug: cambia el slug de una carrera (auth-free, para migración).
+ * Si el nuevo slug ya existe, añade sufijo numérico.
  */
 export const systemRenameSlug = mutation({
   args: {
@@ -1425,7 +1425,7 @@ export const systemRenameSlug = mutation({
   handler: async (ctx, { id, newSlug }) => {
     const existing = await ctx.db.get(id);
     if (!existing) throw new Error("Race not found");
-    // Asegurar unicidad: si newSlug ya existe en otra carrera, aÃ±ade sufijo -2, -3, ...
+    // Asegurar unicidad: si newSlug ya existe en otra carrera, añade sufijo -2, -3, ...
     let finalSlug = newSlug;
     let suffix = 2;
     while (true) {
@@ -1477,15 +1477,15 @@ export const adminDeleteMany = mutation({
 /**
  * Admin: busca carreras candidatas a duplicado, agrupadas por motivo.
  *
- * Tipos de detecciÃ³n (ordenados por confianza):
+ * Tipos de detección (ordenados por confianza):
  *   - "exact":  mismo source + mismo nombre normalizado + misma fecha (re-ingest)
- *   - "structural": misma fecha + misma provincia + misma distancia (Â±0.1km)
+ *   - "structural": misma fecha + misma provincia + misma distancia (±0.1km)
  *                + locality compatible (entre fuentes distintas)
  *   - "fuzzy":   misma fecha + misma provincia + nombre con similitud > umbral
  *                (entre fuentes distintas o dentro de la misma)
  *
  * Devuelve hasta `maxGroups` grupos, cada uno con TODOS los campos de las
- * carreras (sin datos sensibles). El admin elige quÃ© borrar/quÃ© conservar.
+ * carreras (sin datos sensibles). El admin elige qué borrar/qué conservar.
  */
 export const adminFindDuplicates = query({
   args: {
@@ -1513,7 +1513,7 @@ export const adminFindDuplicates = query({
       const key = ids.join("|");
       const existing = groups.get(key);
       if (existing) {
-        // Si ya existe por otro detector, quÃ©date con el de mayor confianza
+        // Si ya existe por otro detector, quédate con el de mayor confianza
         const order = { exact: 0, structural: 1, fuzzy: 2 } as const;
         if (order[reasonType] < order[existing.reasonType]) {
           groups.set(key, { key, reason, reasonType, races });
@@ -1544,16 +1544,16 @@ export const adminFindDuplicates = query({
       }
     }
 
-    // Fix 2026-09-20: mismo root cause que systemUpsert (convex/races.ts) â€”
+    // Fix 2026-09-20: mismo root cause que systemUpsert (convex/races.ts) —
     // los detectores 2/3 solo comparaban carreras con startDate EXACTAMENTE
-    // igual, asÃ­ que una carrera reingestada con la fecha desviada 1 dÃ­a
-    // nunca caÃ­a en el mismo bucket y el panel nunca la mostraba como
+    // igual, así que una carrera reingestada con la fecha desviada 1 día
+    // nunca caía en el mismo bucket y el panel nunca la mostraba como
     // duplicado. Se inserta cada carrera en los buckets de sus 3 fechas
-    // vecinas (dÃ­a-1, dÃ­a, dÃ­a+1) en vez de solo la suya â€” un par real que
-    // difiere en 0 o 1 dÃ­a comparte al menos 1 bucket. addGroup ya dedupea
-    // por el set de IDs ordenado, asÃ­ que un mismo par detectado desde 2
+    // vecinas (día-1, día, día+1) en vez de solo la suya — un par real que
+    // difiere en 0 o 1 día comparte al menos 1 bucket. addGroup ya dedupea
+    // por el set de IDs ordenado, así que un mismo par detectado desde 2
     // buckets vecinos no duplica el grupo. El detector 1 (exact) NO se toca
-    // â€” sigue exigiendo fecha idÃ©ntica a propÃ³sito (mÃ¡xima confianza).
+    // — sigue exigiendo fecha idéntica a propósito (máxima confianza).
     function neighborDates(startDate: string): string[] {
       const d = new Date(startDate + "T00:00:00Z");
       const prev = new Date(d.getTime() - 86400000).toISOString().slice(0, 10);
@@ -1562,7 +1562,7 @@ export const adminFindDuplicates = query({
     }
 
     // === Detector 2: structural cross-source (date+province+distance+locality) ===
-    // Bucket por (date, province, distanceBucket) â€” date tolera Â±1 dÃ­a
+    // Bucket por (date, province, distanceBucket) — date tolera ±1 día
     const byStructural = new Map<string, Doc<"races">[]>();
     for (const r of all) {
       if (!r.startDate || !r.province) continue;
@@ -1573,25 +1573,25 @@ export const adminFindDuplicates = query({
         byStructural.get(k)!.push(r);
       }
     }
-    // Bug real encontrado 2026-09-21 al verificar el fix de Â±1 dÃ­a contra
-    // producciÃ³n: el check "Â¿el bucket tiene >=2 fuentes?" se hacÃ­a sobre
-    // TODO el bucket agregado, no sobre el PAR que se compara â€” con buckets
+    // Bug real encontrado 2026-09-21 al verificar el fix de ±1 día contra
+    // producción: el check "¿el bucket tiene >=2 fuentes?" se hacía sobre
+    // TODO el bucket agregado, no sobre el PAR que se compara — con buckets
     // de 1 sola fecha exacta esto ya era un riesgo latente, pero al ampliar
-    // a Â±1 dÃ­a una carrera de una fecha vecina (de otra fuente) "contamina"
+    // a ±1 día una carrera de una fecha vecina (de otra fuente) "contamina"
     // el conteo de fuentes del bucket y hace pasar pares 100% same-source
-    // (ej. real: "Marcha NÃ³rdica Cabezo de Torres" y "VII 10KBZO Cabezo de
-    // Torres", ambas de correbirras, se fusionaban porque el bucket incluÃ­a
-    // tambiÃ©n una carrera de alcanzatumeta de un dÃ­a vecino). AdemÃ¡s, al
+    // (ej. real: "Marcha Nórdica Cabezo de Torres" y "VII 10KBZO Cabezo de
+    // Torres", ambas de correbirras, se fusionaban porque el bucket incluía
+    // también una carrera de alcanzatumeta de un día vecino). Además, al
     // insertar cada carrera en sus 3 buckets vecinos, dos carreras que
-    // comparten bucket pueden diferir hasta 2 dÃ­as reales (A en dÃ­a 1, B en
-    // dÃ­a 3, ambas caen en el bucket "dÃ­a 2") â€” mÃ¡s de la tolerancia Â±1 dÃ­a
+    // comparten bucket pueden diferir hasta 2 días reales (A en día 1, B en
+    // día 3, ambas caen en el bucket "día 2") — más de la tolerancia ±1 día
     // pretendida. Se corrigen ambos moviendo las 2 comprobaciones al nivel
     // del PAR en el pairwise, en vez de depender de agregados del bucket.
     const daysBetween = (d1: string, d2: string) =>
       Math.abs(new Date(d1 + "T00:00:00Z").getTime() - new Date(d2 + "T00:00:00Z").getTime()) / 86400000;
     for (const [, list] of byStructural) {
       if (list.length < 2) continue;
-      // Pairwise: fuente distinta + fecha real Â±1 dÃ­a + locality + distancia exacta
+      // Pairwise: fuente distinta + fecha real ±1 día + locality + distancia exacta
       for (let i = 0; i < list.length; i++) {
         for (let j = i + 1; j < list.length; j++) {
           const a = list[i];
@@ -1610,7 +1610,7 @@ export const adminFindDuplicates = query({
     }
 
     // === Detector 3: fuzzy (date+province + name similarity > threshold) ===
-    // Bucket por (date, province) â€” date tolera Â±1 dÃ­a (ver nota Detector 2)
+    // Bucket por (date, province) — date tolera ±1 día (ver nota Detector 2)
     const byFuzzyBucket = new Map<string, Doc<"races">[]>();
     for (const r of all) {
       if (!r.startDate) continue;
@@ -1630,9 +1630,9 @@ export const adminFindDuplicates = query({
           const a = tokensList[i];
           const b = tokensList[j];
           // Fix 2026-09-21 (mismo motivo que Detector 2): filtro de fecha
-          // real por PAR, no por bucket agregado â€” al insertar cada carrera
+          // real por PAR, no por bucket agregado — al insertar cada carrera
           // en sus 3 buckets vecinos, 2 carreras del mismo bucket pueden
-          // diferir hasta 2 dÃ­as reales, mÃ¡s de la tolerancia Â±1 pretendida.
+          // diferir hasta 2 días reales, más de la tolerancia ±1 pretendida.
           if (!a.r.startDate || !b.r.startDate || daysBetween(a.r.startDate, b.r.startDate) > 1) continue;
           const sim = jaccard(a.t, b.t);
           if (sim >= similarityThreshold) {
@@ -1710,14 +1710,14 @@ export const getBySlugForUser = query({
 });
 
 // =============================================================================
-// QUERIES SEO â€” auth-free, usadas por sitemap.ts y generateMetadata
+// QUERIES SEO — auth-free, usadas por sitemap.ts y generateMetadata
 // Solo devuelven los campos necesarios para SEO/JSON-LD, no la carrera entera.
 // =============================================================================
 
 /**
- * Listado mÃ­nimo para el sitemap.xml.
+ * Listado mínimo para el sitemap.xml.
  * Devuelve solo slug + ingestedAt + startDate + isFeatured.
- * Auth-free (uso pÃºblico desde Next.js sitemap.ts).
+ * Auth-free (uso público desde Next.js sitemap.ts).
  */
 export const listForSitemap = query({
   args: {},
@@ -1739,7 +1739,7 @@ export const listForSitemap = query({
 /**
  * Datos SEO de una carrera por slug. Auth-free.
  * Devuelve solo los campos necesarios para generateMetadata + JSON-LD.
- * MÃ¡s eficiente que getBySlug (no carga deep extraction, gallery, etc).
+ * Más eficiente que getBySlug (no carga deep extraction, gallery, etc).
  */
 export const getBySlugForSeo = query({
   args: { slug: v.string() },
@@ -1749,7 +1749,7 @@ export const getBySlugForSeo = query({
       .withIndex("by_slug", (q) => q.eq("slug", slug))
       .collect();
     if (matches.length === 0) return null;
-    // Defensive: si hay duplicados, devuelve la mÃ¡s reciente
+    // Defensive: si hay duplicados, devuelve la más reciente
     const race =
       matches.length > 1
         ? matches.sort((a, b) => (b._creationTime ?? 0) - (a._creationTime ?? 0))[0]
@@ -1793,7 +1793,7 @@ export const getBySlugForSeo = query({
 
 /**
  * Carreras relacionadas (mismo tipo + provincia cercana).
- * Ãštil para "Otras carreras que te pueden interesar" al final de la pÃ¡gina.
+ * Útil para "Otras carreras que te pueden interesar" al final de la página.
  * Auth-free.
  */
 export const getRelated = query({
@@ -1813,7 +1813,7 @@ export const getRelated = query({
     const filtered = all
       .filter((r) => r._id !== raceId)
       .filter((r) => {
-        // Mismo tipo o misma provincia (mismo tipo pesa mÃ¡s)
+        // Mismo tipo o misma provincia (mismo tipo pesa más)
         if (raceType && r.raceType === raceType) return true;
         if (province && r.province === province) return true;
         return false;
@@ -1824,7 +1824,7 @@ export const getRelated = query({
 });
 
 /**
- * Devuelve varias carreras por id (pÃºblico). Usado por el blog para
+ * Devuelve varias carreras por id (público). Usado por el blog para
  * enlazar a carreras mencionadas en un post. Solo devuelve published.
  */
 export const getByIds = query({
@@ -1842,7 +1842,7 @@ export const getByIds = query({
 });
 
 // =============================================================================
-// QUERIES SEO extras ï¿½ auth-free, lightweight, listas para Server Components
+// QUERIES SEO extras � auth-free, lightweight, listas para Server Components
 // Usadas por /ranking y /carreras para emitir JSON-LD ItemList con slugs reales.
 // Devuelven solo los campos minimos (slug + name + locality + startDate + distance).
 // No son hot paths: solo se llaman desde server components cacheados por Vercel.
@@ -1925,7 +1925,7 @@ export const getUpcomingForSeo = query({
 });
 
 // =============================================================================
-// QUERY: getRelatedRaces â€” Carreras similares para backlinks internos
+// QUERY: getRelatedRaces — Carreras similares para backlinks internos
 // Usada por el bloque RelatedRacesSection en /carreras/[slug].
 // Auth-free, devuelve hasta `limit` carreras similares priorizando:
 //   1. Mismo province (CCAA)
@@ -1995,334 +1995,3 @@ export const getRelatedRaces = query({
     return scored;
   },
 });
-
-// =============================================================================
-// HUBS SEO â€” auth-free, devuelven datos agregados para landings programÃ¡ticas.
-// /carreras/{provincia}, /carreras/{distancia}, /guias, /comparativas.
-// Sin auth, lightweight, cacheables por Vercel (revalidate en cada Server Component).
-// =============================================================================
-
-const PROVINCE_LABELS: Record<string, string> = {
-  "alicante": "Alicante",
-  "valencia": "Valencia",
-  "castellon": "CastellÃ³n",
-  "murcia": "Murcia",
-  "albacete": "Albacete",
-  "ciudad real": "Ciudad Real",
-  "cuenca": "Cuenca",
-  "guadalajara": "Guadalajara",
-  "toledo": "Toledo",
-  "almeria": "AlmerÃ­a",
-  "granada": "Granada",
-  "jaen": "JaÃ©n",
-  "malaga": "MÃ¡laga",
-  "cordoba": "CÃ³rdoba",
-  "sevilla": "Sevilla",
-  "huelva": "Huelva",
-  "cadiz": "CÃ¡diz",
-  "huesca": "Huesca",
-  "zaragoza": "Zaragoza",
-  "teruel": "Teruel",
-  "barcelona": "Barcelona",
-  "girona": "Girona",
-  "tarragona": "Tarragona",
-  "lleida": "Lleida",
-  "mallorca": "Mallorca",
-  "menorca": "Menorca",
-  "ibiza": "Ibiza",
-  "las palmas": "Las Palmas",
-  "santa cruz de tenerife": "Santa Cruz de Tenerife",
-  "madrid": "Madrid",
-  "vizcaya": "Bizkaia",
-  "gipuzkoa": "Gipuzkoa",
-  "alava": "Ãlava",
-  "navarra": "Navarra",
-  "asturias": "Asturias",
-  "cantabria": "Cantabria",
-  "a coruna": "A CoruÃ±a",
-  "lugo": "Lugo",
-  "ourense": "Ourense",
-  "pontevedra": "Pontevedra",
-  "la rioja": "La Rioja",
-  "caceres": "CÃ¡ceres",
-  "badajoz": "Badajoz",
-  "leon": "LeÃ³n",
-  "zamora": "Zamora",
-  "salamanca": "Salamanca",
-  "valladolid": "Valladolid",
-  "palencia": "Palencia",
-  "burgos": "Burgos",
-  "soria": "Soria",
-  "avila": "Ãvila",
-  "segovia": "Segovia",
-  "ceuta": "Ceuta",
-  "melilla": "Melilla",
-};
-
-/**
- * Re-export eliminado: `provinceLabels` ahora vive en
- * `@/lib/seo/province-labels` para que pueda importarse desde
- * app/ sin arrastrar el handler de Convex al bundle de Next.
- * `PROVINCE_LABELS` (const interna) sigue siendo necesario para
- * `listProvinceHubsForSeo`.
- */
-
-/**
- * Lista todas las provincias con al menos 1 carrera publicada,
- * junto con el contador y la fecha de la prÃ³xima carrera futura.
- * Para landings /carreras/{provincia} y para la home (menÃº CCAA).
- */
-export const listProvinceHubsForSeo = query({
-  args: {},
-  handler: async (ctx) => {
-    // Hot path: lee solo carreras futuras (próximos 18 meses) usando
-    // el índice `by_published_date (isPublished, startDate)`. Evita el
-    // `.collect()` sobre toda la tabla que provocaba 500 en Vercel
-    // Hobby (timeout 10s). Total = carreras futuras reales, no histórico.
-    const today = new Date();
-    const horizon = new Date(today);
-    horizon.setMonth(horizon.getMonth() + 18);
-    const todayStr = today.toISOString().slice(0, 10);
-    const horizonStr = horizon.toISOString().slice(0, 10);
-
-    const races = await ctx.db
-      .query("races")
-      .withIndex("by_published_date", (q) =>
-        q
-          .eq("isPublished", true)
-          .gte("startDate", todayStr)
-          .lte("startDate", horizonStr),
-      )
-      .take(2000);
-
-    const acc: Record<
-      string,
-      { province: string; total: number; upcoming: number; nextDate?: string }
-    > = {};
-    for (const r of races) {
-      if (!r.province) continue;
-      const a = (acc[r.province] ??= {
-        province: r.province,
-        total: 0,
-        upcoming: 0,
-        nextDate: undefined,
-      });
-      a.total++;
-      if (r.startDate && r.startDate >= todayStr) {
-        a.upcoming++;
-        if (!a.nextDate || r.startDate < a.nextDate) a.nextDate = r.startDate;
-      }
-    }
-    return Object.values(acc)
-      .map((a) => ({
-        ...a,
-        label: PROVINCE_LABELS[a.province] ?? a.province,
-        slug: a.province,
-      }))
-      .sort((a, b) => b.total - a.total);
-  },
-});
-
-/**
- * Carreras publicadas en una provincia concreta, ordenadas por fecha asc.
- * Usado por /carreras/{provincia}.
- */
-export const listByProvinceForSeo = query({
-  args: {
-    province: v.string(),
-    limit: v.optional(v.number()),
-  },
-  handler: async (ctx, { province, limit }) => {
-    const n = limit ?? 60;
-    const today = new Date().toISOString().slice(0, 10);
-    // Usa el índice `by_province` (filtrado nativo) + take() para evitar
-    // .collect() sobre la tabla completa. Filtra isPublished y startDate
-    // en memoria: una provincia rara vez tiene >500 carreras futuras.
-    const races = await ctx.db
-      .query("races")
-      .withIndex("by_province", (q) => q.eq("province", province as any))
-      .take(500);
-
-    return races
-      .filter((r) => r.isPublished)
-      .map((r) => ({
-        slug: r.slug,
-        name: r.name,
-        locality: r.locality,
-        province: r.province,
-        startDate: r.startDate,
-        distanceKm: r.distanceKm,
-        raceType: r.raceType,
-      }))
-      .filter((r) => !r.startDate || r.startDate >= today)
-      .sort((a, b) =>
-        !a.startDate ? 1 : !b.startDate ? -1 : a.startDate < b.startDate ? -1 : 1,
-      )
-      .slice(0, n);
-  },
-});
-
-/**
- * CategorÃ­as de distancia con carreras publicadas y la prÃ³xima fecha.
- * Para landings /carreras/{distancia}.
- */
-const DISTANCE_HUBS = [
-  { slug: "5k", label: "5K", minKm: 0, maxKm: 7.5 },
-  { slug: "10k", label: "10K", minKm: 7.5, maxKm: 12.5 },
-  { slug: "media-maraton", label: "Media maratÃ³n", minKm: 17.5, maxKm: 23 },
-  { slug: "maraton", label: "MaratÃ³n", minKm: 40, maxKm: 44 },
-  { slug: "trail", label: "Trail", minKm: 12, maxKm: 200 },
-  { slug: "ultra", label: "UltramaratÃ³n", minKm: 44, maxKm: 1000 },
-] as const;
-
-export type DistanceHub = (typeof DISTANCE_HUBS)[number];
-export const distanceHubs: DistanceHub[] = [...DISTANCE_HUBS] as unknown as DistanceHub[];
-
-function raceInDistanceBucket(distanceKm: number, bucket: DistanceHub): boolean {
-  if (bucket.slug === "trail") {
-    return distanceKm >= 12 && distanceKm <= 200;
-  }
-  if (bucket.slug === "ultra") {
-    return distanceKm >= 44 && distanceKm <= 1000;
-  }
-  return distanceKm >= bucket.minKm && distanceKm < bucket.maxKm;
-}
-
-export const listDistanceHubsForSeo = query({
-  args: {},
-  handler: async (ctx) => {
-    // Hot path: solo carreras futuras (18 meses) usando el índice
-    // `by_published_date (isPublished, startDate)`. Evita .collect()
-    // sobre tabla grande que causaba 500 en Vercel Hobby.
-    const today = new Date();
-    const horizon = new Date(today);
-    horizon.setMonth(horizon.getMonth() + 18);
-    const todayStr = today.toISOString().slice(0, 10);
-    const horizonStr = horizon.toISOString().slice(0, 10);
-
-    const races = await ctx.db
-      .query("races")
-      .withIndex("by_published_date", (q) =>
-        q
-          .eq("isPublished", true)
-          .gte("startDate", todayStr)
-          .lte("startDate", horizonStr),
-      )
-      .take(2000);
-
-    const acc: Record<
-      string,
-      { slug: string; label: string; total: number; upcoming: number; nextDate?: string }
-    > = {};
-    for (const b of DISTANCE_HUBS) {
-      acc[b.slug] = { slug: b.slug, label: b.label, total: 0, upcoming: 0, nextDate: undefined };
-    }
-    for (const r of races) {
-      for (const b of DISTANCE_HUBS) {
-        if (raceInDistanceBucket(r.distanceKm, b)) {
-          const a = acc[b.slug];
-          a.total++;
-          if (r.startDate && r.startDate >= todayStr) {
-            a.upcoming++;
-            if (!a.nextDate || r.startDate < a.nextDate) a.nextDate = r.startDate;
-          }
-          break;
-        }
-      }
-    }
-    return Object.values(acc);
-  },
-});
-
-/**
- * Carreras por distancia. Devuelve futuras primero, total cap n.
- */
-export const listByDistanceForSeo = query({
-  args: {
-    slug: v.string(),
-    limit: v.optional(v.number()),
-  },
-  handler: async (ctx, { slug, limit }) => {
-    const n = limit ?? 60;
-    const today = new Date().toISOString().slice(0, 10);
-    const bucket = DISTANCE_HUBS.find((b) => b.slug === slug);
-    if (!bucket) return [];
-
-    // Solo futuras (18m) usando índice. Filtra bucket y publicación
-    // en memoria — el total leído es suficiente para SEO.
-    const horizon = new Date();
-    horizon.setMonth(horizon.getMonth() + 18);
-    const horizonStr = horizon.toISOString().slice(0, 10);
-
-    const races = await ctx.db
-      .query("races")
-      .withIndex("by_published_date", (q) =>
-        q
-          .eq("isPublished", true)
-          .gte("startDate", today)
-          .lte("startDate", horizonStr),
-      )
-      .take(1500);
-
-    return races
-      .filter((r) => raceInDistanceBucket(r.distanceKm, bucket))
-      .map((r) => ({
-        slug: r.slug,
-        name: r.name,
-        locality: r.locality,
-        province: r.province,
-        startDate: r.startDate,
-        distanceKm: r.distanceKm,
-        raceType: r.raceType,
-      }))
-      .filter((r) => !r.startDate || r.startDate >= today)
-      .sort((a, b) =>
-        !a.startDate ? 1 : !b.startDate ? -1 : a.startDate < b.startDate ? -1 : 1,
-      )
-      .slice(0, n);
-  },
-});
-
-/**
- * Carreras por provincia + distancia (combinado, para SEO long-tail).
- * Ej: /carreras/valencia/maraton
- */
-export const listByProvinceDistanceForSeo = query({
-  args: {
-    province: v.string(),
-    distanceSlug: v.string(),
-    limit: v.optional(v.number()),
-  },
-  handler: async (ctx, { province, distanceSlug, limit }) => {
-    const n = limit ?? 30;
-    const today = new Date().toISOString().slice(0, 10);
-    const bucket = DISTANCE_HUBS.find((b) => b.slug === distanceSlug);
-    if (!bucket) return [];
-
-    // Índice `by_province` + take() — provincia típica tiene <500 carreras
-    // publicadas históricas, holgura amplia.
-    const races = await ctx.db
-      .query("races")
-      .withIndex("by_province", (q) => q.eq("province", province as any))
-      .take(500);
-
-    return races
-      .filter((r) => raceInDistanceBucket(r.distanceKm, bucket))
-      .map((r) => ({
-        slug: r.slug,
-        name: r.name,
-        locality: r.locality,
-        province: r.province,
-        startDate: r.startDate,
-        distanceKm: r.distanceKm,
-        raceType: r.raceType,
-      }))
-      .filter((r) => !r.startDate || r.startDate >= today)
-      .sort((a, b) =>
-        !a.startDate ? 1 : !b.startDate ? -1 : a.startDate < b.startDate ? -1 : 1,
-      )
-      .slice(0, n);
-  },
-});
-
-

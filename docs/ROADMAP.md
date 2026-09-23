@@ -299,6 +299,7 @@
 - [ ] Enriquecer cada carrera de ATM con las pruebas internas de su ficha (5K+10K, precio por modalidad) — `lib/ai/extract-race-deep.ts` ya funciona, solo falta disparar en bulk para carreras con `scraperAdapter: "alcanzatumeta"`.
 - [ ] Investigar cronometrador: ATM tiene `json_resultados_atm_por_evento.php?id=X` y `services/jsd_plazas.php?id=X`. Si tienen resultados descargables, ¿se puede scrapear igual que `chiplevante` o `cruzandolameta`?
 - [ ] Otras fuentes sureste candidatas (orden de prioridad): Cronomancha (Albacete/CLM), Dorsal21 (Alicante/Murcia), RunRunKid (eventos infantiles).
+- [x] **(2026-09-23) Cablear `ingest-chiplevante.ts` al `daily-ingest.yml`** — añadido step 3.5/10 entre Cruzando la Meta y Carreraspopulares con `--upload --limit=50` (≈12-15s/noche, idempotente vía systemUpsert). Bug detectado: el script existía desde el commit `0b823c4` (feat chiplevante) pero nunca se enchufó al workflow, así que el catálogo solo crecía con ejecuciones manuales. Ahora las carreras nuevas del Levante se ingestan cada noche a las 02:00 UTC.
 
 ### 3.4 Branding y naming
 

@@ -81,6 +81,28 @@ jobs:
         continue-on-error: true
 
       # ------------------------------------------------------------------
+      # 3.5/10 ChipLevante — cronometrador del Levante (Alicante/Murcia/
+      # Castellón/Valencia). Subida directa a Convex vía systemUpsert
+      # idempotente. El script pagina el AJAX público
+      # https://www.chiplevante.com/modulos/list_pruebas.php?hist=S hasta
+      # encontrar `last=1`. --limit=50 ≈ ~1 página/s (250ms delay de
+      # cortesía) ≈ 12-15s por noche; cubre backlog de eventos nuevos
+      # publicados desde la última corrida sin saturar el host.
+      # Si más adelante queremos cobertura completa del histórico, subir
+      # --limit o quitarlo (default 200 = ~50s). Idempotente: carreras que
+      # ya existen se reconcilian vía officialUrl, así que re-ejecutarlo
+      # todas las noches es seguro.
+      # ------------------------------------------------------------------
+
+      - name: 3.5/10 Ingest ChipLevante (catálogo Levante, AJAX)
+        env:
+          NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+        run: |
+          echo "=== ChipLevante (catálogo Levante) ==="
+          npm run ingest:chiplevante -- --upload --limit=50 2>&1 | tail -30 || echo "⚠️  ChipLevante failed, continuing"
+        continue-on-error: true
+
+      # ------------------------------------------------------------------
       # Scripts viejos (escriben a scripts/output/*.json)
       # ingest:to-convex los une y sube via systemUpsert
       # ------------------------------------------------------------------

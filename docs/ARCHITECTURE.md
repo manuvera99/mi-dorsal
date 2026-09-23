@@ -216,7 +216,7 @@ Todos pasan por `convex/emailDispatch.ts → dispatchAndLog` (única función qu
 | ITRA | scraper | Trail internacional | `scripts/ingest-itra.ts` | Listado + resultados |
 | Sportmaniacs | scraper | Inscripciones España | `scripts/ingest-sportmaniacs.ts` | API JSON descubierta |
 | Runedia | scraper | Catálogo amplio | `scripts/ingest-runedia.ts` | A veces desactualizado |
-| Chiplevante | scraper + adapter | Cronometrador Levante | `scripts/ingest-chiplevante.ts` | Adapter en `convex/scraper.ts` para resultados por dorsal |
+| Chiplevante | scraper + adapter | Cronometrador Levante | `scripts/ingest-chiplevante.ts` | Adapter en `convex/scraper.ts` para resultados por dorsal. Cableado al cron nocturno desde 2026-09-23 (step 3.5/10). |
 
 **Cómo se ejecutan**:
 - Programado: GitHub Actions `.github/workflows/daily-ingest.yml` corre a diario.

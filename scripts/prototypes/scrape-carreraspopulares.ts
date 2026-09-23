@@ -178,10 +178,30 @@ function parseOneRace(html: string, $: cheerio.CheerioAPI): CPRace | null {
     }
   }
 
-  // Distancias: extraer todos los números seguidos de "m", "mts" o "km"
-  const distMatch = infoText.match(/(\d+(?:[.,]\d+)?(?:\s*y\s*\d+(?:[.,]\d+)?)*\s*(?:mts?|m|km))/i);
-  const distanceRaw = distMatch ? distMatch[1].trim() : "";
-  const distances = distMatch ? parseDistancesM(distMatch[1]) : [];
+  // Distancias: buscar la línea que sigue al icono glyphicon-resize-horizontal
+  // (que es la distancia real). El texto completo de $info empieza por la fecha
+  // ("Domingo 14 marzo 2027 / Barcelona (Barcelona) / 42.195 m"), así que un
+  // regex sobre el texto entero matchea el día del mes (14) en vez de la
+  // distancia (42.195). Por eso partimos por líneas tras el </br>.
+  const distLineMatch = innerHtml.match(/glyphicon-resize-horizontal[^<>]*<\/span>\s*([^<]*)/i);
+  // Fallback: si la página no incluye el icono (algunas fichas antiguas), usar
+  // el regex sobre el texto, pero SOLO si NO parece estar delante un día/mes.
+  let distanceRaw = "";
+  let distances: number[] = [];
+  if (distLineMatch) {
+    distanceRaw = distLineMatch[1].trim();
+    distances = parseDistancesM(distanceRaw);
+  } else {
+    // Fallback legacy: regex sobre todo infoText. Conservamos el comportamiento
+    // previo solo cuando no hay icono de distancia (caso raro).
+    const distMatch = infoText.match(
+      /(\d+(?:[.,]\d+)?(?:\s*y\s*\d+(?:[.,]\d+)?)*\s*(?:mts?|m|km))/i
+    );
+    if (distMatch) {
+      distanceRaw = distMatch[1].trim();
+      distances = parseDistancesM(distanceRaw);
+    }
+  }
 
   // Iconos de servicios (feature-icon)
   const iconos: CPHomologacionesIcon = {

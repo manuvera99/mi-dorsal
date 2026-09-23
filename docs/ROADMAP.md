@@ -584,6 +584,77 @@
 
 ---
 
+## 🐛 Bugs detectados 23 sep 2026 — distancias incorrectas en catálogo
+
+> Detectado por usuario reportando Zurich Marató Barcelona como "14K" en vez de maratón.
+> La auditoría (`devOnly/auditDistanceKm:audit`) reveló 2.671/2.765 carreras con `distanceKm`
+> sospechosos y **~108 confirmadas como erróneas** que se parchearon en esta sesión.
+>
+> Detalle técnico: ver `docs/optional/enrichment.md` §"Bug del scraper: día/año matcheado como distancia"
+> (sección a crear).
+
+### Bug 1 — `scrape-carreraspopulares.ts` lee día/año como distancia
+
+- **Síntoma**: carrera con `distanceKm: 14` cuando es una maratón, `distanceKm: 2.026` cuando
+  es un 10K, `distanceKm: 7` cuando es una media maratón, etc.
+- **Causa**: el scraper (`scripts/prototypes/scrape-carreraspopulares.ts`) parseaba todo
+  el texto del `<p>` `infoPruebaListaKK` con un regex `(\d+(?:[.,]\d+)?\s*(?:mts?|m|km))`,
+  y el `<p>` empieza por la fecha (`"Domingo 14 marzo 2027 / Barcelona / 42.195 m"`).
+  El regex matcheaba el día del mes (`14`) o el año partido por la `M` de "Maratón"
+  (`2026` → `2.026`).
+- **Fix aplicado**: ahora usa el icono `glyphicon-resize-horizontal` como separador,
+  extrayendo solo el texto que sigue a ese icono (= la distancia real). Fallback
+  legacy solo si la página no incluye el icono (caso raro).
+- **Pendiente**: re-scrapear el catálogo de carreraspopulares.com para que las 94
+  carreras de ese scraper se actualicen. Mientras tanto, los parches puntuales en
+  Convex cubren los casos confirmados.
+
+### Bug 2 — `ingest-sportmaniacs.ts` usa `distanceKm: 10` como placeholder
+
+- **Síntoma**: 2.204 carreras de sportmaniacs con `distanceKm: 10` que en realidad son
+  maratones, medias maratones, 5K, etc.
+- **Causa**: el script mete `distanceKm: 10` hardcoded porque la API de Sportmaniacs
+  no devuelve distancia en el listado. La distancia real queda en `raceFormats[]` (campo
+  del deep-extract), pero `distanceKm` se queda en 10 para siempre.
+- **Fix NO aplicado** (requiere tocar schema): cambiar `distanceKm` a opcional en
+  `convex/schema.ts` rompería UI/filtros/búsquedas. Mejor opción:
+  - (a) Crear un backfill que sincronice `distanceKm` ← `raceFormats[0].distanceKm`
+    para todas las sportmaniacs que tengan `raceFormats` poblado (Sprint 1).
+  - (b) O dejar `distanceKm` como está y mostrar la distancia desde `raceFormats[0]`
+    en la UI cuando exista.
+- **Parche aplicado**: 84 maratones y 22 medias maratones concretas parcheadas
+  manualmente con `devOnly/fixDistanceKm:fixBySlug` (ver §"Trabajo hecho" abajo).
+  Quedan ~2.000 carreras sin tocar (la mayoría con nombre genérico donde no se
+  puede inferir la distancia por nombre — `10K`, `5K`, `Carrera popular X`, etc.).
+
+### Trabajo hecho en esta sesión (23 sep 2026)
+
+- [x] **Parche puntual Zurich Marató Barcelona**: `14 → 42.195 km` (el reporte del usuario).
+- [x] **Parches masivos por nombre (108 carreras)** ejecutados vía script PowerShell
+  (`scripts/_run_fix_bulk.ps1`). Distribución:
+  - 84 maratones (incluidas Zurich Sevilla, Mann-Filter Zaragoza, todas las "X Maratón Y")
+  - 22 medias maratones (incluidas todas las "Media Maratón X", "Mitja Marató Y", "21K")
+  - 2 diez miles (10K Carabanchel, 10K Moratalaz — `2.026 → 10`)
+- [x] **Fix del scraper carreraspopulares** (Bug 1) — `scripts/prototypes/scrape-carreraspopulares.ts`
+- [x] **Devtools**: `convex/devOnly/auditDistanceKm.ts` (auditoría), `convex/devOnly/fixDistanceKm.ts`
+  (`fixBySlug` + `fixBulk`)
+- [x] **Re-validación web**: Zurich Marató Barcelona muestra "42.2 km" en `<title>` y OG.
+
+### Pendiente próximo sprint
+
+- [ ] **Backfill sportmaniacs** (Bug 2 opción a): sincronizar `distanceKm` ← `raceFormats[0]`
+  para todas las sportmaniacs con `raceFormats` poblado. Estimación: 1 mutation con `.take(500)`
+  + iteración + dry-run preview. Riesgo: bajo (solo se modifica `distanceKm`).
+- [ ] **Re-scrapear carreraspopulares.com** con el scraper arreglado, para actualizar
+  las 94 carreras que tengan distancias malas que NO parcheamos por nombre. Las 7
+  parchadas manualmente cubren los casos visibles; el resto son carreras "10K X" o
+  "5K Y" donde el `2.026` original era claramente el año partido.
+- [ ] **Hacer `distanceKm` opcional en schema**: si se hace (a)+(b)+(c) del Bug 2 y
+  se actualiza UI/filtros, se elimina de raíz el problema de placeholder. Requiere
+  estimación de impacto en queries existentes (~30 referencias a `r.distanceKm`).
+
+---
+
 ## 📚 Documentos relacionados (ir a la fuente para detalle)
 
 | Tema | Doc |

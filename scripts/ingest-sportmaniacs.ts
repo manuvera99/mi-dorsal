@@ -360,7 +360,13 @@ async function main() {
         name: r.name,
         locality: r.city || r.province,
         province: prov as any,
-        distanceKm: 10, // Sportmaniacs no da distancia en el listado; se afina con deep-extract
+        // Sportmaniacs no da distancia en el listado; se afina con deep-extract.
+        // IMPORTANTE: 10 km es un PLACEHOLDER, no la distancia real. Tras el
+        // deep-extract, la distancia correcta queda en `raceFormats[]`. La
+        // distancia principal `distanceKm` se queda en 10 hasta que se haga
+        // un backfill que sincronice `distanceKm` ← `raceFormats[0].distanceKm`
+        // (ver ROADMAP, ticket "sportmaniacs distance placeholder backfill").
+        distanceKm: 10,
         raceType,
         startDate: r.date,
         officialUrl,

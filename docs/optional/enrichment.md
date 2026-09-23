@@ -57,6 +57,40 @@ El schema soporta ~50 campos por carrera. La ficha en `/carreras/[slug]` los ren
 
 El 80% del catálogo viene de sportmaniacs. **TODAS** las URLs `sportmaniacs.com/es/races/{slug}/{uuid}/results` devuelven 404 (la plataforma reorganizó las rutas y los UUIDs ya no resuelven). El HEAD probe las salta correctamente. Solución definitiva (pendiente): backfillear `officialUrl` desde la ficha real de sportmaniacs via su API o re-scraping con el patrón nuevo. Mientras tanto, la única forma de enriquecer estas carreras es a mano desde el admin.
 
+## Bug del scraper: día/año matcheado como distancia (detectado 23 sep 2026)
+
+**Síntoma**: carreras con `distanceKm` claramente falso (ej. Zurich Marató Barcelona con `14 km`, Media Maratón Universitaria con `7 km`, "10K Carabanchel" con `2.026 km`, etc.).
+
+**Causa raíz**: el scraper `scripts/prototypes/scrape-carreraspopulares.ts` (versión previa a este fix) parseaba todo el `<p>` de `.infoPruebaListaKK` con un regex `(\d+(?:[.,]\d+)?\s*(?:mts?|m|km))`. Ese `<p>` empieza por la fecha (`"Domingo 14 marzo 2027 / Barcelona (Barcelona) / 42.195 m"`), así que el regex matcheaba el **día del mes** (`14` → "14 m") o el **año partido por la M de "Maratón"** (`2026\n... M` → `2.026 km`).
+
+**Por qué pasó inadvertido tanto tiempo**: cuando el día del mes coincide con un múltiplo de 5 (5, 10, 15, 20, 25, 30) el resultado "parece correcto" — un 10K en el día 10, un 5K en el día 5 — y se cuela en QA. Cuando el día cae en otro número (3, 4, 7, 9, 14, etc.) es más fácil de detectar pero solo cuando un humano abre la ficha. Y como `carreraspopulares.com` muestra la distancia en la FICHA (no en la lista), un día concreto como "Domingo 14" puede ser perfectamente válido para una carrera de 14K real — el scraper no tiene forma de distinguirlo.
+
+**Fix aplicado** (commit 23 sep 2026): en `parseOneRace()`, ahora se busca **solo** el texto que sigue al icono `glyphicon-resize-horizontal` (= la distancia real, etiquetada por la web). El regex sobre todo `infoText` queda como fallback solo si la página no incluye ese icono (caso raro).
+
+```ts
+// ANTES (buggy):
+const distMatch = infoText.match(/(\d+(?:[.,]\d+)?(?:\s*y\s*\d+(?:[.,]\d+)?)*\s*(?:mts?|m|km))/i);
+
+// DESPUÉS (arreglado):
+const distLineMatch = innerHtml.match(/glyphicon-resize-horizontal[^<>]*<\/span>\s*([^<]*)/i);
+```
+
+**Parches puntuales en Convex**: además del fix del scraper, se parchearon manualmente 108 carreras con `devOnly/fixDistanceKm:fixBySlug` donde `distanceKm` era claramente falso y la distancia real se podía inferir por nombre (`maratón`, `media maratón`, `10K`, etc.). Distribución: 84 maratones, 22 medias maratones, 2 diez miles.
+
+**Pendiente**:
+- Re-scrapear el catálogo de carreraspopulares.com con el scraper arreglado (las 94 carreras de ese source con `distanceKm` sospechoso).
+- Backfill de sportmaniacs: sincronizar `distanceKm` ← `raceFormats[0].distanceKm` para las 2.204 sportmaniacs que tienen `raceFormats` poblado pero `distanceKm: 10` (placeholder histórico).
+- Evaluar si hacer `distanceKm` opcional en `convex/schema.ts` (impacto: ~30 referencias en queries/filtros).
+
+**Cómo auditar en el futuro**:
+```bash
+npx convex run --prod devOnly/auditDistanceKm:audit '{}'
+```
+Devuelve `{total, suspiciousCount, suspicious: [{slug, name, distanceKm, reason, ...}]}`.
+`reason` es `"day-of-month"` (km = día del mes) o `"year-fragment"` (km = año partido).
+
+**Detalle**: ver `docs/ROADMAP.md` §"Bugs detectados 23 sep 2026" para el alcance completo.
+
 ## Cron self-reminder para monitorizar
 
 ```bash

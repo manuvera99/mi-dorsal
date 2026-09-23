@@ -1,0 +1,8 @@
+# Directorios y archivos untracked en este workspace — excluidos del deploy
+# porque no están en origin/master y deben preservarse sin enviarse.
+# NO relacionado con el checkbox Homologada del commit 983c7b8.
+
+.scratch/
+marketing-assets/
+prototype/
+scripts/probe-convex.json

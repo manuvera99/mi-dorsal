@@ -389,3 +389,25 @@ export function validateRaceGeo(
     }
   }
 }
+
+/**
+ * Normaliza un texto para comparaciones de búsqueda "amables":
+ * minúsculas + sin diacríticos (á→a, ñ→n, é→e, ç→c, etc.).
+ *
+ * Usada por las queries públicas (`list`) y admin (`adminList`) del módulo
+ * de carreras para que el buscador sea insensible a mayúsculas y tildes.
+ *
+ * El módulo Convex está deliberadamente aislado de `lib/` (ver
+ * `convex/races.ts` línea ~28 sobre la duplicación intencionada de
+ * `distanceToCategories`), así que esta función se duplica también en
+ * `lib/utils.ts` con el mismo comportamiento. Si se cambia la regla,
+ * cambiar en los dos sitios.
+ */
+export function normalizeSearch(input: string | null | undefined): string {
+  if (typeof input !== "string") return "";
+  return input
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .trim();
+}

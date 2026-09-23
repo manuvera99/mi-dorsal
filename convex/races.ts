@@ -6,7 +6,7 @@ import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Doc } from "./_generated/dataModel";
-import { provinceValidator, raceTypeValidator, slugify, requireAdmin, validateRaceGeo } from "./_helpers";
+import { provinceValidator, raceTypeValidator, slugify, requireAdmin, validateRaceGeo, normalizeSearch } from "./_helpers";
 import { normalizeName, tokenize, jaccard, localitiesCompatible, findExistingMatch, MatchCandidate } from "./duplicateMatching";
 
 /**
@@ -121,13 +121,19 @@ export const list = query({
       });
     }
     if (args.search) {
-      const s = args.search.toLowerCase();
-      filtered = filtered.filter(
-        (r) =>
-          r.name.toLowerCase().includes(s) ||
-          r.locality?.toLowerCase().includes(s) ||
-          r.organizer?.toLowerCase().includes(s),
-      );
+      // Búsqueda amigable: ignora mayúsculas y tildes para que
+      // "San Sebastian", "san sebastián" y "SAN SEBASTIÁN" devuelvan
+      // lo mismo. La normalización vive en lib/utils para que admin y
+      // mock compartan la misma regla.
+      const s = normalizeSearch(args.search);
+      filtered = filtered.filter((r) => {
+        if (!s) return true;
+        return (
+          normalizeSearch(r.name).includes(s) ||
+          normalizeSearch(r.locality ?? "").includes(s) ||
+          normalizeSearch(r.organizer ?? "").includes(s)
+        );
+      });
     }
     if (args.organizer) {
       const o = args.organizer.toLowerCase();
@@ -358,13 +364,18 @@ export const adminList = query({
     if (args.isPublished !== undefined) filtered = filtered.filter((r) => r.isPublished === args.isPublished);
     if (args.isFeatured !== undefined) filtered = filtered.filter((r) => r.isFeatured === args.isFeatured);
     if (args.search) {
-      const s = args.search.toLowerCase();
-      filtered = filtered.filter(
-        (r) =>
-          r.name.toLowerCase().includes(s) ||
-          r.locality?.toLowerCase().includes(s) ||
-          r.slug.toLowerCase().includes(s),
-      );
+      // Misma regla de normalización que en `list` (minúsculas + sin
+      // tildes) para que el panel admin y el catálogo público busquen
+      // igual. Ver lib/utils.ts → normalizeSearch.
+      const s = normalizeSearch(args.search);
+      filtered = filtered.filter((r) => {
+        if (!s) return true;
+        return (
+          normalizeSearch(r.name).includes(s) ||
+          normalizeSearch(r.locality ?? "").includes(s) ||
+          normalizeSearch(r.slug).includes(s)
+        );
+      });
     }
     return filtered.sort((a, b) => (a.startDate ?? "9999").localeCompare(b.startDate ?? "9999"));
   },

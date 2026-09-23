@@ -11,6 +11,7 @@ import {
   MOCK_RATINGS,
   MockRace,
 } from "./data";
+import { normalizeSearch } from "@/lib/utils";
 
 const ALL_MOCK_RACES: MockRace[] = [...MOCK_RACES, ...MOCK_RACES_FROM_SCRAPERS];
 
@@ -73,13 +74,17 @@ export const mockApi = {
         });
       }
       if (args.search) {
-        const s = args.search.toLowerCase();
-        filtered = filtered.filter(
-          (r) =>
-            r.name.toLowerCase().includes(s) ||
-            r.locality?.toLowerCase().includes(s) ||
-            (r as { organizer?: string }).organizer?.toLowerCase().includes(s),
-        );
+        // Igual que en convex/races.ts (list/adminList): minúsculas + sin
+        // tildes para que el buscador sea predecible.
+        const s = normalizeSearch(args.search);
+        if (s) {
+          filtered = filtered.filter(
+            (r) =>
+              normalizeSearch(r.name).includes(s) ||
+              normalizeSearch(r.locality ?? "").includes(s) ||
+              normalizeSearch((r as { organizer?: string }).organizer ?? "").includes(s),
+          );
+        }
       }
       if (args.organizer) {
         const o = args.organizer.toLowerCase();

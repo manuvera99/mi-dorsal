@@ -254,3 +254,30 @@ export function filterByDistanceCategories<
     return categories.some((c) => cats.has(c));
   });
 }
+
+/**
+ * Normaliza un texto para comparaciones de búsqueda "amables":
+ *   - pasa a minúsculas
+ *   - descompone los caracteres con diacríticos y los elimina
+ *     (NFD + Unicode property escapes)
+ *   - preserva la "ñ" como "n" (que es lo que esperan los usuarios
+ *     cuando teclean "san sebastian" en vez de "San Sebastián")
+ *
+ * Esto se usa tanto en el backend Convex (queries `list` y `adminList`)
+ * como en el mock del catálogo. Centralizado aquí para que cualquier
+ * futuro filtro de texto (autocomplete, multi-todo, etc.) herede el
+ * mismo comportamiento.
+ *
+ * Ejemplos:
+ *   normalizeSearch("San Sebastián")   // "san sebastian"
+ *   normalizeSearch("CÁDIZ")           // "cadiz"
+ *   normalizeSearch("Trail do Eume")   // "trail do eume"
+ */
+export function normalizeSearch(input: string | null | undefined): string {
+  if (typeof input !== "string") return "";
+  return input
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .trim();
+}

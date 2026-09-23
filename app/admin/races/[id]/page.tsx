@@ -59,6 +59,7 @@ export default function EditRacePage() {
         organizer: race.organizer ?? "",
         isPublished: race.isPublished ?? false,
         isFeatured: race.isFeatured ?? false,
+        homologated: race.homologated ?? false,
       });
       setDeepUrl(race.officialUrl ?? "");
     }
@@ -84,6 +85,7 @@ export default function EditRacePage() {
         organizer: race.organizer ?? "",
         isPublished: race.isPublished ?? false,
         isFeatured: race.isFeatured ?? false,
+        homologated: race.homologated ?? false,
       });
     }
   }, [race]);
@@ -133,6 +135,7 @@ export default function EditRacePage() {
           organizer: form.organizer || undefined,
           isPublished: form.isPublished,
           isFeatured: form.isFeatured,
+          homologated: form.homologated,
         },
       });
       router.push("/admin/races");
@@ -463,6 +466,15 @@ export default function EditRacePage() {
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={form.isFeatured} onChange={(e) => set("isFeatured", e.target.checked)} className="h-4 w-4" />
             Destacada
+          </label>
+          <label className="flex items-center gap-2 text-sm" title="Marca esta carrera como homologada. Según la web oficial del organizador (RFEA / FEDME / autonómicas). Si lo marca la IA, revisa la nota de homologación que dejó.">
+            <input
+              type="checkbox"
+              checked={form.homologated}
+              onChange={(e) => set("homologated", e.target.checked)}
+              className="h-4 w-4 text-emerald-600 focus:ring-emerald-500"
+            />
+            Homologada
           </label>
         </div>
         <div className="flex items-center gap-3 pt-4 border-t">

@@ -30,6 +30,7 @@ export default function NewRacePage() {
     organizer: "",
     isPublished: true,
     isFeatured: false,
+    homologated: false,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +73,7 @@ export default function NewRacePage() {
         organizer: form.organizer || undefined,
         isPublished: form.isPublished,
         isFeatured: form.isFeatured,
+        homologated: form.homologated,
       });
       router.push(`/admin/races/${id}`);
     } catch (e: any) {
@@ -252,6 +254,15 @@ export default function NewRacePage() {
               className="h-4 w-4"
             />
             Destacada en home
+          </label>
+          <label className="flex items-center gap-2 text-sm" title="Marca esta carrera como homologada. Según la web oficial del organizador (RFEA / FEDME / autonómicas). Si lo marca la IA, revisa la nota de homologación que dejó.">
+            <input
+              type="checkbox"
+              checked={form.homologated}
+              onChange={(e) => set("homologated", e.target.checked)}
+              className="h-4 w-4 text-emerald-600 focus:ring-emerald-500"
+            />
+            Homologada
           </label>
         </div>
 

@@ -44,6 +44,7 @@ import type * as devOnly_backfillIsRunning from "../devOnly/backfillIsRunning.js
 import type * as devOnly_cleanTestUserByClerkId from "../devOnly/cleanTestUserByClerkId.js";
 import type * as devOnly_deleteProfileByClerkId from "../devOnly/deleteProfileByClerkId.js";
 import type * as devOnly_enrichTestUserByEmail from "../devOnly/enrichTestUserByEmail.js";
+import type * as devOnly_fixBlogVerificarInline from "../devOnly/fixBlogVerificarInline.js";
 import type * as devOnly_fixDistanceKm from "../devOnly/fixDistanceKm.js";
 import type * as devOnly_markFeatured from "../devOnly/markFeatured.js";
 import type * as devOnly_migrateMyRaceToCorrectRace from "../devOnly/migrateMyRaceToCorrectRace.js";
@@ -129,6 +130,7 @@ declare const fullApi: ApiFromModules<{
   "devOnly/cleanTestUserByClerkId": typeof devOnly_cleanTestUserByClerkId;
   "devOnly/deleteProfileByClerkId": typeof devOnly_deleteProfileByClerkId;
   "devOnly/enrichTestUserByEmail": typeof devOnly_enrichTestUserByEmail;
+  "devOnly/fixBlogVerificarInline": typeof devOnly_fixBlogVerificarInline;
   "devOnly/fixDistanceKm": typeof devOnly_fixDistanceKm;
   "devOnly/markFeatured": typeof devOnly_markFeatured;
   "devOnly/migrateMyRaceToCorrectRace": typeof devOnly_migrateMyRaceToCorrectRace;

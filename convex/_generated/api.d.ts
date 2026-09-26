@@ -46,6 +46,7 @@ import type * as devOnly_deleteProfileByClerkId from "../devOnly/deleteProfileBy
 import type * as devOnly_enrichTestUserByEmail from "../devOnly/enrichTestUserByEmail.js";
 import type * as devOnly_fixBlogVerificarInline from "../devOnly/fixBlogVerificarInline.js";
 import type * as devOnly_fixDistanceKm from "../devOnly/fixDistanceKm.js";
+import type * as devOnly_fixTonightsMiDorsal from "../devOnly/fixTonightsMiDorsal.js";
 import type * as devOnly_markFeatured from "../devOnly/markFeatured.js";
 import type * as devOnly_migrateMyRaceToCorrectRace from "../devOnly/migrateMyRaceToCorrectRace.js";
 import type * as devOnly_promoteToAdmin from "../devOnly/promoteToAdmin.js";
@@ -132,6 +133,7 @@ declare const fullApi: ApiFromModules<{
   "devOnly/enrichTestUserByEmail": typeof devOnly_enrichTestUserByEmail;
   "devOnly/fixBlogVerificarInline": typeof devOnly_fixBlogVerificarInline;
   "devOnly/fixDistanceKm": typeof devOnly_fixDistanceKm;
+  "devOnly/fixTonightsMiDorsal": typeof devOnly_fixTonightsMiDorsal;
   "devOnly/markFeatured": typeof devOnly_markFeatured;
   "devOnly/migrateMyRaceToCorrectRace": typeof devOnly_migrateMyRaceToCorrectRace;
   "devOnly/promoteToAdmin": typeof devOnly_promoteToAdmin;

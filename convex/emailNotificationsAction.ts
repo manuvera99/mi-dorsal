@@ -61,7 +61,7 @@ import { Id } from "./_generated/dataModel";
 import type { DiplomaProps } from "../lib/pdf/diploma";
 import type { StoryStickerProps } from "../lib/share-card/story-sticker";
 import { resultFoundEmail } from "./emails/templates/resultFound";
-import { reminderEmail } from "./emails/templates/reminder";
+import { reminderEmail, reminderUrgencyFromHours, type ReminderUrgency } from "./emails/templates/reminder";
 import { dorsalReminderEmail } from "./emails/templates/dorsalReminder";
 import { resultNotFoundEmail } from "./emails/templates/resultNotFound";
 
@@ -453,6 +453,11 @@ export const sendReminderEmail = internalAction({
     dorsalNumber: v.optional(v.string()),
     predictedTimeSeconds: v.optional(v.number()),
     daysUntil: v.union(v.literal(7), v.literal(1)),
+    // Nuevo (sesión 26 sep 2026): tono del recordatorio. Si se omite, se
+    // calcula a partir de hoursUntilRace o se usa el legacy de daysUntil.
+    urgency: v.optional(
+      v.union(v.literal("tonight"), v.literal("tomorrow"), v.literal("weekAway")),
+    ),
     testOverrideTo: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -516,6 +521,7 @@ export const sendReminderEmail = internalAction({
       predictedTimeFormatted: args.predictedTimeSeconds
         ? formatHMS(args.predictedTimeSeconds)
         : undefined,
+      urgency: args.urgency,
       daysUntil: args.daysUntil,
       raceUrl,
       appUrl: APP_URL,

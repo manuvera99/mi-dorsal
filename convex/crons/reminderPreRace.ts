@@ -17,6 +17,7 @@
 import { internalAction, internalQuery } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
+import { reminderUrgencyFromHours } from "../emails/templates/reminder";
 
 /**
  * Convierte una fecha/hora local Europe/Madrid (YYYY-MM-DDTHH:MM:SS) a
@@ -118,7 +119,7 @@ export const getRacesNeedingReminder = internalQuery({
           .filter((q) => q.eq(q.field("relatedMyRaceId"), myRace._id))
           .first();
         if (!alreadySent) {
-          needs7d.push({ myRace, race });
+          needs7d.push({ myRace, race, hoursUntilRace });
         }
       }
 
@@ -135,7 +136,7 @@ export const getRacesNeedingReminder = internalQuery({
           .filter((q) => q.eq(q.field("relatedMyRaceId"), myRace._id))
           .first();
         if (!alreadySent) {
-          needs1d.push({ myRace, race });
+          needs1d.push({ myRace, race, hoursUntilRace });
         }
       }
     }
@@ -165,7 +166,7 @@ export const reminderPreRace = internalAction({
     let errorCount = 0;
 
     // 7 días
-    for (const { myRace, race } of needs7d) {
+    for (const { myRace, race, hoursUntilRace } of needs7d) {
       const profile = await ctx.runQuery(
         internal.crons.reminderPreRace.getProfile,
         { userId: myRace.userId },
@@ -184,6 +185,7 @@ export const reminderPreRace = internalAction({
           dorsalNumber: myRace.dorsalNumber,
           predictedTimeSeconds: myRace.predictedTimeSeconds,
           daysUntil: 7,
+          urgency: reminderUrgencyFromHours(hoursUntilRace),
         });
         sent7d++;
       } catch (err) {
@@ -196,7 +198,7 @@ export const reminderPreRace = internalAction({
     }
 
     // 1 día
-    for (const { myRace, race } of needs1d) {
+    for (const { myRace, race, hoursUntilRace } of needs1d) {
       const profile = await ctx.runQuery(
         internal.crons.reminderPreRace.getProfile,
         { userId: myRace.userId },
@@ -215,6 +217,7 @@ export const reminderPreRace = internalAction({
           dorsalNumber: myRace.dorsalNumber,
           predictedTimeSeconds: myRace.predictedTimeSeconds,
           daysUntil: 1,
+          urgency: reminderUrgencyFromHours(hoursUntilRace),
         });
         sent1d++;
       } catch (err) {

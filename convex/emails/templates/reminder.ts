@@ -28,6 +28,21 @@ function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
+export type ReminderUrgency = "tonight" | "tomorrow" | "weekAway";
+
+/**
+ * Decide el tono del recordatorio en función de las horas hasta la salida.
+ * Antes solo había dos modos (1d / 7d). Pero para carreras nocturnas
+ * (salida por la tarde/noche del mismo día del cron) el "Es mañana" era
+ * incorrecto: el cron corría 4h antes y aun así el email decía "Mañana".
+ * Ahora tenemos tres modos según hoursUntilRace.
+ */
+export function reminderUrgencyFromHours(hoursUntilRace: number): ReminderUrgency {
+  if (hoursUntilRace < 18) return "tonight"; // <18h: la carrera es HOY
+  if (hoursUntilRace < 60) return "tomorrow"; // <60h (2.5d): "mañana" sigue siendo razonable
+  return "weekAway";
+}
+
 export function reminderEmail(args: {
   userName: string;
   raceName: string;
@@ -37,7 +52,13 @@ export function reminderEmail(args: {
   distanceLabel?: string; // "10K", "Media maratón", etc.
   dorsalNumber?: string;
   predictedTimeFormatted?: string;
-  daysUntil: 7 | 1;
+  /**
+   * Tono del recordatorio. Por defecto se mantiene el cálculo legado de
+   * daysUntil para no romper callers externos, pero el cron ahora pasa
+   * `urgency` directamente. Si ambos vienen, gana `urgency`.
+   */
+  urgency?: ReminderUrgency;
+  daysUntil?: 7 | 1; // legacy
   raceUrl: string; // web oficial / inscripción / ficha de la carrera
   appUrl: string;
 }): { subject: string; html: string; text: string } {
@@ -50,6 +71,7 @@ export function reminderEmail(args: {
     distanceLabel,
     dorsalNumber,
     predictedTimeFormatted,
+    urgency,
     daysUntil,
     raceUrl,
     appUrl,
@@ -62,18 +84,30 @@ export function reminderEmail(args: {
   const safeDorsal = dorsalNumber ? escapeHtml(dorsalNumber) : null;
   const safePredicted = predictedTimeFormatted ? escapeHtml(predictedTimeFormatted) : null;
 
-  const isNextDay = daysUntil === 1;
+  // Resolver urgencia: si viene `urgency` gana; si no, derivamos de daysUntil.
+  const resolvedUrgency: ReminderUrgency =
+    urgency ?? (daysUntil === 1 ? "tomorrow" : "weekAway");
+  const isTonight = resolvedUrgency === "tonight";
+  const isTomorrow = resolvedUrgency === "tomorrow";
 
   // ===== Subject / preheader =====
-  const subject = isNextDay
+  const subject = isTonight
+    ? `🏁 ¡Es esta noche! ${safeRaceName}`
+    : isTomorrow
     ? `🏁 ¡Es mañana! ${safeRaceName}`
     : `📅 Tu carrera es en 7 días: ${safeRaceName}`;
 
-  const preheader = isNextDay
+  const preheader = isTonight
+    ? `Tu carrera es esta noche a las ${raceTime ?? ""}. Repasa dorsal, ropa y plan de carrera.`
+    : isTomorrow
     ? `Mañana es el día. Todo lo que necesitas saber sobre ${safeRaceName}, dentro.`
     : `Quedan 7 días para ${safeRaceName}. Repasa los detalles antes del gran día.`;
 
-  const badgeText = isNextDay ? "🏁 Es mañana" : "📅 Faltan 7 días";
+  const badgeText = isTonight
+    ? "🏁 Es esta noche"
+    : isTomorrow
+    ? "🏁 Es mañana"
+    : "📅 Faltan 7 días";
 
   // ===== Bloque fecha/hora/lugar =====
   const whenParts = [safeRaceDate, raceTime ? escapeHtml(raceTime) : null].filter(Boolean);
@@ -115,7 +149,9 @@ export function reminderEmail(args: {
     : "";
 
   // ===== Tono según proximidad =====
-  const bodyCopy = isNextDay
+  const bodyCopy = isTonight
+    ? "Tu carrera es esta noche. Dorsal listo, ropa preparada, algo ligero para cenar temprano y a la cama. Última comida con margen de 3h. A correr."
+    : isTomorrow
     ? "Deja todo preparado esta noche: dorsal, ropa, desayuno y hora de salida de casa. Mañana solo toca correr."
     : "Todavía tienes margen para el último ajuste: hidratación, sueño y algún rodaje suave. Nada de estrenar zapatillas.";
 
@@ -229,7 +265,11 @@ export function reminderEmail(args: {
   const textLines = [
     `Hola, ${userName}.`,
     "",
-    isNextDay ? "Mañana es el día:" : "Faltan 7 días para tu carrera:",
+    isTonight
+      ? "Esta noche es el día:"
+      : isTomorrow
+      ? "Mañana es el día:"
+      : "Faltan 7 días para tu carrera:",
     raceName,
     whenLine.replace(/&amp;/g, "&"),
     venue ?? "",

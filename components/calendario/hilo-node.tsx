@@ -31,6 +31,7 @@ import {
 import { getEffectiveDistance } from "@/lib/prediction/effective-distance";
 import { isAutoTrackable } from "@/lib/results-tracking";
 import { useToast } from "@/components/ui/toast";
+import { isToday } from "@/lib/dates";
 
 type HiloNodeStatus = "planned" | "done" | "dns" | "dnf";
 
@@ -49,6 +50,11 @@ interface HiloNodeProps {
   myRace: any;
   /** Si es la próxima carrera a correr (énfasis visual). */
   isNext?: boolean;
+  /** Si la carrera es HOY (día local = día actual). Muestra badge HOY
+   *  para que el usuario no se piense que desapareció. Solo aplica a
+   *  carreras con status planned — una carrera hecha o DNS ya tiene su
+   *  propio badge. */
+  isToday?: boolean;
   /** PRs actuales del usuario (uno por distancia). Opcional: si no se
    *  pasan, no se muestra el bloque "Tu PR en X" en la card. */
   userPRs?: UserPR[];
@@ -161,9 +167,15 @@ function fmtShortDate(d: string | undefined): {
   }
 }
 
-export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
+export function HiloNode({ index, myRace, isNext, isToday: isTodayProp, userPRs }: HiloNodeProps) {
   const status: HiloNodeStatus =
     (myRace.status as HiloNodeStatus) || "planned";
+  // Defensa en profundidad: si la prop no llega, recalculamos aquí.
+  // El badge "HOY" solo tiene sentido para carreras planeadas (status
+  // planned). Una carrera ya hecha o DNS/DNF tiene su propio badge.
+  const isRaceToday =
+    (isTodayProp ?? isToday(myRace.race?.startDate)) &&
+    status === "planned";
   const s = STATUS[status];
   const race = myRace.race;
   const effectiveDistance = race ? getEffectiveDistance(myRace, race) : null;
@@ -322,6 +334,9 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
           status === "planned" &&
             isNext &&
             "ring-4 ring-runner-primary/20 transition-transform",
+          // Carrera HOY: anillo brand más fuerte para que el dorsal mini
+          // también grite "¡es hoy!".
+          isRaceToday && "ring-4 ring-runner-primary/40",
         )}
         aria-hidden="true"
       >
@@ -356,6 +371,11 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
           status === "planned" &&
             isNext &&
             "ring-2 ring-runner-primary/30 bg-red-50/40",
+          // Carrera de HOY: emphasis visual igual que "Tu próxima" pero
+          // más llamativo (anillo brand más grueso + fondo rojo más cálido).
+          // Coexiste con la badge "Hoy" arriba.
+          isRaceToday &&
+            "ring-2 ring-runner-primary/50 bg-red-50/70 shadow-lg shadow-red-500/15",
         )}
       >
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -375,9 +395,18 @@ export function HiloNode({ index, myRace, isNext, userPRs }: HiloNodeProps) {
             >
               {s.badgeLabel}
             </span>
-            {isNext && status === "planned" && (
+            {isNext && status === "planned" && !isRaceToday && (
               <span className="rounded bg-runner-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
                 Tu próxima
+              </span>
+            )}
+            {isRaceToday && (
+              <span
+                className="inline-flex items-center gap-1 rounded bg-runner-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+                title="Esta carrera es hoy"
+              >
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                Hoy
               </span>
             )}
             {status === "planned" && trackable && (

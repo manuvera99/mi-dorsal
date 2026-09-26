@@ -23,6 +23,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { HiloNode } from "./hilo-node";
+import { isToday, isPastDay } from "@/lib/dates";
 
 interface HiloTimelineProps {
   myRaces: any[];
@@ -43,23 +44,18 @@ export function HiloTimeline({
   // simplemente no muestra el bloque del PR hasta que llegue.
   const userPRs = useQuery(api.personalRecords.listMine, {});
 
-  // Encontrar el índice de la primera carrera con fecha estrictamente
-  // posterior a hoy → ahí va el marcador "Hoy".
-  const todayMs = Date.now();
+  // Encontrar el índice de la primera carrera NO pasada (>= día de hoy).
+  // Comparamos por día local (no timestamp absoluto): una carrera a las
+  // 19:00 de hoy cuenta como HOY hasta medianoche, no como pasada.
+  // → ahí va el marcador "Hoy" del timeline.
   const todayIndex = showTodayMarker
-    ? myRaces.findIndex(
-        (mr) =>
-          mr.race?.startDate &&
-          new Date(mr.race.startDate).getTime() >= todayMs,
-      )
+    ? myRaces.findIndex((mr) => !isPastDay(mr.race?.startDate))
     : -1;
 
   // Índice de la primera `planned` futura → marca "isNext" para el énfasis.
+  // Usamos !isPastDay para que una carrera de HOY cuente como próxima.
   const nextPlannedIndex = myRaces.findIndex(
-    (mr) =>
-      mr.status === "planned" &&
-      mr.race?.startDate &&
-      new Date(mr.race.startDate).getTime() >= todayMs,
+    (mr) => mr.status === "planned" && !isPastDay(mr.race?.startDate),
   );
 
   // Enumeración 1-based de los nodos. Si hay marcador "Hoy" en medio, los
@@ -67,12 +63,17 @@ export function HiloTimeline({
   const renderNode = (mr: any, displayIndex: number) => {
     const isNext =
       mr.status === "planned" && displayIndex - 1 === nextPlannedIndex;
+    // HOY: solo si está planeada. Una carrera ya hecha/dns/dnf con fecha
+    // de hoy tiene su propio badge de estado y no necesita la marca "HOY".
+    const nodeIsToday =
+      mr.status === "planned" && isToday(mr.race?.startDate);
     return (
       <HiloNode
         key={mr._id}
         index={displayIndex}
         myRace={mr}
         isNext={isNext}
+        isToday={nodeIsToday}
         userPRs={userPRs as any}
       />
     );
@@ -91,13 +92,25 @@ export function HiloTimeline({
 
       {myRaces.map((mr, i) => {
         const isLast = i === myRaces.length - 1;
-        // Insertar "Hoy" justo antes de la primera carrera futura
+        // Insertar "Hoy" justo antes de la primera carrera futura.
+        // Si esa primera futura es HOY, el copy del marcador cambia
+        // ("Hoy corres") para no sonar redundante con la badge "HOY" de
+        // la card.
         const showHoyHere =
           showTodayMarker && i === todayIndex && todayIndex > 0;
+        const nextIsToday =
+          showHoyHere &&
+          mr.status === "planned" &&
+          isToday(mr.race?.startDate);
 
         return (
           <div key={mr._id}>
-            {showHoyHere && <TodayMarker pastCount={todayIndex} />}
+            {showHoyHere && (
+              <TodayMarker
+                pastCount={todayIndex}
+                nextIsToday={nextIsToday}
+              />
+            )}
             <div className={isLast ? "" : ""}>
               {renderNode(mr, i + 1)}
             </div>
@@ -186,9 +199,13 @@ function HiloSvg() {
 function TodayMarker({
   pastCount,
   atEnd = false,
+  nextIsToday = false,
 }: {
   pastCount: number;
   atEnd?: boolean;
+  /** Si la primera carrera NO-pasada es HOY. Cambia el copy del
+   *  marcador para no sonar redundante con la badge "Hoy" de la card. */
+  nextIsToday?: boolean;
 }) {
   return (
     <div
@@ -212,6 +229,15 @@ function TodayMarker({
             </span>{" "}
             {pastCount} {pastCount === 1 ? "carrera en tu historial" : "carreras en tu historial"}
             .
+          </>
+        ) : nextIsToday ? (
+          <>
+            <span className="font-semibold text-stone-700">
+              Hoy corres.
+            </span>{" "}
+            {pastCount === 1
+              ? "1 carrera antes en tu historial."
+              : `${pastCount} carreras antes en tu historial.`}
           </>
         ) : (
           <>

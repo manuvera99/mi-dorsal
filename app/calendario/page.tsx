@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { Plus, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { HiloTimeline } from "@/components/calendario/hilo-timeline";
+import { isPastDay, isTodayOrFuture, isToday } from "@/lib/dates";
 
 type View = "proximas" | "todas";
 
@@ -57,29 +58,33 @@ function CalendarioContent({ myRaces }: { myRaces: any[] }) {
     });
   }, [myRaces]);
 
-  const todayMs = Date.now();
-
-  // Carreras pasadas: cualquier status con startDate < hoy.
+  // Comparación por DÍA local (no timestamp absoluto). Una carrera es
+  // "hoy" si su día coincide con el día actual, y solo pasa al historial
+  // cuando es un día estrictamente anterior. Ver lib/dates.ts.
   const pastCount = useMemo(
-    () =>
-      sorted.filter(
-        (mr) =>
-          mr.race?.startDate &&
-          new Date(mr.race.startDate).getTime() < todayMs,
-      ).length,
-    [sorted, todayMs],
+    () => sorted.filter((mr) => isPastDay(mr.race?.startDate)).length,
+    [sorted],
   );
 
-  // Carreras futuras planeadas (>= hoy).
+  // Carreras de hoy mismo (status planned, día = hoy). Las mostramos
+  // aparte para destacarlas con un badge "HOY" en el headline.
+  const todayCount = useMemo(
+    () =>
+      sorted.filter(
+        (mr) => mr.status === "planned" && isToday(mr.race?.startDate),
+      ).length,
+    [sorted],
+  );
+
+  // Carreras futuras planeadas: incluye HOY (>= hoy). Una carrera del
+  // día actual sigue siendo "próxima" hasta medianoche, con badge HOY.
   const upcoming = useMemo(
     () =>
       sorted.filter(
         (mr) =>
-          mr.status === "planned" &&
-          mr.race?.startDate &&
-          new Date(mr.race.startDate).getTime() >= todayMs,
+          mr.status === "planned" && isTodayOrFuture(mr.race?.startDate),
       ),
-    [sorted, todayMs],
+    [sorted],
   );
 
   const visibleRaces = view === "proximas" ? upcoming : sorted;
@@ -120,6 +125,16 @@ function CalendarioContent({ myRaces }: { myRaces: any[] }) {
           </h1>
           <p className="mt-1 text-sm text-stone-600">
             {headlineCount} {headlineLabel}
+            {view === "proximas" && todayCount > 0 && (
+              <>
+                {" "}
+                ·{" "}
+                <span className="inline-flex items-center gap-1 rounded-full bg-runner-primary px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-white">
+                  <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                  Hoy · {todayCount}
+                </span>
+              </>
+            )}
             {pastCount > 0 && view === "todas" && (
               <>
                 {" "}

@@ -68,7 +68,7 @@ import {
 } from "./emails/templates/reminder";
 import { dorsalReminderEmail } from "./emails/templates/dorsalReminder";
 import { resultNotFoundEmail } from "./emails/templates/resultNotFound";
-import { raceStartUtcMs } from "./crons/_shared/time";
+import { raceStartUtcMs, formatRaceDateMadrid } from "./crons/_shared/time";
 
 /**
  * Este archivo corre en el runtime V8 isolate de Convex (sin "use node",
@@ -184,6 +184,15 @@ export const sendResultFoundEmail = internalAction({
       return { success: true, reason: "already_sent" as const };
     }
 
+    // Formatear raceDate bonito (es-ES long, Europe/Madrid). El cron pasa
+    // startDate crudo "YYYY-MM-DD"; antes se mostraba tal cual en el email
+    // del diploma (bug: "XIII 15K... — 2026-09-26"). Ahora SIEMPRE se
+    // convierte. Si por lo que sea race.startDate no existe, cae al
+    // args.raceDate del cron como fallback.
+    const raceDateFormatted = race.startDate
+      ? formatRaceDateMadrid(race.startDate)
+      : args.raceDate;
+
     // ---------- 2. Calcular PR ----------
     const distanceM = Math.round(effectiveDistance.distanceKm * 1000);
     const isPR =
@@ -201,7 +210,7 @@ export const sendResultFoundEmail = internalAction({
     const diplomaProps: DiplomaProps = {
       runnerName: profile.displayName ?? "Corredor",
       raceName: race.name,
-      raceDate: args.raceDate,
+      raceDate: raceDateFormatted,
       distanceKm: effectiveDistance.distanceKm,
       distanceLabel,
       timeFormatted: formatHMS(args.timeSeconds),
@@ -316,7 +325,7 @@ export const sendResultFoundEmail = internalAction({
     const { subject, html, text } = resultFoundEmail({
       userName: profile.displayName ?? "corredor",
       raceName: race.name,
-      raceDate: args.raceDate,
+      raceDate: raceDateFormatted,
       timeFormatted: formatHMS(args.timeSeconds),
       positionOverall: args.positionOverall,
       positionCategory: args.positionCategory,
@@ -509,13 +518,7 @@ export const sendReminderEmail = internalAction({
 
     // ---------- 2. Preparar datos para la plantilla ----------
     const distanceLabel = effectiveDistance.label;
-    const raceDateFormatted = race.startDate
-      ? new Date(race.startDate).toLocaleDateString("es-ES", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-        })
-      : args.raceName;
+    const raceDateFormatted = formatRaceDateMadrid(race.startDate ?? "");
     // Siempre la ficha DENTRO de mi-dorsal, nunca la web externa de la
     // carrera (officialUrl/registrationUrl) — el CTA es "ver tu ficha",
     // no "salir de la app".
@@ -645,6 +648,21 @@ export const sendDorsalReminderEmail = internalAction({
     }
     const { myRace, profile, race } = data;
 
+    // Distance label: prioriza la distancia preferida por el corredor
+    // (selectedDistanceLabel) sobre el distanceKm del catálogo, para
+    // mantener coherencia con reminder_1d y result_found. Sin esto, en
+    // carreras multi-distancia el dorsalReminder decía "5K" mientras los
+    // demás emails decían "10K".
+    const distanceLabel =
+      myRace.selectedDistanceLabel ??
+      (race.distanceKm != null
+        ? race.distanceKm >= 21
+          ? race.distanceKm >= 42
+            ? "Maratón"
+            : "Media maratón"
+          : `${Math.round(race.distanceKm)}K`
+        : undefined);
+
     // Defense in depth: si en el ínterin alguien metió dorsal, no enviar.
     if (myRace.dorsalNumber) {
       console.log(
@@ -675,25 +693,7 @@ export const sendDorsalReminderEmail = internalAction({
     }
 
     // ---------- 2. Preparar datos para la plantilla ----------
-    const raceDateFormatted = race.startDate
-      ? new Date(race.startDate).toLocaleDateString("es-ES", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        })
-      : race.name;
-
-    // Distance label simple (sin effectiveDistance; basta con el formato
-    // principal de la carrera).
-    const distanceLabel =
-      race.distanceKm != null
-        ? race.distanceKm >= 21
-          ? race.distanceKm >= 42
-            ? "Maratón"
-            : "Media maratón"
-          : `${Math.round(race.distanceKm)}K`
-        : undefined;
+    const raceDateFormatted = formatRaceDateMadrid(race.startDate ?? "");
 
     // Deep link al calendario con el editor de dorsal pre-abierto para esta
     // myRace concreta. La app detecta el query param y enfoca el input.
@@ -784,6 +784,13 @@ export const sendResultNotFoundEmail = internalAction({
     myRaceId: v.id("myRaces"),
     raceName: v.string(),
     raceDate: v.string(),
+    // Distancia preferida por el corredor (selectedDistanceLabel) — el
+    // cron la calcula desde la myRace. Si no viene, el template usa el
+    // distanceLabel de la carrera como fallback.
+    distanceLabel: v.optional(v.string()),
+    // Dorsal que el usuario tiene guardado en la myRace, para que verifique
+    // que la búsqueda se hizo con el correcto.
+    dorsalNumber: v.optional(v.string()),
     testOverrideTo: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -820,18 +827,28 @@ export const sendResultNotFoundEmail = internalAction({
     }
 
     // ---------- 2. Preparar datos para la plantilla ----------
-    const raceDateFormatted = race.startDate
-      ? new Date(race.startDate).toLocaleDateString("es-ES", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-        })
-      : args.raceDate;
+    const raceDateFormatted = formatRaceDateMadrid(race.startDate ?? "");
+
+    // distanceLabel y dorsalNumber: si los tenemos del cron, van directos; si
+    // no (ej. test manual vía CLI), calculamos del profile + effectiveDistance
+    // como fallback.
+    const effectiveLabel =
+      args.distanceLabel ??
+      data.effectiveDistance?.label ??
+      (race.distanceKm != null
+        ? race.distanceKm >= 21
+          ? race.distanceKm >= 42
+            ? "Maratón"
+            : "Media maratón"
+          : `${Math.round(race.distanceKm)}K`
+        : undefined);
 
     const { subject, html, text } = resultNotFoundEmail({
       userName: profile.displayName ?? "corredor",
       raceName: args.raceName,
       raceDate: raceDateFormatted,
+      distanceLabel: effectiveLabel,
+      dorsalNumber: args.dorsalNumber ?? myRace.dorsalNumber,
       classificationUrl: race.resultsUrl,
       calendarUrl: `${APP_URL}/calendario`,
       appUrl: APP_URL,

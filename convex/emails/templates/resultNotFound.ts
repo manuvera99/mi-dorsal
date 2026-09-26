@@ -31,18 +31,63 @@ export function resultNotFoundEmail(args: {
   userName: string;
   raceName: string;
   raceDate: string; // ya formateada, ej "25 de octubre de 2026"
+  // Sesión 26 sep 2026: distancia y dorsal se añaden para que el usuario
+  // pueda verificar que la búsqueda se hizo con el dorsal correcto y para
+  // desambiguar carreras con el mismo nombre (ej. "5K popular").
+  distanceLabel?: string;
+  dorsalNumber?: string;
   classificationUrl?: string; // link a la clasificación del cronometrador, si lo tenemos
   calendarUrl: string; // /calendario dentro de mi-dorsal, para meter el tiempo a mano
   appUrl: string;
 }): { subject: string; html: string; text: string } {
-  const { userName, raceName, raceDate, classificationUrl, calendarUrl, appUrl } = args;
+  const {
+    userName,
+    raceName,
+    raceDate,
+    distanceLabel,
+    dorsalNumber,
+    classificationUrl,
+    calendarUrl,
+    appUrl,
+  } = args;
 
   const safeUserName = escapeHtml(userName);
   const safeRaceName = escapeHtml(raceName);
   const safeRaceDate = escapeHtml(raceDate);
+  const safeDistance = distanceLabel ? escapeHtml(distanceLabel) : null;
+  const safeDorsal = dorsalNumber ? escapeHtml(dorsalNumber) : null;
 
   const subject = `No encontramos tu tiempo en ${safeRaceName}`;
-  const preheader = `Puede que el cronometrador aún no haya publicado la clasificación. Añade tu tiempo a mano si ya lo tienes.`;
+  const preheader = safeDorsal
+    ? `Hemos buscado tu dorsal ${safeDorsal} en los resultados de ${safeRaceName} y no aparece.`
+    : `Puede que el cronometrador aún no haya publicado la clasificación. Añade tu tiempo a mano si ya lo tienes.`;
+
+  // Info block (distancia + dorsal). Se muestra solo si tenemos al menos
+  // uno de los dos. Si no, se omite todo el bloque.
+  const infoRows: string[] = [];
+  if (safeDistance) {
+    infoRows.push(`
+      <tr>
+        <td style="padding: 8px 0; color: ${COLORS.muted}; font-size: 14px;">Distancia</td>
+        <td style="padding: 8px 0; color: ${COLORS.ink}; font-size: 14px; text-align: right; font-weight: 700;">${safeDistance}</td>
+      </tr>
+    `);
+  }
+  if (safeDorsal) {
+    infoRows.push(`
+      <tr>
+        <td style="padding: 8px 0; color: ${COLORS.muted}; font-size: 14px;">Dorsal que buscábamos</td>
+        <td style="padding: 8px 0; color: ${COLORS.ink}; font-size: 14px; text-align: right; font-weight: 700;">${safeDorsal}</td>
+      </tr>
+    `);
+  }
+  const infoBlock = infoRows.length
+    ? `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top: 16px; background: ${COLORS.warm}; border-radius: 8px; padding: 4px 16px;">
+        ${infoRows.join("")}
+      </table>
+    `
+    : "";
 
   const classificationBlock = classificationUrl
     ? `
@@ -133,6 +178,7 @@ export function resultNotFoundEmail(args: {
                 cronometrador vaya con retraso, o que la clasificación esté
                 en un formato que aún no sabemos leer automáticamente.
               </p>
+              ${infoBlock}
               ${classificationBlock}
 
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top: 20px;">
@@ -167,6 +213,8 @@ export function resultNotFoundEmail(args: {
     `Hola, ${userName}.`,
     "",
     `Aún no encontramos tu tiempo en ${raceName} (${raceDate}).`,
+    distanceLabel ? `Distancia: ${distanceLabel}` : "",
+    dorsalNumber ? `Dorsal que buscábamos: ${dorsalNumber}` : "",
     "",
     "Han pasado más de 48 horas desde la salida y no hemos podido leer tu",
     "resultado en la fuente oficial todavía.",

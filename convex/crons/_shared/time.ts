@@ -61,3 +61,25 @@ export function raceStartUtcMs(startDate: string, startTime?: string): number {
   const localIso = `${startDate}T${(hh ?? "09").padStart(2, "0")}:${(mm ?? "00").padStart(2, "0")}:00`;
   return madridLocalToUtcMs(localIso);
 }
+
+/**
+ * Formatea una fecha (YYYY-MM-DD) como "sábado, 26 de septiembre" en es-ES,
+ * respetando Europe/Madrid. Usado para mostrar la fecha de la carrera en
+ * emails de recordatorio / resultado sin que se filtre el formato ISO.
+ *
+ * Si el string NO es una fecha válida, devuelve el original sin tocar
+ * (defensa contra entradas del cron ya formateadas o en formatos raros).
+ */
+export function formatRaceDateMadrid(isoDate: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return isoDate;
+  // Usamos mediodía UTC como hora neutra para que el cambio de día por
+  // timezone no nos haga retroceder/avanzar un día en el output.
+  const [yyyy, MM, dd] = isoDate.split("-").map(Number);
+  const ms = Date.UTC(yyyy, MM - 1, dd, 12, 0, 0);
+  return new Intl.DateTimeFormat("es-ES", {
+    timeZone: "Europe/Madrid",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(ms));
+}

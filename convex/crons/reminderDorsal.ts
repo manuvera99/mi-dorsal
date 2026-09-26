@@ -151,7 +151,16 @@ export const getMyRaceForDorsalReminder = internalQuery({
     const race = await ctx.db.get(myRace.raceId);
     if (!race) return null;
     return {
-      myRace: { _id: myRace._id, dorsalNumber: myRace.dorsalNumber },
+      myRace: {
+        _id: myRace._id,
+        dorsalNumber: myRace.dorsalNumber,
+        // Para coherencia con reminder_1d / result_found, devolvemos los
+        // campos de distancia preferidos por el corredor (los que eligió
+        // al añadir al calendario). Si no los hay, caen al default
+        // distanceKm del catálogo.
+        selectedDistanceKm: (myRace as any).selectedDistanceKm,
+        selectedDistanceLabel: (myRace as any).selectedDistanceLabel,
+      },
       profile: { _id: profile._id, email: profile.email, displayName: profile.displayName },
       race: {
         _id: race._id,

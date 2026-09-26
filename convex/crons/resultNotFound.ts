@@ -9,6 +9,7 @@
 import { internalAction, internalQuery } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
+import { raceStartUtcMs } from "./_shared/time";
 
 const FORTY_EIGHT_HOURS = 48 * 3600 * 1000;
 
@@ -24,12 +25,25 @@ export const getRacesWithoutResult = internalQuery({
       .withIndex("by_status", (q) => q.eq("status", "planned"))
       .collect();
 
-    const out: Array<{ myRaceId: string; userId: string; raceId: string; raceName: string; raceDate: string }> = [];
+    const out: Array<{
+      myRaceId: string;
+      userId: string;
+      raceId: string;
+      raceName: string;
+      raceDate: string;
+      startTime: string | undefined;
+      distanceLabel: string | undefined;
+      dorsalNumber: string | undefined;
+    }> = [];
 
     for (const myRace of all) {
       const race = await ctx.db.get(myRace.raceId);
       if (!race?.startDate) continue;
-      const raceTime = new Date(race.startDate).getTime();
+      // raceTime con startDate + startTime Europe/Madrid (antes se usaba
+      // solo startDate = medianoche UTC, lo que para carreras vespertinas
+      // disparaba el result_not_found antes de tiempo).
+      const raceTime = raceStartUtcMs(race.startDate, race.startTime);
+      if (isNaN(raceTime)) continue;
       const elapsed = now - raceTime;
       if (elapsed < FORTY_EIGHT_HOURS) continue;
       if (elapsed > 7 * 24 * 3600 * 1000) continue; // muy viejas, no molestar
@@ -47,12 +61,27 @@ export const getRacesWithoutResult = internalQuery({
         .first();
       if (alreadySent) continue;
 
+      // Distance label preferido (selectedDistanceLabel de la myRace) o
+      // fallback al distanceKm del catálogo. Coherencia con el resto.
+      const distanceLabel =
+        (myRace as any).selectedDistanceLabel ??
+        (race.distanceKm != null
+          ? race.distanceKm >= 21
+            ? race.distanceKm >= 42
+              ? "Maratón"
+              : "Media maratón"
+            : `${Math.round(race.distanceKm)}K`
+          : undefined);
+
       out.push({
         myRaceId: myRace._id,
         userId: myRace.userId,
         raceId: race._id,
         raceName: race.name,
         raceDate: race.startDate,
+        startTime: race.startTime,
+        distanceLabel,
+        dorsalNumber: myRace.dorsalNumber,
       });
     }
 
@@ -107,6 +136,8 @@ export const resultNotFound = internalAction({
           myRaceId: item.myRaceId as any,
           raceName: item.raceName,
           raceDate: item.raceDate,
+          distanceLabel: item.distanceLabel,
+          dorsalNumber: item.dorsalNumber,
         });
         sent++;
       } catch (err) {

@@ -190,7 +190,10 @@ export function reminderEmail(args: {
   } else if (isTomorrow) {
     subject = `🏁 Tu carrera es mañana: ${safeRaceName}`;
   } else {
-    subject = `📅 Tu carrera es en 7 días: ${safeRaceName}`;
+    // daysAhead: mostramos SIEMPRE la fecha bonita del whenRelative en
+    // lugar de "en 7 días" para que sea inequívoco de qué carrera se
+    // habla. Ej: "📅 el domingo, 4 de octubre: XIII Maratón de Madrid"
+    subject = `📅 ${whenRelative.charAt(0).toUpperCase() + whenRelative.slice(1)}: ${safeRaceName}`;
   }
 
   let preheader: string;

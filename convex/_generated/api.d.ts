@@ -25,6 +25,7 @@ import type * as clubs from "../clubs.js";
 import type * as clubsCatalog from "../clubsCatalog.js";
 import type * as coachAnalysisHelpers from "../coachAnalysisHelpers.js";
 import type * as cronJobs from "../cronJobs.js";
+import type * as crons__shared_time from "../crons/_shared/time.js";
 import type * as crons_checkFlickrSiteKeyHealth from "../crons/checkFlickrSiteKeyHealth.js";
 import type * as crons_checkResults from "../crons/checkResults.js";
 import type * as crons_cleanupPhotoSearch from "../crons/cleanupPhotoSearch.js";
@@ -112,6 +113,7 @@ declare const fullApi: ApiFromModules<{
   clubsCatalog: typeof clubsCatalog;
   coachAnalysisHelpers: typeof coachAnalysisHelpers;
   cronJobs: typeof cronJobs;
+  "crons/_shared/time": typeof crons__shared_time;
   "crons/checkFlickrSiteKeyHealth": typeof crons_checkFlickrSiteKeyHealth;
   "crons/checkResults": typeof crons_checkResults;
   "crons/cleanupPhotoSearch": typeof crons_cleanupPhotoSearch;

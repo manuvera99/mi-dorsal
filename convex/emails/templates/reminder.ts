@@ -28,19 +28,76 @@ function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
-export type ReminderUrgency = "tonight" | "tomorrow" | "weekAway";
+/**
+ * Bandas de coherencia horaria para los recordatorios.
+ *
+ * Antes el sistema tenía solo 2 modos (1d / 7d) con copy estático. El problema
+ * que destapó el bug del 26 sep: a las 16:00 con la carrera a las 22:30 el copy
+ * decía "cena temprano y a la cama" — un disparate si faltan 6h y la salida es
+ * por la noche. Ahora hay 5 bandas finas según hoursUntilRace:
+ *
+ *   runningNow   <1h    estás saliendo ya
+ *   hoursAway    1-6h   tienes tiempo de cenar ligero antes
+ *   eveningBefore 6-18h la carrera es esta tarde/noche
+ *   tomorrow     18-48h es mañana
+ *   daysAhead    48h+   quedan días
+ *
+ * Cada banda tiene copy coherente con la hora real y siempre incluye la hora
+ * de salida y la fecha relativa ("hoy 22:30", "mañana 10:00", "el domingo 4 oct
+ * 09:30") para que el corredor haga la cuenta mental sin dudar.
+ */
+export type ReminderUrgency =
+  | "runningNow"
+  | "hoursAway"
+  | "eveningBefore"
+  | "tomorrow"
+  | "daysAhead";
+
+export function reminderUrgencyFromHours(hoursUntilRace: number): ReminderUrgency {
+  if (hoursUntilRace < 1) return "runningNow";
+  if (hoursUntilRace < 6) return "hoursAway";
+  // eveningBefore cubre el rango en el que "cena ligera esta noche" tiene
+  // sentido: la carrera es hoy por la tarde/noche y aún no es hora de
+  // dormir. Por eso va hasta <24h (no 18h). Si quedan 24h+, ya es mañana
+  // para el corredor y recomendar cenar ligero esta noche no tiene sentido
+  // (puede haber cenado a las 22h del día anterior).
+  if (hoursUntilRace < 24) return "eveningBefore";
+  if (hoursUntilRace < 72) return "tomorrow";
+  return "daysAhead";
+}
 
 /**
- * Decide el tono del recordatorio en función de las horas hasta la salida.
- * Antes solo había dos modos (1d / 7d). Pero para carreras nocturnas
- * (salida por la tarde/noche del mismo día del cron) el "Es mañana" era
- * incorrecto: el cron corría 4h antes y aun así el email decía "Mañana".
- * Ahora tenemos tres modos según hoursUntilRace.
+ * Formatea la referencia temporal humana que se muestra en el email
+ * ("hoy 22:30", "mañana 10:00", "el domingo 4 oct 09:30"). Usa el
+ * timezone Europe/Madrid (sprint de la app). Si no se pasa hoursUntilRace,
+ * devuelve solo la fecha.
+ *
+ * @param hoursUntilRace horas hasta la salida, en el momento de envío
+ * @param raceTime hora de salida en formato HH:MM (Europe/Madrid)
+ * @param raceDate fecha de salida ya formateada (es-ES long)
  */
-export function reminderUrgencyFromHours(hoursUntilRace: number): ReminderUrgency {
-  if (hoursUntilRace < 18) return "tonight"; // <18h: la carrera es HOY
-  if (hoursUntilRace < 60) return "tomorrow"; // <60h (2.5d): "mañana" sigue siendo razonable
-  return "weekAway";
+export function formatRaceWhenRelative(
+  hoursUntilRace: number,
+  raceTime: string | undefined,
+  raceDate: string,
+): string {
+  const timeSuffix = raceTime ? ` a las ${raceTime}` : "";
+  if (hoursUntilRace < 24) {
+    // Carrera es HOY
+    return `hoy${timeSuffix}`;
+  }
+  if (hoursUntilRace < 48) {
+    // Mañana
+    return `mañana${timeSuffix}`;
+  }
+  if (hoursUntilRace < 72) {
+    // Pasado mañana
+    return `pasado mañana${timeSuffix}`;
+  }
+  // 3 días o más: usar la fecha completa formateada.
+  // raceDate ya viene en es-ES long ("sábado, 26 de septiembre") — devolvemos
+  // eso + la hora si la tenemos.
+  return raceTime ? `el ${raceDate} a las ${raceTime}` : `el ${raceDate}`;
 }
 
 export function reminderEmail(args: {
@@ -53,12 +110,18 @@ export function reminderEmail(args: {
   dorsalNumber?: string;
   predictedTimeFormatted?: string;
   /**
-   * Tono del recordatorio. Por defecto se mantiene el cálculo legado de
-   * daysUntil para no romper callers externos, pero el cron ahora pasa
-   * `urgency` directamente. Si ambos vienen, gana `urgency`.
+   * Tono del recordatorio. Si se omite, se deriva de daysUntil (legacy).
+   * Cron calcula urgency desde hoursUntilRace — es lo recomendado.
    */
   urgency?: ReminderUrgency;
   daysUntil?: 7 | 1; // legacy
+  /**
+   * Horas hasta la salida en el momento del envío. Necesario para que el
+   * copy sea coherente con la hora real (badge, body, línea 'tu carrera
+   * es hoy/mañana/el DOM 4 oct'). Si se omite, se usan defaults razonables
+   * según urgency.
+   */
+  hoursUntilRace?: number;
   raceUrl: string; // web oficial / inscripción / ficha de la carrera
   appUrl: string;
 }): { subject: string; html: string; text: string } {
@@ -73,6 +136,7 @@ export function reminderEmail(args: {
     predictedTimeFormatted,
     urgency,
     daysUntil,
+    hoursUntilRace,
     raceUrl,
     appUrl,
   } = args;
@@ -84,30 +148,70 @@ export function reminderEmail(args: {
   const safeDorsal = dorsalNumber ? escapeHtml(dorsalNumber) : null;
   const safePredicted = predictedTimeFormatted ? escapeHtml(predictedTimeFormatted) : null;
 
-  // Resolver urgencia: si viene `urgency` gana; si no, derivamos de daysUntil.
-  const resolvedUrgency: ReminderUrgency =
-    urgency ?? (daysUntil === 1 ? "tomorrow" : "weekAway");
-  const isTonight = resolvedUrgency === "tonight";
+  // Resolver urgencia: si viene `urgency` gana; si no, derivamos de daysUntil
+  // o de hoursUntilRace. hoursUntilRace es lo más preciso.
+  let resolvedUrgency: ReminderUrgency;
+  if (urgency) {
+    resolvedUrgency = urgency;
+  } else if (typeof hoursUntilRace === "number") {
+    resolvedUrgency = reminderUrgencyFromHours(hoursUntilRace);
+  } else if (daysUntil === 1) {
+    resolvedUrgency = "tomorrow";
+  } else {
+    resolvedUrgency = "daysAhead";
+  }
+
+  // Para el formato relativo, usamos hoursUntilRace si lo tenemos, si no
+  // un default por urgencia coherente.
+  const h = typeof hoursUntilRace === "number" ? hoursUntilRace : undefined;
+  const fallbackHoursByUrgency: Record<ReminderUrgency, number> = {
+    runningNow: 0.5,
+    hoursAway: 3,
+    eveningBefore: 12,
+    tomorrow: 36,
+    daysAhead: 168, // 7d
+  };
+  const effectiveHours = h ?? fallbackHoursByUrgency[resolvedUrgency];
+  const whenRelative = formatRaceWhenRelative(effectiveHours, raceTime, raceDate);
+
+  const isRunningNow = resolvedUrgency === "runningNow";
+  const isHoursAway = resolvedUrgency === "hoursAway";
+  const isEveningBefore = resolvedUrgency === "eveningBefore";
   const isTomorrow = resolvedUrgency === "tomorrow";
 
   // ===== Subject / preheader =====
-  const subject = isTonight
-    ? `🏁 ¡Es esta noche! ${safeRaceName}`
-    : isTomorrow
-    ? `🏁 ¡Es mañana! ${safeRaceName}`
-    : `📅 Tu carrera es en 7 días: ${safeRaceName}`;
+  // El subject SIEMPRE menciona la referencia temporal humana para que el
+  // corredor entienda de un vistazo de qué carrera es sin abrir el email.
+  let subject: string;
+  if (isRunningNow || isHoursAway) {
+    subject = `🏁 Sales en menos de ${isRunningNow ? "una hora" : "unas horas"}: ${safeRaceName}`;
+  } else if (isEveningBefore) {
+    subject = `🏁 Tu carrera es esta noche: ${safeRaceName}`;
+  } else if (isTomorrow) {
+    subject = `🏁 Tu carrera es mañana: ${safeRaceName}`;
+  } else {
+    subject = `📅 Tu carrera es en 7 días: ${safeRaceName}`;
+  }
 
-  const preheader = isTonight
-    ? `Tu carrera es esta noche a las ${raceTime ?? ""}. Repasa dorsal, ropa y plan de carrera.`
-    : isTomorrow
-    ? `Mañana es el día. Todo lo que necesitas saber sobre ${safeRaceName}, dentro.`
-    : `Quedan 7 días para ${safeRaceName}. Repasa los detalles antes del gran día.`;
+  let preheader: string;
+  if (isRunningNow) {
+    preheader = `Estás a punto de salir. Última comprobación: dorsal, gel, agua. ${whenRelative}.`;
+  } else if (isHoursAway) {
+    preheader = `${safeRaceName} ${whenRelative}. Repasa dorsal, ropa y plan de carrera antes de salir.`;
+  } else if (isEveningBefore) {
+    preheader = `Tu carrera es esta noche${raceTime ? ` a las ${raceTime}` : ""}. Cena ligera, a la cama temprano, dorsal listo.`;
+  } else if (isTomorrow) {
+    preheader = `${safeRaceName} ${whenRelative}. Deja dorsal y ropa lista esta noche.`;
+  } else {
+    preheader = `Quedan 7 días para ${safeRaceName}. Repasa los detalles antes del gran día.`;
+  }
 
-  const badgeText = isTonight
-    ? "🏁 Es esta noche"
-    : isTomorrow
-    ? "🏁 Es mañana"
-    : "📅 Faltan 7 días";
+  let badgeText: string;
+  if (isRunningNow) badgeText = `🏁 Sales ${whenRelative}`;
+  else if (isHoursAway) badgeText = `🏁 ${whenRelative}`;
+  else if (isEveningBefore) badgeText = `🏁 Tu carrera es esta noche`;
+  else if (isTomorrow) badgeText = `🏁 Tu carrera es mañana`;
+  else badgeText = `📅 Faltan 7 días`;
 
   // ===== Bloque fecha/hora/lugar =====
   const whenParts = [safeRaceDate, raceTime ? escapeHtml(raceTime) : null].filter(Boolean);
@@ -149,11 +253,28 @@ export function reminderEmail(args: {
     : "";
 
   // ===== Tono según proximidad =====
-  const bodyCopy = isTonight
-    ? "Tu carrera es esta noche. Dorsal listo, ropa preparada, algo ligero para cenar temprano y a la cama. Última comida con margen de 3h. A correr."
-    : isTomorrow
-    ? "Deja todo preparado esta noche: dorsal, ropa, desayuno y hora de salida de casa. Mañana solo toca correr."
-    : "Todavía tienes margen para el último ajuste: hidratación, sueño y algún rodaje suave. Nada de estrenar zapatillas.";
+  // Cada copy está diseñado para tener sentido a la hora real del envío:
+  //   runningNow (<1h): el corredor está literalmente saliendo. Confirmar
+  //     dorsal, gel, agua. NO decir "cena" ni "duerme".
+  //   hoursAway (1-6h): el corredor tiene la tarde/noche por delante. Sí
+  //     puede cenar ligero antes. Cita la hora de salida explícitamente.
+  //   eveningBefore (6-18h): la carrera es hoy por la tarde/noche. SÍ
+  //     hablamos de cenar temprano e irse a la cama.
+  //   tomorrow (18-48h): la carrera es mañana. Recomendar preparar esta
+  //     noche, no dormir poco, no cenar pesado.
+  //   daysAhead (48h+): planificación a varios días.
+  let bodyCopy: string;
+  if (isRunningNow) {
+    bodyCopy = `Estás a punto de salir. Confirma dorsal, gel y agua, y a la cámara de llamadas. Tu carrera empieza ${whenRelative}${raceTime ? "" : ""}.`;
+  } else if (isHoursAway) {
+    bodyCopy = `Tu carrera es ${whenRelative}. Te da tiempo a hacer vida normal: come ligero en las próximas horas (la última comida 3h antes de la salida), deja la ropa y el dorsal listos, y sal con margen.${raceTime ? "" : ""}`;
+  } else if (isEveningBefore) {
+    bodyCopy = `Tu carrera es esta noche${raceTime ? `, a las ${raceTime}` : ""}. Cena ligero en las próximas 2-3 horas, a la cama temprano, y dorsal listo junto a la puerta. Mañana solo toca correr.`;
+  } else if (isTomorrow) {
+    bodyCopy = `${safeRaceName} ${whenRelative}. Deja dorsal y ropa preparada esta noche; cena ligero y a dormir bien. ${raceTime ? `Mañana sal ${raceTime}, ` : ""}primera comida 3h antes.`;
+  } else {
+    bodyCopy = `Todavía tienes margen para el último ajuste: hidratación, sueño y algún rodaje suave. Nada de estrenar zapatillas.`;
+  }
 
   // ===== Footer =====
   const footerHtml = `
@@ -265,10 +386,10 @@ export function reminderEmail(args: {
   const textLines = [
     `Hola, ${userName}.`,
     "",
-    isTonight
-      ? "Esta noche es el día:"
+    (isRunningNow || isHoursAway || isEveningBefore)
+      ? `Tu carrera es ${whenRelative}:`
       : isTomorrow
-      ? "Mañana es el día:"
+      ? `Tu carrera es ${whenRelative}:`
       : "Faltan 7 días para tu carrera:",
     raceName,
     whenLine.replace(/&amp;/g, "&"),

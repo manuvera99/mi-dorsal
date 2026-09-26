@@ -18,41 +18,7 @@ import { internalAction, internalQuery } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { reminderUrgencyFromHours } from "../emails/templates/reminder";
-
-/**
- * Convierte una fecha/hora local Europe/Madrid (YYYY-MM-DDTHH:MM:SS) a
- * milisegundos UTC. Respeta el cambio CEST↔CET automáticamente.
- * Usamos Intl.DateTimeFormat para evitar mantener un mapa manual de offsets.
- */
-function madridLocalToUtcMs(localIso: string): number {
-  // Parseamos como si fuera UTC, luego medimos cuánto se偏移 el timezone
-  // real de Madrid respecto a UTC para esa fecha y ajustamos.
-  const naiveUtcMs = new Date(localIso + "Z").getTime();
-  const fmt = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Europe/Madrid",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  });
-  const parts = fmt.formatToParts(new Date(naiveUtcMs));
-  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value);
-  const madridAsUtcMs = Date.UTC(
-    get("year"),
-    get("month") - 1,
-    get("day"),
-    get("hour") === 24 ? 0 : get("hour"),
-    get("minute"),
-    get("second"),
-  );
-  // El offset real de Madrid en esa fecha = madridAsUtcMs - naiveUtcMs.
-  // Para obtener la UTC ms real de la hora local Madrid X, sumamos ese offset.
-  const offsetMs = madridAsUtcMs - naiveUtcMs;
-  return naiveUtcMs - offsetMs;
-}
+import { madridLocalToUtcMs } from "./_shared/time";
 
 // ---------------------------------------------------------------------------
 // Query: carreras que necesitan recordatorio hoy

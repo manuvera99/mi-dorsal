@@ -61,9 +61,14 @@ import { Id } from "./_generated/dataModel";
 import type { DiplomaProps } from "../lib/pdf/diploma";
 import type { StoryStickerProps } from "../lib/share-card/story-sticker";
 import { resultFoundEmail } from "./emails/templates/resultFound";
-import { reminderEmail, reminderUrgencyFromHours, type ReminderUrgency } from "./emails/templates/reminder";
+import {
+  reminderEmail,
+  reminderUrgencyFromHours,
+  type ReminderUrgency,
+} from "./emails/templates/reminder";
 import { dorsalReminderEmail } from "./emails/templates/dorsalReminder";
 import { resultNotFoundEmail } from "./emails/templates/resultNotFound";
+import { raceStartUtcMs } from "./crons/_shared/time";
 
 /**
  * Este archivo corre en el runtime V8 isolate de Convex (sin "use node",
@@ -456,7 +461,13 @@ export const sendReminderEmail = internalAction({
     // Nuevo (sesión 26 sep 2026): tono del recordatorio. Si se omite, se
     // calcula a partir de hoursUntilRace o se usa el legacy de daysUntil.
     urgency: v.optional(
-      v.union(v.literal("tonight"), v.literal("tomorrow"), v.literal("weekAway")),
+      v.union(
+        v.literal("runningNow"),
+        v.literal("hoursAway"),
+        v.literal("eveningBefore"),
+        v.literal("tomorrow"),
+        v.literal("daysAhead"),
+      ),
     ),
     testOverrideTo: v.optional(v.string()),
   },
@@ -510,6 +521,16 @@ export const sendReminderEmail = internalAction({
     // no "salir de la app".
     const raceUrl = `${APP_URL}/carreras/${race.slug ?? ""}`;
 
+    // Calculamos las horas hasta la salida en el momento del envío. Se
+    // calcula en el action (no en el cron) para que cualquier caller que
+    // invoque sendReminderEmail obtenga copy coherente con la hora real,
+    // no con la del cron que potencialmente sea horas antes.
+    const raceStartMs = raceStartUtcMs(race.startDate, (race as any).startTime);
+    const hoursUntilRace =
+      !isNaN(raceStartMs) && raceStartMs > 0
+        ? (raceStartMs - Date.now()) / 3600_000
+        : undefined;
+
     const { subject, html, text } = reminderEmail({
       userName: profile.displayName ?? "corredor",
       raceName: args.raceName,
@@ -523,6 +544,7 @@ export const sendReminderEmail = internalAction({
         : undefined,
       urgency: args.urgency,
       daysUntil: args.daysUntil,
+      hoursUntilRace,
       raceUrl,
       appUrl: APP_URL,
     });

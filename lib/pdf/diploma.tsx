@@ -309,6 +309,46 @@ const styles = StyleSheet.create({
     color: C.accent,
     letterSpacing: -1.2,
   },
+  paceLine: {
+    fontSize: 10,
+    color: C.muted,
+    marginTop: 2,
+  },
+  officialLine: {
+    fontSize: 9,
+    color: C.subtle,
+    marginTop: 2,
+    fontStyle: "italic",
+  },
+  splitsBlock: {
+    backgroundColor: C.card,
+    borderWidth: 1,
+    borderColor: C.line,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 14,
+  },
+  splitsTitle: {
+    fontSize: 9,
+    color: C.muted,
+    letterSpacing: 1.5,
+    marginBottom: 4,
+  },
+  splitRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 2,
+  },
+  splitName: {
+    fontSize: 11,
+    color: C.muted,
+  },
+  splitTime: {
+    fontSize: 11,
+    color: C.dark,
+    fontFamily: "Courier-Bold",
+  },
   statsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -475,6 +515,13 @@ export interface DiplomaProps {
   issuedAt?: Date;
   /** ID del myRace para construir la URL del QR. Si se omite se usa verificationId. */
   myRaceId?: string;
+  // Sesión 27 sep 2026 — campos opcionales del tiempo neto (chip). Si
+  // están, el diploma muestra el neto como tiempo principal y el oficial
+  // como secundario, más los splits por km.
+  netTimeFormatted?: string;
+  netTimeSeconds?: number;
+  paceNetFormatted?: string;
+  splits?: Array<{ name: string; timeSeconds: number }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -490,6 +537,18 @@ export function Diploma(props: DiplomaInternalProps) {
     || (props.timeSeconds ? formatHMS(props.timeSeconds) : "—");
   const paceFormatted = props.paceFormatted
     || (props.timeSeconds && props.distanceKm ? formatPace(props.timeSeconds, props.distanceKm) : "—");
+  // Tiempo neto (chip). Si está, es el principal en el diploma. El
+  // oficial queda como "Tiempo de carrera" debajo.
+  const netTimeFormatted = props.netTimeFormatted
+    ?? (props.netTimeSeconds ? formatHMS(props.netTimeSeconds) : null);
+  const paceNetFormatted = props.paceNetFormatted
+    ?? (props.netTimeSeconds && props.distanceKm
+        ? formatPace(props.netTimeSeconds, props.distanceKm)
+        : null);
+  const headTimeFormatted = netTimeFormatted ?? timeFormatted;
+  const headPaceFormatted = paceNetFormatted ?? paceFormatted;
+  const hasNetAndOfficial =
+    !!netTimeFormatted && timeFormatted !== netTimeFormatted;
   const issuedAt = props.issuedAt ?? new Date();
   const issuedAtFormatted = issuedAt.toLocaleDateString("es-ES", {
     day: "numeric",
@@ -545,9 +604,33 @@ export function Diploma(props: DiplomaInternalProps) {
               <Text style={styles.runnerName}>{props.runnerName}</Text>
 
               <View style={styles.timeCard}>
-                <Text style={styles.timeLabel}>TIEMPO OFICIAL</Text>
-                <Text style={styles.timeValue}>{timeFormatted}</Text>
+                <Text style={styles.timeLabel}>
+                  {netTimeFormatted ? "TIEMPO NETO (CHIP)" : "TIEMPO OFICIAL"}
+                </Text>
+                <Text style={styles.timeValue}>{headTimeFormatted}</Text>
+                <Text style={styles.paceLine}>
+                  Pace: {headPaceFormatted} / km
+                </Text>
+                {hasNetAndOfficial
+                  ? <Text style={styles.officialLine}>
+                      Oficial: {timeFormatted}
+                    </Text>
+                  : null}
               </View>
+
+              {props.splits && props.splits.length > 0
+                ? <View style={styles.splitsBlock}>
+                    <Text style={styles.splitsTitle}>SPLITS</Text>
+                    {props.splits.map((s) => (
+                      <View key={s.name} style={styles.splitRow}>
+                        <Text style={styles.splitName}>{s.name}</Text>
+                        <Text style={styles.splitTime}>
+                          {formatHMS(s.timeSeconds)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                : null}
 
               <View style={styles.statsGrid}>
                 <View style={styles.stat}>

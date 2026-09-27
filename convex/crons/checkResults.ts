@@ -257,7 +257,15 @@ export async function processResultCheckItem(
       runnerName: result.runnerName,
       positionOverall: result.positionOverall,
       positionCategory: result.positionCategory,
+      positionGender: result.positionGender,
       timeSeconds: result.timeSeconds,
+      netTimeSeconds: result.netTimeSeconds,
+      positionOverallNet: result.positionOverallNet,
+      positionCategoryNet: result.positionCategoryNet,
+      positionGenderNet: result.positionGenderNet,
+      pacePerKmSeconds: result.pacePerKmSeconds,
+      pacePerKmNetSeconds: result.pacePerKmNetSeconds,
+      splits: result.splits,
       sourceUrl: item.resultsUrl,
     });
 
@@ -284,7 +292,18 @@ export async function processResultCheckItem(
         timeSeconds: result.timeSeconds,
         positionOverall: result.positionOverall,
         positionCategory: result.positionCategory,
+        positionGender: result.positionGender,
         predictedTimeSeconds: notifData.myRace.predictedTimeSeconds,
+        // Campos extendidos (sesión 27 sep 2026) — algunos adapters
+        // (sportmaniacs /api/athletes) los rellenan. Los pasamos para
+        // que email y diploma puedan mostrar tiempo neto + splits.
+        netTimeSeconds: result.netTimeSeconds,
+        positionOverallNet: result.positionOverallNet,
+        positionCategoryNet: result.positionCategoryNet,
+        positionGenderNet: result.positionGenderNet,
+        pacePerKmSeconds: result.pacePerKmSeconds,
+        pacePerKmNetSeconds: result.pacePerKmNetSeconds,
+        splits: result.splits,
       });
 
       // 4) Persistir el PR si el nuevo tiempo bate el récord anterior.
@@ -400,7 +419,22 @@ export const cacheResult = internalMutation({
     runnerName: v.optional(v.string()),
     positionOverall: v.optional(v.number()),
     positionCategory: v.optional(v.number()),
+    positionGender: v.optional(v.number()),
     timeSeconds: v.number(),
+    // Campos extendidos opcionales (sesión 27 sep 2026): tiempo neto,
+    // posiciones netas, pace oficial y neto, splits por km. Solo
+    // algunos adapters los rellenan (sportmaniacs).
+    netTimeSeconds: v.optional(v.number()),
+    positionOverallNet: v.optional(v.number()),
+    positionCategoryNet: v.optional(v.number()),
+    positionGenderNet: v.optional(v.number()),
+    pacePerKmSeconds: v.optional(v.number()),
+    pacePerKmNetSeconds: v.optional(v.number()),
+    splits: v.optional(v.array(v.object({
+      name: v.string(),
+      timeSeconds: v.number(),
+      pacePerKmSeconds: v.optional(v.number()),
+    }))),
     sourceUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -415,7 +449,15 @@ export const cacheResult = internalMutation({
       runnerName: args.runnerName,
       positionOverall: args.positionOverall,
       positionCategory: args.positionCategory,
+      positionGender: args.positionGender,
       timeSeconds: args.timeSeconds,
+      netTimeSeconds: args.netTimeSeconds,
+      positionOverallNet: args.positionOverallNet,
+      positionCategoryNet: args.positionCategoryNet,
+      positionGenderNet: args.positionGenderNet,
+      pacePerKmSeconds: args.pacePerKmSeconds,
+      pacePerKmNetSeconds: args.pacePerKmNetSeconds,
+      splits: args.splits,
       sourceUrl: args.sourceUrl,
       scrapedAt: Date.now(),
     };

@@ -28,6 +28,16 @@ function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
+/** Formatea segundos como HH:MM:SS (sin días). Local al template porque
+ *  emailNotificationsAction.formatHMS es internal al Convex runtime y no
+ *  se puede importar desde un template email. */
+function formatHMS(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = Math.floor(totalSeconds % 60);
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
 export function resultFoundEmail(args: {
   userName: string;
   raceName: string;
@@ -35,6 +45,7 @@ export function resultFoundEmail(args: {
   timeFormatted: string;
   positionOverall?: number;
   positionCategory?: number;
+  positionGender?: number;
   totalRunners?: number;
   predictedTimeFormatted?: string;
   errorPct?: number;
@@ -47,6 +58,15 @@ export function resultFoundEmail(args: {
   diplomaUrl?: string;
   shareUrl?: string;
   stickerEditorUrl?: string;
+  // Sesión 27 sep 2026 — tiempo neto + splits opcionales. Solo
+  // algunos adapters (sportmaniacs /api/athletes) los rellenan.
+  netTimeFormatted?: string;
+  positionOverallNet?: number;
+  positionCategoryNet?: number;
+  positionGenderNet?: number;
+  pacePerKmFormatted?: string; // oficial (HH:MM / km)
+  pacePerKmNetFormatted?: string; // neto (HH:MM / km)
+  splits?: Array<{ name: string; timeSeconds: number }>;
   appUrl: string;
 }): { subject: string; html: string; text: string } {
   const {
@@ -56,6 +76,7 @@ export function resultFoundEmail(args: {
     timeFormatted,
     positionOverall,
     positionCategory,
+    positionGender,
     totalRunners,
     predictedTimeFormatted,
     errorPct,
@@ -67,6 +88,13 @@ export function resultFoundEmail(args: {
     diplomaUrl,
     shareUrl,
     stickerEditorUrl,
+    netTimeFormatted,
+    positionOverallNet,
+    positionCategoryNet,
+    positionGenderNet,
+    pacePerKmFormatted,
+    pacePerKmNetFormatted,
+    splits,
     appUrl,
   } = args;
 
@@ -76,15 +104,21 @@ export function resultFoundEmail(args: {
   const safeRaceDate = escapeHtml(raceDate);
   const safePrev = previousRecordFormatted ? escapeHtml(previousRecordFormatted) : null;
   const safePred = predictedTimeFormatted ? escapeHtml(predictedTimeFormatted) : null;
+  const safeNet = netTimeFormatted ? escapeHtml(netTimeFormatted) : null;
 
   // ===== Subject line (con PR como gancho) =====
+  // Si hay tiempo neto, ese es el principal en el subject (es lo que
+  // el corredor popular quiere ver). El oficial queda como secundario.
+  const headTime = safeNet ?? safeTime;
   const subject = isPersonalRecord && distanceLabel
-    ? `🎉 Nuevo PR en ${distanceLabel} (${safeRaceName}): ${safeTime}`
-    : `🏁 ${safeTime} en ${safeRaceName}`;
+    ? `🎉 Nuevo PR en ${distanceLabel} (${safeRaceName}): ${headTime}`
+    : `🏁 ${headTime} en ${safeRaceName}`;
 
   // ===== Preheader (preview text en la bandeja) =====
   const preheader = isPersonalRecord && prDeltaSeconds
     ? `Has bajado ${prDeltaSeconds}s en ${escapeHtml(distanceLabel ?? "")}. Tu diploma y clasificación, dentro.`
+    : safeNet
+    ? `Tu tiempo neto ${safeNet} (oficial ${safeTime}), diploma y clasificación.`
     : `Tu tiempo oficial, tu diploma y la clasificación completa de ${safeRaceName}.`;
 
   // ===== Stat blocks (posiciones) =====
@@ -209,15 +243,21 @@ export function resultFoundEmail(args: {
             </td>
           </tr>
 
-          <!-- The time (HERO) -->
+          <!-- The time (HERO) — si hay tiempo neto, ese es el principal;
+               el oficial aparece como secundario pequeño debajo. -->
           <tr>
             <td style="padding: 8px 28px 0; text-align: center;">
               <div style="font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 56px; font-weight: 700; color: ${COLORS.accent}; letter-spacing: -1.5px; line-height: 1;">
-                ${safeTime}
+                ${safeNet ?? safeTime}
               </div>
               <div style="margin-top: 8px; color: ${COLORS.muted}; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">
-                Tu tiempo oficial
+                ${safeNet ? "Tu tiempo neto (chip)" : "Tu tiempo oficial"}
               </div>
+              ${safeNet && safeTime !== safeNet
+                ? `<div style="margin-top: 6px; color: ${COLORS.subtle}; font-size: 12px;">
+                     Oficial: ${safeTime}
+                   </div>`
+                : ""}
               ${prBadge}
             </td>
           </tr>
@@ -239,14 +279,65 @@ export function resultFoundEmail(args: {
                   <td style="padding: 4px 0; color: ${COLORS.muted}; font-size: 14px; vertical-align: top;">Posición general</td>
                   <td style="padding: 4px 0; color: ${COLORS.ink}; font-size: 14px; text-align: right; vertical-align: top;">${posGeneralText}</td>
                 </tr>
+                ${positionOverallNet !== undefined
+                  ? `<tr>
+                       <td style="padding: 4px 0; color: ${COLORS.muted}; font-size: 14px; vertical-align: top;">Posición general (neta)</td>
+                       <td style="padding: 4px 0; color: ${COLORS.ink}; font-size: 14px; text-align: right; vertical-align: top;"><strong>${positionOverallNet}</strong></td>
+                     </tr>`
+                  : ""}
                 <tr>
                   <td style="padding: 4px 0; color: ${COLORS.muted}; font-size: 14px; vertical-align: top;">Posición categoría</td>
                   <td style="padding: 4px 0; color: ${COLORS.ink}; font-size: 14px; text-align: right; vertical-align: top;">${posCatText}</td>
                 </tr>
+                ${positionCategoryNet !== undefined
+                  ? `<tr>
+                       <td style="padding: 4px 0; color: ${COLORS.muted}; font-size: 14px; vertical-align: top;">Posición categoría (neta)</td>
+                       <td style="padding: 4px 0; color: ${COLORS.ink}; font-size: 14px; text-align: right; vertical-align: top;"><strong>${positionCategoryNet}</strong></td>
+                     </tr>`
+                  : ""}
+                ${positionGender !== undefined
+                  ? `<tr>
+                       <td style="padding: 4px 0; color: ${COLORS.muted}; font-size: 14px; vertical-align: top;">Posición género</td>
+                       <td style="padding: 4px 0; color: ${COLORS.ink}; font-size: 14px; text-align: right; vertical-align: top;"><strong>${positionGender}</strong></td>
+                     </tr>`
+                  : ""}
+                ${pacePerKmFormatted
+                  ? `<tr>
+                       <td style="padding: 4px 0; color: ${COLORS.muted}; font-size: 14px; vertical-align: top;">Pace oficial</td>
+                       <td style="padding: 4px 0; color: ${COLORS.ink}; font-size: 14px; text-align: right; vertical-align: top;">${escapeHtml(pacePerKmFormatted)} / km</td>
+                     </tr>`
+                  : ""}
+                ${pacePerKmNetFormatted
+                  ? `<tr>
+                       <td style="padding: 4px 0; color: ${COLORS.muted}; font-size: 14px; vertical-align: top;">Pace neto</td>
+                       <td style="padding: 4px 0; color: ${COLORS.ink}; font-size: 14px; text-align: right; vertical-align: top;"><strong>${escapeHtml(pacePerKmNetFormatted)}</strong> / km</td>
+                     </tr>`
+                  : ""}
                 ${predictionBlock}
               </table>
             </td>
           </tr>
+
+          ${splits && splits.length > 0
+            ? `<tr>
+                 <td style="padding: 8px 28px 0;">
+                   <div style="margin-top: 8px; color: ${COLORS.muted}; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; text-align: center;">
+                     Splits
+                   </div>
+                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: ${COLORS.warm}; border-radius: 8px; padding: 12px 18px; margin-top: 8px;">
+                     ${splits
+                       .map(
+                         (s) => `
+                       <tr>
+                         <td style="padding: 4px 0; color: ${COLORS.muted}; font-size: 14px;">${escapeHtml(s.name)}</td>
+                         <td style="padding: 4px 0; color: ${COLORS.ink}; font-size: 14px; text-align: right; font-weight: 700; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;">${escapeHtml(formatHMS(s.timeSeconds))}</td>
+                       </tr>`,
+                       )
+                       .join("")}
+                   </table>
+                 </td>
+               </tr>`
+            : ""}
 
           <!-- Diploma preview (842x595 A4 landscape, inline cid:). El PNG
                lleva fondo crema + marco rojo decorativo + tarjetas blancas
@@ -364,19 +455,49 @@ export function resultFoundEmail(args: {
   textLines.push("");
   textLines.push(`${raceName} — ${raceDate}`);
   textLines.push("");
-  textLines.push(`Tu tiempo: ${timeFormatted}`);
+  // Tiempo neto si está; oficial si no.
+  if (netTimeFormatted) {
+    textLines.push(`Tu tiempo neto (chip): ${netTimeFormatted}`);
+    if (timeFormatted && timeFormatted !== netTimeFormatted) {
+      textLines.push(`Tiempo oficial: ${timeFormatted}`);
+    }
+  } else {
+    textLines.push(`Tu tiempo: ${timeFormatted}`);
+  }
   if (isPersonalRecord && prDeltaSeconds && previousRecordFormatted) {
     textLines.push(`🎉 Has bajado ${prDeltaSeconds}s (antes ${previousRecordFormatted})`);
   }
   if (positionOverall) {
     textLines.push(`Posición general: ${positionOverall}${totalRunners ? ` de ${totalRunners}` : ""}`);
   }
+  if (positionOverallNet !== undefined) {
+    textLines.push(`Posición general (neta): ${positionOverallNet}`);
+  }
   if (positionCategory) {
     textLines.push(`Posición categoría: ${positionCategory}`);
+  }
+  if (positionCategoryNet !== undefined) {
+    textLines.push(`Posición categoría (neta): ${positionCategoryNet}`);
+  }
+  if (positionGender !== undefined) {
+    textLines.push(`Posición género: ${positionGender}`);
+  }
+  if (pacePerKmFormatted) {
+    textLines.push(`Pace oficial: ${pacePerKmFormatted} / km`);
+  }
+  if (pacePerKmNetFormatted) {
+    textLines.push(`Pace neto: ${pacePerKmNetFormatted} / km`);
   }
   if (predictedTimeFormatted && errorPct !== undefined) {
     const sign = errorPct > 0 ? "+" : "";
     textLines.push(`Estimación: ${predictedTimeFormatted} (${sign}${errorPct.toFixed(1)}%)`);
+  }
+  if (splits && splits.length > 0) {
+    textLines.push("");
+    textLines.push("Splits:");
+    for (const s of splits) {
+      textLines.push(`  ${s.name}: ${formatHMS(s.timeSeconds)}`);
+    }
   }
   textLines.push("");
   textLines.push(`Ver mi diploma: ${diplomaHref}`);

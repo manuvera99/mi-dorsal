@@ -51,13 +51,25 @@ export const fixTonightsMiDorsal = internalMutation({
       selectedDistanceKm: 15,
       selectedDistanceLabel: "15K",
       selectedElevationGainM: undefined,
+      // Reset del scrapeado previo (sesión 27 sep 2026) para forzar al cron
+      // check-results a re-detectar el resultado con el nuevo scraper que
+      // sí trae el tiempo neto. Limpiamos los campos que el cron escribió
+      // en su pasada anterior (oficial 01:30:54) para que partan de
+      // cero; los nuevos (neto 01:28:57) sobreescribirán al reenviar.
+      status: "planned",
+      resultScrapedAt: undefined,
+      actualTimeSeconds: undefined,
+      actualPosition: undefined,
+      actualPositionCategory: undefined,
+      resultSource: undefined,
     });
 
-    // 2. Borrar la fila de notificationLog reminder_1d para permitir reenvío.
+    // 2. Borrar TODAS las filas de notificationLog para esta myRace
+    // (recordatorios + result_found) para permitir reenvíos.
     const logs = await ctx.db
       .query("notificationLog")
       .withIndex("by_user_type", (q) =>
-        q.eq("userId", userId).eq("type", "reminder_1d"),
+        q.eq("userId", userId),
       )
       .filter((q) => q.eq(q.field("relatedMyRaceId"), TARGET_MY_RACE_ID as any))
       .collect();
@@ -74,10 +86,15 @@ export const fixTonightsMiDorsal = internalMutation({
         raceId,
         selectedDistanceKm: 15,
         selectedDistanceLabel: "15K",
+        // También limpiamos los campos del resultado previo (sesión 27 sep
+        // 2026) para forzar re-detección con el nuevo scraper que sí trae
+        // el tiempo neto.
+        resultScrapedAtCleared: true,
+        actualTimeSecondsCleared: true,
       },
       notificationLogsDeleted: deletedLogs,
       nextStep:
-        "Ahora ejecuta: npx convex run --prod crons/reminderPreRace:reminderPreRace '{}'",
+        "Ahora ejecuta: npx convex run --prod crons/checkResults:checkResults '{}'",
     };
   },
 });

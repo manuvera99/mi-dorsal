@@ -568,6 +568,21 @@ export default defineSchema({
     timeSeconds: v.number(),
     sourceUrl: v.optional(v.string()),
     scrapedAt: v.optional(v.number()),
+    // Sesión 27 sep 2026 — campos extendidos opcionales. Solo algunos
+    // adapters los rellenan (sportmaniacs vía /api/athletes). El email y
+    // el diploma los usan cuando están para mostrar tiempo neto (chip),
+    // posiciones netas y splits por km.
+    netTimeSeconds: v.optional(v.number()),
+    positionOverallNet: v.optional(v.number()),
+    positionCategoryNet: v.optional(v.number()),
+    positionGenderNet: v.optional(v.number()),
+    pacePerKmSeconds: v.optional(v.number()),
+    pacePerKmNetSeconds: v.optional(v.number()),
+    splits: v.optional(v.array(v.object({
+      name: v.string(),
+      timeSeconds: v.number(),
+      pacePerKmSeconds: v.optional(v.number()),
+    }))),
   })
     .index("by_race", ["raceId"])
     .index("by_dorsal", ["dorsalNumber"])

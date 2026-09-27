@@ -11,7 +11,30 @@ export interface RunnerResult {
   runnerName?: string;
   positionOverall?: number;
   positionCategory?: number;
+  // Posición dentro de la categoría de género (M / F). Opcional: no todos
+  // los cronometradores lo exponen.
+  positionGender?: number;
   timeSeconds: number;
+
+  // Sesión 27 sep 2026 — campos extendidos opcionales. Solo algunos
+  // adapters los rellenan (sportmaniacs vía api/athletes). Cuando están,
+  // el diploma y el email los usan para mostrar el tiempo neto (chip)
+  // junto al oficial, los splits oficiales y la posición neta.
+  netTimeSeconds?: number;
+  positionOverallNet?: number;
+  positionCategoryNet?: number;
+  positionGenderNet?: number;
+  pacePerKmSeconds?: number; // pace oficial (HH:MM / km)
+  pacePerKmNetSeconds?: number; // pace neto (HH:MM / km)
+  /**
+   * Splits oficiales (no netos). Cada item: { name: "5K" | "10K" | ...,
+   * timeSeconds, pacePerKmSeconds? }.
+   */
+  splits?: Array<{
+    name: string;
+    timeSeconds: number;
+    pacePerKmSeconds?: number;
+  }>;
 }
 
 const ADAPTERS: Record<
@@ -457,14 +480,12 @@ function toIntOrUndefined(v: unknown): number | undefined {
 // ---------------------------------------------------------------------------
 
 const SPORTMANIACS_RANKINGS_ENDPOINT = "https://sportmaniacs.com/es/api/rankings";
+const SPORTMANIACS_ATHLETES_ENDPOINT = "https://api-aws.sportmaniacs.com/api/athletes";
 const SPORTMANIACS_USER_AGENT = "Mozilla/5.0 mi-dorsal/0.1";
-// Salvaguarda de paginación. Antes 200 (= 5000 corredores); insuficiente para
-// carreras grandes como la 15K Nocturna Valencia (~10375 clasificados → 415
-// páginas). Sesión 27 sep 2026: el dorsal 8780 de Manu estaba en la página
-// 232, fuera del límite anterior. Subido a 500 = 12500 corredores, margen
-// para las próximas carreras grandes (Maratón Valencia ~25k en diciembre).
-// El API devuelve {"status":"ko"} cuando nos pasamos de la última página,
-// así que este límite solo es defensa contra loops infinitos.
+// Constantes legacy mantenidas por compatibilidad (el adapter ya no las usa
+// en su flujo principal — consulta directa a /api/athletes — pero las
+// conservo porque scrapeSportmaniacsEvent() legacy podría invocarse desde
+// tests o scripts externos).
 const SPORTMANIACS_MAX_PAGES = 500;
 
 /**
@@ -530,11 +551,24 @@ export async function discoverSportmaniacsEventIds(
  * Adapter principal: scrapea sportmaniacs.com buscando el dorsal del
  * corredor entre las modalidades cacheadas de la carrera.
  *
- * Prueba cada `eventId` en orden (una carrera puede tener varias
- * modalidades y no sabemos cuál corrió el usuario) hasta encontrar el
- * dorsal o agotar todos. Devuelve null si:
- *   - no hay ningún eventId cacheado (carrera aún no backfillada)
- *   - ningún eventId devuelve el dorsal buscado
+ * Sesión 27 sep 2026 — cambio grande: el endpoint anterior
+ * (/api/rankings?event=X&page=Y) solo expone `officialTime` (tiempo
+ * desde tu ola de salida) y exige paginar hasta encontrar el dorsal
+ * (hasta 415 páginas en carreras grandes como la 15K Nocturna Valencia).
+ *
+ * Sportmaniacs expone otro endpoint `/api/athletes?event=X&dorsal=Y` que
+ * devuelve en UNA sola llamada:
+ *   - Tiempo oficial (splitTime) y neto (splitTimeNet)
+ *   - Posiciones oficial y neta (overall/category/gender)
+ *   - Splits 5K/10K/15K/etc con tiempo y pace oficiales y netos
+ *   - Pace medio oficial y neto
+ *
+ * Eso es 1 request en vez de 415, y tenemos el tiempo neto que era
+ * prioritario para el corredor popular (el "oficial" incluye los minutos
+ * de espera en el cajón de salida antes del disparo).
+ *
+ * Si /api/athletes no devuelve nada (carrera vieja sin ese endpoint,
+ * dorsal no clasificado aún), caemos al endpoint legacy paginado.
  *
  * No lanza excepciones: cualquier error se loga y se trata como "no
  * encontrado" — el cron reintentará en el siguiente check.
@@ -550,11 +584,128 @@ export async function scrapeSportmaniacs(
     return null;
   }
 
+  // Ruta rápida: /api/athletes devuelve datos completos por dorsal.
+  for (const { eventId } of eventIds) {
+    const direct = await scrapeSportmaniacsAthlete(eventId, dorsal);
+    if (direct) return direct;
+  }
+
+  // Fallback legacy: si /api/athletes no devuelve nada (carrera sin
+  // soporte), paginar /api/rankings. Mucho más lento pero compatible con
+  // cualquier carrera histórica.
+  console.log(
+    `[scraper:sportmaniacs] /api/athletes no devolvió nada para dorsal ${dorsal}, fallback a paginación`,
+  );
   for (const { eventId } of eventIds) {
     const result = await scrapeSportmaniacsEvent(eventId, dorsal);
     if (result) return result;
   }
   return null;
+}
+
+/**
+ * Endpoint rápido: una sola llamada a /api/athletes con dorsal=X nos
+ * devuelve los datos completos del corredor (oficial + neto + splits).
+ * Devuelve null si el dorsal no aparece (puede ser que aún no esté
+ * clasificado o que el endpoint no exista para carreras muy viejas).
+ */
+async function scrapeSportmaniacsAthlete(
+  eventId: string,
+  dorsal: string,
+): Promise<RunnerResult | null> {
+  const target = String(dorsal).trim();
+  const apiUrl = `${SPORTMANIACS_ATHLETES_ENDPOINT}?event=${encodeURIComponent(eventId)}&dorsal=${encodeURIComponent(target)}`;
+
+  let res: Response;
+  try {
+    res = await fetch(apiUrl, {
+      headers: {
+        Accept: "application/json, text/plain, */*",
+        "User-Agent": SPORTMANIACS_USER_AGENT,
+        "X-Requested-With": "XMLHttpRequest",
+      },
+    });
+  } catch (err) {
+    console.warn(`[scraper:sportmaniacs] /api/athletes fetch failed:`, err);
+    return null;
+  }
+
+  if (!res.ok) {
+    console.warn(
+      `[scraper:sportmaniacs] /api/athletes HTTP ${res.status} para dorsal ${target}`,
+    );
+    return null;
+  }
+
+  let body: any;
+  try {
+    body = await res.json();
+  } catch {
+    return null;
+  }
+  if (!body || body.status !== "ok" || !body.data || typeof body.data !== "object") {
+    return null;
+  }
+
+  const d = body.data;
+  // El endpoint devuelve data aunque el dorsal NO esté en la carrera —
+  // distingue por coincidencia exacta del dorsal (string match).
+  const dorsalEnRespuesta = String(d.dorsal ?? d.bib ?? "").trim();
+  if (dorsalEnRespuesta !== target) {
+    // No es nuestro dorsal (puede ser que la API haya devuelto otro
+    // corredor). Tratamos como "no encontrado" para este eventId.
+    return null;
+  }
+
+  // Tiempo oficial (Meta.splitTime) es lo que necesitamos como timeSeconds
+  // (mantenemos compatibilidad con PR detection y email). El neto va aparte.
+  const meta = d.Meta ?? {};
+  const officialTimeStr: string | undefined = meta.splitTime;
+  const netTimeStr: string | undefined = meta.splitTimeNet;
+  const officialSeconds = officialTimeStr ? parseTime(officialTimeStr) : null;
+  const netSeconds = netTimeStr ? parseTime(netTimeStr) : null;
+
+  if (!officialSeconds || officialSeconds <= 0) {
+    // Dorsal presente pero sin tiempo oficial (aún no clasificado o
+    // abandonó). El cron reintentará en el siguiente check.
+    return null;
+  }
+
+  // Splits: filtramos "Meta" (es el total, no un parcial) y armamos
+  // la lista de parciales oficiales. Algunos vienen con segundos
+  // legibles (00:31:52), otros no — si el parse falla, los omitimos.
+  const rawSplits: any[] = Array.isArray(d.Points) ? d.Points : [];
+  const splits: RunnerResult["splits"] = [];
+  for (const s of rawSplits) {
+    if (!s || s.split_name === "Meta" || !s.splitTime) continue;
+    const ts = parseTime(String(s.splitTime));
+    if (ts == null || ts <= 0) continue;
+    splits.push({
+      name: String(s.split_name),
+      timeSeconds: ts,
+      pacePerKmSeconds: undefined, // el API no expone pace por split
+    });
+  }
+
+  return {
+    runnerName: d.complete_name ?? undefined,
+    positionOverall: toIntOrUndefined(meta.overallPosition),
+    positionCategory: toIntOrUndefined(meta.categoryPosition),
+    positionGender: toIntOrUndefined(meta.genderPosition),
+    timeSeconds: officialSeconds,
+    netTimeSeconds: netSeconds ?? undefined,
+    positionOverallNet: toIntOrUndefined(meta.overallPositionNet),
+    positionCategoryNet: toIntOrUndefined(meta.categoryPositionNet),
+    positionGenderNet: toIntOrUndefined(meta.genderPositionNet),
+    // average viene como "06m 03s / km" o "05m 55s / km". parseTime lo
+    // entiende porque "06m 03s" parsea a 363s, y el /km lo ignoramos
+    // (pace es tiempo por km, no tiempo por km * 1).
+    pacePerKmSeconds: meta.average ? parseTime(meta.average) ?? undefined : undefined,
+    pacePerKmNetSeconds: meta.averageNet
+      ? parseTime(meta.averageNet) ?? undefined
+      : undefined,
+    splits: splits.length > 0 ? splits : undefined,
+  };
 }
 
 /**

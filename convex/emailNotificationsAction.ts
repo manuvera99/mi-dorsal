@@ -155,6 +155,20 @@ export const sendResultFoundEmail = internalAction({
     positionOverall: v.optional(v.number()),
     positionCategory: v.optional(v.number()),
     predictedTimeSeconds: v.optional(v.number()),
+    // Sesión 27 sep 2026 — campos extendidos opcionales (sportmaniacs los
+    // rellena). El diploma y el email los muestran cuando están.
+    netTimeSeconds: v.optional(v.number()),
+    positionOverallNet: v.optional(v.number()),
+    positionCategoryNet: v.optional(v.number()),
+    positionGenderNet: v.optional(v.number()),
+    positionGender: v.optional(v.number()),
+    pacePerKmSeconds: v.optional(v.number()),
+    pacePerKmNetSeconds: v.optional(v.number()),
+    splits: v.optional(v.array(v.object({
+      name: v.string(),
+      timeSeconds: v.number(),
+      pacePerKmSeconds: v.optional(v.number()),
+    }))),
   },
   handler: async (ctx, args) => {
     const IS_MOCK = !process.env.RESEND_API_KEY;
@@ -339,6 +353,15 @@ export const sendResultFoundEmail = internalAction({
       stickerEditorUrl,
       appUrl: APP_URL,
       ...predictionBlock,
+      // Campos extendidos opcionales (sesión 27 sep 2026)
+      netTimeFormatted: args.netTimeSeconds ? formatHMS(args.netTimeSeconds) : undefined,
+      positionOverallNet: args.positionOverallNet,
+      positionCategoryNet: args.positionCategoryNet,
+      positionGenderNet: args.positionGenderNet,
+      positionGender: args.positionGender,
+      pacePerKmFormatted: args.pacePerKmSeconds ? formatHMS(args.pacePerKmSeconds) : undefined,
+      pacePerKmNetFormatted: args.pacePerKmNetSeconds ? formatHMS(args.pacePerKmNetSeconds) : undefined,
+      splits: args.splits,
     });
 
     // Inyectar los inline cid: de las dos imágenes del email. Se hace

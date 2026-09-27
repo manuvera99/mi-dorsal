@@ -458,7 +458,14 @@ function toIntOrUndefined(v: unknown): number | undefined {
 
 const SPORTMANIACS_RANKINGS_ENDPOINT = "https://sportmaniacs.com/es/api/rankings";
 const SPORTMANIACS_USER_AGENT = "Mozilla/5.0 mi-dorsal/0.1";
-const SPORTMANIACS_MAX_PAGES = 200; // salvaguarda: ~5000 corredores a 25/página
+// Salvaguarda de paginación. Antes 200 (= 5000 corredores); insuficiente para
+// carreras grandes como la 15K Nocturna Valencia (~10375 clasificados → 415
+// páginas). Sesión 27 sep 2026: el dorsal 8780 de Manu estaba en la página
+// 232, fuera del límite anterior. Subido a 500 = 12500 corredores, margen
+// para las próximas carreras grandes (Maratón Valencia ~25k en diciembre).
+// El API devuelve {"status":"ko"} cuando nos pasamos de la última página,
+// así que este límite solo es defensa contra loops infinitos.
+const SPORTMANIACS_MAX_PAGES = 500;
 
 /**
  * Extrae los `<div class="event-card" data-event-id="{uuid}">` del HTML

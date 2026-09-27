@@ -339,20 +339,12 @@ export function resultFoundEmail(args: {
                </tr>`
             : ""}
 
-          <!-- Diploma preview (842x595 A4 landscape, inline cid:). El PNG
-               lleva fondo crema + marco rojo decorativo + tarjetas blancas
-               con la info del resultado — es la versión visualmente
-               legible del diploma PDF que va adjunto. Si el cliente de
-               correo bloquea el cid, el <img> cae al alt-text "Tu diploma
-               de X" y el PDF adjunto sigue siendo la fuente de verdad.
-               convex/emailNotificationsAction.sendResultFoundEmail
-               reemplaza el marcador DIPLOMA_INLINE por el <img> con el
-               cid pre-generado. -->
-          <tr>
-            <td style="padding: 20px 28px 0;" align="center">
-              <!--DIPLOMA_INLINE-->
-            </td>
-          </tr>
+          <!-- Diploma preview inline ELIMINADO (sesión 27 sep 2026).
+               El usuario quiere recibir SOLO el PDF adjunto + el sticker
+               PNG, no la imagen inline A4 (842x595). El diploma PDF sigue
+               siendo la fuente de verdad adjunta al email. El story sticker
+               "variante email" (abajo) sigue siendo la imagen inline que
+               muestra el resultado, con tiempo neto + pace neto. -->
 
           <!-- Sticker visual (variante "email", inline cid:). El PNG ya
                lleva fondo crema opaco + textos oscuros sobre paneles

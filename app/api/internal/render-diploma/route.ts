@@ -71,6 +71,13 @@ export async function POST(req: NextRequest) {
     //   - story sticker overlay (transparente): descarga de Stories.
     //   - story sticker variante email: inline en el email.
     // Los 4 renders son independientes → Promise.all para minimizar latencia.
+    //
+    // Importante (sesión 27 sep 2026): el diplomaImageProps se construye
+    // a mano (no spread) para evitar pasar campos extra que el componente
+    // no espera. Cuando se añaden campos nuevos al diploma (p. ej.
+    // netTimeFormatted, paceNetFormatted), hay que propagarlos AQUÍ
+    // explícitamente — el spread de `body.diploma` arriba solo cubre
+    // el diplomaProps del PDF.
     const diplomaImageProps: DiplomaImageProps = {
       runnerName: diplomaProps.runnerName,
       raceName: diplomaProps.raceName,
@@ -88,6 +95,8 @@ export async function POST(req: NextRequest) {
       prDeltaSeconds: diplomaProps.prDeltaSeconds,
       verificationId: diplomaProps.verificationId,
       appUrl: diplomaProps.appUrl,
+      netTimeFormatted: diplomaProps.netTimeFormatted,
+      paceNetFormatted: diplomaProps.paceNetFormatted,
     };
 
     const [pdfBuffer, diplomaImageBuffer, stickerBuffer, stickerEmailBuffer] =

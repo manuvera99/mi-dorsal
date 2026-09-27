@@ -240,6 +240,17 @@ export const sendResultFoundEmail = internalAction({
       appUrl: APP_URL,
       issuedAt,
       myRaceId: myRace._id,
+      // Tiempo neto + splits (sesión 27 sep 2026). Si el scraper los
+      // rellenó, el diploma PDF y la preview muestran el neto como
+      // principal. Si no (carreras viejas, otros adapters), el
+      // diploma usa el oficial sin cambios.
+      netTimeFormatted: args.netTimeSeconds ? formatHMS(args.netTimeSeconds) : undefined,
+      netTimeSeconds: args.netTimeSeconds,
+      paceNetFormatted:
+        args.pacePerKmNetSeconds != null
+          ? formatHMS(args.pacePerKmNetSeconds)
+          : undefined,
+      splits: args.splits,
     };
     // ---------- 4. Generar diploma PDF + story sticker (plantilla clásica) ----------
     // (vía el endpoint interno de Next.js — ver nota al inicio del archivo)
@@ -248,6 +259,10 @@ export const sendResultFoundEmail = internalAction({
       paceFormatted: diplomaProps.paceFormatted,
       distanceKm: diplomaProps.distanceKm,
       isPersonalRecord: diplomaProps.isPersonalRecord,
+      // Misma lógica que el diploma: si hay neto, es el principal en
+      // el sticker (gran display).
+      netTimeFormatted: diplomaProps.netTimeFormatted,
+      paceNetFormatted: diplomaProps.paceNetFormatted,
     };
     const { pdfBytes, diplomaImageBytes, stickerBytes, stickerEmailBytes } = await renderViaInternalApi(diplomaProps, stickerProps);
 

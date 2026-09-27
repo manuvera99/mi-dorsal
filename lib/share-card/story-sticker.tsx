@@ -61,10 +61,15 @@ const EMAIL_TOKENS = {
 // ---------------------------------------------------------------------------
 
 export interface StoryStickerProps {
-  timeFormatted?: string; // "1:59:25"
-  paceFormatted?: string; // "5:40"
+  timeFormatted?: string; // "1:59:25" (oficial)
+  paceFormatted?: string; // "5:40" (oficial)
   distanceKm?: number; // kilómetros recorridos, ej 21.1
   isPersonalRecord?: boolean;
+  // Sesión 27 sep 2026 — campos opcionales del tiempo neto. Si están,
+  // el sticker muestra el neto como principal (lo que el corredor popular
+  // quiere ver) y el oficial como secundario.
+  netTimeFormatted?: string; // "1:58:54"
+  paceNetFormatted?: string; // "5:35"
 }
 
 /**
@@ -175,7 +180,7 @@ function StorySticker(props: StoryStickerProps & { theme: StoryStickerTheme }) {
               textShadow: C.textShadow,
             }}
           >
-            Tu tiempo oficial
+            {props.netTimeFormatted ? "Tu tiempo neto" : "Tu tiempo oficial"}
           </div>
           <div
             style={{
@@ -188,7 +193,7 @@ function StorySticker(props: StoryStickerProps & { theme: StoryStickerTheme }) {
               textShadow: C.textShadow,
             }}
           >
-            {props.timeFormatted ?? "—"}
+            {props.netTimeFormatted ?? props.timeFormatted ?? "—"}
           </div>
         </div>
 
@@ -240,7 +245,7 @@ function StorySticker(props: StoryStickerProps & { theme: StoryStickerTheme }) {
                 textShadow: C.textShadow,
               }}
             >
-              {props.paceFormatted ?? "—"}
+              {props.paceNetFormatted ?? props.paceFormatted ?? "—"}
               <div
                 style={{
                   fontSize: "22px",

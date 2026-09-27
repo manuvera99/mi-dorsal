@@ -76,6 +76,11 @@ export interface DiplomaImageProps {
   prDeltaSeconds?: number;
   verificationId: string;
   appUrl: string;
+  // Sesión 27 sep 2026 — tiempo neto opcional. Misma lógica que el
+  // diploma PDF: si está, lo muestra como principal con label
+  // 'TIEMPO NETO (CHIP)' y el oficial como secundario pequeño.
+  netTimeFormatted?: string;
+  paceNetFormatted?: string;
 }
 
 // A4 landscape a 96 DPI: 842x595 px. Suficiente para que el texto se
@@ -418,7 +423,7 @@ function DiplomaImage(props: DiplomaImageProps) {
                   letterSpacing: "1.5px",
                 }}
               >
-                TIEMPO OFICIAL
+                {props.netTimeFormatted ? "TIEMPO NETO (CHIP)" : "TIEMPO OFICIAL"}
               </div>
               <div
                 style={{
@@ -429,7 +434,7 @@ function DiplomaImage(props: DiplomaImageProps) {
                   letterSpacing: "-1.2px",
                 }}
               >
-                {props.timeFormatted}
+                {props.netTimeFormatted ?? props.timeFormatted}
               </div>
             </div>
 

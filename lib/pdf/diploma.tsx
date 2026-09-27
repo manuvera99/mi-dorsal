@@ -653,7 +653,7 @@ export function Diploma(props: DiplomaInternalProps) {
                 <View style={styles.stat}>
                   <Text style={styles.statLabel}>PACE MEDIO</Text>
                   <Text style={styles.statValue}>
-                    {paceFormatted}
+                    {paceNetFormatted ?? paceFormatted}
                     <Text style={styles.statValueSub}> {" /km"}</Text>
                   </Text>
                 </View>

@@ -247,8 +247,8 @@ export const sendResultFoundEmail = internalAction({
       netTimeFormatted: args.netTimeSeconds ? formatHMS(args.netTimeSeconds) : undefined,
       netTimeSeconds: args.netTimeSeconds,
       paceNetFormatted:
-        args.pacePerKmNetSeconds != null
-          ? formatHMS(args.pacePerKmNetSeconds)
+        args.pacePerKmNetSeconds != null && effectiveDistance.distanceKm > 0
+          ? formatPace(args.pacePerKmNetSeconds, effectiveDistance.distanceKm)
           : undefined,
       splits: args.splits,
     };
@@ -374,8 +374,14 @@ export const sendResultFoundEmail = internalAction({
       positionCategoryNet: args.positionCategoryNet,
       positionGenderNet: args.positionGenderNet,
       positionGender: args.positionGender,
-      pacePerKmFormatted: args.pacePerKmSeconds ? formatHMS(args.pacePerKmSeconds) : undefined,
-      pacePerKmNetFormatted: args.pacePerKmNetSeconds ? formatHMS(args.pacePerKmNetSeconds) : undefined,
+      pacePerKmFormatted:
+        args.pacePerKmSeconds != null && effectiveDistance.distanceKm > 0
+          ? formatPace(args.pacePerKmSeconds, effectiveDistance.distanceKm)
+          : undefined,
+      pacePerKmNetFormatted:
+        args.pacePerKmNetSeconds != null && effectiveDistance.distanceKm > 0
+          ? formatPace(args.pacePerKmNetSeconds, effectiveDistance.distanceKm)
+          : undefined,
       splits: args.splits,
     });
 

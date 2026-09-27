@@ -548,6 +548,256 @@ export async function discoverSportmaniacsEventIds(
 }
 
 /**
+ * Fallback por nombre (sesión 27 sep 2026, segunda capa): cuando el
+ * cron llega a una carrera con `scraperAdapter === "sportmaniacs"` pero
+ * `officialUrl` apunta a otro dominio (no tiene event-card accesible
+ * vía discovery HTML) — exactamente lo que pasó con la XV 15K Nocturna
+ * Valencia, donde `officialUrl` apuntaba a conocevalencia.es y el
+ * discovery devolvía [] — buscamos el slug en el catálogo público de
+ * Sportmaniacs por nombre y fecha.
+ *
+ * Flujo:
+ *   1. GET https://sportmaniacs.com/es/api/races?text={nombre}&page=N
+ *      → array de 25 hits por página.
+ *   2. Filtrar por fecha (mismo año + mismo mes) y ciudad.
+ *   3. Si queda 1 candidato, parar y avanzar al paso 4. Si quedan
+ *      varios, seguir paginando hasta desambiguar. Si en MAX_PAGES
+ *      páginas no hay match único → devolver [].
+ *   4. Fetchear https://sportmaniacs.com/es/races/{slug} y pasar el
+ *      HTML por `extractSportmaniacsEventCards`.
+ *
+ * **LIMITACIÓN CONOCIDA** (sesión 27 sep 2026, descubrimiento
+ * durante implementación): el search API NO indexa todas las
+ * carreras — populares viejas o con nombres genéricos ("Nocturna
+ * Los Lagos", "Carrera Solidaria", etc.) no aparecen en el top-300
+ * de hits. Verificado empíricamente: para "II CARRERA NOCTURNA LOS
+ * LAGOS" (Alginet, 2026-07-18) el search devuelve 0 hits relevantes
+ * en 12 páginas. **Esta función NO debe verse como solución
+ * universal**, solo como un segundo intento antes de devolver [].
+ *
+ * Por qué NO auto-dispararse desde el cron:
+ *   - Paginar 12 páginas × 5s timeout cada una = ~60s por carrera
+ *     huérfana — no escala si tienes docenas pendientes.
+ *   - Si la búsqueda no es 100% fiable (ver LIMITACIÓN), tampoco
+ *     queremos que el cron gaste cuota sin garantía.
+ *
+ * Por tanto esta función queda EXPERTA vía
+ * `devOnly/discoverSportmaniacs:discoverSportmaniacs` (action + 
+ * mutation wrapper). El admin la invoca a mano cuando sospecha
+ * una huérfana; si devuelve [], queda como antes: devOnly manual
+ * para parchear la carrera, o esperar al próximo backfill masivo.
+ *
+ * Parámetros:
+ *   - name: nombre de la carrera tal y como aparece en `races.name`.
+ *   - raceDate: ISO date (YYYY-MM-DD). MUY recomendado.
+ *   - city: ciudad opcional. Filtra `city` del hit.
+ */
+export async function discoverSportmaniacsEventIdsByName(
+  name: string,
+  raceDate?: string,
+  city?: string,
+): Promise<SportmaniacsEventRef[]> {
+  if (!name || name.trim().length < 3) return [];
+
+  // Limpiar el nombre para la búsqueda — quitar años, distancias
+  // entre paréntesis y caracteres raros. Sportmaniacs suele indexar
+  // por el "slug" limpio (ej: "15k-nocturna-valencia-gana-energia").
+  const cleanName = name
+    .replace(/\s*\(\d{4}\)\s*/g, " ") // (2026)
+    .replace(/\s+\d{4}\s*/g, " ") // " 2026 "
+    .replace(/\s+\d+\s*(km|K)\b/gi, " ") // " 15K"
+    .replace(/['']/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Empezamos en página 1. **La search API devuelve carreras ordenadas
+  // por futuro, NO por relevancia textual**, así que la edición 2026 de
+  // una popular suele caer ~10-15 páginas hacia dentro. Vamos
+  // paginando y parando en cuanto tengamos UN candidato válido
+  // (filtros aplicados abajo).
+  const baseSearch = `https://sportmaniacs.com/es/api/races?text=${encodeURIComponent(cleanName)}`;
+
+  type Hit = {
+    id: string;
+    name: string;
+    date: string;
+    slug: string;
+    country_id?: string;
+    city?: string;
+  };
+  type SearchResp = {
+    data: Hit[];
+    status: string;
+    totalPages?: number;
+    pastPages?: number;
+  };
+
+  // Límite duro de páginas para no agotar CPU del cron si la
+  // búsqueda nunca encuentra nada. 12 páginas × 25 hits = 300
+  // carreras inspeccionadas — más que suficiente para el caso
+  // típico (10-15 páginas). Si supera este límite, devolvemos []
+  // y se reintenta en el siguiente cron. Verificado empíricamente
+  // (sesión 27 sep 2026): la XV 15K Nocturna Valencia cae en página
+  // 11 con query "Nocturna Valencia".
+  const MAX_PAGES = 12;
+  const FETCH_TIMEOUT_MS = 5000;
+
+  // Función helper: cargar una página y devolver hits + metadatos.
+  async function fetchPage(pageNum: number): Promise<{ hits: Hit[]; meta: SearchResp | null }> {
+    try {
+      const url = pageNum === 1 ? baseSearch : `${baseSearch}&page=${pageNum}`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+      let res: Response | null = null;
+      try {
+        res = await fetch(url, {
+          headers: {
+            "User-Agent": SPORTMANIACS_USER_AGENT,
+            "X-Requested-With": "XMLHttpRequest",
+            Accept: "application/json",
+          },
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+      if (!res || !res.ok) {
+        console.warn(
+          `[scraper:sportmaniacs] search HTTP ${res.status} página ${pageNum} para "${cleanName}"`,
+        );
+        return { hits: [], meta: null };
+      }
+      const body = (await res.json()) as SearchResp;
+      return { hits: Array.isArray(body?.data) ? body.data : [], meta: body };
+    } catch (err) {
+      console.error(
+        `[scraper:sportmaniacs] search fetch failed page ${pageNum} for "${cleanName}":`,
+        err,
+      );
+      return { hits: [], meta: null };
+    }
+  }
+
+  // Estrategia de filtrado.
+  // El filtro por fecha es CLAVE: si raceDate está disponible,
+  // paramos en cuanto la PRIMERA página trae un único candidato
+  // del mismo año y mismo mes (no usamos mes ±1 como con la search
+  // original — la página exacta importa para evitar colisiones tipo
+  // "San Silvestre" / "Carrera de la Mujer"). Si la página trae
+  // varios del mismo mes, seguimos paginando hasta diferenciar.
+  //
+  // Si no hay raceDate, paramos al primer candidato ESP que sea
+  // razonable (filtro por longitud y similitud básicos sobre el
+  // nombre).
+  function dateFilterAcceptable(hit: Hit): boolean {
+    if (!raceDate || !/^\d{4}-\d{2}-\d{2}$/.test(raceDate)) return true;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(hit.date)) return false;
+    const tYear = Number(raceDate.slice(0, 4));
+    const tMonth = Number(raceDate.slice(5, 7));
+    const hYear = Number(hit.date.slice(0, 4));
+    const hMonth = Number(hit.date.slice(5, 7));
+    return tYear === hYear && tMonth === hMonth;
+  }
+
+  function nameSimilarityAcceptable(hit: Hit): boolean {
+    // Match básico: el "core" del nombre (palabras >2 letras) tiene
+    // un solapamiento >= 50% con las del nombre de la carrera target.
+    // Esto evita aceptar "10K Almendralejo" cuando buscas
+    // "XV 15K Nocturna Valencia".
+    const norm = (s: string) =>
+      s.toLowerCase().replace(/[^a-záéíóúñü0-9 ]+/g, " ").split(/\s+/).filter((w) => w.length > 2);
+    const a = new Set(norm(hit.name));
+    const b = norm(cleanName);
+    if (b.length === 0 || a.size === 0) return true;
+    let overlap = 0;
+    for (const w of b) if (a.has(w)) overlap++;
+    return overlap / b.length >= 0.4;
+  }
+
+  // Filtrado por ciudad opcional.
+  function cityAcceptable(hit: Hit): boolean {
+    if (!city || city.trim().length === 0) return true;
+    if (!hit.city) return true; // si el hit no expone ciudad, no penalizamos
+    return hit.city.toLowerCase().includes(city.toLowerCase());
+  }
+
+  // Primera página.
+  let allHits: Hit[] = [];
+  let totalPages = MAX_PAGES;
+  {
+    const { hits, meta } = await fetchPage(1);
+    allHits = hits;
+    if (meta && typeof meta.totalPages === "number") {
+      totalPages = Math.min(meta.totalPages, MAX_PAGES);
+    }
+  }
+
+  // Si NO hay raceDate, hacemos un primer intento de filtrado en
+  // página 1 y, si obtenemos un único candidato ESP con similitud
+  // razonable, paramos. Si no, paginamos.
+  // Si HAY raceDate, usamos el primer filtrado estricto por
+  // fecha y ciudad — y paramos en cuanto tengamos un solo match.
+  let chosen: Hit | null = null;
+  let triedPages = 1;
+
+  function pickFromHits(hits: Hit[]): Hit | null {
+    const esp = hits.filter((h) => h.country_id === "ESP" || true); // no restringir a ESP por ahora
+    const filtered = esp.filter(
+      (h) => dateFilterAcceptable(h) && cityAcceptable(h) && nameSimilarityAcceptable(h),
+    );
+    if (filtered.length === 1) return filtered[0];
+    // Si hay varios del mismo mes Y mismo nombre exacto, return null (sigue paginando)
+    return null;
+  }
+
+  chosen = pickFromHits(allHits);
+
+  while (!chosen && triedPages < totalPages) {
+    triedPages++;
+    const { hits, meta } = await fetchPage(triedPages);
+    if (hits.length === 0) break;
+    allHits = allHits.concat(hits);
+    chosen = pickFromHits(hits);
+  }
+
+  if (!chosen) {
+    if (allHits.length === 0) {
+      console.warn(
+        `[scraper:sportmaniacs] search sin resultados para "${cleanName}"`,
+      );
+    } else {
+      console.warn(
+        `[scraper:sportmaniacs] ${triedPages} páginas sin match único para "${cleanName}" (${allHits.length} hits totales); no desambiguable`,
+      );
+    }
+    return [];
+  }
+
+  // Ahora `chosen` es nuestro candidato.
+  const raceUrl = `https://sportmaniacs.com/es/races/${chosen.slug}`;
+
+  let html: string;
+  try {
+    const res = await fetch(raceUrl, {
+      headers: {
+        "User-Agent": SPORTMANIACS_USER_AGENT,
+        Accept: "text/html",
+      },
+    });
+    if (!res.ok) return [];
+    html = await res.text();
+  } catch (err) {
+    console.error(
+      `[scraper:sportmaniacs] race-html fetch failed for ${raceUrl}:`,
+      err,
+    );
+    return [];
+  }
+
+  return extractSportmaniacsEventCards(html);
+}
+
+/**
  * Adapter principal: scrapea sportmaniacs.com buscando el dorsal del
  * corredor entre las modalidades cacheadas de la carrera.
  *

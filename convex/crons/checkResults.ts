@@ -222,6 +222,16 @@ export async function processResultCheckItem(
     }
   }
 
+  // NOTA: el discovery por nombre (discoverSportmaniacsEventIdsByName)
+  // está implementado en scraper.ts pero NO se auto-ejecuta desde este
+  // cron — paginar sportmaniacs puede llevar 11+ fetches × 5s = ~55s,
+  // no escala. Se expone como internalMutation desde
+  // convex/devOnly/discoverSportmaniacs.ts y también se invoca desde
+  // fixTonightsMiDorsal. Caso típico: carrera huérfana con officialUrl
+  // apuntando a otro dominio (la XV 15K Nocturna Valencia). El admin
+  // dispara la mutation a mano, se cachea el eventId, y en el
+  // siguiente cron ya entra por la ruta rápida.
+
   // Sportmaniacs no necesita resultsUrl para scrapear (usa
   // sportmaniacsEventIds, cacheados por el backfill o descubiertos
   // arriba) — solo el resto de adapters lo requieren.

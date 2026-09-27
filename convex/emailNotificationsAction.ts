@@ -246,10 +246,16 @@ export const sendResultFoundEmail = internalAction({
       // diploma usa el oficial sin cambios.
       netTimeFormatted: args.netTimeSeconds ? formatHMS(args.netTimeSeconds) : undefined,
       netTimeSeconds: args.netTimeSeconds,
+      // Pace por km (M:SS). El adapter puede traerlo directo
+      // (args.pacePerKmNetSeconds, segundos/km) o puede que falte — en
+      // ese caso lo calculamos desde netTimeSeconds / distanceKm. Mismo
+      // patrón que `lib/pdf/diploma.tsx` (fallback compute on read).
       paceNetFormatted:
         args.pacePerKmNetSeconds != null && effectiveDistance.distanceKm > 0
-          ? formatPace(args.pacePerKmNetSeconds, effectiveDistance.distanceKm)
-          : undefined,
+          ? formatPaceFromPaceSeconds(args.pacePerKmNetSeconds)
+          : args.netTimeSeconds && effectiveDistance.distanceKm > 0
+            ? formatPace(args.netTimeSeconds, effectiveDistance.distanceKm)
+            : undefined,
       splits: args.splits,
     };
     // ---------- 4. Generar diploma PDF + story sticker (plantilla clásica) ----------
@@ -376,12 +382,16 @@ export const sendResultFoundEmail = internalAction({
       positionGender: args.positionGender,
       pacePerKmFormatted:
         args.pacePerKmSeconds != null && effectiveDistance.distanceKm > 0
-          ? formatPace(args.pacePerKmSeconds, effectiveDistance.distanceKm)
-          : undefined,
+          ? formatPaceFromPaceSeconds(args.pacePerKmSeconds)
+          : args.timeSeconds && effectiveDistance.distanceKm > 0
+            ? formatPace(args.timeSeconds, effectiveDistance.distanceKm)
+            : undefined,
       pacePerKmNetFormatted:
         args.pacePerKmNetSeconds != null && effectiveDistance.distanceKm > 0
-          ? formatPace(args.pacePerKmNetSeconds, effectiveDistance.distanceKm)
-          : undefined,
+          ? formatPaceFromPaceSeconds(args.pacePerKmNetSeconds)
+          : args.netTimeSeconds && effectiveDistance.distanceKm > 0
+            ? formatPace(args.netTimeSeconds, effectiveDistance.distanceKm)
+            : undefined,
       splits: args.splits,
     });
 
@@ -1033,6 +1043,19 @@ function formatPace(timeSeconds: number, distanceKm: number): string {
   const paceSec = timeSeconds / distanceKm;
   const m = Math.floor(paceSec / 60);
   const s = Math.round(paceSec % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+/**
+ * Formatea pace que YA VIENE en segundos/km (lo trae el adapter
+ * sportmaniacs en `meta.average` / `meta.averageNet`, parseado con
+ * parseTime). Devuelve M:SS / km como `formatPace`, pero sin volver
+ * a dividir por distancia. Usado cuando el adapter rellena el campo
+ * directo; si falta, calculamos con `formatPace(netTimeSeconds, km)`.
+ */
+function formatPaceFromPaceSeconds(pacePerKmSeconds: number): string {
+  const m = Math.floor(pacePerKmSeconds / 60);
+  const s = Math.round(pacePerKmSeconds % 60);
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 

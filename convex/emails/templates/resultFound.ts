@@ -341,26 +341,13 @@ export function resultFoundEmail(args: {
 
           <!-- Diploma preview inline ELIMINADO (sesión 27 sep 2026).
                El usuario quiere recibir SOLO el PDF adjunto + el sticker
-               PNG, no la imagen inline A4 (842x595). El diploma PDF sigue
-               siendo la fuente de verdad adjunta al email. El story sticker
-               "variante email" (abajo) sigue siendo la imagen inline que
-               muestra el resultado, con tiempo neto + pace neto. -->
-
-          <!-- Sticker visual (variante "email", inline cid:). El PNG ya
-               lleva fondo crema opaco + textos oscuros sobre paneles
-               blancos — es la versión legible sobre fondo claro, así
-               que el template ya no necesita envolverla en un panel
-               oscuro. Si el cliente bloquea el cid, el <img> cae al
-               alt-text y el resto del email sigue intacto.
-               convex/emailNotificationsAction.sendResultFoundEmail
-               reemplaza el marcador SHARE_CARD_INLINE por el <img> con
-               el cid pre-generado. Si no hay inline, este bloque queda
-               vacío (no rompe el email). -->
-          <tr>
-            <td style="padding: 16px 28px 0;" align="center">
-              <!--SHARE_CARD_INLINE-->
-            </td>
-          </tr>
+               PNG transparente (sin fondo) en attachments, no imágenes
+               inline en el cuerpo del email. El diploma PDF y el sticker
+               PNG transparente (variante "overlay", pensada para subir a
+               Stories sobre la foto del corredor) son los dos adjuntos
+               del email. El cuerpo se queda con CTAs + el teaser de
+               Stories + el botón "Descargar sticker" hacia la URL del
+               transparente. -->
 
           <!-- CTAs -->
           <tr>

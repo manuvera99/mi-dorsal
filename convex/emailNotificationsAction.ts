@@ -379,25 +379,17 @@ export const sendResultFoundEmail = internalAction({
       splits: args.splits,
     });
 
-    // Inyectar los inline cid: de las dos imágenes del email. Se hace
-    // aquí porque el template no conoce los cid (mantenemos el template
-    // puro). Ambos cid apuntan a variantes diseñadas para fondo claro:
-    //   - diploma@mi-dorsal: diploma PNG (842x595 A4 landscape) con fondo
-    //     crema y marco rojo, legible sobre el fondo del email.
-    //   - sticker@mi-dorsal: sticker PNG variante email (fondo crema +
-    //     textos oscuros), legible sobre fondo claro por sí mismo.
-    // El template ya no envuelve ninguna de las dos en un panel oscuro.
-    const DIPLOMA_INLINE_CID = "diploma@mi-dorsal";
-    const STICKER_INLINE_CID = "sticker@mi-dorsal";
+    // Sesión 27 sep 2026: el email body ya no incrusta ninguna imagen.
+    // El diploma PDF va como attachment descargable (fuente de verdad).
+    // El sticker PNG va como attachment descargable (overlay transparente
+    // para subir a Stories). El cuerpo solo lleva CTAs + el teaser del
+    // editor de Stories + el botón "Descargar sticker". Si en el
+    // template quedó algún marcador <!--DIPLOMA_INLINE--> o
+    // <!--SHARE_CARD_INLINE-->, los quitamos sin reemplazarlos por
+    // ningún <img>.
     const htmlWithInline = html
-      .replace(
-        /<!--DIPLOMA_INLINE-->/g,
-        `<img src="cid:${DIPLOMA_INLINE_CID}" alt="Tu diploma de ${escapeAttr(race.name)}" width="560" style="display:block;max-width:100%;height:auto;border:0;" />`,
-      )
-      .replace(
-        /<!--SHARE_CARD_INLINE-->/g,
-        `<img src="cid:${STICKER_INLINE_CID}" alt="Tu resultado en ${escapeAttr(race.name)}" width="240" style="display:block;max-width:100%;height:auto;" />`,
-      );
+      .replace(/<!--DIPLOMA_INLINE-->/g, "")
+      .replace(/<!--SHARE_CARD_INLINE-->/g, "");
 
     // ---------- 7. Enviar email ----------
     let success = false;
@@ -407,7 +399,7 @@ export const sendResultFoundEmail = internalAction({
 
     if (IS_MOCK) {
       console.log(
-        `[result-found-mock] → ${profile.email} | ${subject} | diploma=${(pdfBytes.length / 1024).toFixed(1)}KB diplomaPreview=${(diplomaImageBytes.length / 1024).toFixed(1)}KB stickerOverlay=${(stickerBytes.length / 1024).toFixed(1)}KB stickerEmail=${(stickerEmailBytes.length / 1024).toFixed(1)}KB`,
+        `[result-found-mock] → ${profile.email} | ${subject} | diploma=${(pdfBytes.length / 1024).toFixed(1)}KB stickerOverlay=${(stickerBytes.length / 1024).toFixed(1)}KB stickerEmailVariant=${(stickerEmailBytes.length / 1024).toFixed(1)}KB (storage only, no email)`,
       );
       success = true;
     } else {
@@ -425,28 +417,35 @@ export const sendResultFoundEmail = internalAction({
           // `any` para no pelearnos con el tipado.
           //
           // 3 adjuntos:
+          // Sesión 27 sep 2026 — el usuario pidió: SOLO el diploma PDF + el
+          // sticker PNG transparente (sin fondo, listo para Stories) en
+          // attachments. Sin imágenes inline en el cuerpo (ya quitamos
+          // los cids del htmlWithInline arriba). Los nombres de archivo
+          // siguen siendo kebab-friendly para descarga limpia en cliente
+          // de correo.
+          //
+          // 2 adjuntos:
           //   1. Diploma PDF — fuente de verdad oficial, descargable.
-          //   2. Diploma PNG — preview inline (cid diploma@mi-dorsal).
-          //   3. Sticker email PNG — preview inline (cid sticker@mi-dorsal).
-          // El sticker overlay transparente (stickerBytes) se sigue
-          // subiendo a Convex Storage para descarga desde
-          // /api/result/{myRaceId}/story-sticker.png, pero NO se adjunta
-          // al email — son 3 adjuntos en lugar de 4 para no saturar la
-          // bandeja, y la descarga del overlay vive en la web.
+          //      Lo renombramos a `diploma-oficial-{verificationId}.pdf`
+          //      para que sea más claro en la bandeja (vs el sticker
+          //      que también empieza por `mi-dorsal-`).
+          //   2. Sticker transparente PNG — overlay sin fondo, listo
+          //      para subir a Instagram/TikTok Stories. Archivo:
+          //      `sticker-stories-{verificationId}.png`.
+          //
+          // NOTA: la variante "email" del sticker (fondo crema + textos
+          // oscuros) SIGUE generándose y subiéndose a Convex Storage
+          // (fila `storyStickerEmailStorageId`) — la usa el editor
+          // /editor-sticker/{myRaceId} para preview sobre fondo claro.
+          // No se envía por email.
           attachments: [
             {
-              filename: `mi-dorsal-${verificationId}-diploma.pdf`,
+              filename: `diploma-oficial-${verificationId}.pdf`,
               content: bytesToBase64(pdfBytes),
             },
             {
-              filename: `mi-dorsal-${verificationId}-diploma.png`,
-              content: bytesToBase64(diplomaImageBytes),
-              content_id: DIPLOMA_INLINE_CID,
-            },
-            {
-              filename: `mi-dorsal-${verificationId}-sticker.png`,
-              content: bytesToBase64(stickerEmailBytes),
-              content_id: STICKER_INLINE_CID,
+              filename: `sticker-stories-${verificationId}.png`,
+              content: bytesToBase64(stickerBytes), // overlay transparente
             },
           ] as any,
         });
